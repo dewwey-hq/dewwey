@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aisle — Chicago's Wedding Vendor Marketplace",
+  title: "Dewy — Chicago's Wedding Vendor Marketplace",
   description:
     "Find trusted Chicago wedding vendors: venues, catering, florals, photography, and more.",
 };

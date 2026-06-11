@@ -82,7 +82,7 @@ export default function Home() {
             <a href="#" className="flex items-center gap-2 shrink-0">
               <span className="text-rose-400 text-2xl">✦</span>
               <span className="text-[17px] tracking-tight text-gray-900" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}>
-                ChicagoVows
+                Dewy
               </span>
             </a>
 
@@ -339,7 +339,7 @@ export default function Home() {
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-rose-400 text-xl">✦</span>
-                <span className="text-white text-[16px]" style={{ fontFamily: "'Playfair Display', serif" }}>ChicagoVows</span>
+                <span className="text-white text-[16px]" style={{ fontFamily: "'Playfair Display', serif" }}>Dewy</span>
               </div>
               <p className="text-sm leading-relaxed text-gray-500">
                 Chicago&apos;s most trusted wedding vendor marketplace. Find, compare, and book with confidence.
@@ -376,7 +376,7 @@ export default function Home() {
           </div>
 
           <div className="pt-8 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-600">
-            <span>© 2026 ChicagoVows. All rights reserved.</span>
+            <span>© 2026 Dewy. All rights reserved.</span>
             <span>Made with ♥ in Chicago, IL</span>
           </div>
         </div>
