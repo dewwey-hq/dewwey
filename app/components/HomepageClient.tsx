@@ -73,7 +73,11 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
   const toggleSave = (placeId: string) => {
     setSavedVendors((prev) => {
       const next = new Set(prev);
-      next.has(placeId) ? next.delete(placeId) : next.add(placeId);
+      if (next.has(placeId)) {
+        next.delete(placeId);
+      } else {
+        next.add(placeId);
+      }
       return next;
     });
   };
@@ -96,9 +100,15 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
 
             {/* Desktop nav links */}
             <nav className="hidden md:flex items-center gap-1">
-              {["Venues", "Catering", "Florals", "Photography", "More"].map((link) => (
-                <a key={link} href="#" className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-colors">
-                  {link}
+              {[
+                { label: "Venues", href: "/venues" },
+                { label: "Catering", href: "#" },
+                { label: "Florals", href: "#" },
+                { label: "Photography", href: "#" },
+                { label: "More", href: "#" },
+              ].map((link) => (
+                <a key={link.label} href={link.href} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-colors">
+                  {link.label}
                 </a>
               ))}
             </nav>
@@ -127,9 +137,17 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-black/[0.06] bg-white">
             <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1">
-              {["Venues", "Catering", "Florals", "Photography", "More", "List your business", "Sign In"].map((link) => (
-                <a key={link} href="#" className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                  {link}
+              {[
+                { label: "Venues", href: "/venues" },
+                { label: "Catering", href: "#" },
+                { label: "Florals", href: "#" },
+                { label: "Photography", href: "#" },
+                { label: "More", href: "#" },
+                { label: "List your business", href: "#" },
+                { label: "Sign In", href: "#" },
+              ].map((link) => (
+                <a key={link.label} href={link.href} className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                  {link.label}
                 </a>
               ))}
             </div>
@@ -227,8 +245,9 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           {VENDOR_CATEGORIES.map(({ label, src, count }) => (
-            <button
+            <a
               key={label}
+              href={label === "Venues" ? "/venues" : "#"}
               className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-black/[0.07] bg-white hover:border-rose-200 hover:shadow-[0_4px_20px_rgba(244,63,94,0.08)] transition-all duration-200 text-center"
             >
               <div className="w-12 h-12 rounded-xl bg-[#fdf8f5] group-hover:bg-rose-50 transition-colors flex items-center justify-center">
@@ -238,7 +257,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
                 <div className="text-sm font-medium text-gray-800 group-hover:text-gray-900 transition-colors">{label}</div>
                 <div className="text-xs text-gray-400 mt-0.5">{count}</div>
               </div>
-            </button>
+            </a>
           ))}
         </div>
       </section>
