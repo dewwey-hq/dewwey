@@ -2,40 +2,59 @@
  * Dewy — Master Search Strategy Config
  * =====================================
  * This file defines every query used to populate the vendors database.
- * It is the single source of truth for what we search for, where, and why.
+ * It is the single source of truth for what we search for and why.
  *
- * TWO COMPLEMENTARY STRATEGIES
- * ─────────────────────────────
- * 1. TEXT_SEARCH_TERMS  — keyword-based searches via Google Places Text Search API.
- *    Best for: categories where vendors self-identify with wedding-specific language
- *    (e.g., "wedding photographer"), and for categories that have no Google place type.
+ * CURRENT STRATEGY: TEXT SEARCH ONLY
+ * ────────────────────────────────────
+ * All vendor discovery uses the Google Places Text Search API (New):
+ *   POST https://places.googleapis.com/v1/places:searchText
+ *   body: { textQuery: "<term>" }
  *
- * 2. NEARBY_SEARCH_TYPES — place-type-based searches within a fixed radius of Chicago
- *    center (lat: 41.8827, lng: -87.6233). Uses Google's official place taxonomy.
- *    Best for: brick-and-mortar businesses (florists, salons, caterers, venues) that
- *    may not use wedding keywords but show up under the correct place type.
+ * The `textQuery` parameter drives Google's relevance ranking — including the
+ * business name, Google Business Profile description, reviews, and category.
+ * A query like "wedding florist Chicago IL" surfaces businesses that explicitly
+ * market to weddings, which is exactly the signal Dewy needs.
  *
- * WHY BOTH?
- * ─────────
- * Text search maximizes recall for wedding-intent keywords but misses businesses that
- * don't market themselves as wedding-specific. Nearby search by place type catches
- * those businesses but may over-fetch (e.g., a random hair salon with no bridal
- * experience). Together they provide broad coverage with better signal quality.
+ * WHY NOT NEARBY SEARCH?
+ * ───────────────────────
+ * We evaluated the Nearby Search API (POST .../places:searchNearby) but found
+ * it too noisy for a wedding marketplace. Nearby search filters only by place
+ * type (e.g., `florist`, `beauty_salon`) and location radius — it has no
+ * equivalent of a keyword filter and no wedding-intent signal whatsoever.
+ * In practice this meant:
  *
- * CATEGORIES WITH NO GOOGLE PLACE TYPE
- * ──────────────────────────────────────
- * - Photography: Google has no "photographer" place type. Text search is the only path.
- * - DJ & Music:  No "dj" or "wedding_band" place type exists. Text search only.
- * These categories rely entirely on TEXT_SEARCH_TERMS.
+ *   - `florist`       → returned grocery store floral departments alongside
+ *                        legitimate wedding florists
+ *   - `beauty_salon`  → returned Ulta Beauty, chain salons, nail bars, etc.
+ *   - `hair_salon`    → similarly broad; no way to distinguish a bridal
+ *                        specialist from a walk-in barbershop
  *
- * ADDING NEW SEARCHES
- * ────────────────────
- * Always add an entry here before writing seed script logic. Fill in the `notes` field
- * explaining what gap the new term fills — if you can't articulate it, it may not be
- * worth adding. Avoid duplicating coverage without reason; API calls cost money.
+ * The API does support `minRating` and `rankPreference` (DISTANCE | POPULARITY),
+ * but neither parameter filters for wedding intent — they only affect which
+ * non-wedding businesses surface first. There is no `includedKeywords` or
+ * equivalent in the Nearby Search request body.
+ *   Docs: https://developers.google.com/maps/documentation/places/web-service/nearby-search
  *
- * Chicago search center: 41.8827° N, 87.6233° W
- * Default nearby radius: 30 miles (~48,000 meters)
+ * Two entire vendor categories — Photography and DJ & Music — have no Google
+ * place type at all (see Place Types reference:
+ *   https://developers.google.com/maps/documentation/places/web-service/place-types),
+ * so nearby search could never cover them regardless.
+ *
+ * REVISITING NEARBY SEARCH
+ * ─────────────────────────
+ * Nearby search could be worth revisiting if Google adds:
+ *   - A `textQuery`-style keyword filter to the nearby search request body
+ *   - A `wedding_vendor` or equivalent high-level place type
+ * Or if we build a post-fetch filtering layer (e.g., discard results whose
+ * name or editorial summary contains no wedding-adjacent language). Until then,
+ * text search gives better precision with less cleanup work.
+ *   Docs: https://developers.google.com/maps/documentation/places/web-service/text-search
+ *
+ * ADDING NEW SEARCH TERMS
+ * ────────────────────────
+ * Always add an entry here before updating the seed script. Fill in the `notes`
+ * field explaining what gap the new term fills — if you can't articulate it,
+ * it may not be worth adding. API calls cost money; avoid duplicating coverage.
  */
 
 // ── Text Search Terms ─────────────────────────────────────────────────────────
@@ -210,129 +229,4 @@ const TEXT_SEARCH_TERMS = [
   },
 ];
 
-// ── Nearby Search Types ───────────────────────────────────────────────────────
-//
-// Each entry is sent to the Places Nearby Search API:
-//   POST https://places.googleapis.com/v1/places:searchNearby
-//   body: { includedTypes: [type], locationRestriction: { circle: { center, radius } } }
-//
-// Searches within `radius` meters of Chicago center: { lat: 41.8827, lng: -87.6233 }
-// The default 48,280m radius covers roughly 30 miles — Chicago proper + suburbs.
-//
-// Nearby search is type-based, not keyword-based. It catches every business Google
-// classifies under a given type, regardless of whether they use wedding language.
-// This is powerful for brick-and-mortar businesses (venues, florists, salons)
-// but does not exist for service-based categories like photography or DJs.
-
-const CHICAGO_CENTER = { lat: 41.8827, lng: -87.6233 };
-const DEFAULT_RADIUS_METERS = 48_280; // ~30 miles
-
-const NEARBY_SEARCH_TYPES = [
-
-  // ── Venues ────────────────────────────────────────────────────────────────
-
-  {
-    type: "wedding_venue",
-    category: "venue",
-    radius: DEFAULT_RADIUS_METERS,
-    notes:
-      "Google's official place type for wedding venues. High precision — businesses " +
-      "classified here have explicitly indicated they host weddings. Should be the " +
-      "highest-signal venue source. Run this before broader event_venue to identify " +
-      "which venues are already tagged by Google.",
-  },
-  {
-    type: "event_venue",
-    category: "venue",
-    radius: DEFAULT_RADIUS_METERS,
-    notes:
-      "Broader event space type that includes many venues that also host weddings. " +
-      "Expect significant overlap with wedding_venue results — use ON CONFLICT DO " +
-      "NOTHING in the insert to handle duplicates. Valuable for catching spaces that " +
-      "haven't been specifically typed as wedding venues by Google.",
-  },
-  {
-    type: "banquet_hall",
-    category: "venue",
-    radius: DEFAULT_RADIUS_METERS,
-    notes:
-      "Traditional banquet halls that Google classifies separately from event venues. " +
-      "Common in Chicago's ethnic communities and suburbs. These may not appear in " +
-      "wedding_venue or event_venue results. Distinct enough from the other venue " +
-      "types to warrant its own search.",
-  },
-
-  // ── Catering ──────────────────────────────────────────────────────────────
-
-  {
-    type: "catering_service",
-    category: "caterer",
-    radius: DEFAULT_RADIUS_METERS,
-    notes:
-      "Google's place type for catering businesses. Catches caterers who may not use " +
-      "wedding-specific keywords in their Business Profile. Complements the text " +
-      "search by surfacing businesses by trade rather than marketing language. " +
-      "Will include corporate caterers — filter by reviewing individual listings.",
-  },
-
-  // ── Florals ───────────────────────────────────────────────────────────────
-
-  {
-    type: "florist",
-    category: "florist",
-    radius: DEFAULT_RADIUS_METERS,
-    notes:
-      "All flower shops and floral studios within range. Will include grocery store " +
-      "floral departments and general gift shops — post-insert filtering by name or " +
-      "editorial summary may be needed to remove non-bridal florists. Still valuable " +
-      "because many legitimate wedding florists don't use 'wedding' in their profile.",
-  },
-
-  // ── Hair & Makeup ─────────────────────────────────────────────────────────
-  // The beauty category has three relevant place types. Running all three maximizes
-  // coverage since Google's classification of beauty businesses is inconsistent —
-  // a full-service bridal salon may be typed as beauty_salon, hair_salon, or both.
-
-  {
-    type: "beauty_salon",
-    category: "hair_makeup",
-    radius: DEFAULT_RADIUS_METERS,
-    notes:
-      "Full-service salons offering both hair and makeup. The broadest beauty type — " +
-      "will return many non-bridal salons. However, many bridal studios are classified " +
-      "here because they offer full services. High volume, lower precision. Use in " +
-      "combination with the other beauty types and rely on text search for filtering.",
-  },
-  {
-    type: "hair_salon",
-    category: "hair_makeup",
-    radius: DEFAULT_RADIUS_METERS,
-    notes:
-      "Hair-focused salons that may not be classified as beauty_salon. Some bridal " +
-      "hair specialists operate as hair salons. Expect overlap with beauty_salon — " +
-      "ON CONFLICT handles duplicates. Included because Google's typing is inconsistent " +
-      "and we'd rather over-fetch than miss a legitimate bridal provider.",
-  },
-  {
-    type: "makeup_artist",
-    category: "hair_makeup",
-    radius: DEFAULT_RADIUS_METERS,
-    notes:
-      "Standalone makeup artists with a physical location or Google Business Profile. " +
-      "Many freelance makeup artists operate from home studios or travel to clients " +
-      "and still have a Google listing. This type has lower volume than salon types " +
-      "but higher precision for bridal makeup specifically.",
-  },
-
-  // ── Photography & DJ: NOT included here ───────────────────────────────────
-  // Google Places has no official type for photographers or DJs/musicians.
-  // These categories rely entirely on TEXT_SEARCH_TERMS above.
-  // If Google adds types in the future, add entries here and update AGENTS.md.
-];
-
-module.exports = {
-  TEXT_SEARCH_TERMS,
-  NEARBY_SEARCH_TYPES,
-  CHICAGO_CENTER,
-  DEFAULT_RADIUS_METERS,
-};
+module.exports = { TEXT_SEARCH_TERMS };
