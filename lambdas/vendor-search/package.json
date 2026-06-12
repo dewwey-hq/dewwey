@@ -1,0 +1,9 @@
+{
+  "name": "vendor-search",
+  "version": "1.0.0",
+  "description": "Dewy vendor search Lambda",
+  "main": "index.js",
+  "dependencies": {
+    "pg": "^8.21.0"
+  }
+}
