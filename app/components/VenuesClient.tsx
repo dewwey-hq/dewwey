@@ -10,14 +10,16 @@ import {
   SlidersHorizontal,
   Sparkles,
   Star,
-  Users,
   X,
 } from "lucide-react";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export type VenueVendor = {
   place_id: string;
   name: string;
   category: string;
+  primary_type: string | null;
   rating: number | string | null;
   review_count: number | null;
   address: string | null;
@@ -26,221 +28,169 @@ export type VenueVendor = {
   website: string | null;
   photos: string[] | null;
   price_level: number | null;
+  editorial_summary: string | null;
 };
 
-type VenueProfile = {
-  style: string;
-  capacity: number;
-  startingPrice: number;
-  vibe: string;
-  included: string[];
-  image: string;
+type VenueCard = VenueVendor & {
+  displayRating: number;
+  displayReviews: number;
+  location: string;
+  photoUrl: string;
+  styleLabel: string;
 };
 
-type VenueCard = VenueVendor &
-  VenueProfile & {
-    displayRating: number;
-    displayReviews: number;
-    location: string;
-    photoUrl: string;
-  };
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const API_PHOTO_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
-
-const STYLES = ["All", "Loft", "Garden", "Hotel", "Historic", "Rooftop", "Industrial"];
 const BUDGETS = ["Any", "$", "$$", "$$$", "$$$$"];
 
-const PROFILE_ROTATION: VenueProfile[] = [
-  {
-    style: "Loft",
-    capacity: 150,
-    startingPrice: 8500,
-    vibe: "Bright loft with warm brick and a flexible reception floor.",
-    included: ["Ceremony", "Reception", "BYO vendors"],
-    image:
-      "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=900&h=700&fit=crop&auto=format",
-  },
-  {
-    style: "Garden",
-    capacity: 120,
-    startingPrice: 7200,
-    vibe: "Soft greenery, patio cocktails, and an intimate dinner flow.",
-    included: ["Outdoor space", "Getting-ready suite", "Tables"],
-    image:
-      "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=900&h=700&fit=crop&auto=format",
-  },
-  {
-    style: "Hotel",
-    capacity: 220,
-    startingPrice: 12000,
-    vibe: "Full-service hospitality with guest rooms steps away.",
-    included: ["Catering", "Room block", "Planner"],
-    image:
-      "https://images.unsplash.com/photo-1519741497674-611481863552?w=900&h=700&fit=crop&auto=format",
-  },
-  {
-    style: "Historic",
-    capacity: 180,
-    startingPrice: 9800,
-    vibe: "Architectural details, candlelit dinner, and timeless photos.",
-    included: ["Ceremony", "Security", "Coat check"],
-    image:
-      "https://images.unsplash.com/photo-1520854221256-17451cc331bf?w=900&h=700&fit=crop&auto=format",
-  },
-  {
-    style: "Rooftop",
-    capacity: 140,
-    startingPrice: 10500,
-    vibe: "Skyline views, sunset portraits, and modern cocktail energy.",
-    included: ["Terrace", "Bar package", "Lounge"],
-    image:
-      "https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=900&h=700&fit=crop&auto=format",
-  },
-  {
-    style: "Industrial",
-    capacity: 260,
-    startingPrice: 11000,
-    vibe: "Roomy warehouse character with polished modern finishes.",
-    included: ["Parking", "AV", "Vendor kitchen"],
-    image:
-      "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=900&h=700&fit=crop&auto=format",
-  },
-];
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const FALLBACK_VENUES: VenueVendor[] = [
-  {
-    place_id: "sample-ivy-room",
-    name: "The Ivy Room",
-    category: "venue",
-    rating: 4.97,
-    review_count: 142,
-    address: "12 E Ohio St, Chicago, IL",
-    short_address: "River North, Chicago",
-    neighborhood: "River North",
-    website: "https://www.ivyroomchicago.com/",
-    photos: null,
-    price_level: 3,
-  },
-  {
-    place_id: "sample-loft-lucia",
-    name: "Loft Lucia",
-    category: "venue",
-    rating: 4.9,
-    review_count: 96,
-    address: "7 N Carpenter St, Chicago, IL",
-    short_address: "West Loop, Chicago",
-    neighborhood: "West Loop",
-    website: "https://loftlucia.com/",
-    photos: null,
-    price_level: 3,
-  },
-  {
-    place_id: "sample-garden-house",
-    name: "The Garden House",
-    category: "venue",
-    rating: 4.88,
-    review_count: 71,
-    address: "Lincoln Park, Chicago, IL",
-    short_address: "Lincoln Park, Chicago",
-    neighborhood: "Lincoln Park",
-    website: null,
-    photos: null,
-    price_level: 2,
-  },
-  {
-    place_id: "sample-atelier",
-    name: "Atelier Fulton Market",
-    category: "venue",
-    rating: 4.95,
-    review_count: 118,
-    address: "Fulton Market, Chicago, IL",
-    short_address: "Fulton Market, Chicago",
-    neighborhood: "Fulton Market",
-    website: null,
-    photos: null,
-    price_level: 4,
-  },
-  {
-    place_id: "sample-lakeshore",
-    name: "Lakeshore Terrace",
-    category: "venue",
-    rating: 4.86,
-    review_count: 63,
-    address: "Streeterville, Chicago, IL",
-    short_address: "Streeterville, Chicago",
-    neighborhood: "Streeterville",
-    website: null,
-    photos: null,
-    price_level: 3,
-  },
-  {
-    place_id: "sample-foundry",
-    name: "The Foundry at Ashland",
-    category: "venue",
-    rating: 4.82,
-    review_count: 54,
-    address: "West Town, Chicago, IL",
-    short_address: "West Town, Chicago",
-    neighborhood: "West Town",
-    website: null,
-    photos: null,
-    price_level: 2,
-  },
-];
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
+function formatPrimaryType(type: string | null): string {
+  if (!type) return "Venue";
+  const MAP: Record<string, string> = {
+    wedding_venue: "Wedding Venue",
+    event_venue: "Event Space",
+    historical_landmark: "Historic",
+    banquet_hall: "Banquet Hall",
+    hotel: "Hotel",
+    restaurant: "Restaurant",
+    park: "Park",
+    art_gallery: "Art Gallery",
+    museum: "Museum",
+    country_club: "Country Club",
+  };
+  return MAP[type] ?? type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function normalizeRating(value: number | string | null) {
-  if (value == null) return 4.8;
+function normalizeRating(value: number | string | null): number {
+  if (value == null) return 0;
   const parsed = typeof value === "string" ? Number.parseFloat(value) : value;
-  return Number.isFinite(parsed) ? parsed : 4.8;
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function budgetLabel(priceLevel: number | null, startingPrice: number) {
-  if (priceLevel != null) return "$".repeat(Math.max(1, priceLevel));
-  if (startingPrice < 8000) return "$$";
-  if (startingPrice < 11000) return "$$$";
-  return "$$$$";
+function budgetLabel(priceLevel: number | null): string {
+  if (priceLevel == null) return "";
+  return "$".repeat(Math.max(1, Math.min(priceLevel, 4)));
 }
 
-function photoUrlFor(venue: VenueVendor, fallbackImage: string) {
+function photoUrlFor(venue: VenueVendor): string | null {
   const photoRef = venue.photos?.[0];
-  if (!photoRef || !API_PHOTO_KEY) return fallbackImage;
+  if (!photoRef || !API_PHOTO_KEY) return null;
   return `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=900&key=${API_PHOTO_KEY}`;
 }
 
 function buildVenueCards(venues: VenueVendor[]): VenueCard[] {
-  const source = venues.length > 0 ? venues : FALLBACK_VENUES;
-
-  return source.map((venue, index) => {
-    const profile = PROFILE_ROTATION[index % PROFILE_ROTATION.length];
-
-    return {
-      ...venue,
-      ...profile,
-      displayRating: normalizeRating(venue.rating),
-      displayReviews: venue.review_count ?? 40 + index * 17,
-      location: venue.neighborhood ?? venue.short_address ?? venue.address ?? "Chicago",
-      photoUrl: photoUrlFor(venue, profile.image),
-    };
-  });
+  return venues.map((venue) => ({
+    ...venue,
+    displayRating: normalizeRating(venue.rating),
+    displayReviews: venue.review_count ?? 0,
+    location: venue.neighborhood ?? venue.short_address ?? venue.address ?? "Chicago",
+    photoUrl: photoUrlFor(venue) ?? "",
+    styleLabel: formatPrimaryType(venue.primary_type),
+  }));
 }
 
-export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
+// ── Component ─────────────────────────────────────────────────────────────────
+
+function Pagination({
+  currentPage,
+  totalPages,
+}: {
+  currentPage: number;
+  totalPages: number;
+}) {
+  if (totalPages <= 1) return null;
+
+  // Build page number list: always show first, last, and up to 2 around current
+  const pages: (number | "…")[] = [];
+  const delta = 2;
+  const range: number[] = [];
+  for (
+    let i = Math.max(1, currentPage - delta);
+    i <= Math.min(totalPages, currentPage + delta);
+    i++
+  ) {
+    range.push(i);
+  }
+  if (range[0] > 1) {
+    pages.push(1);
+    if (range[0] > 2) pages.push("…");
+  }
+  pages.push(...range);
+  if (range[range.length - 1] < totalPages) {
+    if (range[range.length - 1] < totalPages - 1) pages.push("…");
+    pages.push(totalPages);
+  }
+
+  return (
+    <div className="mt-10 flex items-center justify-center gap-1">
+      {currentPage > 1 && (
+        <a
+          href={`/venues?page=${currentPage - 1}`}
+          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
+        >
+          ← Prev
+        </a>
+      )}
+
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`ellipsis-${i}`} className="px-2 text-sm text-gray-400">
+            …
+          </span>
+        ) : (
+          <a
+            key={p}
+            href={`/venues?page=${p}`}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              p === currentPage
+                ? "bg-rose-400 text-white"
+                : "border border-black/[0.08] text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            {p}
+          </a>
+        )
+      )}
+
+      {currentPage < totalPages && (
+        <a
+          href={`/venues?page=${currentPage + 1}`}
+          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
+        >
+          Next →
+        </a>
+      )}
+    </div>
+  );
+}
+
+export default function VenuesClient({
+  venues,
+  total,
+  currentPage,
+  pageSize,
+}: {
+  venues: VenueVendor[];
+  total: number;
+  currentPage: number;
+  pageSize: number;
+}) {
+  const totalPages = Math.ceil(total / pageSize);
   const [query, setQuery] = useState("");
   const [style, setStyle] = useState("All");
   const [budget, setBudget] = useState("Any");
-  const [guestCount, setGuestCount] = useState(120);
+  const [guestCount, setGuestCount] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState("recommended");
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
 
   const venueCards = useMemo(() => buildVenueCards(venues), [venues]);
+
+  const styleOptions = useMemo(() => {
+    const types = new Set(venueCards.map((v) => v.styleLabel));
+    return ["All", ...Array.from(types).sort()];
+  }, [venueCards]);
 
   const filteredVenues = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -251,22 +201,23 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
           search.length === 0 ||
           venue.name.toLowerCase().includes(search) ||
           venue.location.toLowerCase().includes(search) ||
-          venue.style.toLowerCase().includes(search);
-        const matchesStyle = style === "All" || venue.style === style;
-        const matchesBudget = budget === "Any" || budgetLabel(venue.price_level, venue.startingPrice) === budget;
-        const matchesCapacity = venue.capacity >= guestCount;
+          venue.styleLabel.toLowerCase().includes(search);
+        const matchesStyle = style === "All" || venue.styleLabel === style;
+        const matchesBudget =
+          budget === "Any" || budgetLabel(venue.price_level) === budget;
 
-        return matchesSearch && matchesStyle && matchesBudget && matchesCapacity;
+        return matchesSearch && matchesStyle && matchesBudget;
       })
       .sort((a, b) => {
         if (sortBy === "rating") return b.displayRating - a.displayRating;
-        if (sortBy === "capacity") return b.capacity - a.capacity;
-        if (sortBy === "price") return a.startingPrice - b.startingPrice;
-        return b.displayRating * 100 + b.displayReviews - (a.displayRating * 100 + a.displayReviews);
+        return (
+          b.displayRating * 100 + b.displayReviews -
+          (a.displayRating * 100 + a.displayReviews)
+        );
       });
-  }, [budget, guestCount, query, sortBy, style, venueCards]);
+  }, [budget, query, sortBy, style, venueCards]);
 
-  const comparedVenues = venueCards.filter((venue) => compareIds.has(venue.place_id));
+  const comparedVenues = venueCards.filter((v) => compareIds.has(v.place_id));
 
   const toggleCompare = (placeId: string) => {
     setCompareIds((current) => {
@@ -326,6 +277,7 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
       </header>
 
       <main>
+        {/* ── Hero / search bar ── */}
         <section className="relative overflow-hidden bg-[#fdf8f5]">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute right-0 top-0 h-[540px] w-[540px] translate-x-1/3 -translate-y-1/3 rounded-full bg-rose-100/50 blur-[110px]" />
@@ -355,7 +307,7 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
                   <span className="sr-only">Search venues</span>
                   <input
                     value={query}
-                    onChange={(event) => setQuery(event.target.value)}
+                    onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search venues, neighborhoods, or styles"
                     className="w-full bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
                   />
@@ -368,10 +320,13 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
                   <input
                     type="number"
                     min={20}
-                    max={500}
-                    value={guestCount}
-                    onChange={(event) => setGuestCount(Number(event.target.value) || 0)}
-                    className="mt-1 w-full bg-transparent text-sm font-medium text-gray-800 outline-none"
+                    max={1000}
+                    value={guestCount ?? ""}
+                    onChange={(e) =>
+                      setGuestCount(e.target.value === "" ? null : Number(e.target.value))
+                    }
+                    placeholder="Any"
+                    className="mt-1 w-full bg-transparent text-sm font-medium text-gray-800 outline-none placeholder:font-normal placeholder:text-gray-400"
                   />
                 </label>
 
@@ -381,13 +336,11 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
                   </span>
                   <select
                     value={sortBy}
-                    onChange={(event) => setSortBy(event.target.value)}
+                    onChange={(e) => setSortBy(e.target.value)}
                     className="mt-1 w-full bg-transparent text-sm font-medium text-gray-800 outline-none"
                   >
                     <option value="recommended">Recommended</option>
                     <option value="rating">Highest rated</option>
-                    <option value="capacity">Most space</option>
-                    <option value="price">Lowest starting price</option>
                   </select>
                 </label>
 
@@ -399,6 +352,7 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
           </div>
         </section>
 
+        {/* ── Filter pills ── */}
         <section className="border-b border-black/[0.06] bg-white">
           <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
@@ -407,7 +361,7 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
             </div>
 
             <div className="flex gap-3 overflow-x-auto pb-1">
-              {STYLES.map((item) => (
+              {styleOptions.map((item) => (
                 <button
                   key={item}
                   onClick={() => setStyle(item)}
@@ -440,11 +394,14 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
           </div>
         </section>
 
+        {/* ── Venue grid + sidebar ── */}
         <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
           <div>
             <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
               <div>
-                <p className="text-sm text-gray-400">{filteredVenues.length} venues match your search</p>
+                <p className="text-sm text-gray-400">
+                  {filteredVenues.length} of {total} venues · page {currentPage} of {totalPages}
+                </p>
                 <h2
                   className="mt-1 text-3xl text-gray-900"
                   style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}
@@ -460,6 +417,7 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
 
             <div className="grid gap-6 sm:grid-cols-2">
               {filteredVenues.map((venue) => {
+
                 const isComparing = compareIds.has(venue.place_id);
                 const disabled = !isComparing && compareIds.size >= 3;
 
@@ -468,13 +426,20 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
                     key={venue.place_id}
                     className="group overflow-hidden rounded-[1.7rem] border border-black/[0.07] bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(15,23,42,0.10)]"
                   >
+                    {/* Photo */}
                     <div className="relative h-64 overflow-hidden bg-gray-100">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={venue.photoUrl}
-                        alt={venue.name}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                      {venue.photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={venue.photoUrl}
+                          alt={venue.name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-gradient-to-br from-rose-100 to-pink-200 flex items-center justify-center">
+                          <span className="text-rose-300 text-5xl">✦</span>
+                        </div>
+                      )}
                       <button
                         onClick={() => toggleCompare(venue.place_id)}
                         disabled={disabled}
@@ -487,10 +452,11 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
                         {isComparing ? "Comparing" : "Compare"}
                       </button>
                       <div className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-700 backdrop-blur">
-                        {venue.style}
+                        {venue.styleLabel}
                       </div>
                     </div>
 
+                    {/* Info */}
                     <div className="p-5">
                       <div className="mb-2 flex items-start justify-between gap-4">
                         <div>
@@ -500,44 +466,60 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
                             {venue.location}
                           </p>
                         </div>
-                        <div className="flex shrink-0 items-center gap-1 text-sm font-medium text-gray-800">
-                          <Star size={14} className="fill-amber-400 text-amber-400" />
-                          {venue.displayRating.toFixed(1)}
-                        </div>
+                        {venue.displayRating > 0 && (
+                          <div className="flex shrink-0 items-center gap-1 text-sm font-medium text-gray-800">
+                            <Star size={14} className="fill-amber-400 text-amber-400" />
+                            {venue.displayRating.toFixed(1)}
+                            {venue.displayReviews > 0 && (
+                              <span className="text-xs font-normal text-gray-400">({venue.displayReviews})</span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      <p className="mb-4 line-clamp-2 text-sm leading-6 text-gray-500">{venue.vibe}</p>
+                      {venue.editorial_summary && (
+                        <p className="mb-4 line-clamp-2 text-sm leading-6 text-gray-500">
+                          {venue.editorial_summary}
+                        </p>
+                      )}
 
-                      <div className="mb-4 grid grid-cols-2 gap-3">
-                        <div className="rounded-2xl bg-gray-50 p-3">
-                          <p className="text-xs text-gray-400">Capacity</p>
-                          <p className="mt-1 flex items-center gap-1 text-sm font-medium text-gray-800">
-                            <Users size={14} />
-                            Up to {venue.capacity}
-                          </p>
+                      <div className="flex items-center justify-between pt-3 border-t border-black/[0.06]">
+                        {venue.website ? (
+                          <a
+                            href={venue.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-rose-500 hover:text-rose-600 transition-colors"
+                          >
+                            Visit website →
+                          </a>
+                        ) : (
+                          <span />
+                        )}
+                        <div className="flex items-center gap-3">
+                          {budgetLabel(venue.price_level) && (
+                            <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
+                              {budgetLabel(venue.price_level)}
+                            </span>
+                          )}
+                          <a
+                            href={`mailto:hello@dewy.com?subject=Claim listing: ${encodeURIComponent(venue.name)}`}
+                            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            Claim this listing
+                          </a>
                         </div>
-                        <div className="rounded-2xl bg-gray-50 p-3">
-                          <p className="text-xs text-gray-400">Starts at</p>
-                          <p className="mt-1 text-sm font-medium text-gray-800">
-                            {formatCurrency(venue.startingPrice)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {venue.included.slice(0, 3).map((item) => (
-                          <span key={item} className="rounded-full bg-[#fdf8f5] px-3 py-1 text-xs text-gray-600">
-                            {item}
-                          </span>
-                        ))}
                       </div>
                     </div>
                   </article>
                 );
               })}
             </div>
+
+            <Pagination currentPage={currentPage} totalPages={totalPages} />
           </div>
 
+          {/* ── Sidebar ── */}
           <aside className="hidden lg:block">
             <div className="sticky top-24 overflow-hidden rounded-[2rem] border border-black/[0.07] bg-[#fdf8f5] p-5">
               <div className="mb-4 flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -565,6 +547,7 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
           </aside>
         </section>
 
+        {/* ── Compare section ── */}
         <section id="compare" className="border-t border-black/[0.06] bg-gray-950 px-4 py-12 text-white sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -578,7 +561,7 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
                 </h2>
               </div>
               <p className="max-w-lg text-sm leading-6 text-gray-400">
-                Pick up to three venues while browsing. Compare capacity, price, style, and what each space includes.
+                Pick up to three venues while browsing. Compare style, rating, budget, and location.
               </p>
             </div>
 
@@ -604,10 +587,9 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
                     </div>
                     <dl className="space-y-3 text-sm">
                       {[
-                        ["Style", venue.style],
-                        ["Capacity", `${venue.capacity} guests`],
-                        ["Starting price", formatCurrency(venue.startingPrice)],
-                        ["Rating", `${venue.displayRating.toFixed(1)} (${venue.displayReviews})`],
+                        ["Style", venue.styleLabel],
+                        ["Rating", venue.displayRating > 0 ? `${venue.displayRating.toFixed(1)}${venue.displayReviews > 0 ? ` (${venue.displayReviews})` : ""}` : "—"],
+                        ["Budget", budgetLabel(venue.price_level) || "—"],
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between gap-4 border-t border-white/10 pt-3">
                           <dt className="text-gray-500">{label}</dt>
@@ -615,14 +597,19 @@ export default function VenuesClient({ venues }: { venues: VenueVendor[] }) {
                         </div>
                       ))}
                     </dl>
-                    <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
-                      {venue.included.map((item) => (
-                        <p key={item} className="flex items-center gap-2 text-sm text-gray-300">
-                          <Check size={14} className="text-rose-300" />
-                          {item}
-                        </p>
-                      ))}
-                    </div>
+                    {venue.website && (
+                      <div className="mt-4 border-t border-white/10 pt-4">
+                        <a
+                          href={venue.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-rose-300 hover:text-rose-200 transition-colors"
+                        >
+                          <Check size={14} />
+                          Visit website
+                        </a>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
