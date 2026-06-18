@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "node scripts/seed.js",
+    "extract-social": "node scripts/extract-social-links.js",
+    "scrape-ig": "node scripts/scrape-instagram.js"
   },
   "dependencies": {
     "axios": "^1.17.0",
@@ -15,6 +18,7 @@
     "dotenv": "^17.4.2",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",
+    "apify-client": "^2.9.4",
     "pg": "^8.21.0",
     "radix-ui": "^1.5.0",
     "react": "19.2.4",

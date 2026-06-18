@@ -19,6 +19,9 @@ You'll be prompted for the password (see `.env.local` → `DB_PASSWORD`).
 | File | What it does |
 |------|-------------|
 | `001_vendor_relationships.sql` | Adds `instagram_handle` to vendors; adds `vendor_relationships`, `wedding_stories`, and `wedding_story_vendors` tables for the preferred vendor network and real weddings features |
+| `002_vendor_social_links.sql` | Adds `vendor_social_links` (social URLs extracted from vendor websites) and `instagram_posts` (posts scraped via Apify) tables |
+| `003_instagram_posts_fields.sql` | Adds `post_timestamp`, `image_url`, `likes_count`, `owner_username` to `instagram_posts` |
+| `004_instagram_posts_mentions.sql` | Adds `mentions`, `hashtags`, `post_type`, `images` to `instagram_posts` — mentions replaces caption parsing for vendor relationship graph |
 
 ## Rules
 
