@@ -9,16 +9,17 @@
     "lint": "eslint",
     "seed": "node scripts/seed.js",
     "extract-social": "node scripts/extract-social-links.js",
-    "scrape-ig": "node scripts/scrape-instagram.js"
+    "scrape-ig": "node scripts/scrape-instagram.js",
+    "scrape-ig-v2": "node scripts/scrape-instagram-v2.js"
   },
   "dependencies": {
+    "apify-client": "^2.9.4",
     "axios": "^1.17.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",
-    "apify-client": "^2.9.4",
     "pg": "^8.21.0",
     "radix-ui": "^1.5.0",
     "react": "19.2.4",

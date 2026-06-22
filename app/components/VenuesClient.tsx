@@ -1,21 +1,36 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import InstagramEmbed from "./InstagramEmbed";
 import {
   ArrowUpDown,
   Check,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Heart,
+  Leaf,
   MapPin,
+  ParkingCircle,
   Search,
+  Share2,
   SlidersHorizontal,
   Sparkles,
   Star,
+  UtensilsCrossed,
+  Users,
+  Wine,
   X,
 } from "lucide-react";
+
+const DETAIL_API_URL = "https://kfln0omb31.execute-api.us-east-1.amazonaws.com/vendors";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type VenueVendor = {
+  id: number;
   place_id: string;
   name: string;
   category: string;
@@ -29,7 +44,59 @@ export type VenueVendor = {
   photos: string[] | null;
   price_level: number | null;
   editorial_summary: string | null;
+  outdoor_seating?: boolean | null;
+  good_for_groups?: boolean | null;
+  serves_cocktails?: boolean | null;
+  serves_wine?: boolean | null;
+  serves_beer?: boolean | null;
+  serves_dinner?: boolean | null;
+  parking_options?: Record<string, boolean> | null;
+  instagram_handle?: string | null;
+  lat?: number | string | null;
+  lng?: number | string | null;
+  city?: string | null;
+  state?: string | null;
 };
+
+type RealWeddingPost = {
+  post_url: string;
+  post_timestamp: string | null;
+  mentions: string[] | null;
+  likes_count: number | null;
+  image_url?: string | null;
+  images?: string[] | null;
+  caption?: string | null;
+};
+
+function weddingImageSrc(raw: string): string {
+  return `/api/instagram-image?url=${encodeURIComponent(raw)}`;
+}
+
+function postPreviewImageUrl(post: RealWeddingPost): string | null {
+  return post.image_url || post.images?.[0] || null;
+}
+
+function postImageUrls(post: RealWeddingPost): string[] {
+  const urls =
+    post.images?.length ? post.images : post.image_url ? [post.image_url] : [];
+  return urls.map(weddingImageSrc);
+}
+
+type Partner = {
+  id: number;
+  name: string;
+  category: string;
+  photos: string[] | null;
+  times_mentioned: number;
+};
+
+type VenueDetail = {
+  vendor: VenueVendor;
+  realWeddings: RealWeddingPost[];
+  frequentlyWorksWith: Partner[];
+};
+
+type Fact = { Icon: React.ElementType; label: string };
 
 type VenueCard = VenueVendor & {
   displayRating: number;
@@ -43,6 +110,34 @@ type VenueCard = VenueVendor & {
 
 const API_PHOTO_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
 const BUDGETS = ["Any", "$", "$$", "$$$", "$$$$"];
+
+const CATEGORY_ICONS: Record<string, string> = {
+  venue: "/icons/wedding-location-svgrepo-com.svg",
+  wedding_venue: "/icons/wedding-location-svgrepo-com.svg",
+  event_venue: "/icons/wedding-location-svgrepo-com.svg",
+  banquet_hall: "/icons/wedding-location-svgrepo-com.svg",
+  historical_landmark: "/icons/wedding-location-svgrepo-com.svg",
+  hotel: "/icons/wedding-location-svgrepo-com.svg",
+  caterer: "/icons/tray-plate-svgrepo-com.svg",
+  florist: "/icons/bouquet-svgrepo-com.svg",
+  photographer: "/icons/photo-camera-photograph-svgrepo-com.svg",
+  dj_music: "/icons/music-svgrepo-com.svg",
+  hair_makeup: "/icons/make-up-svgrepo-com.svg",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  venue: "Venue",
+  wedding_venue: "Wedding Venue",
+  event_venue: "Event Space",
+  banquet_hall: "Banquet Hall",
+  historical_landmark: "Historic",
+  hotel: "Hotel",
+  caterer: "Catering",
+  florist: "Florals",
+  photographer: "Photography",
+  dj_music: "DJ & Music",
+  hair_makeup: "Hair & Makeup",
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -74,10 +169,82 @@ function budgetLabel(priceLevel: number | null): string {
   return "$".repeat(Math.max(1, Math.min(priceLevel, 4)));
 }
 
-function photoUrlFor(venue: VenueVendor): string | null {
-  const photoRef = venue.photos?.[0];
+function photoUrlFor(photoRef: string | undefined, maxWidth = 900): string | null {
   if (!photoRef || !API_PHOTO_KEY) return null;
-  return `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=900&key=${API_PHOTO_KEY}`;
+  return `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=${maxWidth}&key=${API_PHOTO_KEY}`;
+}
+
+function locationFor(v: VenueVendor): string {
+  return v.neighborhood ?? v.short_address ?? v.address ?? "Chicago";
+}
+
+function categoryIcon(category: string | null, primaryType?: string | null): string {
+  if (category && CATEGORY_ICONS[category]) return CATEGORY_ICONS[category];
+  if (primaryType && CATEGORY_ICONS[primaryType]) return CATEGORY_ICONS[primaryType];
+  return "/icons/wedding-location-svgrepo-com.svg";
+}
+
+function categoryLabel(category: string | null, primaryType?: string | null): string {
+  if (category && CATEGORY_LABELS[category]) return CATEGORY_LABELS[category];
+  if (primaryType) return formatPrimaryType(primaryType);
+  return "Vendor";
+}
+
+function fullAddress(v: VenueVendor): string {
+  return [v.address, v.city, v.state].filter(Boolean).join(", ") || locationFor(v);
+}
+
+function googleMapsUrl(v: VenueVendor): string {
+  const lat = v.lat != null ? Number(v.lat) : NaN;
+  const lng = v.lng != null ? Number(v.lng) : NaN;
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress(v))}`;
+}
+
+function CategoryIcon({
+  category,
+  primaryType,
+  size = 36,
+  large = false,
+  compact = false,
+}: {
+  category?: string | null;
+  primaryType?: string | null;
+  size?: number;
+  large?: boolean;
+  compact?: boolean;
+}) {
+  const src = categoryIcon(category ?? null, primaryType);
+  const imgSize = large ? 48 : compact ? 18 : size;
+  return (
+    <div
+      className={`flex shrink-0 items-center justify-center border border-black/[0.08] bg-[#fdf8f5] ${
+        large
+          ? "w-[4.5rem] self-stretch rounded-2xl"
+          : compact
+            ? "h-7 w-7 rounded-lg"
+            : "h-14 w-14 rounded-2xl"
+      }`}
+    >
+      <Image src={src} alt="" width={imgSize} height={imgSize} className="object-contain" />
+    </div>
+  );
+}
+
+// outdoor_seating is true-or-null in our data (never confirmed false), so this
+// is a best-effort signal, not a guarantee.
+function factsFor(v: VenueVendor): Fact[] {
+  const facts: Fact[] = [];
+  if (v.outdoor_seating) facts.push({ Icon: Leaf, label: "Outdoor space" });
+  if (v.serves_cocktails || v.serves_wine || v.serves_beer)
+    facts.push({ Icon: Wine, label: "Full bar" });
+  if (v.serves_dinner) facts.push({ Icon: UtensilsCrossed, label: "On-site dining" });
+  if (v.good_for_groups) facts.push({ Icon: Users, label: "Great for groups" });
+  if (v.parking_options && Object.values(v.parking_options).some(Boolean))
+    facts.push({ Icon: ParkingCircle, label: "Parking available" });
+  return facts;
 }
 
 function buildVenueCards(venues: VenueVendor[]): VenueCard[] {
@@ -86,9 +253,877 @@ function buildVenueCards(venues: VenueVendor[]): VenueCard[] {
     displayRating: normalizeRating(venue.rating),
     displayReviews: venue.review_count ?? 0,
     location: venue.neighborhood ?? venue.short_address ?? venue.address ?? "Chicago",
-    photoUrl: photoUrlFor(venue) ?? "",
+    photoUrl: photoUrlFor(venue.photos?.[0]) ?? "",
     styleLabel: formatPrimaryType(venue.primary_type),
   }));
+}
+
+// ── Venue Detail Modal ───────────────────────────────────────────────────────
+
+function PhotoLightbox({
+  photos,
+  startIndex,
+  onClose,
+}: {
+  photos: string[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const [current, setCurrent] = useState(startIndex);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") setCurrent((c) => Math.max(0, c - 1));
+      if (e.key === "ArrowRight") setCurrent((c) => Math.min(photos.length - 1, c + 1));
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose, photos.length]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col bg-black/95" onClick={onClose}>
+      <div className="flex items-center justify-between px-4 py-3 text-white">
+        <span className="text-sm text-white/70">
+          {current + 1} / {photos.length}
+        </span>
+        <button
+          onClick={onClose}
+          className="rounded-full p-2 hover:bg-white/10 transition-colors"
+          aria-label="Close gallery"
+        >
+          <X size={20} />
+        </button>
+      </div>
+      <div className="relative flex flex-1 items-center justify-center px-4 pb-8" onClick={(e) => e.stopPropagation()}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photos[current]}
+          alt=""
+          className="max-h-[80vh] max-w-full rounded-lg object-contain"
+        />
+        {current > 0 && (
+          <button
+            onClick={() => setCurrent((c) => c - 1)}
+            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white transition-colors"
+          >
+            <ChevronLeft size={20} className="text-gray-800" />
+          </button>
+        )}
+        {current < photos.length - 1 && (
+          <button
+            onClick={() => setCurrent((c) => c + 1)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white transition-colors"
+          >
+            <ChevronRight size={20} className="text-gray-800" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PhotoGrid({ photos, alt }: { photos: string[]; alt: string }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  if (photos.length === 0) {
+    return (
+      <div className="flex h-56 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-100 to-pink-200 sm:h-72">
+        <span className="text-5xl text-rose-300">✦</span>
+      </div>
+    );
+  }
+
+  const open = (index: number) => setLightboxIndex(index);
+  const gridPhotos = photos.slice(0, 5);
+  const extraCount = photos.length - 5;
+
+  const cell = (src: string, index: number, className: string, showMore?: boolean) => (
+    <button
+      key={index}
+      type="button"
+      onClick={() => open(index)}
+      className={`relative overflow-hidden bg-gray-100 ${className}`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
+      {showMore && (
+        <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-sm font-medium text-white">
+          Show all photos
+        </span>
+      )}
+    </button>
+  );
+
+  let grid: ReactNode;
+
+  if (photos.length === 1) {
+    grid = cell(photos[0], 0, "h-56 w-full rounded-2xl sm:h-80");
+  } else if (photos.length === 2) {
+    grid = (
+      <div className="grid h-56 grid-cols-2 gap-2 sm:h-72">
+        {photos.map((src, i) => cell(src, i, "rounded-xl first:rounded-l-2xl last:rounded-r-2xl"))}
+      </div>
+    );
+  } else if (photos.length === 3) {
+    grid = (
+      <div className="grid h-56 grid-cols-2 grid-rows-2 gap-2 sm:h-72">
+        {cell(photos[0], 0, "col-span-1 row-span-2 rounded-l-2xl")}
+        {cell(photos[1], 1, "rounded-tr-2xl")}
+        {cell(photos[2], 2, "rounded-br-2xl")}
+      </div>
+    );
+  } else {
+    const smallPhotos = gridPhotos.slice(1);
+    grid = (
+      <div className="grid h-56 grid-cols-4 grid-rows-2 gap-2 sm:h-80">
+        {cell(gridPhotos[0], 0, "col-span-2 row-span-2 rounded-l-2xl")}
+        {smallPhotos.map((src, i) => {
+          const index = i + 1;
+          const isLast = index === 4 && extraCount > 0;
+          const cornerClasses: string[] = [];
+          // Right column is a 2×2 grid: i=1 is top-right, i=3 is bottom-right of the full layout.
+          if (i === 1) cornerClasses.push("rounded-tr-2xl");
+          if (i === 3) cornerClasses.push("rounded-br-2xl");
+          else if (smallPhotos.length === 3 && i === 2) cornerClasses.push("rounded-br-2xl");
+          return cell(src, index, cornerClasses.join(" "), isLast);
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="relative">
+        {grid}
+        {photos.length > 1 && photos.length <= 4 && (
+          <button
+            type="button"
+            onClick={() => open(0)}
+            className="absolute bottom-3 right-3 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            Show all photos
+          </button>
+        )}
+      </div>
+      {lightboxIndex !== null && (
+        <PhotoLightbox photos={photos} startIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+      )}
+    </>
+  );
+}
+
+function formatPostDate(iso: string | null) {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  } catch {
+    return null;
+  }
+}
+
+const WEDDING_VISIBLE = 4;
+
+function WeddingPreviewCard({
+  post,
+  onClick,
+}: {
+  post: RealWeddingPost;
+  onClick: () => void;
+}) {
+  const [failed, setFailed] = useState(false);
+  const src = postImageUrls(post)[0] ?? null;
+  const dateLabel = formatPostDate(post.post_timestamp);
+
+  return (
+    <div className="flex flex-col">
+      <button
+        type="button"
+        onClick={onClick}
+        className="group relative aspect-[4/5] overflow-hidden rounded-xl bg-gray-100"
+      >
+        {src && !failed ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={src}
+            alt="Real wedding at this venue"
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-rose-100 to-pink-200">
+            <span className="text-3xl text-rose-300">✦</span>
+          </div>
+        )}
+      </button>
+      {dateLabel && (
+        <p className="mt-1.5 text-center text-xs text-gray-400">{dateLabel}</p>
+      )}
+    </div>
+  );
+}
+
+function WeddingPostLightbox({
+  posts,
+  startIndex,
+  onClose,
+}: {
+  posts: RealWeddingPost[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const [current, setCurrent] = useState(startIndex);
+  const post = posts[current];
+  const dateLabel = formatPostDate(post.post_timestamp);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") setCurrent((c) => Math.max(0, c - 1));
+      if (e.key === "ArrowRight") setCurrent((c) => Math.min(posts.length - 1, c + 1));
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose, posts.length]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col bg-black/95" onClick={onClose}>
+      <div className="flex items-center justify-between px-4 py-3 text-white">
+        <span className="text-sm text-white/70">
+          {current + 1} of {posts.length}
+          {dateLabel ? ` · ${dateLabel}` : ""}
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full p-2 hover:bg-white/10 transition-colors"
+          aria-label="Close"
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      <div
+        className="relative flex flex-1 items-center justify-center overflow-y-auto px-4 pb-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-full max-w-[400px] rounded-2xl bg-white shadow-2xl">
+          <InstagramEmbed
+            key={post.post_url}
+            postUrl={post.post_url}
+            caption={post.caption}
+            maxWidth={400}
+            previewImageUrl={postPreviewImageUrl(post)}
+            lightbox
+          />
+        </div>
+
+        {current > 0 && (
+          <button
+            type="button"
+            onClick={() => setCurrent((c) => c - 1)}
+            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white transition-colors sm:left-6"
+            aria-label="Previous wedding"
+          >
+            <ChevronLeft size={20} className="text-gray-800" />
+          </button>
+        )}
+        {current < posts.length - 1 && (
+          <button
+            type="button"
+            onClick={() => setCurrent((c) => c + 1)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white transition-colors sm:right-6"
+            aria-label="Next wedding"
+          >
+            <ChevronRight size={20} className="text-gray-800" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [windowStart, setWindowStart] = useState(0);
+
+  if (posts.length === 0) return null;
+
+  const pageSize = WEDDING_VISIBLE;
+  const canPage = posts.length > pageSize;
+  const canGoPrev = windowStart > 0;
+  const canGoNext = windowStart + pageSize < posts.length;
+  const rangeEnd = Math.min(windowStart + pageSize, posts.length);
+  const columns = Math.min(pageSize, posts.length);
+  const gapRem = 0.5;
+  const visibleColumns = canPage ? pageSize : columns;
+  const gapsTotalRem = Math.max(0, visibleColumns - 1) * gapRem;
+  const cardWidth = `calc((100% - ${gapsTotalRem}rem) / ${visibleColumns})`;
+
+  const goPrev = () => setWindowStart((s) => Math.max(0, s - pageSize));
+  const goNext = () => setWindowStart((s) => {
+    const next = s + pageSize;
+    return next < posts.length ? next : s;
+  });
+
+  return (
+    <section className="mt-6 border-y border-black/[0.06] py-6">
+      <div className="mb-4 flex items-end justify-between gap-3">
+        <div>
+          <h3 className="mb-1 text-[15px] font-medium text-gray-900">Weddings here</h3>
+          <p className="text-xs text-gray-400">Real posts from Instagram — tap to explore</p>
+        </div>
+        {canPage && (
+          <p className="shrink-0 text-xs text-gray-400">
+            {windowStart + 1}–{rangeEnd} of {posts.length}
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {canPage && (
+          <button
+            type="button"
+            onClick={goPrev}
+            disabled={!canGoPrev}
+            className="shrink-0 rounded-full border border-gray-200 p-2 text-gray-600 transition-colors hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-25"
+            aria-label="Previous weddings"
+          >
+            <ChevronLeft size={18} />
+          </button>
+        )}
+
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div
+            className="flex gap-2 transition-transform duration-300 ease-in-out"
+            style={{
+              transform: `translateX(calc(-${windowStart} * (((100% - ${gapsTotalRem}rem) / ${pageSize}) + ${gapRem}rem)))`,
+            }}
+          >
+            {posts.map((post, i) => (
+              <div key={post.post_url} className="shrink-0" style={{ width: cardWidth }}>
+                <WeddingPreviewCard post={post} onClick={() => setLightboxIndex(i)} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {canPage && (
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={!canGoNext}
+            className="shrink-0 rounded-full border border-gray-200 p-2 text-gray-600 transition-colors hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-25"
+            aria-label="Next weddings"
+          >
+            <ChevronRight size={18} />
+          </button>
+        )}
+      </div>
+
+      {lightboxIndex != null && (
+        <WeddingPostLightbox
+          posts={posts}
+          startIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
+    </section>
+  );
+}
+
+function VenueMap({ vendor }: { vendor: VenueVendor }) {
+  const address = fullAddress(vendor);
+  const lat = vendor.lat != null ? Number(vendor.lat) : NaN;
+  const lng = vendor.lng != null ? Number(vendor.lng) : NaN;
+  const query =
+    Number.isFinite(lat) && Number.isFinite(lng) ? `${lat},${lng}` : address;
+  // Classic embed — no Maps Embed API key required (Places API key alone is not enough).
+  const embedSrc = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=15&output=embed`;
+
+  return (
+    <div>
+      <h3 className="mb-3 text-[15px] font-medium text-gray-900">Location</h3>
+      <div className="overflow-hidden rounded-2xl border border-black/[0.06]">
+        <iframe
+          title={`Map of ${vendor.name}`}
+          src={embedSrc}
+          className="h-52 w-full border-0 sm:h-60"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-start gap-1.5 text-sm text-gray-500">
+          <MapPin size={15} className="mt-0.5 shrink-0 text-gray-400" />
+          {address}
+        </p>
+        <a
+          href={googleMapsUrl(vendor)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-sm font-medium text-rose-500 hover:text-rose-600 transition-colors"
+        >
+          Open in Google Maps →
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function FrequentlyWorksWith({ partners }: { partners: Partner[] }) {
+  if (partners.length === 0) return null;
+  return (
+    <div>
+      <h3 className="mb-1 text-[15px] font-medium text-gray-900">Vendors at weddings here</h3>
+      <p className="mb-4 text-xs text-gray-400">Often tagged alongside this venue on Instagram</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {partners.map((p) => {
+          const label = categoryLabel(p.category, null);
+          const icon = categoryIcon(p.category, null);
+          return (
+            <div
+              key={p.id}
+              className="flex flex-col items-center rounded-2xl border border-black/[0.06] bg-[#fdf8f5] p-4 text-center"
+            >
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
+                <Image src={icon} alt="" width={26} height={26} className="object-contain" />
+              </div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
+              <p className="mt-1 text-sm font-medium leading-snug text-gray-900">{p.name}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+type InquiryMode = "tour" | "question";
+
+function addBusinessDays(from: Date, days: number): Date {
+  const result = new Date(from);
+  let added = 0;
+  while (added < days) {
+    result.setDate(result.getDate() + 1);
+    const dow = result.getDay();
+    if (dow !== 0 && dow !== 6) added++;
+  }
+  return result;
+}
+
+function earliestTourLabel(): string {
+  const slot = addBusinessDays(new Date(), 3);
+  const datePart = slot.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+  return `${datePart} 9:00 AM`;
+}
+
+function InquireForm({
+  mode,
+  onBack,
+}: {
+  mode: InquiryMode;
+  onBack: () => void;
+}) {
+  const [form, setForm] = useState({ name: "", email: "", date: "", guests: "", message: "" });
+  const set =
+    (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const isTour = mode === "tour";
+
+  return (
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+      >
+        <ChevronLeft size={16} />
+        Back
+      </button>
+      <input
+        type="text"
+        placeholder="Your name"
+        value={form.name}
+        onChange={set("name")}
+        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-rose-300"
+      />
+      <input
+        type="email"
+        placeholder="Email address"
+        value={form.email}
+        onChange={set("email")}
+        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-rose-300"
+      />
+      {isTour && (
+        <div className="grid grid-cols-2 gap-3">
+          <input
+            type="date"
+            value={form.date}
+            onChange={set("date")}
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 outline-none transition-colors focus:border-rose-300"
+          />
+          <input
+            type="number"
+            placeholder="Guests"
+            value={form.guests}
+            onChange={set("guests")}
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-rose-300"
+          />
+        </div>
+      )}
+      <textarea
+        placeholder={isTour ? "Notes for your visit (optional)" : "Your question"}
+        value={form.message}
+        onChange={set("message")}
+        rows={3}
+        className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-rose-300"
+      />
+      <button className="w-full rounded-xl bg-rose-400 py-3.5 text-sm font-medium text-white transition-colors hover:bg-rose-500">
+        {isTour ? "Request tour" : "Send"}
+      </button>
+    </div>
+  );
+}
+
+function VenuePhotoThumb({
+  src,
+  className = "",
+  size = "md",
+}: {
+  src?: string | null;
+  className?: string;
+  size?: "sm" | "md";
+}) {
+  const dim = size === "sm" ? "h-8 w-8" : "h-10 w-10";
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt=""
+        className={`${dim} shrink-0 rounded-full object-cover ring-2 ring-white/40 ${className}`}
+      />
+    );
+  }
+  return (
+    <div
+      className={`flex ${dim} shrink-0 items-center justify-center rounded-full bg-rose-300/40 ${className}`}
+    >
+      <span className={size === "sm" ? "text-xs text-white/80" : "text-sm text-white/80"}>✦</span>
+    </div>
+  );
+}
+
+function VenueInquiryPanel({
+  id,
+  photoUrl,
+}: {
+  id?: string;
+  photoUrl?: string | null;
+}) {
+  const [mode, setMode] = useState<InquiryMode | null>(null);
+  const tourWhen = earliestTourLabel();
+
+  return (
+    <div id={id} className="scroll-mt-24 rounded-2xl border border-black/[0.08] bg-[#fdf8f5] p-4">
+      {mode ? (
+        <InquireForm mode={mode} onBack={() => setMode(null)} />
+      ) : (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setMode("tour")}
+            className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-1.5 rounded-xl bg-rose-400 px-2 py-3.5 text-white shadow-sm transition-colors hover:bg-rose-500"
+          >
+            <VenuePhotoThumb src={photoUrl} size="sm" />
+            <div className="min-w-0 text-center">
+              <span className="block text-sm font-medium leading-tight">Request a tour</span>
+              <span className="block whitespace-nowrap text-[10px] leading-snug text-rose-50/90">{tourWhen}</span>
+            </div>
+            <div className="h-8 w-8 shrink-0" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("question")}
+            className="flex w-full items-center justify-center rounded-xl border border-rose-200 bg-white px-3 py-3.5 text-sm font-medium text-gray-900 transition-colors hover:border-rose-300 hover:bg-rose-50"
+          >
+            Ask a question
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VenueDetailModal({ venueId, onClose }: { venueId: number; onClose: () => void }) {
+  const [detail, setDetail] = useState<VenueDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [readMore, setReadMore] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [showStickyTitle, setShowStickyTitle] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch(`${DETAIL_API_URL}/${venueId}`)
+      .then((res) => res.json())
+      .then((data) => setDetail(data))
+      .finally(() => setLoading(false));
+  }, [venueId]);
+
+  useEffect(() => {
+    setShowStickyTitle(false);
+  }, [venueId]);
+
+  useEffect(() => {
+    const root = scrollRef.current;
+    const hero = heroRef.current;
+    if (!root || !hero || loading || !detail) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyTitle(!entry.isIntersecting),
+      { root, threshold: 0 },
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, [loading, detail, venueId]);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const scrollToInquiry = () => {
+    const el = document.getElementById("venue-inquiry-form");
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const v = detail?.vendor;
+  const photos = (v?.photos ?? [])
+    .map((ref) => photoUrlFor(ref, 1200))
+    .filter((url): url is string => !!url);
+  const rating = v ? normalizeRating(v.rating) : 0;
+  const price = v ? budgetLabel(v.price_level) : "";
+  const facts = v ? factsFor(v) : [];
+  const about = v?.editorial_summary ?? null;
+  const short = about && about.length > 200 ? about.slice(0, 200) + "…" : about;
+  const typeLabel = v ? formatPrimaryType(v.primary_type) : "";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex h-[100dvh] w-full max-w-5xl flex-col overflow-hidden rounded-none bg-white shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-[1.75rem]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Sticky top bar */}
+        <div className="sticky top-0 z-20 shrink-0 border-b border-black/[0.06] bg-white/95 px-4 py-3 backdrop-blur-sm sm:px-6">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-1 rounded-full px-2 py-1.5 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              <ChevronLeft size={18} />
+              <span className="hidden sm:inline">Venues</span>
+            </button>
+
+            <div
+              className={`flex min-w-0 items-center justify-center gap-1.5 transition-opacity duration-200 ${
+                showStickyTitle && v ? "opacity-100" : "opacity-0"
+              }`}
+              aria-hidden={!showStickyTitle}
+            >
+              {v && (
+                <>
+                  <CategoryIcon category={v.category} primaryType={v.primary_type} compact />
+                  <p className="min-w-0 truncate text-sm font-medium text-gray-600">{v.name}</p>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                onClick={() => setSaved((s) => !s)}
+                className="rounded-full p-2.5 text-gray-600 hover:bg-gray-100 transition-colors"
+                aria-label="Save venue"
+              >
+                <Heart size={18} className={saved ? "fill-rose-500 text-rose-500" : ""} />
+              </button>
+              <button
+                type="button"
+                className="rounded-full p-2.5 text-gray-600 hover:bg-gray-100 transition-colors"
+                aria-label="Share venue"
+              >
+                <Share2 size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full p-2.5 text-gray-600 hover:bg-gray-100 transition-colors sm:hidden"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto">
+          {loading || !detail || !v ? (
+            <div className="flex items-center justify-center py-32">
+              <p className="text-sm text-gray-400">Loading venue…</p>
+            </div>
+          ) : (
+            <>
+            <div className="px-4 pb-6 sm:px-6 lg:px-8">
+              <div ref={heroRef} className="border-b border-black/[0.06] pb-5 pt-4 sm:pt-5">
+                <div className="flex items-stretch gap-4">
+                  <CategoryIcon category={v.category} primaryType={v.primary_type} large />
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-rose-500">
+                      {typeLabel}
+                    </p>
+                    <h2
+                      className="text-2xl leading-tight text-gray-900 sm:text-3xl"
+                      style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}
+                    >
+                      {v.name}
+                    </h2>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      {rating > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Star size={14} className="fill-rose-400 text-rose-400" />
+                          <span className="text-sm font-medium text-gray-800">{rating.toFixed(1)}</span>
+                          {v.review_count ? (
+                            <span className="text-sm text-gray-400">({v.review_count} reviews)</span>
+                          ) : null}
+                        </div>
+                      )}
+                      {price && (
+                        <span className="text-sm font-medium text-gray-500">{price}</span>
+                      )}
+                      {v.website && (
+                        <a
+                          href={v.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+                        >
+                          <ExternalLink size={13} />
+                          Website
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="py-5 sm:py-6">
+                <PhotoGrid photos={photos} alt={v.name} />
+              </div>
+
+              <RealWeddingsSection posts={detail.realWeddings ?? []} />
+            </div>
+
+            <div className="px-4 pb-28 sm:px-6 sm:pb-8 lg:px-8">
+              <div className="lg:grid lg:grid-cols-[1fr_300px] lg:gap-10 lg:items-start lg:pt-8">
+                <div className="min-w-0 space-y-8">
+                  {about && (
+                    <div>
+                      <h3 className="mb-2 text-[15px] font-medium text-gray-900">About this venue</h3>
+                      <p className="text-sm leading-relaxed text-gray-500">{readMore ? about : short}</p>
+                      {about.length > 200 && (
+                        <button
+                          type="button"
+                          onClick={() => setReadMore(!readMore)}
+                          className="mt-1.5 text-sm font-medium text-gray-800 underline hover:text-gray-500 transition-colors"
+                        >
+                          {readMore ? "Show less" : "Read more"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {facts.length > 0 && (
+                    <div>
+                      <h3 className="mb-3 text-[15px] font-medium text-gray-900">Good to know</h3>
+                      <div className="flex flex-wrap gap-x-6 gap-y-2">
+                        {facts.map(({ Icon, label }) => (
+                          <div key={label} className="flex items-center gap-2 text-sm text-gray-600">
+                            <Icon size={15} className="shrink-0 text-gray-400" />
+                            {label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <VenueMap vendor={v} />
+
+                  <FrequentlyWorksWith partners={detail.frequentlyWorksWith} />
+
+                  <div className="lg:hidden">
+                    <VenueInquiryPanel id="venue-inquiry-form" photoUrl={photos[0]} />
+                  </div>
+                </div>
+
+                <aside className="hidden lg:block">
+                  <div className="sticky top-20">
+                    <VenueInquiryPanel id="venue-inquiry-form-desktop" photoUrl={photos[0]} />
+                  </div>
+                </aside>
+              </div>
+            </div>
+            </>
+          )}
+        </div>
+
+        {/* Mobile sticky CTA */}
+        {!loading && detail && v && (
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-black/[0.08] bg-white px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] sm:hidden">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-900">{v.name}</p>
+                {rating > 0 && (
+                  <p className="text-xs text-gray-400">
+                    ★ {rating.toFixed(1)}
+                    {v.review_count ? ` · ${v.review_count} reviews` : ""}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={scrollToInquiry}
+                className="shrink-0 rounded-xl bg-rose-400 px-5 py-3 text-sm font-medium text-white hover:bg-rose-500 transition-colors"
+              >
+                Contact
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -184,6 +1219,7 @@ export default function VenuesClient({
   const [guestCount, setGuestCount] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState("recommended");
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
+  const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
 
   const venueCards = useMemo(() => buildVenueCards(venues), [venues]);
 
@@ -424,7 +1460,8 @@ export default function VenuesClient({
                 return (
                   <article
                     key={venue.place_id}
-                    className="group overflow-hidden rounded-[1.7rem] border border-black/[0.07] bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(15,23,42,0.10)]"
+                    onClick={() => setSelectedVenueId(venue.id)}
+                    className="group cursor-pointer overflow-hidden rounded-[1.7rem] border border-black/[0.07] bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(15,23,42,0.10)]"
                   >
                     {/* Photo */}
                     <div className="relative h-64 overflow-hidden bg-gray-100">
@@ -441,7 +1478,10 @@ export default function VenuesClient({
                         </div>
                       )}
                       <button
-                        onClick={() => toggleCompare(venue.place_id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleCompare(venue.place_id);
+                        }}
                         disabled={disabled}
                         className={`absolute right-3 top-3 rounded-full px-3 py-2 text-xs font-medium shadow-sm backdrop-blur transition-colors ${
                           isComparing
@@ -489,6 +1529,7 @@ export default function VenuesClient({
                             href={venue.website}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                             className="text-sm text-rose-500 hover:text-rose-600 transition-colors"
                           >
                             Visit website →
@@ -504,6 +1545,7 @@ export default function VenuesClient({
                           )}
                           <a
                             href={`mailto:hello@dewy.com?subject=Claim listing: ${encodeURIComponent(venue.name)}`}
+                            onClick={(e) => e.stopPropagation()}
                             className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
                           >
                             Claim this listing
@@ -617,6 +1659,14 @@ export default function VenuesClient({
           </div>
         </section>
       </main>
+
+      {selectedVenueId !== null && (
+        <VenueDetailModal
+          key={selectedVenueId}
+          venueId={selectedVenueId}
+          onClose={() => setSelectedVenueId(null)}
+        />
+      )}
     </div>
   );
 }

@@ -128,3 +128,9 @@
     @apply font-sans;
   }
 }
+
+.instagram-embed-iframe {
+  display: block;
+  margin: 0 auto;
+  min-width: 0;
+}
