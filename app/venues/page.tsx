@@ -3,6 +3,7 @@ import VenuesClient, { type VenueVendor } from "../components/VenuesClient";
 
 const API_URL = "https://kfln0omb31.execute-api.us-east-1.amazonaws.com/vendors";
 const PAGE_SIZE = 20;
+const MAP_FETCH_LIMIT = 100;
 
 export const metadata: Metadata = {
   title: "Chicago Wedding Venues | Dewy",
@@ -11,13 +12,15 @@ export const metadata: Metadata = {
 };
 
 async function getVenues(
-  page: number
+  page: number,
+  mapMode: boolean,
 ): Promise<{ vendors: VenueVendor[]; total: number }> {
-  const offset = (page - 1) * PAGE_SIZE;
+  const limit = mapMode ? MAP_FETCH_LIMIT : PAGE_SIZE;
+  const offset = mapMode ? 0 : (page - 1) * PAGE_SIZE;
   try {
     const res = await fetch(
-      `${API_URL}?limit=${PAGE_SIZE}&offset=${offset}&city=Chicago&category=venue`,
-      { next: { revalidate: 3600 } }
+      `${API_URL}?limit=${limit}&offset=${offset}&city=Chicago&category=venue`,
+      { next: { revalidate: 3600 } },
     );
     if (!res.ok) return { vendors: [], total: 0 };
     const data = await res.json();
@@ -32,9 +35,10 @@ export default async function VenuesPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { page: pageParam } = await searchParams;
-  const currentPage = Math.max(1, parseInt((pageParam as string) ?? "1", 10));
-  const { vendors, total } = await getVenues(currentPage);
+  const params = await searchParams;
+  const viewMode = params.view === "map" ? "map" : "list";
+  const currentPage = Math.max(1, parseInt((params.page as string) ?? "1", 10));
+  const { vendors, total } = await getVenues(currentPage, viewMode === "map");
 
   return (
     <VenuesClient
@@ -42,6 +46,7 @@ export default async function VenuesPage({
       total={total}
       currentPage={currentPage}
       pageSize={PAGE_SIZE}
+      viewMode={viewMode}
     />
   );
 }

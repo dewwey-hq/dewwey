@@ -138,3 +138,30 @@
 .instagram-post-card {
   line-height: 0;
 }
+
+/* Google Maps InfoWindow — our MapVenuePopupCard supplies all UI/chrome */
+.gm-style-iw-chr {
+  display: none !important;
+}
+
+.gm-style-iw-c {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  max-width: none !important;
+}
+
+.gm-style-iw-d {
+  overflow: hidden !important;
+  padding: 0 !important;
+  max-height: none !important;
+}
+
+.gm-style-iw-tc {
+  display: none !important;
+}
+
+.gm-style .gm-style-iw {
+  max-width: none !important;
+}

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -13,6 +13,7 @@
     "scrape-ig-v2": "node scripts/scrape-instagram-v2.js"
   },
   "dependencies": {
+    "@vis.gl/react-google-maps": "^1.8.3",
     "apify-client": "^2.9.4",
     "axios": "^1.17.0",
     "class-variance-authority": "^0.7.1",

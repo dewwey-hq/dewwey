@@ -7,6 +7,11 @@ import InstagramEmbed, {
   computeLightboxEmbedLayout,
 } from "./InstagramEmbed";
 import { prefetchEmbedStatuses } from "@/app/lib/instagram-embed-status-cache";
+import { displayAddressFor, formatCount } from "@/app/lib/format-address";
+import { venueMatchesSearch } from "@/app/lib/venue-search";
+import VenuesMapPanel from "./VenuesMapPanel";
+import MapBrowseToolbar from "./MapBrowseToolbar";
+import VenueMapBrowseCard from "./VenueMapBrowseCard";
 import {
   ArrowUpDown,
   Check,
@@ -15,6 +20,7 @@ import {
   ExternalLink,
   Heart,
   Leaf,
+  Map as MapIcon,
   MapPin,
   ParkingCircle,
   Search,
@@ -114,7 +120,9 @@ type VenueCard = VenueVendor & {
   displayRating: number;
   displayReviews: number;
   location: string;
+  displayAddress: string;
   photoUrl: string;
+  photoUrls: string[];
   styleLabel: string;
 };
 
@@ -122,6 +130,7 @@ type VenueCard = VenueVendor & {
 
 const API_PHOTO_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
 const BUDGETS = ["Any", "$", "$$", "$$$", "$$$$"];
+const GUEST_FILTERS = ["Any", "50+", "100+", "150+", "200+"];
 
 const CATEGORY_ICONS: Record<string, string> = {
   venue: "/icons/wedding-location-svgrepo-com.svg",
@@ -265,14 +274,23 @@ function factsFor(v: VenueVendor): Fact[] {
 }
 
 function buildVenueCards(venues: VenueVendor[]): VenueCard[] {
-  return venues.map((venue) => ({
-    ...venue,
-    displayRating: normalizeRating(venue.rating),
-    displayReviews: venue.review_count ?? 0,
-    location: venue.neighborhood ?? venue.short_address ?? venue.address ?? "Chicago",
-    photoUrl: photoUrlFor(venue.photos?.[0]) ?? "",
-    styleLabel: formatPrimaryType(venue.primary_type),
-  }));
+  return venues.map((venue) => {
+    const photoUrls = (venue.photos ?? [])
+      .slice(0, 5)
+      .map((ref) => photoUrlFor(ref, 900))
+      .filter((url): url is string => Boolean(url));
+
+    return {
+      ...venue,
+      displayRating: normalizeRating(venue.rating),
+      displayReviews: venue.review_count ?? 0,
+      location: venue.neighborhood ?? venue.short_address ?? venue.address ?? "Chicago",
+      displayAddress: displayAddressFor(venue),
+      photoUrl: photoUrls[0] ?? "",
+      photoUrls,
+      styleLabel: formatPrimaryType(venue.primary_type),
+    };
+  });
 }
 
 // ── Venue Detail Modal ───────────────────────────────────────────────────────
@@ -1303,7 +1321,9 @@ function VenueDetailModal({
                           <Star size={14} className="fill-rose-400 text-rose-400" />
                           <span className="text-sm font-medium text-gray-800">{rating.toFixed(1)}</span>
                           {v.review_count ? (
-                            <span className="text-sm text-gray-400">({v.review_count} reviews)</span>
+                            <span className="text-sm text-gray-400">
+                              ({formatCount(v.review_count)} reviews)
+                            </span>
                           ) : null}
                         </div>
                       )}
@@ -1401,7 +1421,7 @@ function VenueDetailModal({
                 {rating > 0 && (
                   <p className="text-xs text-gray-400">
                     ★ {rating.toFixed(1)}
-                    {v.review_count ? ` · ${v.review_count} reviews` : ""}
+                    {v.review_count ? ` · ${formatCount(v.review_count)} reviews` : ""}
                   </p>
                 )}
               </div>
@@ -1420,7 +1440,113 @@ function VenueDetailModal({
   );
 }
 
+// ── Browse layout helpers ─────────────────────────────────────────────────────
+
+function ViewModeToggle({ viewMode }: { viewMode: "list" | "map" }) {
+  return (
+    <div className="inline-flex rounded-full border border-black/[0.08] bg-white p-1 shadow-sm">
+      <Link
+        href="/venues"
+        className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+          viewMode === "list" ? "bg-gray-900 text-white" : "text-gray-600 hover:text-gray-900"
+        }`}
+      >
+        <SlidersHorizontal size={14} />
+        List
+      </Link>
+      <Link
+        href="/venues?view=map"
+        className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+          viewMode === "map" ? "bg-gray-900 text-white" : "text-gray-600 hover:text-gray-900"
+        }`}
+      >
+        <MapIcon size={14} />
+        Map
+      </Link>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
+
+const MAP_LIST_PAGE_SIZE = 24;
+
+function MapBrowsePagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const pages: (number | "…")[] = [];
+  const delta = 2;
+  const range: number[] = [];
+  for (
+    let i = Math.max(1, currentPage - delta);
+    i <= Math.min(totalPages, currentPage + delta);
+    i++
+  ) {
+    range.push(i);
+  }
+  if (range[0] > 1) {
+    pages.push(1);
+    if (range[0] > 2) pages.push("…");
+  }
+  pages.push(...range);
+  if (range[range.length - 1] < totalPages) {
+    if (range[range.length - 1] < totalPages - 1) pages.push("…");
+    pages.push(totalPages);
+  }
+
+  return (
+    <div className="mt-8 flex items-center justify-center gap-1 pb-2">
+      {currentPage > 1 && (
+        <button
+          type="button"
+          onClick={() => onPageChange(currentPage - 1)}
+          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
+        >
+          ← Prev
+        </button>
+      )}
+
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`ellipsis-${i}`} className="px-2 text-sm text-gray-400">
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onPageChange(p)}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              p === currentPage
+                ? "bg-rose-400 text-white"
+                : "border border-black/[0.08] text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            {p}
+          </button>
+        ),
+      )}
+
+      {currentPage < totalPages && (
+        <button
+          type="button"
+          onClick={() => onPageChange(currentPage + 1)}
+          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
+        >
+          Next →
+        </button>
+      )}
+    </div>
+  );
+}
 
 function Pagination({
   currentPage,
@@ -1500,20 +1626,31 @@ export default function VenuesClient({
   total,
   currentPage,
   pageSize,
+  viewMode = "list",
 }: {
   venues: VenueVendor[];
   total: number;
   currentPage: number;
   pageSize: number;
+  viewMode?: "list" | "map";
 }) {
   const totalPages = Math.ceil(total / pageSize);
   const [query, setQuery] = useState("");
   const [style, setStyle] = useState("All");
   const [budget, setBudget] = useState("Any");
+  const [weddingDate, setWeddingDate] = useState("");
+  const [guestFilter, setGuestFilter] = useState("Any");
   const [guestCount, setGuestCount] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState("recommended");
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
+  const [mapSelectedId, setMapSelectedId] = useState<number | null>(null);
+  const [mapExpanded, setMapExpanded] = useState(false);
+  const [mapHoveredPinId, setMapHoveredPinId] = useState<number | null>(null);
+  const [mapListPage, setMapListPage] = useState(1);
+  const [savedVenueIds, setSavedVenueIds] = useState<Set<number>>(new Set());
+  const listItemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const mapListScrollRef = useRef<HTMLDivElement>(null);
 
   const venueCards = useMemo(() => buildVenueCards(venues), [venues]);
 
@@ -1523,15 +1660,9 @@ export default function VenuesClient({
   }, [venueCards]);
 
   const filteredVenues = useMemo(() => {
-    const search = query.trim().toLowerCase();
-
     return venueCards
       .filter((venue) => {
-        const matchesSearch =
-          search.length === 0 ||
-          venue.name.toLowerCase().includes(search) ||
-          venue.location.toLowerCase().includes(search) ||
-          venue.styleLabel.toLowerCase().includes(search);
+        const matchesSearch = venueMatchesSearch(venue, query);
         const matchesStyle = style === "All" || venue.styleLabel === style;
         const matchesBudget =
           budget === "Any" || budgetLabel(venue.price_level) === budget;
@@ -1547,6 +1678,13 @@ export default function VenuesClient({
       });
   }, [budget, query, sortBy, style, venueCards]);
 
+  const mapListTotalPages = Math.max(1, Math.ceil(filteredVenues.length / MAP_LIST_PAGE_SIZE));
+
+  const paginatedMapVenues = useMemo(() => {
+    const start = (mapListPage - 1) * MAP_LIST_PAGE_SIZE;
+    return filteredVenues.slice(start, start + MAP_LIST_PAGE_SIZE);
+  }, [filteredVenues, mapListPage]);
+
   const comparedVenues = venueCards.filter((v) => compareIds.has(v.place_id));
 
   const toggleCompare = (placeId: string) => {
@@ -1560,6 +1698,162 @@ export default function VenuesClient({
       return next;
     });
   };
+
+  useEffect(() => {
+    setMapListPage(1);
+  }, [query, style, budget]);
+
+  useEffect(() => {
+    if (viewMode !== "map") return;
+    const search = query.trim();
+    if (search.length > 0 && filteredVenues.length === 1) {
+      setMapSelectedId(filteredVenues[0].id);
+      return;
+    }
+    setMapSelectedId((current) =>
+      current != null && !filteredVenues.some((v) => v.id === current) ? null : current,
+    );
+  }, [filteredVenues, query, viewMode]);
+
+  useEffect(() => {
+    if (mapListPage > mapListTotalPages) setMapListPage(mapListTotalPages);
+  }, [mapListPage, mapListTotalPages]);
+
+  const goToMapListPage = (page: number) => {
+    setMapListPage(page);
+    mapListScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (mapSelectedId == null) return;
+    const index = filteredVenues.findIndex((v) => v.id === mapSelectedId);
+    if (index >= 0) {
+      setMapListPage(Math.floor(index / MAP_LIST_PAGE_SIZE) + 1);
+    }
+  }, [mapSelectedId, filteredVenues]);
+
+  useEffect(() => {
+    if (mapSelectedId == null) return;
+    requestAnimationFrame(() => {
+      listItemRefs.current.get(mapSelectedId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }, [mapSelectedId, mapListPage]);
+
+  const handleMapListSelect = (venue: VenueCard) => {
+    setMapSelectedId(venue.id);
+  };
+
+  const toggleSaveVenue = (id: number) => {
+    setSavedVenueIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  if (viewMode === "map") {
+    return (
+      <div className="flex h-[100dvh] flex-col overflow-hidden bg-white font-['Inter',sans-serif] text-gray-900">
+        <MapBrowseToolbar
+          query={query}
+          onQueryChange={setQuery}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          style={style}
+          onStyleChange={setStyle}
+          budget={budget}
+          onBudgetChange={setBudget}
+          weddingDate={weddingDate}
+          onWeddingDateChange={setWeddingDate}
+          guestFilter={guestFilter}
+          onGuestFilterChange={setGuestFilter}
+          styleOptions={styleOptions}
+          budgets={BUDGETS}
+          guestOptions={GUEST_FILTERS}
+          compareCount={compareIds.size}
+        />
+
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {/* List scrolls full-width so the scrollbar sits on the page edge; content stays left */}
+          <div
+            ref={mapListScrollRef}
+            className={`min-h-0 flex-1 overflow-y-auto lg:pointer-events-none lg:absolute lg:inset-0 lg:z-[1] ${
+              mapExpanded ? "hidden" : ""
+            }`}
+          >
+            {/* Far-right gutter: scroll works here without hitting the map */}
+            <div
+              aria-hidden
+              className="hidden lg:pointer-events-auto lg:absolute lg:inset-y-0 lg:right-0 lg:z-10 lg:w-14 xl:w-16"
+            />
+            <div className="px-4 py-4 sm:px-6 lg:pointer-events-auto lg:w-[58%] lg:max-w-[820px] lg:px-6 lg:pr-5 lg:pb-8">
+              <p className="mb-5 text-lg font-bold text-gray-900">
+                {filteredVenues.length} venues within map area
+              </p>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
+                {paginatedMapVenues.map((venue) => (
+                  <VenueMapBrowseCard
+                    key={venue.id}
+                    venue={venue}
+                    active={mapSelectedId === venue.id}
+                    saved={savedVenueIds.has(venue.id)}
+                    onSelect={() => handleMapListSelect(venue)}
+                    onToggleSave={() => toggleSaveVenue(venue.id)}
+                    onOpen={() => setSelectedVenueId(venue.id)}
+                    onHover={() => setMapHoveredPinId(venue.id)}
+                    onHoverEnd={() => setMapHoveredPinId(null)}
+                    listRef={(el) => {
+                      if (el) listItemRefs.current.set(venue.id, el);
+                      else listItemRefs.current.delete(venue.id);
+                    }}
+                  />
+                ))}
+              </div>
+              <MapBrowsePagination
+                currentPage={mapListPage}
+                totalPages={mapListTotalPages}
+                onPageChange={goToMapListPage}
+              />
+            </div>
+          </div>
+
+          {/* Map stays fixed on screen while the list scrolls (desktop: pinned right) */}
+          <div
+            className={`relative shrink-0 lg:absolute lg:inset-y-0 lg:z-0 lg:min-h-0 lg:transition-[left,padding] lg:duration-300 ${
+              mapExpanded
+                ? "min-h-0 flex-1 lg:inset-x-0 lg:left-0 lg:p-4 lg:px-6"
+                : "min-h-[38vh] lg:left-[58%] lg:right-14 lg:p-4 lg:pl-2 lg:pr-2 xl:right-16"
+            }`}
+          >
+            <div className="h-full min-h-[38vh] overflow-hidden rounded-2xl border border-black/[0.08] shadow-sm lg:min-h-0">
+              <VenuesMapPanel
+                venues={filteredVenues}
+                selectedId={mapSelectedId}
+                savedIds={savedVenueIds}
+                mapExpanded={mapExpanded}
+                hoveredPinId={mapHoveredPinId}
+                onHoverPin={setMapHoveredPinId}
+                onToggleMapExpanded={() => setMapExpanded((v) => !v)}
+                onSelectVenue={setMapSelectedId}
+                onOpenVenue={setSelectedVenueId}
+                onToggleSave={toggleSaveVenue}
+              />
+            </div>
+          </div>
+        </div>
+
+        {selectedVenueId !== null && (
+          <VenueDetailModal
+            key={selectedVenueId}
+            venueId={selectedVenueId}
+            onClose={() => setSelectedVenueId(null)}
+            onNavigateToVendor={setSelectedVenueId}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white font-['Inter',sans-serif] text-gray-900">
@@ -1638,7 +1932,7 @@ export default function VenuesClient({
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search venues, neighborhoods, or styles"
+                    placeholder="Search name, address, or venue type"
                     className="w-full bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
                   />
                 </label>
@@ -1685,9 +1979,12 @@ export default function VenuesClient({
         {/* ── Filter pills ── */}
         <section className="border-b border-black/[0.06] bg-white">
           <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
-              <SlidersHorizontal size={16} />
-              Refine your shortlist
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
+                <SlidersHorizontal size={16} />
+                Refine your shortlist
+              </div>
+              <ViewModeToggle viewMode="list" />
             </div>
 
             <div className="flex gap-3 overflow-x-auto pb-1">
@@ -1805,7 +2102,7 @@ export default function VenuesClient({
                             <Star size={14} className="fill-amber-400 text-amber-400" />
                             {venue.displayRating.toFixed(1)}
                             {venue.displayReviews > 0 && (
-                              <span className="text-xs font-normal text-gray-400">({venue.displayReviews})</span>
+                              <span className="text-xs font-normal text-gray-400">({formatCount(venue.displayReviews)})</span>
                             )}
                           </div>
                         )}
@@ -1918,7 +2215,7 @@ export default function VenuesClient({
                     <dl className="space-y-3 text-sm">
                       {[
                         ["Style", venue.styleLabel],
-                        ["Rating", venue.displayRating > 0 ? `${venue.displayRating.toFixed(1)}${venue.displayReviews > 0 ? ` (${venue.displayReviews})` : ""}` : "—"],
+                        ["Rating", venue.displayRating > 0 ? `${venue.displayRating.toFixed(1)}${venue.displayReviews > 0 ? ` (${formatCount(venue.displayReviews)})` : ""}` : "—"],
                         ["Budget", budgetLabel(venue.price_level) || "—"],
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between gap-4 border-t border-white/10 pt-3">
