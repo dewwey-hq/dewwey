@@ -134,3 +134,7 @@
   margin: 0 auto;
   min-width: 0;
 }
+
+.instagram-post-card {
+  line-height: 0;
+}

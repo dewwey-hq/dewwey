@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import InstagramEmbed from "./InstagramEmbed";
+import InstagramEmbed, {
+  computeLightboxEmbedLayout,
+} from "./InstagramEmbed";
 import {
   ArrowUpDown,
   Check,
@@ -44,6 +46,7 @@ export type VenueVendor = {
   photos: string[] | null;
   price_level: number | null;
   editorial_summary: string | null;
+  ai_summary?: string | null;
   outdoor_seating?: boolean | null;
   good_for_groups?: boolean | null;
   serves_cocktails?: boolean | null;
@@ -66,20 +69,28 @@ type RealWeddingPost = {
   image_url?: string | null;
   images?: string[] | null;
   caption?: string | null;
+  post_type?: string | null;
+  media_width?: number | null;
+  media_height?: number | null;
 };
-
-function weddingImageSrc(raw: string): string {
-  return `/api/instagram-image?url=${encodeURIComponent(raw)}`;
-}
 
 function postPreviewImageUrl(post: RealWeddingPost): string | null {
   return post.image_url || post.images?.[0] || null;
 }
 
-function postImageUrls(post: RealWeddingPost): string[] {
-  const urls =
-    post.images?.length ? post.images : post.image_url ? [post.image_url] : [];
-  return urls.map(weddingImageSrc);
+function postImageCount(post: RealWeddingPost): number {
+  if (Array.isArray(post.images) && post.images.length > 0) return post.images.length;
+  if (post.post_type?.toLowerCase() === "sidecar") return 2;
+  return post.image_url ? 1 : 0;
+}
+
+function postMediaMeta(post: RealWeddingPost) {
+  return {
+    imageUrl: postPreviewImageUrl(post),
+    imageCount: Math.max(postImageCount(post), 1),
+    mediaWidth: post.media_width ?? null,
+    mediaHeight: post.media_height ?? null,
+  };
 }
 
 type Partner = {
@@ -233,6 +244,11 @@ function CategoryIcon({
   );
 }
 
+function aboutFor(v: VenueVendor): string | null {
+  const text = v.editorial_summary?.trim() || v.ai_summary?.trim();
+  return text || null;
+}
+
 // outdoor_seating is true-or-null in our data (never confirmed false), so this
 // is a best-effort signal, not a guarantee.
 function factsFor(v: VenueVendor): Fact[] {
@@ -260,6 +276,41 @@ function buildVenueCards(venues: VenueVendor[]): VenueCard[] {
 
 // ── Venue Detail Modal ───────────────────────────────────────────────────────
 
+const playfairHeading = { fontFamily: "'Playfair Display', serif", fontWeight: 500 } as const;
+
+function VenueSectionHeading({
+  title,
+  subtitle,
+  className = "",
+}: {
+  title: string;
+  subtitle?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`mb-3 ${className}`}>
+      <h3 className="text-lg leading-snug text-gray-900" style={playfairHeading}>
+        {title}
+      </h3>
+      {subtitle ? <p className="mt-1 text-sm text-gray-500">{subtitle}</p> : null}
+    </div>
+  );
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT"
+  );
+}
+
+function hasVenueOverlay(): boolean {
+  return Boolean(document.querySelector('[data-venue-overlay="true"]'));
+}
+
 function PhotoLightbox({
   photos,
   startIndex,
@@ -273,16 +324,25 @@ function PhotoLightbox({
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onClose();
+        return;
+      }
       if (e.key === "ArrowLeft") setCurrent((c) => Math.max(0, c - 1));
       if (e.key === "ArrowRight") setCurrent((c) => Math.min(photos.length - 1, c + 1));
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
   }, [onClose, photos.length]);
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-black/95" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[60] flex flex-col bg-black/95"
+      data-venue-overlay="true"
+      onClick={onClose}
+    >
       <div className="flex items-center justify-between px-4 py-3 text-white">
         <span className="text-sm text-white/70">
           {current + 1} / {photos.length}
@@ -422,45 +482,57 @@ function formatPostDate(iso: string | null) {
   }
 }
 
-const WEDDING_VISIBLE = 4;
+const WEDDING_VISIBLE = 3;
 
-function WeddingPreviewCard({
+const EMBED_GRID_WIDTH = 280;
+
+function WeddingEmbedGridCard({
   post,
   onClick,
 }: {
   post: RealWeddingPost;
   onClick: () => void;
 }) {
-  const [failed, setFailed] = useState(false);
-  const src = postImageUrls(post)[0] ?? null;
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [cellWidth, setCellWidth] = useState(0);
   const dateLabel = formatPostDate(post.post_timestamp);
+  const embedWidth = cellWidth > 0 ? cellWidth : EMBED_GRID_WIDTH;
+
+  useEffect(() => {
+    const el = measureRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setCellWidth(Math.round(entry.contentRect.width));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="flex flex-col">
-      <button
-        type="button"
-        onClick={onClick}
-        className="group relative aspect-[4/5] overflow-hidden rounded-xl bg-gray-100"
-      >
-        {src && !failed ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={src}
-            alt="Real wedding at this venue"
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={() => setFailed(true)}
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex aspect-[4/5] w-full flex-col overflow-hidden rounded-xl border border-black/[0.08] bg-white text-left shadow-sm transition-all hover:border-black/[0.14] hover:shadow-md"
+      aria-label={dateLabel ? `View wedding post from ${dateLabel}` : "View wedding post"}
+    >
+      <div ref={measureRef} className="min-h-0 flex-1 overflow-hidden p-1">
+        {cellWidth > 0 ? (
+          <InstagramEmbed
+            postUrl={post.post_url}
+            caption={post.caption}
+            maxWidth={embedWidth}
+            previewImageUrl={postPreviewImageUrl(post)}
+            compact
+            className="w-full"
           />
-        ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-rose-100 to-pink-200">
-            <span className="text-3xl text-rose-300">✦</span>
-          </div>
-        )}
-      </button>
-      {dateLabel && (
-        <p className="mt-1.5 text-center text-xs text-gray-400">{dateLabel}</p>
-      )}
-    </div>
+        ) : null}
+      </div>
+      {dateLabel ? (
+        <p className="shrink-0 border-t border-black/[0.04] py-1.5 text-center text-[11px] text-gray-400">
+          {dateLabel}
+        </p>
+      ) : null}
+    </button>
   );
 }
 
@@ -473,72 +545,185 @@ function WeddingPostLightbox({
   startIndex: number;
   onClose: () => void;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(startIndex);
+  const [embedLoaded, setEmbedLoaded] = useState(false);
+  const [entered, setEntered] = useState(false);
+  const [viewport, setViewport] = useState({ width: 1200, height: 800 });
+  const [liked, setLiked] = useState(false);
   const post = posts[current];
-  const dateLabel = formatPostDate(post.post_timestamp);
+  const canPrev = current > 0;
+  const canNext = current < posts.length - 1;
+  const embedLayout = useMemo(
+    () =>
+      computeLightboxEmbedLayout({
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        footerHeightPx: 0,
+        ...postMediaMeta(post),
+      }),
+    [viewport, post],
+  );
+
+  useEffect(() => {
+    setCurrent(startIndex);
+  }, [startIndex]);
+
+  useEffect(() => {
+    const updateSize = () => {
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+    };
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  useEffect(() => {
+    setEmbedLoaded(false);
+  }, [post.post_url]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = requestAnimationFrame(() => setEntered(true));
+    return () => {
+      cancelAnimationFrame(frame);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (entered) dialogRef.current?.focus();
+  }, [entered, current]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") setCurrent((c) => Math.max(0, c - 1));
-      if (e.key === "ArrowRight") setCurrent((c) => Math.min(posts.length - 1, c + 1));
+      if (isTypingTarget(e.target)) return;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onClose();
+        return;
+      }
+      if (e.key === "ArrowLeft" && canPrev) {
+        e.preventDefault();
+        setCurrent((c) => c - 1);
+      }
+      if (e.key === "ArrowRight" && canNext) {
+        e.preventDefault();
+        setCurrent((c) => c + 1);
+      }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose, posts.length]);
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [onClose, canPrev, canNext]);
+
+  const goPrev = () => {
+    if (canPrev) setCurrent((c) => c - 1);
+  };
+
+  const goNext = () => {
+    if (canNext) setCurrent((c) => c + 1);
+  };
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-black/95" onClick={onClose}>
-      <div className="flex items-center justify-between px-4 py-3 text-white">
-        <span className="text-sm text-white/70">
-          {current + 1} of {posts.length}
-          {dateLabel ? ` · ${dateLabel}` : ""}
-        </span>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full p-2 hover:bg-white/10 transition-colors"
-          aria-label="Close"
-        >
-          <X size={20} />
-        </button>
-      </div>
-
+    <div
+      ref={dialogRef}
+      tabIndex={-1}
+      data-venue-overlay="true"
+      className={`fixed inset-0 z-[60] flex flex-col bg-black outline-none transition-opacity duration-200 ${
+        entered ? "opacity-100" : "opacity-0"
+      }`}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Wedding posts"
+    >
       <div
-        className="relative flex flex-1 items-center justify-center overflow-y-auto px-4 pb-8"
+        className="grid h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-8"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-full max-w-[400px] rounded-2xl bg-white shadow-2xl">
-          <InstagramEmbed
-            key={post.post_url}
-            postUrl={post.post_url}
-            caption={post.caption}
-            maxWidth={400}
-            previewImageUrl={postPreviewImageUrl(post)}
-            lightbox
-          />
+        <div className="justify-self-start">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-2 rounded-lg px-1 py-2 text-white transition-colors hover:bg-white/10"
+            aria-label="Close"
+          >
+            <X size={22} strokeWidth={2} />
+            <span className="text-sm font-medium">Close</span>
+          </button>
+        </div>
+        <span className="text-sm font-medium tabular-nums text-white">
+          {current + 1} / {posts.length}
+        </span>
+        <div className="justify-self-end">
+          <button
+            type="button"
+            onClick={() => setLiked((l) => !l)}
+            className="rounded-full p-2.5 text-white transition-colors hover:bg-white/10"
+            aria-label={liked ? "Unsave" : "Save"}
+          >
+            <Heart size={20} className={liked ? "fill-white text-white" : ""} />
+          </button>
+        </div>
+      </div>
+
+      <div className="relative min-h-0 flex-1" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={goPrev}
+          disabled={!canPrev}
+          className="absolute left-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white bg-black/50 text-white backdrop-blur-[2px] transition-all hover:bg-black/65 disabled:pointer-events-none disabled:opacity-0 sm:left-6 md:left-10"
+          aria-label="Previous wedding"
+        >
+          <ChevronLeft size={24} strokeWidth={2} />
+        </button>
+
+        <div className="flex h-full items-center justify-center overflow-y-auto px-14 py-4 sm:px-20 md:px-24">
+          <div
+            className="w-full overflow-hidden rounded-xl bg-white shadow-[0_24px_80px_rgba(0,0,0,0.45)] transition-opacity duration-300"
+            style={{ maxWidth: embedLayout.width }}
+          >
+            <div
+              className="relative overflow-hidden transition-[height] duration-200 ease-out"
+              style={{ height: embedLayout.iframeHeight }}
+            >
+              {!embedLoaded ? (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-gray-50">
+                  <div className="h-9 w-9 animate-pulse rounded-full bg-gray-200" />
+                  <p className="text-xs text-gray-400">Loading post…</p>
+                </div>
+              ) : null}
+              <div className={embedLoaded ? "opacity-100" : "opacity-0"}>
+                <InstagramEmbed
+                  key={post.post_url}
+                  postUrl={post.post_url}
+                  maxWidth={embedLayout.width}
+                  previewImageUrl={postPreviewImageUrl(post)}
+                  imageCount={Math.max(postImageCount(post), 1)}
+                  mediaWidth={post.media_width}
+                  mediaHeight={post.media_height}
+                  iframeHeight={embedLayout.iframeHeight}
+                  scrollIframe={embedLayout.scrollIframe}
+                  lightboxMedia
+                  onLoad={() => setEmbedLoaded(true)}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {current > 0 && (
-          <button
-            type="button"
-            onClick={() => setCurrent((c) => c - 1)}
-            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white transition-colors sm:left-6"
-            aria-label="Previous wedding"
-          >
-            <ChevronLeft size={20} className="text-gray-800" />
-          </button>
-        )}
-        {current < posts.length - 1 && (
-          <button
-            type="button"
-            onClick={() => setCurrent((c) => c + 1)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 shadow-lg hover:bg-white transition-colors sm:right-6"
-            aria-label="Next wedding"
-          >
-            <ChevronRight size={20} className="text-gray-800" />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={goNext}
+          disabled={!canNext}
+          className="absolute right-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white bg-black/50 text-white backdrop-blur-[2px] transition-all hover:bg-black/65 disabled:pointer-events-none disabled:opacity-0 sm:right-6 md:right-10"
+          aria-label="Next wedding"
+        >
+          <ChevronRight size={24} strokeWidth={2} />
+        </button>
       </div>
     </div>
   );
@@ -548,18 +733,43 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [windowStart, setWindowStart] = useState(0);
 
-  if (posts.length === 0) return null;
-
   const pageSize = WEDDING_VISIBLE;
   const canPage = posts.length > pageSize;
+
+  useEffect(() => {
+    if (posts.length === 0 || lightboxIndex != null || !canPage) return;
+
+    const handler = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
+
+      if (e.key === "ArrowLeft" && windowStart > 0) {
+        e.preventDefault();
+        setWindowStart((s) => Math.max(0, s - pageSize));
+      }
+      if (e.key === "ArrowRight" && windowStart + pageSize < posts.length) {
+        e.preventDefault();
+        setWindowStart((s) => {
+          const next = s + pageSize;
+          return next < posts.length ? next : s;
+        });
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [posts.length, lightboxIndex, canPage, windowStart, pageSize]);
+
+  if (posts.length === 0) return null;
   const canGoPrev = windowStart > 0;
   const canGoNext = windowStart + pageSize < posts.length;
-  const rangeEnd = Math.min(windowStart + pageSize, posts.length);
-  const columns = Math.min(pageSize, posts.length);
+  const pageCount = Math.ceil(posts.length / pageSize);
+  const currentPage = Math.floor(windowStart / pageSize) + 1;
   const gapRem = 0.5;
-  const visibleColumns = canPage ? pageSize : columns;
-  const gapsTotalRem = Math.max(0, visibleColumns - 1) * gapRem;
-  const cardWidth = `calc((100% - ${gapsTotalRem}rem) / ${visibleColumns})`;
+  const gapsTotalRem = Math.max(0, pageSize - 1) * gapRem;
+  const centerTrack = posts.length <= pageSize;
+  const slideVars = {
+    ["--wedding-gap" as string]: `${gapRem}rem`,
+    ["--wedding-card" as string]: `calc((100% - ${gapsTotalRem}rem) / ${pageSize})`,
+  } as CSSProperties;
 
   const goPrev = () => setWindowStart((s) => Math.max(0, s - pageSize));
   const goNext = () => setWindowStart((s) => {
@@ -567,59 +777,66 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
     return next < posts.length ? next : s;
   });
 
+  const pageLabel = `${currentPage} of ${pageCount}`;
+  const viewAllAriaLabel =
+    posts.length === 1 ? "View wedding" : `View all ${posts.length} weddings`;
+
   return (
-    <section className="mt-6 border-y border-black/[0.06] py-6">
-      <div className="mb-4 flex items-end justify-between gap-3">
-        <div>
-          <h3 className="mb-1 text-[15px] font-medium text-gray-900">Weddings here</h3>
-          <p className="text-xs text-gray-400">Real posts from Instagram — tap to explore</p>
-        </div>
-        {canPage && (
-          <p className="shrink-0 text-xs text-gray-400">
-            {windowStart + 1}–{rangeEnd} of {posts.length}
-          </p>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        {canPage && (
-          <button
-            type="button"
-            onClick={goPrev}
-            disabled={!canGoPrev}
-            className="shrink-0 rounded-full border border-gray-200 p-2 text-gray-600 transition-colors hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-25"
-            aria-label="Previous weddings"
-          >
-            <ChevronLeft size={18} />
-          </button>
-        )}
-
-        <div className="min-w-0 flex-1 overflow-hidden">
+    <section className="mt-6" aria-label={viewAllAriaLabel}>
+      <div className="border-y border-black/[0.06] py-4 sm:py-5">
+        <div className="min-w-0 overflow-hidden" style={slideVars}>
           <div
-            className="flex gap-2 transition-transform duration-300 ease-in-out"
+            className={`flex transition-transform duration-300 ease-in-out${centerTrack ? " justify-center" : ""}`}
             style={{
-              transform: `translateX(calc(-${windowStart} * (((100% - ${gapsTotalRem}rem) / ${pageSize}) + ${gapRem}rem)))`,
+              gap: "var(--wedding-gap)",
+              transform: centerTrack
+                ? undefined
+                : `translateX(calc(-${windowStart} * (var(--wedding-card) + var(--wedding-gap))))`,
             }}
           >
             {posts.map((post, i) => (
-              <div key={post.post_url} className="shrink-0" style={{ width: cardWidth }}>
-                <WeddingPreviewCard post={post} onClick={() => setLightboxIndex(i)} />
+              <div key={post.post_url} className="shrink-0" style={{ width: "var(--wedding-card)" }}>
+                <WeddingEmbedGridCard post={post} onClick={() => setLightboxIndex(i)} />
               </div>
             ))}
           </div>
         </div>
 
-        {canPage && (
+        <div className="mt-3 flex flex-col items-center gap-2">
+          {canPage && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={goPrev}
+                disabled={!canGoPrev}
+                className="rounded-full border border-black/[0.08] bg-white p-2 text-gray-600 transition-colors hover:border-gray-300 hover:bg-white disabled:pointer-events-none disabled:opacity-25"
+                aria-label="Previous weddings"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <span className="min-w-[4.5rem] text-center text-xs tabular-nums text-gray-500">{pageLabel}</span>
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={!canGoNext}
+                className="rounded-full border border-black/[0.08] bg-white p-2 text-gray-600 transition-colors hover:border-gray-300 hover:bg-white disabled:pointer-events-none disabled:opacity-25"
+                aria-label="Next weddings"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
           <button
             type="button"
-            onClick={goNext}
-            disabled={!canGoNext}
-            className="shrink-0 rounded-full border border-gray-200 p-2 text-gray-600 transition-colors hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-25"
-            aria-label="Next weddings"
+            onClick={() => setLightboxIndex(0)}
+            aria-label={viewAllAriaLabel}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-200/70 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-rose-300 hover:bg-rose-50/40"
           >
-            <ChevronRight size={18} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/instagram-glyph.svg" alt="" className="h-3 w-3 opacity-60" />
+            View weddings
           </button>
-        )}
+        </div>
       </div>
 
       {lightboxIndex != null && (
@@ -644,7 +861,7 @@ function VenueMap({ vendor }: { vendor: VenueVendor }) {
 
   return (
     <div>
-      <h3 className="mb-3 text-[15px] font-medium text-gray-900">Location</h3>
+      <VenueSectionHeading title="Location" />
       <div className="overflow-hidden rounded-2xl border border-black/[0.06]">
         <iframe
           title={`Map of ${vendor.name}`}
@@ -672,26 +889,61 @@ function VenueMap({ vendor }: { vendor: VenueVendor }) {
   );
 }
 
-function FrequentlyWorksWith({ partners }: { partners: Partner[] }) {
+function FrequentlyWorksWith({
+  partners,
+  onNavigateToVendor,
+}: {
+  partners: Partner[];
+  onNavigateToVendor?: (id: number) => void;
+}) {
   if (partners.length === 0) return null;
   return (
     <div>
-      <h3 className="mb-1 text-[15px] font-medium text-gray-900">Vendors at weddings here</h3>
-      <p className="mb-4 text-xs text-gray-400">Often tagged alongside this venue on Instagram</p>
+      <VenueSectionHeading
+        title="Commonly tagged here"
+        subtitle="From real wedding posts at this venue"
+      />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {partners.map((p) => {
           const label = categoryLabel(p.category, null);
           const icon = categoryIcon(p.category, null);
+          const photoRef = p.photos?.[0];
+          const photoSrc = photoRef ? photoUrlFor(photoRef, 200) : null;
+          const tile = (
+            <>
+              <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm">
+                {photoSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photoSrc} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <Image src={icon} alt="" width={26} height={26} className="object-contain" />
+                )}
+              </div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
+              <p className="mt-1 text-sm font-medium leading-snug text-gray-900">{p.name}</p>
+              {p.times_mentioned > 1 && (
+                <p className="mt-1 text-[11px] text-gray-400">Tagged {p.times_mentioned}×</p>
+              )}
+            </>
+          );
+          if (onNavigateToVendor) {
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onNavigateToVendor(p.id)}
+                className="flex flex-col items-center rounded-2xl border border-black/[0.06] bg-[#fdf8f5] p-4 text-center transition-colors hover:border-rose-200 hover:bg-rose-50/40"
+              >
+                {tile}
+              </button>
+            );
+          }
           return (
             <div
               key={p.id}
               className="flex flex-col items-center rounded-2xl border border-black/[0.06] bg-[#fdf8f5] p-4 text-center"
             >
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                <Image src={icon} alt="" width={26} height={26} className="object-contain" />
-              </div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
-              <p className="mt-1 text-sm font-medium leading-snug text-gray-900">{p.name}</p>
+              {tile}
             </div>
           );
         })}
@@ -862,7 +1114,15 @@ function VenueInquiryPanel({
   );
 }
 
-function VenueDetailModal({ venueId, onClose }: { venueId: number; onClose: () => void }) {
+function VenueDetailModal({
+  venueId,
+  onClose,
+  onNavigateToVendor,
+}: {
+  venueId: number;
+  onClose: () => void;
+  onNavigateToVendor?: (id: number) => void;
+}) {
   const [detail, setDetail] = useState<VenueDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [readMore, setReadMore] = useState(false);
@@ -880,6 +1140,9 @@ function VenueDetailModal({ venueId, onClose }: { venueId: number; onClose: () =
 
   useEffect(() => {
     setShowStickyTitle(false);
+    setReadMore(false);
+    setLoading(true);
+    scrollRef.current?.scrollTo({ top: 0 });
   }, [venueId]);
 
   useEffect(() => {
@@ -903,7 +1166,10 @@ function VenueDetailModal({ venueId, onClose }: { venueId: number; onClose: () =
   }, []);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || hasVenueOverlay()) return;
+      onClose();
+    };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
@@ -920,7 +1186,7 @@ function VenueDetailModal({ venueId, onClose }: { venueId: number; onClose: () =
   const rating = v ? normalizeRating(v.rating) : 0;
   const price = v ? budgetLabel(v.price_level) : "";
   const facts = v ? factsFor(v) : [];
-  const about = v?.editorial_summary ?? null;
+  const about = v ? aboutFor(v) : null;
   const short = about && about.length > 200 ? about.slice(0, 200) + "…" : about;
   const typeLabel = v ? formatPrimaryType(v.primary_type) : "";
 
@@ -1041,22 +1307,20 @@ function VenueDetailModal({ venueId, onClose }: { venueId: number; onClose: () =
               <div className="py-5 sm:py-6">
                 <PhotoGrid photos={photos} alt={v.name} />
               </div>
-
-              <RealWeddingsSection posts={detail.realWeddings ?? []} />
             </div>
 
             <div className="px-4 pb-28 sm:px-6 sm:pb-8 lg:px-8">
-              <div className="lg:grid lg:grid-cols-[1fr_300px] lg:gap-10 lg:items-start lg:pt-8">
+              <div className="lg:grid lg:grid-cols-[1fr_300px] lg:gap-10 lg:items-start lg:pt-2">
                 <div className="min-w-0 space-y-8">
                   {about && (
                     <div>
-                      <h3 className="mb-2 text-[15px] font-medium text-gray-900">About this venue</h3>
-                      <p className="text-sm leading-relaxed text-gray-500">{readMore ? about : short}</p>
+                      <VenueSectionHeading title="About this venue" />
+                      <p className="text-sm leading-[1.65] text-gray-600">{readMore ? about : short}</p>
                       {about.length > 200 && (
                         <button
                           type="button"
                           onClick={() => setReadMore(!readMore)}
-                          className="mt-1.5 text-sm font-medium text-gray-800 underline hover:text-gray-500 transition-colors"
+                          className="mt-2 text-sm font-medium text-rose-500 transition-colors hover:text-rose-600"
                         >
                           {readMore ? "Show less" : "Read more"}
                         </button>
@@ -1066,21 +1330,20 @@ function VenueDetailModal({ venueId, onClose }: { venueId: number; onClose: () =
 
                   {facts.length > 0 && (
                     <div>
-                      <h3 className="mb-3 text-[15px] font-medium text-gray-900">Good to know</h3>
-                      <div className="flex flex-wrap gap-x-6 gap-y-2">
+                      <VenueSectionHeading title="Good to know" />
+                      <div className="flex flex-wrap gap-2">
                         {facts.map(({ Icon, label }) => (
-                          <div key={label} className="flex items-center gap-2 text-sm text-gray-600">
-                            <Icon size={15} className="shrink-0 text-gray-400" />
+                          <span
+                            key={label}
+                            className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-[#fdf8f5] px-3.5 py-2 text-sm text-gray-700"
+                          >
+                            <Icon size={14} className="shrink-0 text-rose-400" />
                             {label}
-                          </div>
+                          </span>
                         ))}
                       </div>
                     </div>
                   )}
-
-                  <VenueMap vendor={v} />
-
-                  <FrequentlyWorksWith partners={detail.frequentlyWorksWith} />
 
                   <div className="lg:hidden">
                     <VenueInquiryPanel id="venue-inquiry-form" photoUrl={photos[0]} />
@@ -1092,6 +1355,15 @@ function VenueDetailModal({ venueId, onClose }: { venueId: number; onClose: () =
                     <VenueInquiryPanel id="venue-inquiry-form-desktop" photoUrl={photos[0]} />
                   </div>
                 </aside>
+              </div>
+
+              <div className="mt-8 space-y-8">
+                <RealWeddingsSection posts={detail.realWeddings ?? []} />
+                <VenueMap vendor={v} />
+                <FrequentlyWorksWith
+                  partners={detail.frequentlyWorksWith}
+                  onNavigateToVendor={onNavigateToVendor}
+                />
               </div>
             </div>
             </>
@@ -1517,13 +1789,7 @@ export default function VenuesClient({
                         )}
                       </div>
 
-                      {venue.editorial_summary && (
-                        <p className="mb-4 line-clamp-2 text-sm leading-6 text-gray-500">
-                          {venue.editorial_summary}
-                        </p>
-                      )}
-
-                      <div className="flex items-center justify-between pt-3 border-t border-black/[0.06]">
+                      <div className="flex items-center justify-between border-t border-black/[0.06] pt-3">
                         {venue.website ? (
                           <a
                             href={venue.website}
@@ -1665,6 +1931,7 @@ export default function VenuesClient({
           key={selectedVenueId}
           venueId={selectedVenueId}
           onClose={() => setSelectedVenueId(null)}
+          onNavigateToVendor={setSelectedVenueId}
         />
       )}
     </div>
