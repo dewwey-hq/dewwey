@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  getCachedEmbedStatus,
+  setCachedEmbedStatus,
+} from "@/app/lib/instagram-embed-status-cache";
 
 export function proxiedInstagramImageUrl(cdnUrl: string | null | undefined): string | null {
   if (!cdnUrl) return null;
@@ -334,6 +338,7 @@ export default function InstagramEmbed({
   scrollIframe = false,
   mediaWidth,
   mediaHeight,
+  embedAvailable: embedAvailableProp,
 }: {
   postUrl: string;
   caption?: string | null;
@@ -349,23 +354,47 @@ export default function InstagramEmbed({
   scrollIframe?: boolean;
   mediaWidth?: number | null;
   mediaHeight?: number | null;
+  /** When false, skip iframe and use scraped photo. Omit to load iframe optimistically. */
+  embedAvailable?: boolean;
 }) {
-  const [embedAvailable, setEmbedAvailable] = useState<boolean | null>(null);
+  const [embedAvailable, setEmbedAvailable] = useState<boolean | null>(() => {
+    if (embedAvailableProp === false) return false;
+    if (embedAvailableProp === true) return true;
+    const cached = getCachedEmbedStatus(postUrl);
+    return cached === undefined ? null : cached;
+  });
 
   useEffect(() => {
+    if (embedAvailableProp === false) {
+      setEmbedAvailable(false);
+      return;
+    }
+    if (embedAvailableProp === true) {
+      setEmbedAvailable(true);
+      return;
+    }
+
+    const cached = getCachedEmbedStatus(postUrl);
+    if (cached !== undefined) {
+      setEmbedAvailable(cached);
+      return;
+    }
+
     let cancelled = false;
     fetch(`/api/instagram/embed-status?postUrl=${encodeURIComponent(postUrl)}`)
       .then((res) => res.json())
       .then((data: { embedAvailable?: boolean }) => {
-        if (!cancelled) setEmbedAvailable(Boolean(data.embedAvailable));
+        const available = Boolean(data.embedAvailable);
+        setCachedEmbedStatus(postUrl, available);
+        if (!cancelled) setEmbedAvailable(available);
       })
       .catch(() => {
-        if (!cancelled) setEmbedAvailable(false);
+        if (!cancelled) setEmbedAvailable(null);
       });
     return () => {
       cancelled = true;
     };
-  }, [postUrl]);
+  }, [postUrl, embedAvailableProp]);
 
   const text = caption?.trim();
   const captioned = lightboxMedia || compact ? false : lightbox ? true : !text;
@@ -392,7 +421,7 @@ export default function InstagramEmbed({
       mode,
     );
 
-  const useIframe = embedAvailable === true;
+  const useIframe = embedAvailable !== false;
   const useImagePreview = embedAvailable === false && !!previewImageUrl;
 
   if (useImagePreview) {
@@ -431,30 +460,47 @@ export default function InstagramEmbed({
   }
 
   return (
-    <div className={className ? `instagram-post-card ${className}` : "instagram-post-card"}>
-      {embedAvailable === null ? (
-        <div
-          className="w-full animate-pulse bg-gray-100"
-          style={{ width: compact ? maxWidth : undefined, maxWidth, height }}
-          aria-hidden
-        />
-      ) : (
-        <iframe
-          src={src}
-          title="Instagram post"
-          className="instagram-embed-iframe w-full border-0 bg-white"
-          style={{ width: compact ? maxWidth : undefined, maxWidth, height }}
-          scrolling={
-            scrollIframe || (lightbox && !lightboxMedia)
-              ? "yes"
-              : lightboxMedia
-                ? "auto"
-                : "no"
-          }
-          allowFullScreen
-          onLoad={onLoad}
-        />
-      )}
+    <div
+      className={
+        className
+          ? `instagram-post-card relative ${className}`
+          : "instagram-post-card relative"
+      }
+    >
+      {useIframe ? (
+        <>
+          {lightboxMedia && previewImageUrl ? (
+            <div
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-t-xl"
+              aria-hidden
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={proxiedInstagramImageUrl(previewImageUrl) ?? undefined}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : null}
+          <iframe
+            src={src}
+            title="Instagram post"
+            className={`instagram-embed-iframe w-full border-0 bg-white${
+              lightboxMedia && previewImageUrl ? " relative z-[1]" : ""
+            }`}
+            style={{ width: compact ? maxWidth : undefined, maxWidth, height }}
+            scrolling={
+              scrollIframe || (lightbox && !lightboxMedia)
+                ? "yes"
+                : lightboxMedia
+                  ? "auto"
+                  : "no"
+            }
+            allowFullScreen
+            onLoad={onLoad}
+          />
+        </>
+      ) : null}
       {!compact && !lightbox && !lightboxMedia && text ? (
         <InstagramCaption text={text} postUrl={postUrl} />
       ) : null}

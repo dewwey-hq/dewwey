@@ -6,6 +6,7 @@ import Image from "next/image";
 import InstagramEmbed, {
   computeLightboxEmbedLayout,
 } from "./InstagramEmbed";
+import { prefetchEmbedStatuses } from "@/app/lib/instagram-embed-status-cache";
 import {
   ArrowUpDown,
   Check,
@@ -489,12 +490,14 @@ const EMBED_GRID_WIDTH = 280;
 function WeddingEmbedGridCard({
   post,
   onClick,
+  embedAvailable,
 }: {
   post: RealWeddingPost;
   onClick: () => void;
+  embedAvailable?: boolean;
 }) {
   const measureRef = useRef<HTMLDivElement>(null);
-  const [cellWidth, setCellWidth] = useState(0);
+  const [cellWidth, setCellWidth] = useState(EMBED_GRID_WIDTH);
   const dateLabel = formatPostDate(post.post_timestamp);
   const embedWidth = cellWidth > 0 ? cellWidth : EMBED_GRID_WIDTH;
 
@@ -516,16 +519,15 @@ function WeddingEmbedGridCard({
       aria-label={dateLabel ? `View wedding post from ${dateLabel}` : "View wedding post"}
     >
       <div ref={measureRef} className="min-h-0 flex-1 overflow-hidden p-1">
-        {cellWidth > 0 ? (
-          <InstagramEmbed
-            postUrl={post.post_url}
-            caption={post.caption}
-            maxWidth={embedWidth}
-            previewImageUrl={postPreviewImageUrl(post)}
-            compact
-            className="w-full"
-          />
-        ) : null}
+        <InstagramEmbed
+          postUrl={post.post_url}
+          caption={post.caption}
+          maxWidth={embedWidth}
+          previewImageUrl={postPreviewImageUrl(post)}
+          embedAvailable={embedAvailable}
+          compact
+          className="w-full"
+        />
       </div>
       {dateLabel ? (
         <p className="shrink-0 border-t border-black/[0.04] py-1.5 text-center text-[11px] text-gray-400">
@@ -540,10 +542,12 @@ function WeddingPostLightbox({
   posts,
   startIndex,
   onClose,
+  embedStatus,
 }: {
   posts: RealWeddingPost[];
   startIndex: number;
   onClose: () => void;
+  embedStatus: Map<string, boolean>;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(startIndex);
@@ -552,6 +556,8 @@ function WeddingPostLightbox({
   const [viewport, setViewport] = useState({ width: 1200, height: 800 });
   const [liked, setLiked] = useState(false);
   const post = posts[current];
+  const previewImage = postPreviewImageUrl(post);
+  const postEmbedAvailable = embedStatus.get(post.post_url);
   const canPrev = current > 0;
   const canNext = current < posts.length - 1;
   const embedLayout = useMemo(
@@ -690,27 +696,26 @@ function WeddingPostLightbox({
               className="relative overflow-hidden transition-[height] duration-200 ease-out"
               style={{ height: embedLayout.iframeHeight }}
             >
-              {!embedLoaded ? (
+              {!embedLoaded && !previewImage ? (
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-gray-50">
                   <div className="h-9 w-9 animate-pulse rounded-full bg-gray-200" />
                   <p className="text-xs text-gray-400">Loading post…</p>
                 </div>
               ) : null}
-              <div className={embedLoaded ? "opacity-100" : "opacity-0"}>
-                <InstagramEmbed
-                  key={post.post_url}
-                  postUrl={post.post_url}
-                  maxWidth={embedLayout.width}
-                  previewImageUrl={postPreviewImageUrl(post)}
-                  imageCount={Math.max(postImageCount(post), 1)}
-                  mediaWidth={post.media_width}
-                  mediaHeight={post.media_height}
-                  iframeHeight={embedLayout.iframeHeight}
-                  scrollIframe={embedLayout.scrollIframe}
-                  lightboxMedia
-                  onLoad={() => setEmbedLoaded(true)}
-                />
-              </div>
+              <InstagramEmbed
+                key={post.post_url}
+                postUrl={post.post_url}
+                maxWidth={embedLayout.width}
+                previewImageUrl={previewImage}
+                embedAvailable={postEmbedAvailable}
+                imageCount={Math.max(postImageCount(post), 1)}
+                mediaWidth={post.media_width}
+                mediaHeight={post.media_height}
+                iframeHeight={embedLayout.iframeHeight}
+                scrollIframe={embedLayout.scrollIframe}
+                lightboxMedia
+                onLoad={() => setEmbedLoaded(true)}
+              />
             </div>
           </div>
         </div>
@@ -732,9 +737,15 @@ function WeddingPostLightbox({
 function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [windowStart, setWindowStart] = useState(0);
+  const [embedStatus, setEmbedStatus] = useState<Map<string, boolean>>(new Map());
 
   const pageSize = WEDDING_VISIBLE;
   const canPage = posts.length > pageSize;
+
+  useEffect(() => {
+    if (posts.length === 0) return;
+    prefetchEmbedStatuses(posts.map((post) => post.post_url)).then(setEmbedStatus);
+  }, [posts]);
 
   useEffect(() => {
     if (posts.length === 0 || lightboxIndex != null || !canPage) return;
@@ -796,7 +807,11 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
           >
             {posts.map((post, i) => (
               <div key={post.post_url} className="shrink-0" style={{ width: "var(--wedding-card)" }}>
-                <WeddingEmbedGridCard post={post} onClick={() => setLightboxIndex(i)} />
+                <WeddingEmbedGridCard
+                  post={post}
+                  embedAvailable={embedStatus.get(post.post_url)}
+                  onClick={() => setLightboxIndex(i)}
+                />
               </div>
             ))}
           </div>
@@ -843,6 +858,7 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
         <WeddingPostLightbox
           posts={posts}
           startIndex={lightboxIndex}
+          embedStatus={embedStatus}
           onClose={() => setLightboxIndex(null)}
         />
       )}
@@ -1137,6 +1153,12 @@ function VenueDetailModal({
       .then((data) => setDetail(data))
       .finally(() => setLoading(false));
   }, [venueId]);
+
+  useEffect(() => {
+    const posts = detail?.realWeddings;
+    if (!posts?.length) return;
+    prefetchEmbedStatuses(posts.map((post) => post.post_url));
+  }, [detail?.realWeddings]);
 
   useEffect(() => {
     setShowStickyTitle(false);
