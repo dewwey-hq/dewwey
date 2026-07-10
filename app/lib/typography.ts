@@ -1,5 +1,5 @@
-/** Fraunces — large marketing headlines only (wonk softened in globals.css). */
-export const displayHeadingClassName = "font-heading font-medium";
+/** Large hero / section headlines. */
+export const displayHeadingClassName = "font-sans font-semibold tracking-tight";
 
-/** DM Sans — UI titles, card names, nav, and body-sized headings. */
+/** Card titles, nav, and smaller headings. */
 export const uiHeadingClassName = "font-sans font-medium";
