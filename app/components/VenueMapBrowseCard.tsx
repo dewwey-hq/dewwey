@@ -1,11 +1,32 @@
 "use client";
 
-import { Star } from "lucide-react";
-import { formatCount } from "@/app/lib/format-address";
+import VenueRating from "./VenueRating";
+import { headingClassName } from "@/app/lib/typography";
 import VenuePhotoCarousel from "./VenuePhotoCarousel";
 import type { MapVenueCard } from "./venues-browse-types";
 
-const playfair = { fontFamily: "'Playfair Display', serif", fontWeight: 500 } as const;
+/** Preview selection border: "rose" (light) | "black" | "gray" */
+const SELECTED_BORDER = "rose" as const;
+
+const SELECTED_CHROME = {
+  black: {
+    ring: "ring-2 ring-gray-900",
+    shadow: "shadow-[0_10px_32px_rgba(15,23,42,0.14)]",
+    accent: "bg-gray-900",
+  },
+  rose: {
+    ring: "ring-2 ring-rose-300",
+    shadow: "shadow-[0_10px_32px_rgba(251,113,133,0.16)]",
+    accent: "bg-rose-400",
+  },
+  gray: {
+    ring: "ring-2 ring-gray-300",
+    shadow: "shadow-[0_10px_32px_rgba(15,23,42,0.10)]",
+    accent: "bg-gray-400",
+  },
+} as const;
+
+const selectedChrome = SELECTED_CHROME[SELECTED_BORDER];
 
 export default function VenueMapBrowseCard({
   venue,
@@ -31,7 +52,12 @@ export default function VenueMapBrowseCard({
   return (
     <div
       ref={listRef}
-      className="cursor-pointer rounded-[1.25rem]"
+      aria-current={active ? "true" : undefined}
+      className={`cursor-pointer overflow-hidden rounded-xl bg-white transition-all duration-200 ${
+        active
+          ? `${selectedChrome.shadow} ${selectedChrome.ring}`
+          : "hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)]"
+      }`}
       onMouseEnter={onHover}
       onMouseLeave={onHoverEnd}
       onClick={() => {
@@ -39,35 +65,47 @@ export default function VenueMapBrowseCard({
         onOpen();
       }}
     >
-      <VenuePhotoCarousel
-        photos={venue.photoUrls}
-        alt={venue.name}
-        saved={saved}
-        styleLabel={venue.styleLabel || undefined}
-        onToggleSave={onToggleSave}
-      />
-      <div
-        className={`pt-2.5 transition-colors duration-200 ${
-          active ? "mt-2.5 rounded-xl bg-[#fdf8f5] px-3 py-2.5 ring-1 ring-black/[0.06]" : ""
-        }`}
-      >
+      <div className="relative">
+        <VenuePhotoCarousel
+          photos={venue.photoUrls}
+          alt={venue.name}
+          aspectClass="aspect-[3/2]"
+          roundedClass="rounded-none"
+          saved={saved}
+          largeSaveAction
+          onToggleSave={onToggleSave}
+        />
+        {active ? (
+          <span
+            aria-hidden
+            className={`pointer-events-none absolute inset-y-3 left-0 w-1 rounded-r-full ${selectedChrome.accent}`}
+          />
+        ) : null}
+      </div>
+      <div className="px-3 pt-2.5 pb-2.5">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="min-w-0 flex-1 text-lg font-medium leading-snug text-gray-900" style={playfair}>
-            {venue.name}
-          </h3>
-          {venue.displayRating > 0 ? (
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-1 gap-y-0.5 text-sm font-medium text-gray-800">
-              <Star size={14} className="fill-rose-400 text-rose-400" />
-              <span>{venue.displayRating.toFixed(1)}</span>
-              {venue.displayReviews > 0 ? (
-                <span className="text-xs font-normal text-gray-400">
-                  ({formatCount(venue.displayReviews)} reviews)
-                </span>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="min-w-0 flex-1">
+            <h3
+              className={`text-[17px] leading-snug ${headingClassName} ${
+                active ? "text-gray-950" : "text-gray-900"
+              }`}
+            >
+              {venue.name}
+            </h3>
+            <p
+              className={`mt-1 text-sm ${
+                active ? "text-gray-600" : "text-gray-500"
+              }`}
+            >
+              {venue.displayAddress}
+            </p>
+          </div>
+          <VenueRating
+            rating={venue.displayRating}
+            reviews={venue.displayReviews}
+            showReviewLabel
+          />
         </div>
-        <p className="mt-1.5 text-sm text-gray-500">{venue.displayAddress}</p>
       </div>
     </div>
   );

@@ -105,6 +105,16 @@ export default function MapVenueFloatingPopup({
     return () => ro.disconnect();
   }, [venue.id]);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (document.querySelector('[data-venue-detail-modal="true"]')) return;
+      onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   if (!pinPixel || !overlayRoot.current || !map) return null;
 
   const containerW = map.getDiv().clientWidth;

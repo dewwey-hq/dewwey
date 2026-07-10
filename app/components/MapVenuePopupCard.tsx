@@ -2,10 +2,9 @@
 
 import { Star } from "lucide-react";
 import { formatCount } from "@/app/lib/format-address";
+import { headingClassName } from "@/app/lib/typography";
 import VenuePhotoCarousel from "./VenuePhotoCarousel";
 import type { MapVenueCard } from "./venues-browse-types";
-
-const playfair = { fontFamily: "'Playfair Display', serif", fontWeight: 500 } as const;
 
 export default function MapVenuePopupCard({
   venue,
@@ -21,7 +20,18 @@ export default function MapVenuePopupCard({
   onOpen: () => void;
 }) {
   return (
-    <div className="w-[min(300px,calc(100vw-2rem))] overflow-hidden rounded-2xl bg-white shadow-[0_8px_28px_rgba(0,0,0,0.18)]">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="w-[min(300px,calc(100vw-2rem))] cursor-pointer overflow-hidden rounded-2xl bg-white shadow-[0_8px_28px_rgba(0,0,0,0.18)] transition-colors hover:bg-gray-50/80"
+    >
       <VenuePhotoCarousel
         photos={venue.photoUrls}
         alt={venue.name}
@@ -29,17 +39,13 @@ export default function MapVenuePopupCard({
         roundedClass="rounded-t-2xl rounded-b-none"
         showClose
         saved={saved}
-        styleLabel={venue.styleLabel || undefined}
+        largeSaveAction
         onToggleSave={onToggleSave}
         onClose={onClose}
       />
-      <button
-        type="button"
-        onClick={onOpen}
-        className="w-full rounded-b-2xl bg-white px-4 py-3.5 text-left transition-colors hover:bg-gray-50"
-      >
+      <div className="rounded-b-2xl bg-white px-4 py-3.5 text-left">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="min-w-0 flex-1 text-lg font-medium leading-snug text-gray-900" style={playfair}>
+          <h3 className={`min-w-0 flex-1 text-lg leading-snug text-gray-900 ${headingClassName}`}>
             {venue.name}
           </h3>
           {venue.displayRating > 0 ? (
@@ -55,7 +61,7 @@ export default function MapVenuePopupCard({
           ) : null}
         </div>
         <p className="mt-1.5 text-sm text-gray-500">{venue.displayAddress}</p>
-      </button>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 require("dotenv").config({ path: ".env.local" });
 const { Pool } = require("pg");
 const { ApifyClient } = require("apify-client");
+const { mediaDimensionsFromApify } = require("./lib/apify-media-dimensions");
 
 // Actor: apify/instagram-scraper
 // Docs: https://apify.com/apify/instagram-scraper
@@ -107,13 +108,15 @@ async function main() {
           ? item.images
           : (item.displayUrl ? [item.displayUrl] : null);
 
+        const { width: mediaWidth, height: mediaHeight } = mediaDimensionsFromApify(item);
+
         try {
           const result = await pool.query(
             `INSERT INTO instagram_posts
                (vendor_id, post_url, location_tag, caption_raw,
                 post_timestamp, image_url, likes_count, owner_username,
-                mentions, hashtags, post_type, images)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                mentions, hashtags, post_type, images, media_width, media_height)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              ON CONFLICT (post_url) DO NOTHING`,
             [
               vendor.id,
@@ -128,6 +131,8 @@ async function main() {
               item.hashtags?.length ? JSON.stringify(item.hashtags) : null,
               item.type || null,
               images ? JSON.stringify(images) : null,
+              mediaWidth,
+              mediaHeight,
             ]
           );
           if (result.rowCount > 0) {

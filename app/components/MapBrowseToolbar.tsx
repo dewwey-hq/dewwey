@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { ArrowUpDown, Map as MapIcon, Search, SlidersHorizontal } from "lucide-react";
+import { BRAND_NAME } from "@/app/lib/brand";
+import { headingClassName } from "@/app/lib/typography";
 import MapFilterDropdown from "./MapFilterDropdown";
 import MapDateFilterPill from "./MapDateFilterPill";
 
@@ -50,11 +52,8 @@ export default function MapBrowseToolbar({
       <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <span className="text-2xl text-rose-400">✦</span>
-          <span
-            className="hidden text-[17px] tracking-tight text-gray-900 sm:inline"
-            style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}
-          >
-            Dewy
+          <span className={`hidden text-[17px] tracking-tight text-gray-900 sm:inline ${headingClassName}`}>
+            {BRAND_NAME}
           </span>
         </Link>
 

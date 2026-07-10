@@ -177,7 +177,7 @@ async function getVendorDetail(vendorId) {
     }
 
     const { rows: weddingRows } = await pool.query(
-      `SELECT post_url, post_timestamp, mentions, likes_count, image_url, images, caption_raw
+      `SELECT post_url, post_timestamp, mentions, likes_count, image_url, images, caption_raw, post_type, media_width, media_height
        FROM instagram_posts
        WHERE vendor_id = $1
        ORDER BY post_timestamp DESC NULLS LAST
@@ -193,6 +193,9 @@ async function getVendorDetail(vendorId) {
       image_url: weddingPreviewUrl(row),
       images: weddingImages(row),
       caption: row.caption_raw || null,
+      post_type: row.post_type || null,
+      media_width: row.media_width ?? null,
+      media_height: row.media_height ?? null,
     }));
 
     const { rows: frequentlyWorksWith } = await pool.query(

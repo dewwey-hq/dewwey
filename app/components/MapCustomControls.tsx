@@ -25,7 +25,7 @@ export default function MapCustomControls({
           type="button"
           aria-label={expanded ? "Show venue list" : "Expand map"}
           onClick={onToggleExpanded}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-700 shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-colors hover:bg-gray-50"
+          className="hidden h-10 w-10 items-center justify-center rounded-full bg-white text-gray-700 shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-colors hover:bg-gray-50 lg:flex"
         >
           {expanded ? <Shrink size={18} strokeWidth={2} /> : <Expand size={18} strokeWidth={2} />}
         </button>

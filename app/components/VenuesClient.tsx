@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import InstagramEmbed, {
@@ -9,9 +9,15 @@ import InstagramEmbed, {
 import { prefetchEmbedStatuses } from "@/app/lib/instagram-embed-status-cache";
 import { displayAddressFor, formatCount } from "@/app/lib/format-address";
 import { venueMatchesSearch } from "@/app/lib/venue-search";
+import { BRAND_EMAIL, BRAND_NAME } from "@/app/lib/brand";
+import { headingClassName } from "@/app/lib/typography";
+import { type MapBounds, venuesInMapBounds } from "@/app/lib/map-bounds";
 import VenuesMapPanel from "./VenuesMapPanel";
 import MapBrowseToolbar from "./MapBrowseToolbar";
+import MapBrowsePanelToggle, { type MapBrowseMobilePanel } from "./MapBrowsePanelToggle";
 import VenueMapBrowseCard from "./VenueMapBrowseCard";
+import CategoryIcon, { resolveCategoryIcon } from "./CategoryIcon";
+import VenueRating from "./VenueRating";
 import {
   ArrowUpDown,
   Check,
@@ -26,7 +32,6 @@ import {
   Search,
   Share2,
   SlidersHorizontal,
-  Sparkles,
   Star,
   UtensilsCrossed,
   Users,
@@ -132,20 +137,6 @@ const API_PHOTO_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
 const BUDGETS = ["Any", "$", "$$", "$$$", "$$$$"];
 const GUEST_FILTERS = ["Any", "50+", "100+", "150+", "200+"];
 
-const CATEGORY_ICONS: Record<string, string> = {
-  venue: "/icons/wedding-location-svgrepo-com.svg",
-  wedding_venue: "/icons/wedding-location-svgrepo-com.svg",
-  event_venue: "/icons/wedding-location-svgrepo-com.svg",
-  banquet_hall: "/icons/wedding-location-svgrepo-com.svg",
-  historical_landmark: "/icons/wedding-location-svgrepo-com.svg",
-  hotel: "/icons/wedding-location-svgrepo-com.svg",
-  caterer: "/icons/tray-plate-svgrepo-com.svg",
-  florist: "/icons/bouquet-svgrepo-com.svg",
-  photographer: "/icons/photo-camera-photograph-svgrepo-com.svg",
-  dj_music: "/icons/music-svgrepo-com.svg",
-  hair_makeup: "/icons/make-up-svgrepo-com.svg",
-};
-
 const CATEGORY_LABELS: Record<string, string> = {
   venue: "Venue",
   wedding_venue: "Wedding Venue",
@@ -200,9 +191,7 @@ function locationFor(v: VenueVendor): string {
 }
 
 function categoryIcon(category: string | null, primaryType?: string | null): string {
-  if (category && CATEGORY_ICONS[category]) return CATEGORY_ICONS[category];
-  if (primaryType && CATEGORY_ICONS[primaryType]) return CATEGORY_ICONS[primaryType];
-  return "/icons/wedding-location-svgrepo-com.svg";
+  return resolveCategoryIcon(category, primaryType);
 }
 
 function categoryLabel(category: string | null, primaryType?: string | null): string {
@@ -222,36 +211,6 @@ function googleMapsUrl(v: VenueVendor): string {
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   }
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress(v))}`;
-}
-
-function CategoryIcon({
-  category,
-  primaryType,
-  size = 36,
-  large = false,
-  compact = false,
-}: {
-  category?: string | null;
-  primaryType?: string | null;
-  size?: number;
-  large?: boolean;
-  compact?: boolean;
-}) {
-  const src = categoryIcon(category ?? null, primaryType);
-  const imgSize = large ? 48 : compact ? 18 : size;
-  return (
-    <div
-      className={`flex shrink-0 items-center justify-center border border-black/[0.08] bg-[#fdf8f5] ${
-        large
-          ? "w-[4.5rem] self-stretch rounded-2xl"
-          : compact
-            ? "h-7 w-7 rounded-lg"
-            : "h-14 w-14 rounded-2xl"
-      }`}
-    >
-      <Image src={src} alt="" width={imgSize} height={imgSize} className="object-contain" />
-    </div>
-  );
 }
 
 function aboutFor(v: VenueVendor): string | null {
@@ -295,8 +254,6 @@ function buildVenueCards(venues: VenueVendor[]): VenueCard[] {
 
 // ── Venue Detail Modal ───────────────────────────────────────────────────────
 
-const playfairHeading = { fontFamily: "'Playfair Display', serif", fontWeight: 500 } as const;
-
 function VenueSectionHeading({
   title,
   subtitle,
@@ -308,7 +265,7 @@ function VenueSectionHeading({
 }) {
   return (
     <div className={`mb-3 ${className}`}>
-      <h3 className="text-lg leading-snug text-gray-900" style={playfairHeading}>
+      <h3 className={`text-lg leading-snug text-gray-900 ${headingClassName}`}>
         {title}
       </h3>
       {subtitle ? <p className="mt-1 text-sm text-gray-500">{subtitle}</p> : null}
@@ -1208,10 +1165,12 @@ function VenueDetailModal({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || hasVenueOverlay()) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
       onClose();
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
   }, [onClose]);
 
   const scrollToInquiry = () => {
@@ -1232,6 +1191,7 @@ function VenueDetailModal({
 
   return (
     <div
+      data-venue-detail-modal="true"
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:p-4"
       onClick={onClose}
     >
@@ -1309,10 +1269,7 @@ function VenueDetailModal({
                     <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-rose-500">
                       {typeLabel}
                     </p>
-                    <h2
-                      className="text-2xl leading-tight text-gray-900 sm:text-3xl"
-                      style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}
-                    >
+                    <h2 className={`text-2xl leading-tight text-gray-900 sm:text-3xl ${headingClassName}`}>
                       {v.name}
                     </h2>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -1646,7 +1603,9 @@ export default function VenuesClient({
   const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
   const [mapSelectedId, setMapSelectedId] = useState<number | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
+  const [mapMobilePanel, setMapMobilePanel] = useState<MapBrowseMobilePanel>("list");
   const [mapHoveredPinId, setMapHoveredPinId] = useState<number | null>(null);
+  const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const [mapListPage, setMapListPage] = useState(1);
   const [savedVenueIds, setSavedVenueIds] = useState<Set<number>>(new Set());
   const listItemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -1678,14 +1637,37 @@ export default function VenuesClient({
       });
   }, [budget, query, sortBy, style, venueCards]);
 
-  const mapListTotalPages = Math.max(1, Math.ceil(filteredVenues.length / MAP_LIST_PAGE_SIZE));
+  const handleMapBoundsChange = useCallback((bounds: MapBounds) => {
+    setMapBounds(bounds);
+  }, []);
+
+  const mapAreaVenues = useMemo(
+    () => venuesInMapBounds(filteredVenues, mapBounds, mapSelectedId),
+    [filteredVenues, mapBounds, mapSelectedId],
+  );
+
+  const mapListTotalPages = Math.max(1, Math.ceil(mapAreaVenues.length / MAP_LIST_PAGE_SIZE));
 
   const paginatedMapVenues = useMemo(() => {
     const start = (mapListPage - 1) * MAP_LIST_PAGE_SIZE;
-    return filteredVenues.slice(start, start + MAP_LIST_PAGE_SIZE);
-  }, [filteredVenues, mapListPage]);
+    return mapAreaVenues.slice(start, start + MAP_LIST_PAGE_SIZE);
+  }, [mapAreaVenues, mapListPage]);
 
   const comparedVenues = venueCards.filter((v) => compareIds.has(v.place_id));
+
+  const focusMapList = () => {
+    mapListScrollRef.current?.focus({ preventScroll: true });
+  };
+
+  const handleMapSelectVenue = (id: number | null) => {
+    setMapSelectedId(id);
+    if (id === null) {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      focusMapList();
+    }
+  };
 
   const toggleCompare = (placeId: string) => {
     setCompareIds((current) => {
@@ -1702,6 +1684,27 @@ export default function VenuesClient({
   useEffect(() => {
     setMapListPage(1);
   }, [query, style, budget]);
+
+  useEffect(() => {
+    if (mapSelectedId == null) return;
+    const index = mapAreaVenues.findIndex((v) => v.id === mapSelectedId);
+    if (index >= 0) {
+      setMapListPage(Math.floor(index / MAP_LIST_PAGE_SIZE) + 1);
+    }
+    // Jump to the selected venue's page when selection changes — not on every map pan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mapAreaVenues read at selection time only
+  }, [mapSelectedId]);
+
+  useEffect(() => {
+    if (viewMode !== "map") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const resetMobilePanel = () => {
+      if (mq.matches) setMapMobilePanel("list");
+    };
+    resetMobilePanel();
+    mq.addEventListener("change", resetMobilePanel);
+    return () => mq.removeEventListener("change", resetMobilePanel);
+  }, [viewMode]);
 
   useEffect(() => {
     if (viewMode !== "map") return;
@@ -1726,14 +1729,6 @@ export default function VenuesClient({
 
   useEffect(() => {
     if (mapSelectedId == null) return;
-    const index = filteredVenues.findIndex((v) => v.id === mapSelectedId);
-    if (index >= 0) {
-      setMapListPage(Math.floor(index / MAP_LIST_PAGE_SIZE) + 1);
-    }
-  }, [mapSelectedId, filteredVenues]);
-
-  useEffect(() => {
-    if (mapSelectedId == null) return;
     requestAnimationFrame(() => {
       listItemRefs.current.get(mapSelectedId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
@@ -1754,7 +1749,7 @@ export default function VenuesClient({
 
   if (viewMode === "map") {
     return (
-      <div className="flex h-[100dvh] flex-col overflow-hidden bg-white font-['Inter',sans-serif] text-gray-900">
+      <div className="flex h-[100dvh] flex-col overflow-hidden bg-white font-sans text-gray-900">
         <MapBrowseToolbar
           query={query}
           onQueryChange={setQuery}
@@ -1778,20 +1773,36 @@ export default function VenuesClient({
           {/* List scrolls full-width so the scrollbar sits on the page edge; content stays left */}
           <div
             ref={mapListScrollRef}
-            className={`min-h-0 flex-1 overflow-y-auto lg:pointer-events-none lg:absolute lg:inset-0 lg:z-[1] ${
-              mapExpanded ? "hidden" : ""
-            }`}
+            tabIndex={-1}
+            className={`min-h-0 flex-1 overflow-y-auto outline-none lg:pointer-events-none lg:absolute lg:inset-0 lg:z-[1] ${
+              mapMobilePanel === "map" ? "hidden lg:block" : ""
+            } ${mapExpanded ? "lg:hidden" : ""}`}
           >
             {/* Far-right gutter: scroll works here without hitting the map */}
             <div
               aria-hidden
-              className="hidden lg:pointer-events-auto lg:absolute lg:inset-y-0 lg:right-0 lg:z-10 lg:w-14 xl:w-16"
+              className="hidden lg:pointer-events-auto lg:absolute lg:inset-y-0 lg:right-0 lg:z-10 lg:w-10"
             />
-            <div className="px-4 py-4 sm:px-6 lg:pointer-events-auto lg:w-[58%] lg:max-w-[820px] lg:px-6 lg:pr-5 lg:pb-8">
-              <p className="mb-5 text-lg font-bold text-gray-900">
-                {filteredVenues.length} venues within map area
+            {/* Narrow seam — scroll the list when the cursor is between cards and map */}
+            <div
+              aria-hidden
+              className="hidden lg:pointer-events-auto lg:absolute lg:inset-y-0 lg:left-[56%] lg:z-10 lg:w-3 lg:-translate-x-1/2"
+            />
+            <div className="@container px-4 py-4 pb-24 sm:px-6 lg:pointer-events-auto lg:w-[56%] lg:px-6 lg:pr-4 lg:pb-8">
+              <p className="mb-4 text-base font-semibold text-gray-900">
+                {mapAreaVenues.length === 1
+                  ? "1 venue in this area"
+                  : `${mapAreaVenues.length} venues in this area`}
               </p>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
+              {paginatedMapVenues.length === 0 ? (
+                <div className="rounded-2xl border border-black/[0.06] bg-gray-50 px-5 py-10 text-center">
+                  <p className="text-sm font-medium text-gray-900">No venues in this map area</p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Try zooming out, moving the map, or adjusting your filters.
+                  </p>
+                </div>
+              ) : (
+              <div className="grid grid-cols-1 gap-x-3 gap-y-6 @md:grid-cols-2 @3xl:grid-cols-3">
                 {paginatedMapVenues.map((venue) => (
                   <VenueMapBrowseCard
                     key={venue.id}
@@ -1810,38 +1821,52 @@ export default function VenuesClient({
                   />
                 ))}
               </div>
-              <MapBrowsePagination
-                currentPage={mapListPage}
-                totalPages={mapListTotalPages}
-                onPageChange={goToMapListPage}
-              />
+              )}
+              {mapAreaVenues.length > 0 ? (
+                <MapBrowsePagination
+                  currentPage={mapListPage}
+                  totalPages={mapListTotalPages}
+                  onPageChange={goToMapListPage}
+                />
+              ) : null}
             </div>
           </div>
 
           {/* Map stays fixed on screen while the list scrolls (desktop: pinned right) */}
           <div
-            className={`relative shrink-0 lg:absolute lg:inset-y-0 lg:z-0 lg:min-h-0 lg:transition-[left,padding] lg:duration-300 ${
+            className={`relative min-h-0 lg:absolute lg:inset-y-0 lg:z-0 lg:min-h-0 lg:transition-[left,padding] lg:duration-300 ${
+              mapMobilePanel === "list" ? "hidden lg:block" : "flex min-h-0 flex-1 flex-col"
+            } ${
               mapExpanded
-                ? "min-h-0 flex-1 lg:inset-x-0 lg:left-0 lg:p-4 lg:px-6"
-                : "min-h-[38vh] lg:left-[58%] lg:right-14 lg:p-4 lg:pl-2 lg:pr-2 xl:right-16"
+                ? "lg:inset-x-0 lg:left-0 lg:p-4 lg:px-6"
+                : "lg:left-[56%] lg:right-10 lg:p-3 lg:pl-1 lg:pr-1"
             }`}
           >
-            <div className="h-full min-h-[38vh] overflow-hidden rounded-2xl border border-black/[0.08] shadow-sm lg:min-h-0">
+            <div
+              className={`h-full overflow-hidden rounded-2xl border border-black/[0.08] shadow-sm lg:min-h-0 ${
+                mapMobilePanel === "map" ? "min-h-0 flex-1" : ""
+              }`}
+            >
               <VenuesMapPanel
-                venues={filteredVenues}
+                venues={mapAreaVenues}
+                fitBoundsVenues={filteredVenues}
                 selectedId={mapSelectedId}
                 savedIds={savedVenueIds}
                 mapExpanded={mapExpanded}
+                mapLayoutKey={`${mapExpanded}-${mapMobilePanel}`}
                 hoveredPinId={mapHoveredPinId}
+                onBoundsChange={handleMapBoundsChange}
                 onHoverPin={setMapHoveredPinId}
                 onToggleMapExpanded={() => setMapExpanded((v) => !v)}
-                onSelectVenue={setMapSelectedId}
+                onSelectVenue={handleMapSelectVenue}
                 onOpenVenue={setSelectedVenueId}
                 onToggleSave={toggleSaveVenue}
               />
             </div>
           </div>
         </div>
+
+        <MapBrowsePanelToggle panel={mapMobilePanel} onPanelChange={setMapMobilePanel} />
 
         {selectedVenueId !== null && (
           <VenueDetailModal
@@ -1856,16 +1881,13 @@ export default function VenuesClient({
   }
 
   return (
-    <div className="min-h-screen bg-white font-['Inter',sans-serif] text-gray-900">
+    <div className="min-h-screen bg-white font-sans text-gray-900">
       <header className="sticky top-0 z-50 border-b border-black/[0.08] bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex shrink-0 items-center gap-2">
             <span className="text-2xl text-rose-400">✦</span>
-            <span
-              className="text-[17px] tracking-tight text-gray-900"
-              style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}
-            >
-              Dewy
+            <span className={`text-[17px] tracking-tight text-gray-900 ${headingClassName}`}>
+              {BRAND_NAME}
             </span>
           </Link>
 
@@ -1913,10 +1935,7 @@ export default function VenuesClient({
               <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-rose-500">
                 Chicago venues
               </p>
-              <h1
-                className="mb-5 text-5xl leading-[1.05] tracking-tight text-gray-900 sm:text-6xl"
-                style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}
-              >
+              <h1 className={`mb-5 text-5xl leading-[1.05] tracking-tight text-gray-900 sm:text-6xl ${headingClassName}`}>
                 Find the room that feels like your wedding.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-gray-500">
@@ -2021,18 +2040,15 @@ export default function VenuesClient({
           </div>
         </section>
 
-        {/* ── Venue grid + sidebar ── */}
-        <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
+        {/* ── Venue grid ── */}
+        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div>
             <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
               <div>
                 <p className="text-sm text-gray-400">
                   {filteredVenues.length} of {total} venues · page {currentPage} of {totalPages}
                 </p>
-                <h2
-                  className="mt-1 text-3xl text-gray-900"
-                  style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}
-                >
+                <h2 className={`mt-1 text-3xl text-gray-900 ${headingClassName}`}>
                   Chicago venue options
                 </h2>
               </div>
@@ -2090,22 +2106,19 @@ export default function VenuesClient({
                     {/* Info */}
                     <div className="p-5">
                       <div className="mb-2 flex items-start justify-between gap-4">
-                        <div>
-                          <h3 className="text-lg font-medium leading-snug text-gray-900">{venue.name}</h3>
-                          <p className="mt-1 flex items-center gap-1 text-sm text-gray-400">
-                            <MapPin size={14} />
-                            {venue.location}
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-lg font-medium leading-snug text-gray-900">
+                            {venue.name}
+                          </h3>
+                          <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                            <MapPin size={14} className="shrink-0 text-gray-400" />
+                            {venue.displayAddress}
                           </p>
                         </div>
-                        {venue.displayRating > 0 && (
-                          <div className="flex shrink-0 items-center gap-1 text-sm font-medium text-gray-800">
-                            <Star size={14} className="fill-amber-400 text-amber-400" />
-                            {venue.displayRating.toFixed(1)}
-                            {venue.displayReviews > 0 && (
-                              <span className="text-xs font-normal text-gray-400">({formatCount(venue.displayReviews)})</span>
-                            )}
-                          </div>
-                        )}
+                        <VenueRating
+                          rating={venue.displayRating}
+                          reviews={venue.displayReviews}
+                        />
                       </div>
 
                       <div className="flex items-center justify-between border-t border-black/[0.06] pt-3">
@@ -2129,7 +2142,7 @@ export default function VenuesClient({
                             </span>
                           )}
                           <a
-                            href={`mailto:hello@dewy.com?subject=Claim listing: ${encodeURIComponent(venue.name)}`}
+                            href={`mailto:${BRAND_EMAIL}?subject=Claim listing: ${encodeURIComponent(venue.name)}`}
                             onClick={(e) => e.stopPropagation()}
                             className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
                           >
@@ -2145,33 +2158,6 @@ export default function VenuesClient({
 
             <Pagination currentPage={currentPage} totalPages={totalPages} />
           </div>
-
-          {/* ── Sidebar ── */}
-          <aside className="hidden lg:block">
-            <div className="sticky top-24 overflow-hidden rounded-[2rem] border border-black/[0.07] bg-[#fdf8f5] p-5">
-              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-gray-700">
-                <Sparkles size={16} className="text-rose-400" />
-                Planning view
-              </div>
-              <div className="rounded-[1.5rem] bg-white p-4 shadow-sm">
-                <div className="mb-4 h-44 rounded-[1.25rem] bg-[radial-gradient(circle_at_30%_30%,#fecdd3,transparent_24%),radial-gradient(circle_at_72%_55%,#fde68a,transparent_25%),linear-gradient(135deg,#f8fafc,#fdf2f8)]" />
-                <p className="text-sm font-medium text-gray-900">Map preview</p>
-                <p className="mt-1 text-sm leading-6 text-gray-500">
-                  A map can sit here next, but this keeps the first pass clean while you compare venue cards.
-                </p>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-                <div className="rounded-2xl bg-white p-4">
-                  <p className="text-2xl text-gray-900">{venueCards.length}</p>
-                  <p className="mt-1 text-xs text-gray-400">venues loaded</p>
-                </div>
-                <div className="rounded-2xl bg-white p-4">
-                  <p className="text-2xl text-gray-900">{compareIds.size}</p>
-                  <p className="mt-1 text-xs text-gray-400">comparing</p>
-                </div>
-              </div>
-            </div>
-          </aside>
         </section>
 
         {/* ── Compare section ── */}
@@ -2180,10 +2166,7 @@ export default function VenuesClient({
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
                 <p className="text-sm uppercase tracking-[0.22em] text-rose-300">Compare</p>
-                <h2
-                  className="mt-2 text-3xl"
-                  style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}
-                >
+                <h2 className={`mt-2 text-3xl ${headingClassName}`}>
                   Your venue shortlist
                 </h2>
               </div>

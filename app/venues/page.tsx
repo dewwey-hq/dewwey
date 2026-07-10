@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BRAND_NAME } from "../lib/brand";
 import VenuesClient, { type VenueVendor } from "../components/VenuesClient";
 
 const API_URL = "https://kfln0omb31.execute-api.us-east-1.amazonaws.com/vendors";
@@ -6,7 +7,7 @@ const PAGE_SIZE = 20;
 const MAP_FETCH_LIMIT = 100;
 
 export const metadata: Metadata = {
-  title: "Chicago Wedding Venues | Dewy",
+  title: `Chicago Wedding Venues | ${BRAND_NAME}`,
   description:
     "Browse and compare Chicago wedding venues by style, guest count, budget, and location.",
 };

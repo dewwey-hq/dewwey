@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Search, ChevronDown, Star, MapPin, Heart, Menu, X } from "lucide-react";
+import { BRAND_NAME } from "@/app/lib/brand";
+import { headingClassName } from "@/app/lib/typography";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -83,7 +85,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
   };
 
   return (
-    <div className="min-h-screen bg-white font-['Inter',sans-serif]">
+    <div className="min-h-screen bg-white font-sans">
 
       {/* ── NAV ── */}
       <header className="sticky top-0 z-50 bg-white border-b border-black/[0.08]">
@@ -93,8 +95,8 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
             {/* Logo */}
             <a href="#" className="flex items-center gap-2 shrink-0">
               <span className="text-rose-400 text-2xl">✦</span>
-              <span className="text-[17px] tracking-tight text-gray-900" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}>
-                Dewy
+              <span className={`text-[17px] tracking-tight text-gray-900 ${headingClassName}`}>
+                {BRAND_NAME}
               </span>
             </a>
 
@@ -163,13 +165,10 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 text-center">
-          <p className="text-rose-500 text-sm tracking-widest uppercase mb-4" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 500 }}>
+          <p className="mb-4 text-sm font-medium tracking-widest text-rose-500 uppercase">
             Chicago&apos;s Wedding Marketplace
           </p>
-          <h1
-            className="text-5xl sm:text-6xl lg:text-7xl text-gray-900 mb-5 leading-[1.1] tracking-tight"
-            style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}
-          >
+          <h1 className={`mb-5 text-5xl leading-[1.1] tracking-tight text-gray-900 sm:text-6xl lg:text-7xl ${headingClassName}`}>
             Plan Your Perfect
             <br />
             <span className="italic text-rose-400">Chicago</span> Wedding
@@ -237,7 +236,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
       {/* ── CATEGORY CARDS ── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="mb-10">
-          <h2 className="text-3xl text-gray-900 mb-2" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}>
+          <h2 className={`mb-2 text-3xl text-gray-900 ${headingClassName}`}>
             Browse by Category
           </h2>
           <p className="text-gray-500 text-sm">Everything you need for your Chicago wedding, all in one place.</p>
@@ -267,7 +266,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-10">
             <div>
-              <h2 className="text-3xl text-gray-900 mb-2" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}>
+              <h2 className={`mb-2 text-3xl text-gray-900 ${headingClassName}`}>
                 Featured Vendors
               </h2>
               <p className="text-gray-500 text-sm">Highly-rated vendors loved by Chicago couples.</p>
@@ -382,7 +381,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
             { stat: "4.9 / 5", label: "Average vendor rating" },
           ].map(({ stat, label }) => (
             <div key={stat}>
-              <div className="text-3xl text-gray-900 mb-1" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}>{stat}</div>
+              <div className={`mb-1 text-3xl text-gray-900 ${headingClassName}`}>{stat}</div>
               <div className="text-sm text-gray-500">{label}</div>
             </div>
           ))}
@@ -396,7 +395,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-rose-400 text-xl">✦</span>
-                <span className="text-white text-[16px]" style={{ fontFamily: "'Playfair Display', serif" }}>Dewy</span>
+                <span className={`text-[16px] text-white ${headingClassName}`}>{BRAND_NAME}</span>
               </div>
               <p className="text-sm leading-relaxed text-gray-500">
                 Chicago&apos;s most trusted wedding vendor marketplace. Find, compare, and book with confidence.
@@ -422,7 +421,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
           </div>
 
           <div className="pt-8 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-600">
-            <span>© 2026 Dewy. All rights reserved.</span>
+            <span>© 2026 {BRAND_NAME}. All rights reserved.</span>
             <span>Made with ♥ in Chicago, IL</span>
           </div>
         </div>

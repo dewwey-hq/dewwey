@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { APIProvider, Map, Marker, useMap } from "@vis.gl/react-google-maps";
 import MapCustomControls from "./MapCustomControls";
 import MapVenueFloatingPopup from "./MapVenueFloatingPopup";
+import { MapBoundsReporter } from "./MapSyncHandlers";
+import type { MapBounds } from "@/app/lib/map-bounds";
 import type { MapVenueCard } from "./venues-browse-types";
 import type { VenueVendor } from "./VenuesClient";
 
@@ -25,11 +27,24 @@ export function venueCoords(v: VenueVendor): { lat: number; lng: number } | null
   return { lat, lng };
 }
 
-function MapVenueBoundsHandler({ venueKey, venues }: { venueKey: string; venues: MapVenueCard[] }) {
+function MapVenueBoundsHandler({
+  venueKey,
+  venues,
+  userMovedMapRef,
+}: {
+  venueKey: string;
+  venues: MapVenueCard[];
+  userMovedMapRef: MutableRefObject<boolean>;
+}) {
   const map = useMap();
 
   useEffect(() => {
+    userMovedMapRef.current = false;
+  }, [venueKey, userMovedMapRef]);
+
+  useEffect(() => {
     if (!map || typeof google === "undefined" || !venueKey) return;
+    if (userMovedMapRef.current) return;
 
     const coords = venues
       .map(venueCoords)
@@ -56,12 +71,12 @@ function MapVenueBoundsHandler({ venueKey, venues }: { venueKey: string; venues:
 
     return () => window.cancelAnimationFrame(id);
     // Only refit when the visible venue set changes — not on hover re-renders.
-  }, [map, venueKey]);
+  }, [map, venueKey, venues, userMovedMapRef]);
 
   return null;
 }
 
-function MapResizeHandler({ expanded }: { expanded: boolean }) {
+function MapResizeHandler({ layoutKey }: { layoutKey: string }) {
   const map = useMap();
 
   useEffect(() => {
@@ -70,7 +85,7 @@ function MapResizeHandler({ expanded }: { expanded: boolean }) {
       google.maps.event.trigger(map, "resize");
     });
     return () => window.cancelAnimationFrame(id);
-  }, [map, expanded]);
+  }, [map, layoutKey]);
 
   return null;
 }
@@ -119,10 +134,13 @@ function VenuePinMarker({
 
 export default function VenuesMapPanel({
   venues,
+  fitBoundsVenues,
   selectedId,
   savedIds,
   mapExpanded,
+  mapLayoutKey,
   hoveredPinId,
+  onBoundsChange,
   onHoverPin,
   onToggleMapExpanded,
   onSelectVenue,
@@ -130,10 +148,13 @@ export default function VenuesMapPanel({
   onToggleSave,
 }: {
   venues: MapVenueCard[];
+  fitBoundsVenues: MapVenueCard[];
   selectedId: number | null;
   savedIds: Set<number>;
   mapExpanded: boolean;
+  mapLayoutKey: string;
   hoveredPinId: number | null;
+  onBoundsChange: (bounds: MapBounds) => void;
   onHoverPin: (id: number | null) => void;
   onToggleMapExpanded: () => void;
   onSelectVenue: (id: number | null) => void;
@@ -142,14 +163,16 @@ export default function VenuesMapPanel({
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const popupOverlayRef = useRef<HTMLDivElement>(null);
+  const userMovedMapRef = useRef(false);
   const mappable = useMemo(() => venues.filter((v) => venueCoords(v)), [venues]);
+  const fitMappable = useMemo(() => fitBoundsVenues.filter((v) => venueCoords(v)), [fitBoundsVenues]);
   const mappableKey = useMemo(
     () =>
-      mappable
+      fitMappable
         .map((v) => v.id)
         .sort((a, b) => a - b)
         .join(","),
-    [mappable],
+    [fitMappable],
   );
   const selected = mappable.find((v) => v.id === selectedId) ?? null;
   const selectedPos = selected ? venueCoords(selected) : null;
@@ -160,7 +183,10 @@ export default function VenuesMapPanel({
         <div>
           <p className="text-sm font-medium text-gray-900">Map not configured</p>
           <p className="mt-1 text-sm text-gray-500">
-            Add <code className="text-xs">GOOGLE_MAPS_API_KEY</code> to your environment.
+            Add{" "}
+            <code className="text-xs">GOOGLE_MAPS_API_KEY</code> or{" "}
+            <code className="text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> in Vercel, then
+            redeploy.
           </p>
         </div>
       </div>
@@ -182,8 +208,18 @@ export default function VenuesMapPanel({
           style={{ width: "100%", height: "100%" }}
         >
           <MapCustomControls expanded={mapExpanded} onToggleExpanded={onToggleMapExpanded} />
-          <MapResizeHandler expanded={mapExpanded} />
-          <MapVenueBoundsHandler venueKey={mappableKey} venues={mappable} />
+          <MapResizeHandler layoutKey={mapLayoutKey} />
+          <MapBoundsReporter
+            onBoundsChange={onBoundsChange}
+            onUserMove={() => {
+              userMovedMapRef.current = true;
+            }}
+          />
+          <MapVenueBoundsHandler
+            venueKey={mappableKey}
+            venues={fitMappable}
+            userMovedMapRef={userMovedMapRef}
+          />
         {mappable.map((venue) => (
           <VenuePinMarker
             key={venue.id}

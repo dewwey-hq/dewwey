@@ -11,6 +11,7 @@ export default function VenuePhotoCarousel({
   showClose = false,
   saved = false,
   styleLabel,
+  largeSaveAction = false,
   onToggleSave,
   onClose,
   onInteract,
@@ -22,6 +23,7 @@ export default function VenuePhotoCarousel({
   showClose?: boolean;
   saved?: boolean;
   styleLabel?: string;
+  largeSaveAction?: boolean;
   onToggleSave?: () => void;
   onClose?: () => void;
   onInteract?: (e: React.MouseEvent) => void;
@@ -93,10 +95,12 @@ export default function VenuePhotoCarousel({
                 e.stopPropagation();
                 onToggleSave();
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm transition-colors hover:bg-white"
+              className={`flex items-center justify-center rounded-full bg-white/90 shadow-sm transition-colors hover:bg-white ${
+                largeSaveAction ? "h-9 w-9" : "h-8 w-8"
+              }`}
             >
               <Heart
-                size={16}
+                size={largeSaveAction ? 20 : 16}
                 className={saved ? "fill-rose-500 text-rose-500" : "text-gray-700"}
               />
             </button>
