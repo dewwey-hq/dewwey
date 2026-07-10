@@ -5,6 +5,7 @@ import {
   getCachedEmbedStatus,
   setCachedEmbedStatus,
 } from "@/app/lib/instagram-embed-status-cache";
+import WeddingPostFallback from "./WeddingPostFallback";
 
 export function proxiedInstagramImageUrl(cdnUrl: string | null | undefined): string | null {
   if (!cdnUrl) return null;
@@ -265,62 +266,8 @@ export function computeLightboxEmbedLayout({
   return { width, iframeHeight, scrollIframe };
 }
 
-function InstagramPostImagePreview({
-  postUrl,
-  previewImageUrl,
-  height,
-  maxWidth,
-  compact,
-  className,
-  onLoad,
-}: {
-  postUrl: string;
-  previewImageUrl: string;
-  height: number;
-  maxWidth: number;
-  compact?: boolean;
-  className?: string;
-  onLoad?: () => void;
-}) {
-  const proxySrc = proxiedInstagramImageUrl(previewImageUrl);
-  const [failed, setFailed] = useState(false);
-
-  if (failed || !proxySrc) {
-    return (
-      <a
-        href={postUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={
-          className
-            ? `instagram-post-card flex flex-col items-center justify-center bg-[#fdf8f5] text-center ${className}`
-            : "instagram-post-card flex flex-col items-center justify-center bg-[#fdf8f5] text-center"
-        }
-        style={{ height, maxWidth: compact ? maxWidth : undefined }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/instagram-glyph.svg" alt="" className="h-6 w-6 opacity-50" />
-        <span className="mt-2 text-[11px] font-medium text-gray-500">View on Instagram</span>
-      </a>
-    );
-  }
-
-  return (
-    <div
-      className={className ? `instagram-post-card overflow-hidden ${className}` : "instagram-post-card overflow-hidden"}
-      style={{ height, maxWidth: compact ? maxWidth : undefined }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={proxySrc}
-        alt=""
-        className="h-full w-full object-cover"
-        onLoad={onLoad}
-        onError={() => setFailed(true)}
-      />
-    </div>
-  );
+function EmbedLoadingOverlay() {
+  return <div className="absolute inset-0 bg-white" aria-hidden />;
 }
 
 export default function InstagramEmbed({
@@ -339,6 +286,7 @@ export default function InstagramEmbed({
   mediaWidth,
   mediaHeight,
   embedAvailable: embedAvailableProp,
+  manageEmbedCheckExternally = false,
 }: {
   postUrl: string;
   caption?: string | null;
@@ -354,9 +302,12 @@ export default function InstagramEmbed({
   scrollIframe?: boolean;
   mediaWidth?: number | null;
   mediaHeight?: number | null;
-  /** When false, skip iframe and use scraped photo. Omit to load iframe optimistically. */
+  /** When false, use fallback instead of iframe. true = embed OK. undefined = still checking. */
   embedAvailable?: boolean;
+  /** Parent batch-prefetches embed status (carousel/lightbox). */
+  manageEmbedCheckExternally?: boolean;
 }) {
+  const [iframeLoaded, setIframeLoaded] = useState(false);
   const [embedAvailable, setEmbedAvailable] = useState<boolean | null>(() => {
     if (embedAvailableProp === false) return false;
     if (embedAvailableProp === true) return true;
@@ -365,6 +316,22 @@ export default function InstagramEmbed({
   });
 
   useEffect(() => {
+    setIframeLoaded(false);
+  }, [postUrl]);
+
+  useEffect(() => {
+    if (manageEmbedCheckExternally) {
+      if (embedAvailableProp === false) {
+        setEmbedAvailable(false);
+      } else if (embedAvailableProp === true) {
+        setEmbedAvailable(true);
+      } else {
+        const cached = getCachedEmbedStatus(postUrl);
+        setEmbedAvailable(cached === undefined ? null : cached);
+      }
+      return;
+    }
+
     if (embedAvailableProp === false) {
       setEmbedAvailable(false);
       return;
@@ -394,7 +361,7 @@ export default function InstagramEmbed({
     return () => {
       cancelled = true;
     };
-  }, [postUrl, embedAvailableProp]);
+  }, [postUrl, embedAvailableProp, manageEmbedCheckExternally]);
 
   const text = caption?.trim();
   const captioned = lightboxMedia || compact ? false : lightbox ? true : !text;
@@ -421,86 +388,55 @@ export default function InstagramEmbed({
       mode,
     );
 
-  const useIframe = embedAvailable !== false;
-  const useImagePreview = embedAvailable === false && !!previewImageUrl;
+  const fallbackVariant =
+    lightbox || lightboxMedia ? "link" : compact ? "display" : "link";
 
-  if (useImagePreview) {
+  if (embedAvailable === false) {
     return (
-      <InstagramPostImagePreview
+      <WeddingPostFallback
         postUrl={postUrl}
-        previewImageUrl={previewImageUrl}
         height={height}
         maxWidth={maxWidth}
         compact={compact}
         className={className}
-        onLoad={onLoad}
+        variant={fallbackVariant}
       />
     );
   }
 
-  if (embedAvailable === false && !previewImageUrl) {
-    return (
-      <a
-        href={postUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={
-          className
-            ? `instagram-post-card flex flex-col items-center justify-center bg-[#fdf8f5] text-center ${className}`
-            : "instagram-post-card flex flex-col items-center justify-center bg-[#fdf8f5] text-center"
-        }
-        style={{ height, maxWidth: compact ? maxWidth : undefined }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/instagram-glyph.svg" alt="" className="h-6 w-6 opacity-50" />
-        <span className="mt-2 text-[11px] font-medium text-gray-500">View on Instagram</span>
-      </a>
-    );
-  }
+  const revealIframe = embedAvailable === true && iframeLoaded;
+  const showLoadingOverlay = !revealIframe;
 
   return (
     <div
       className={
         className
-          ? `instagram-post-card relative ${className}`
-          : "instagram-post-card relative"
+          ? `instagram-post-card relative overflow-hidden ${className}`
+          : "instagram-post-card relative overflow-hidden"
       }
+      style={{ height: compact ? height : undefined, maxWidth: compact ? maxWidth : undefined }}
     >
-      {useIframe ? (
-        <>
-          {lightboxMedia && previewImageUrl ? (
-            <div
-              className="pointer-events-none absolute inset-0 overflow-hidden rounded-t-xl"
-              aria-hidden
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={proxiedInstagramImageUrl(previewImageUrl) ?? undefined}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            </div>
-          ) : null}
-          <iframe
-            src={src}
-            title="Instagram post"
-            className={`instagram-embed-iframe w-full border-0 bg-white${
-              lightboxMedia && previewImageUrl ? " relative z-[1]" : ""
-            }`}
-            style={{ width: compact ? maxWidth : undefined, maxWidth, height }}
-            scrolling={
-              scrollIframe || (lightbox && !lightboxMedia)
-                ? "yes"
-                : lightboxMedia
-                  ? "auto"
-                  : "no"
-            }
-            allowFullScreen
-            onLoad={onLoad}
-          />
-        </>
-      ) : null}
+      {showLoadingOverlay ? <EmbedLoadingOverlay /> : null}
+      <iframe
+        src={src}
+        title="Instagram post"
+        className={`instagram-embed-iframe w-full border-0 bg-white transition-opacity duration-200 ${
+          revealIframe ? "opacity-100" : "opacity-0"
+        }`}
+        style={{ width: compact ? maxWidth : undefined, maxWidth, height }}
+        scrolling={
+          scrollIframe || (lightbox && !lightboxMedia)
+            ? "yes"
+            : lightboxMedia
+              ? "auto"
+              : "no"
+        }
+        allowFullScreen
+        onLoad={() => {
+          setIframeLoaded(true);
+          onLoad?.();
+        }}
+      />
       {!compact && !lightbox && !lightboxMedia && text ? (
         <InstagramCaption text={text} postUrl={postUrl} />
       ) : null}

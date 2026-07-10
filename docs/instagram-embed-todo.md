@@ -2,7 +2,7 @@
 
 Track broken third-party embeds (e.g. Colvin House `DZnnI8xv6dZ`) and show preview/fallback instead of Instagram’s “link may be broken” chrome.
 
-**Status:** Not started — revisit after map browse work.
+**Status:** Layers 1–2 and wedding filter implemented in app; Layer 3 (DB flag) still optional.
 
 **Cost at our scale:** $0 new services. Mostly dev time (~half day for Layers 1 + 3).
 
@@ -12,19 +12,19 @@ Track broken third-party embeds (e.g. Colvin House `DZnnI8xv6dZ`) and show previ
 
 - Post may still open on [instagram.com](https://www.instagram.com) but **embed** (`/p/{id}/embed/`) can return `EmbedBrokenMedia`.
 - Common causes: poster disabled embedding, post private/removed, per-post restriction — not a Dewy URL bug.
-- We already have: `checkEmbedAvailable` (`app/lib/instagram-embed-check.ts`), `/api/instagram/embed-status`, session cache (`app/lib/instagram-embed-status-cache.ts`), preview image fallback (`InstagramEmbed` + scraped `image_url`).
+- We already have: `checkEmbedAvailable` (`app/lib/instagram-embed-check.ts`), `/api/instagram/embed-status`, session cache (`app/lib/instagram-embed-status-cache.ts`), preview image fallback (`InstagramEmbed` + scraped `image_url`), `WeddingPostFallback` with newlyweds icon.
 
-**Gap today:** Uncached posts default to `embedAvailable: true`, so broken iframes flash before the check completes.
+**Gap (fixed):** Uncached posts no longer default to iframe; broken embeds show `WeddingPostFallback` instead of IG error chrome.
 
 ---
 
 ## Layer 1 — Check before iframe (quick win, ~1–2 hrs)
 
-- [ ] Change prefetch default: uncached → `null` / loading, not `true` (`instagram-embed-status-cache.ts` line ~71)
-- [ ] While checking: show scraped `image_url` or skeleton (not iframe)
-- [ ] Mount iframe only when `embedAvailable === true`
-- [ ] Keep batch prefetch on venue modal open (one POST per venue, not per card)
-- [ ] Verify: Colvin House broken posts show preview + “View on Instagram”, not broken embed UI
+- [x] Change prefetch default: uncached → undefined / loading, not `true` (`instagram-embed-status-cache.ts`)
+- [x] While checking: show scraped `image_url` or `WeddingPostFallback` (not iframe)
+- [x] Mount iframe only when `embedAvailable === true`
+- [x] Keep batch prefetch on venue modal open (one POST per venue, not per card)
+- [ ] Verify: Colvin House broken posts show preview + newlyweds fallback, not broken embed UI
 
 **Performance:** Same batch check as today; often *less* work (fewer iframes). Session cache 24h unchanged.
 
@@ -33,7 +33,7 @@ Track broken third-party embeds (e.g. Colvin House `DZnnI8xv6dZ`) and show previ
 ## Layer 2 — Preview fallback
 
 - [x] Already built — `InstagramEmbed` uses `previewImageUrl` when `embedAvailable === false`
-- [ ] Spot-check posts with `image_url` null still get “View on Instagram” pill (no dead iframe)
+- [x] Broken / no-preview posts use `WeddingPostFallback` (newlyweds icon + link to Instagram)
 
 ---
 
@@ -51,8 +51,9 @@ Track broken third-party embeds (e.g. Colvin House `DZnnI8xv6dZ`) and show previ
 
 ## Layer 4 — Content quality (later, optional)
 
-- [ ] Filter non-wedding posts from “real weddings” (e.g. workshop promos scraped via location tag)
-- [ ] Heuristics: require venue @mention, wedding hashtags, or manual review queue
+- [x] Filter non-wedding posts from “real weddings” via `app/lib/wedding-post-heuristics.ts` (caption/hashtag/mention scoring)
+- [x] UI toggle: “Show N more from this venue” when non-wedding posts are hidden
+- [ ] Tune heuristics from real venue samples; optional `is_wedding_likely` DB column
 - [ ] Optional LLM pass on caption (~$5–20 batch) — not required for embed fix
 
 ---

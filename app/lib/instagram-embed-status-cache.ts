@@ -1,6 +1,6 @@
 "use client";
 
-const CACHE_KEY = "ig-embed-status-v1";
+const CACHE_KEY = "ig-embed-status-v2";
 const TTL_MS = 24 * 60 * 60 * 1000;
 
 type CacheEntry = { available: boolean; at: number };
@@ -45,7 +45,9 @@ export function setCachedEmbedStatus(postUrl: string, available: boolean) {
   persistToSession();
 }
 
-export async function prefetchEmbedStatuses(postUrls: string[]): Promise<Map<string, boolean>> {
+export async function prefetchEmbedStatuses(
+  postUrls: string[],
+): Promise<Map<string, boolean | undefined>> {
   hydrateFromSession();
   const unique = [...new Set(postUrls.filter(Boolean))];
   const uncached = unique.filter((url) => getCachedEmbedStatus(url) === undefined);
@@ -64,9 +66,15 @@ export async function prefetchEmbedStatuses(postUrls: string[]): Promise<Map<str
         }
       }
     } catch {
-      // fall through — components will try iframe optimistically
+      // components run per-post checks; do not assume embed works
     }
   }
 
-  return new Map(unique.map((url) => [url, getCachedEmbedStatus(url) ?? true]));
+  return new Map(unique.map((url) => [url, getCachedEmbedStatus(url)]));
+}
+
+export function embedStatusFromCache(postUrls: string[]): Map<string, boolean | undefined> {
+  hydrateFromSession();
+  const unique = [...new Set(postUrls.filter(Boolean))];
+  return new Map(unique.map((url) => [url, getCachedEmbedStatus(url)]));
 }

@@ -181,7 +181,7 @@ async function getVendorDetail(vendorId) {
        FROM instagram_posts
        WHERE vendor_id = $1
        ORDER BY post_timestamp DESC NULLS LAST
-       LIMIT 12`,
+       LIMIT 100`,
       [id]
     );
 

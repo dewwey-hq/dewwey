@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import InstagramEmbed, {
   computeLightboxEmbedLayout,
 } from "./InstagramEmbed";
-import { prefetchEmbedStatuses } from "@/app/lib/instagram-embed-status-cache";
+import { prefetchEmbedStatuses, embedStatusFromCache } from "@/app/lib/instagram-embed-status-cache";
+import { postsForWeddingGallery } from "@/app/lib/wedding-post-heuristics";
 import { displayAddressFor, formatCount } from "@/app/lib/format-address";
 import { venueMatchesSearch } from "@/app/lib/venue-search";
 import { BRAND_EMAIL, BRAND_NAME } from "@/app/lib/brand";
@@ -459,6 +460,8 @@ function formatPostDate(iso: string | null) {
 }
 
 const WEDDING_VISIBLE = 3;
+/** Carousel pages through at most this many wedding-likely posts; lightbox shows all. */
+const CAROUSEL_MAX_POSTS = 12;
 
 const EMBED_GRID_WIDTH = 280;
 
@@ -500,8 +503,9 @@ function WeddingEmbedGridCard({
           maxWidth={embedWidth}
           previewImageUrl={postPreviewImageUrl(post)}
           embedAvailable={embedAvailable}
+          manageEmbedCheckExternally
           compact
-          className="w-full"
+          className="h-full w-full"
         />
       </div>
       {dateLabel ? (
@@ -522,11 +526,10 @@ function WeddingPostLightbox({
   posts: RealWeddingPost[];
   startIndex: number;
   onClose: () => void;
-  embedStatus: Map<string, boolean>;
+  embedStatus: Map<string, boolean | undefined>;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(startIndex);
-  const [embedLoaded, setEmbedLoaded] = useState(false);
   const [entered, setEntered] = useState(false);
   const [viewport, setViewport] = useState({ width: 1200, height: 800 });
   const [liked, setLiked] = useState(false);
@@ -558,10 +561,6 @@ function WeddingPostLightbox({
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
-
-  useEffect(() => {
-    setEmbedLoaded(false);
-  }, [post.post_url]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -671,25 +670,19 @@ function WeddingPostLightbox({
               className="relative overflow-hidden transition-[height] duration-200 ease-out"
               style={{ height: embedLayout.iframeHeight }}
             >
-              {!embedLoaded && !previewImage ? (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-gray-50">
-                  <div className="h-9 w-9 animate-pulse rounded-full bg-gray-200" />
-                  <p className="text-xs text-gray-400">Loading post…</p>
-                </div>
-              ) : null}
               <InstagramEmbed
                 key={post.post_url}
                 postUrl={post.post_url}
                 maxWidth={embedLayout.width}
                 previewImageUrl={previewImage}
                 embedAvailable={postEmbedAvailable}
+                manageEmbedCheckExternally
                 imageCount={Math.max(postImageCount(post), 1)}
                 mediaWidth={post.media_width}
                 mediaHeight={post.media_height}
                 iframeHeight={embedLayout.iframeHeight}
                 scrollIframe={embedLayout.scrollIframe}
                 lightboxMedia
-                onLoad={() => setEmbedLoaded(true)}
               />
             </div>
           </div>
@@ -709,13 +702,21 @@ function WeddingPostLightbox({
   );
 }
 
-function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
+function RealWeddingsSection({ posts: allPosts }: { posts: RealWeddingPost[] }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [windowStart, setWindowStart] = useState(0);
-  const [embedStatus, setEmbedStatus] = useState<Map<string, boolean>>(new Map());
+  const [embedStatus, setEmbedStatus] = useState<Map<string, boolean | undefined>>(new Map());
+
+  const posts = useMemo(() => postsForWeddingGallery(allPosts), [allPosts]);
+  const carouselPosts = useMemo(() => posts.slice(0, CAROUSEL_MAX_POSTS), [posts]);
 
   const pageSize = WEDDING_VISIBLE;
-  const canPage = posts.length > pageSize;
+  const canPage = carouselPosts.length > pageSize;
+
+  useLayoutEffect(() => {
+    if (posts.length === 0) return;
+    setEmbedStatus(embedStatusFromCache(posts.map((post) => post.post_url)));
+  }, [posts]);
 
   useEffect(() => {
     if (posts.length === 0) return;
@@ -723,7 +724,11 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
   }, [posts]);
 
   useEffect(() => {
-    if (posts.length === 0 || lightboxIndex != null || !canPage) return;
+    setWindowStart(0);
+  }, [allPosts]);
+
+  useEffect(() => {
+    if (carouselPosts.length === 0 || lightboxIndex != null || !canPage) return;
 
     const handler = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
@@ -732,26 +737,27 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
         e.preventDefault();
         setWindowStart((s) => Math.max(0, s - pageSize));
       }
-      if (e.key === "ArrowRight" && windowStart + pageSize < posts.length) {
+      if (e.key === "ArrowRight" && windowStart + pageSize < carouselPosts.length) {
         e.preventDefault();
         setWindowStart((s) => {
           const next = s + pageSize;
-          return next < posts.length ? next : s;
+          return next < carouselPosts.length ? next : s;
         });
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [posts.length, lightboxIndex, canPage, windowStart, pageSize]);
+  }, [carouselPosts.length, lightboxIndex, canPage, windowStart, pageSize]);
 
   if (posts.length === 0) return null;
+
   const canGoPrev = windowStart > 0;
-  const canGoNext = windowStart + pageSize < posts.length;
-  const pageCount = Math.ceil(posts.length / pageSize);
+  const canGoNext = windowStart + pageSize < carouselPosts.length;
+  const pageCount = Math.ceil(carouselPosts.length / pageSize);
   const currentPage = Math.floor(windowStart / pageSize) + 1;
   const gapRem = 0.5;
   const gapsTotalRem = Math.max(0, pageSize - 1) * gapRem;
-  const centerTrack = posts.length <= pageSize;
+  const centerTrack = carouselPosts.length <= pageSize;
   const slideVars = {
     ["--wedding-gap" as string]: `${gapRem}rem`,
     ["--wedding-card" as string]: `calc((100% - ${gapsTotalRem}rem) / ${pageSize})`,
@@ -760,10 +766,11 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
   const goPrev = () => setWindowStart((s) => Math.max(0, s - pageSize));
   const goNext = () => setWindowStart((s) => {
     const next = s + pageSize;
-    return next < posts.length ? next : s;
+    return next < carouselPosts.length ? next : s;
   });
 
   const pageLabel = `${currentPage} of ${pageCount}`;
+  const galleryCountLabel = posts.length > 1 ? ` (${posts.length})` : "";
   const viewAllAriaLabel =
     posts.length === 1 ? "View wedding" : `View all ${posts.length} weddings`;
 
@@ -780,7 +787,7 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
                 : `translateX(calc(-${windowStart} * (var(--wedding-card) + var(--wedding-gap))))`,
             }}
           >
-            {posts.map((post, i) => (
+            {carouselPosts.map((post, i) => (
               <div key={post.post_url} className="shrink-0" style={{ width: "var(--wedding-card)" }}>
                 <WeddingEmbedGridCard
                   post={post}
@@ -820,11 +827,9 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
             type="button"
             onClick={() => setLightboxIndex(0)}
             aria-label={viewAllAriaLabel}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-200/70 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-rose-300 hover:bg-rose-50/40"
+            className="inline-flex items-center justify-center rounded-lg border border-rose-200/70 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-rose-300 hover:bg-rose-50/40"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icons/instagram-glyph.svg" alt="" className="h-3 w-3 opacity-60" />
-            View weddings
+            {posts.length === 1 ? "View wedding" : `View weddings${galleryCountLabel}`}
           </button>
         </div>
       </div>
@@ -1132,7 +1137,8 @@ function VenueDetailModal({
   useEffect(() => {
     const posts = detail?.realWeddings;
     if (!posts?.length) return;
-    prefetchEmbedStatuses(posts.map((post) => post.post_url));
+    const visible = postsForWeddingGallery(posts);
+    prefetchEmbedStatuses(visible.map((post) => post.post_url));
   }, [detail?.realWeddings]);
 
   useEffect(() => {
