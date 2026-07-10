@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { ArrowUpDown, Map as MapIcon, Search, SlidersHorizontal } from "lucide-react";
-import { BRAND_NAME } from "@/app/lib/brand";
-import { uiHeadingClassName } from "@/app/lib/typography";
+import { SITE_HEADER_HEIGHT_CLASS, SITE_PADDING_X_CLASS } from "@/app/lib/site-layout";
+import { SITE_NAV_ITEMS_MAP } from "@/app/lib/site-nav";
+import { SiteNavLinks } from "./SiteNavLinks";
+import { SiteBrand } from "./SiteBrand";
 import MapFilterDropdown from "./MapFilterDropdown";
 import MapDateFilterPill from "./MapDateFilterPill";
 
@@ -29,6 +31,7 @@ export default function MapBrowseToolbar({
   budgets,
   guestOptions,
   compareCount,
+  showNavIcons = true,
 }: {
   query: string;
   onQueryChange: (value: string) => void;
@@ -46,40 +49,21 @@ export default function MapBrowseToolbar({
   budgets: string[];
   guestOptions: string[];
   compareCount: number;
+  showNavIcons?: boolean;
 }) {
   return (
     <header className="sticky top-0 z-50 shrink-0 border-b border-black/[0.08] bg-white">
-      <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="text-2xl text-rose-400">✦</span>
-          <span className={`hidden text-[17px] tracking-tight text-gray-900 sm:inline ${uiHeadingClassName}`}>
-            {BRAND_NAME}
-          </span>
-        </Link>
+      <div className={`flex ${SITE_HEADER_HEIGHT_CLASS} items-stretch justify-between gap-4 ${SITE_PADDING_X_CLASS}`}>
+        <SiteBrand href="/" hideNameOnMobile className="self-center" />
 
-        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex">
-          {[
-            { label: "Venues", href: "/venues?view=map", active: true },
-            { label: "Catering", href: "#", active: false },
-            { label: "Florals", href: "#", active: false },
-            { label: "Photography", href: "#", active: false },
-            { label: "More", href: "#", active: false },
-          ].map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm transition-colors ${
-                item.active
-                  ? "bg-rose-50 font-medium text-rose-600"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
+        <SiteNavLinks
+          activeLabel="Venues"
+          items={SITE_NAV_ITEMS_MAP}
+          showIcons={showNavIcons}
+          className="hidden min-w-0 flex-1 justify-center self-stretch md:flex"
+        />
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 self-center">
           <div className="inline-flex rounded-full border border-black/[0.08] bg-white p-1">
             <Link
               href="/venues"
@@ -102,7 +86,7 @@ export default function MapBrowseToolbar({
         </div>
       </div>
 
-      <div className="border-t border-black/[0.06] px-4 py-3 sm:px-6">
+      <div className={`border-t border-black/[0.06] py-3 ${SITE_PADDING_X_CLASS}`}>
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <div className="flex shrink-0 items-center gap-2">
             <button

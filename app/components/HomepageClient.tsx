@@ -4,7 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 import { Search, ChevronDown, Star, MapPin, Heart, Menu, X } from "lucide-react";
 import { BRAND_NAME } from "@/app/lib/brand";
+import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS } from "@/app/lib/site-layout";
 import { displayHeadingClassName, uiHeadingClassName } from "@/app/lib/typography";
+import { SiteNavLinks, SiteNavMobileLinks } from "./SiteNavLinks";
+import { SiteBrand } from "./SiteBrand";
+import { useNavIconsVisible } from "@/app/hooks/use-nav-icons-visible";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -71,6 +75,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
   const [searchQuery, setSearchQuery] = useState("");
   const [savedVendors, setSavedVendors] = useState<Set<string>>(new Set());
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const navIconsVisible = useNavIconsVisible();
 
   const toggleSave = (placeId: string) => {
     setSavedVendors((prev) => {
@@ -89,34 +94,16 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
 
       {/* ── NAV ── */}
       <header className="sticky top-0 z-50 bg-white border-b border-black/[0.08]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className={siteContainerClass}>
+          <div className={`flex ${SITE_HEADER_HEIGHT_CLASS} items-stretch justify-between`}>
 
             {/* Logo */}
-            <a href="#" className="flex items-center gap-2 shrink-0">
-              <span className="text-rose-400 text-2xl">✦</span>
-              <span className={`text-[17px] tracking-tight text-gray-900 ${uiHeadingClassName}`}>
-                {BRAND_NAME}
-              </span>
-            </a>
+            <SiteBrand href="/" className="self-center" />
 
-            {/* Desktop nav links */}
-            <nav className="hidden md:flex items-center gap-1">
-              {[
-                { label: "Venues", href: "/venues" },
-                { label: "Catering", href: "#" },
-                { label: "Florals", href: "#" },
-                { label: "Photography", href: "#" },
-                { label: "More", href: "#" },
-              ].map((link) => (
-                <a key={link.label} href={link.href} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-colors">
-                  {link.label}
-                </a>
-              ))}
-            </nav>
+            <SiteNavLinks showIcons={navIconsVisible} />
 
             {/* Right actions */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden shrink-0 items-center gap-3 self-center md:flex">
               <a href="#" className="text-sm text-gray-600 hover:text-gray-900 px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
                 List your business
               </a>
@@ -138,13 +125,10 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
         {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-black/[0.06] bg-white">
-            <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1">
+            <div className={`${siteContainerClass} py-4`}>
+              <SiteNavMobileLinks />
+              <div className="mt-2 flex flex-col gap-1 border-t border-black/[0.06] pt-2">
               {[
-                { label: "Venues", href: "/venues" },
-                { label: "Catering", href: "#" },
-                { label: "Florals", href: "#" },
-                { label: "Photography", href: "#" },
-                { label: "More", href: "#" },
                 { label: "List your business", href: "#" },
                 { label: "Sign In", href: "#" },
               ].map((link) => (
@@ -152,6 +136,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
                   {link.label}
                 </a>
               ))}
+              </div>
             </div>
           </div>
         )}
@@ -164,7 +149,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-amber-100/30 blur-[100px] -translate-x-1/3 translate-y-1/3" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 text-center">
+        <div className={`relative ${siteContainerClass} pt-20 pb-24 text-center`}>
           <p className="mb-4 text-sm font-medium tracking-widest text-rose-500 uppercase">
             Chicago&apos;s Wedding Marketplace
           </p>
@@ -234,7 +219,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
       </section>
 
       {/* ── CATEGORY CARDS ── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <section className={`${siteContainerClass} py-20`}>
         <div className="mb-10">
           <h2 className={`mb-2 text-3xl text-gray-900 ${displayHeadingClassName}`}>
             Browse by Category
@@ -263,7 +248,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
 
       {/* ── FEATURED VENDORS ── */}
       <section className="bg-[#fdf8f5] py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className={siteContainerClass}>
           <div className="flex items-end justify-between mb-10">
             <div>
               <h2 className={`mb-2 text-3xl text-gray-900 ${displayHeadingClassName}`}>
@@ -390,7 +375,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
 
       {/* ── FOOTER ── */}
       <footer className="bg-gray-900 text-gray-400 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className={siteContainerClass}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">

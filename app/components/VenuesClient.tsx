@@ -9,6 +9,7 @@ import InstagramEmbed, {
 import { displayAddressFor, formatCount } from "@/app/lib/format-address";
 import { venueMatchesSearch } from "@/app/lib/venue-search";
 import { BRAND_EMAIL, BRAND_NAME } from "@/app/lib/brand";
+import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS, SITE_MAX_WIDTH_CLASS, SITE_PADDING_X_CLASS } from "@/app/lib/site-layout";
 import { displayHeadingClassName, uiHeadingClassName } from "@/app/lib/typography";
 import { type MapBounds, venuesInMapBounds } from "@/app/lib/map-bounds";
 import VenuesMapPanel from "./VenuesMapPanel";
@@ -16,6 +17,9 @@ import MapBrowseToolbar from "./MapBrowseToolbar";
 import MapBrowsePanelToggle, { type MapBrowseMobilePanel } from "./MapBrowsePanelToggle";
 import VenueMapBrowseCard from "./VenueMapBrowseCard";
 import CategoryIcon, { resolveCategoryIcon } from "./CategoryIcon";
+import { SiteNavLinks } from "./SiteNavLinks";
+import { SiteBrand } from "./SiteBrand";
+import { useNavIconsVisible } from "@/app/hooks/use-nav-icons-visible";
 import VenueRating from "./VenueRating";
 import {
   ArrowUpDown,
@@ -1584,6 +1588,7 @@ export default function VenuesClient({
   const [savedVenueIds, setSavedVenueIds] = useState<Set<number>>(new Set());
   const listItemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const mapListScrollRef = useRef<HTMLDivElement>(null);
+  const navIconsVisible = useNavIconsVisible(32, viewMode === "map" ? mapListScrollRef : undefined);
 
   const venueCards = useMemo(() => buildVenueCards(venues), [venues]);
 
@@ -1741,6 +1746,7 @@ export default function VenuesClient({
           budgets={BUDGETS}
           guestOptions={GUEST_FILTERS}
           compareCount={compareIds.size}
+          showNavIcons={navIconsVisible}
         />
 
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1857,39 +1863,14 @@ export default function VenuesClient({
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900">
       <header className="sticky top-0 z-50 border-b border-black/[0.08] bg-white/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex shrink-0 items-center gap-2">
-            <span className="text-2xl text-rose-400">✦</span>
-            <span className={`text-[17px] tracking-tight text-gray-900 ${uiHeadingClassName}`}>
-              {BRAND_NAME}
-            </span>
-          </Link>
+        <div className={`flex ${SITE_HEADER_HEIGHT_CLASS} items-stretch justify-between ${siteContainerClass}`}>
+          <SiteBrand href="/" className="self-center" />
 
-          <nav className="hidden items-center gap-1 md:flex">
-            {[
-              { label: "Venues", href: "/venues" },
-              { label: "Catering", href: "#" },
-              { label: "Florals", href: "#" },
-              { label: "Photography", href: "#" },
-              { label: "More", href: "#" },
-            ].map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className={`rounded-full px-4 py-2 text-sm transition-colors ${
-                  item.label === "Venues"
-                    ? "bg-rose-50 text-rose-600"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
+          <SiteNavLinks activeLabel="Venues" showIcons={navIconsVisible} />
 
           <a
             href="#compare"
-            className="rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50"
+            className="self-center rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50"
           >
             Compare {compareIds.size > 0 ? compareIds.size : ""}
           </a>
@@ -1904,17 +1885,14 @@ export default function VenuesClient({
             <div className="absolute bottom-0 left-0 h-[360px] w-[360px] -translate-x-1/3 translate-y-1/3 rounded-full bg-amber-100/40 blur-[100px]" />
           </div>
 
-          <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-16 sm:px-6 lg:px-8 lg:pb-16 lg:pt-20">
+          <div className={`relative ${siteContainerClass} pb-12 pt-16 lg:pb-16 lg:pt-20`}>
             <div className="max-w-3xl">
               <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-rose-500">
                 Chicago venues
               </p>
-              <h1 className={`mb-5 text-5xl leading-[1.05] tracking-tight text-gray-900 sm:text-6xl ${displayHeadingClassName}`}>
+              <h1 className={`text-5xl leading-[1.05] tracking-tight text-gray-900 sm:text-6xl ${displayHeadingClassName}`}>
                 Find the room that feels like your wedding.
               </h1>
-              <p className="max-w-2xl text-lg leading-8 text-gray-500">
-                Browse Chicago spaces by guest count, style, budget, and vibe. Save the standouts and compare the details side by side.
-              </p>
             </div>
 
             <div className="mt-10 rounded-[2rem] border border-black/[0.06] bg-white p-3 shadow-[0_16px_50px_rgba(15,23,42,0.10)]">
@@ -1971,7 +1949,7 @@ export default function VenuesClient({
 
         {/* ── Filter pills ── */}
         <section className="border-b border-black/[0.06] bg-white">
-          <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
+          <div className={`flex flex-col gap-4 py-5 ${siteContainerClass}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
                 <SlidersHorizontal size={16} />
@@ -2015,7 +1993,7 @@ export default function VenuesClient({
         </section>
 
         {/* ── Venue grid ── */}
-        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <section className={`py-10 ${siteContainerClass}`}>
           <div>
             <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
               <div>
@@ -2135,8 +2113,8 @@ export default function VenuesClient({
         </section>
 
         {/* ── Compare section ── */}
-        <section id="compare" className="border-t border-black/[0.06] bg-gray-950 px-4 py-12 text-white sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
+        <section id="compare" className={`border-t border-black/[0.06] bg-gray-950 py-12 text-white ${SITE_PADDING_X_CLASS}`}>
+          <div className={`mx-auto w-full ${SITE_MAX_WIDTH_CLASS}`}>
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
                 <p className="text-sm uppercase tracking-[0.22em] text-rose-300">Compare</p>
