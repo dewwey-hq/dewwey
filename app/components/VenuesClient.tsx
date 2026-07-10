@@ -1,13 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import InstagramEmbed, {
   computeLightboxEmbedLayout,
 } from "./InstagramEmbed";
-import { prefetchEmbedStatuses, embedStatusFromCache } from "@/app/lib/instagram-embed-status-cache";
-import { postsForWeddingGallery } from "@/app/lib/wedding-post-heuristics";
 import { displayAddressFor, formatCount } from "@/app/lib/format-address";
 import { venueMatchesSearch } from "@/app/lib/venue-search";
 import { BRAND_EMAIL, BRAND_NAME } from "@/app/lib/brand";
@@ -460,7 +458,7 @@ function formatPostDate(iso: string | null) {
 }
 
 const WEDDING_VISIBLE = 3;
-/** Carousel pages through at most this many wedding-likely posts; lightbox shows all. */
+/** Carousel pages through at most this many posts; lightbox shows all. */
 const CAROUSEL_MAX_POSTS = 12;
 
 const EMBED_GRID_WIDTH = 280;
@@ -468,11 +466,9 @@ const EMBED_GRID_WIDTH = 280;
 function WeddingEmbedGridCard({
   post,
   onClick,
-  embedAvailable,
 }: {
   post: RealWeddingPost;
   onClick: () => void;
-  embedAvailable?: boolean;
 }) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [cellWidth, setCellWidth] = useState(EMBED_GRID_WIDTH);
@@ -502,8 +498,6 @@ function WeddingEmbedGridCard({
           caption={post.caption}
           maxWidth={embedWidth}
           previewImageUrl={postPreviewImageUrl(post)}
-          embedAvailable={embedAvailable}
-          manageEmbedCheckExternally
           compact
           className="h-full w-full"
         />
@@ -521,12 +515,10 @@ function WeddingPostLightbox({
   posts,
   startIndex,
   onClose,
-  embedStatus,
 }: {
   posts: RealWeddingPost[];
   startIndex: number;
   onClose: () => void;
-  embedStatus: Map<string, boolean | undefined>;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(startIndex);
@@ -535,7 +527,6 @@ function WeddingPostLightbox({
   const [liked, setLiked] = useState(false);
   const post = posts[current];
   const previewImage = postPreviewImageUrl(post);
-  const postEmbedAvailable = embedStatus.get(post.post_url);
   const canPrev = current > 0;
   const canNext = current < posts.length - 1;
   const embedLayout = useMemo(
@@ -675,8 +666,6 @@ function WeddingPostLightbox({
                 postUrl={post.post_url}
                 maxWidth={embedLayout.width}
                 previewImageUrl={previewImage}
-                embedAvailable={postEmbedAvailable}
-                manageEmbedCheckExternally
                 imageCount={Math.max(postImageCount(post), 1)}
                 mediaWidth={post.media_width}
                 mediaHeight={post.media_height}
@@ -702,30 +691,18 @@ function WeddingPostLightbox({
   );
 }
 
-function RealWeddingsSection({ posts: allPosts }: { posts: RealWeddingPost[] }) {
+function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [windowStart, setWindowStart] = useState(0);
-  const [embedStatus, setEmbedStatus] = useState<Map<string, boolean | undefined>>(new Map());
 
-  const posts = useMemo(() => postsForWeddingGallery(allPosts), [allPosts]);
   const carouselPosts = useMemo(() => posts.slice(0, CAROUSEL_MAX_POSTS), [posts]);
 
   const pageSize = WEDDING_VISIBLE;
   const canPage = carouselPosts.length > pageSize;
 
-  useLayoutEffect(() => {
-    if (posts.length === 0) return;
-    setEmbedStatus(embedStatusFromCache(posts.map((post) => post.post_url)));
-  }, [posts]);
-
-  useEffect(() => {
-    if (posts.length === 0) return;
-    prefetchEmbedStatuses(posts.map((post) => post.post_url)).then(setEmbedStatus);
-  }, [posts]);
-
   useEffect(() => {
     setWindowStart(0);
-  }, [allPosts]);
+  }, [posts]);
 
   useEffect(() => {
     if (carouselPosts.length === 0 || lightboxIndex != null || !canPage) return;
@@ -791,7 +768,6 @@ function RealWeddingsSection({ posts: allPosts }: { posts: RealWeddingPost[] }) 
               <div key={post.post_url} className="shrink-0" style={{ width: "var(--wedding-card)" }}>
                 <WeddingEmbedGridCard
                   post={post}
-                  embedAvailable={embedStatus.get(post.post_url)}
                   onClick={() => setLightboxIndex(i)}
                 />
               </div>
@@ -838,7 +814,6 @@ function RealWeddingsSection({ posts: allPosts }: { posts: RealWeddingPost[] }) 
         <WeddingPostLightbox
           posts={posts}
           startIndex={lightboxIndex}
-          embedStatus={embedStatus}
           onClose={() => setLightboxIndex(null)}
         />
       )}
@@ -1133,13 +1108,6 @@ function VenueDetailModal({
       .then((data) => setDetail(data))
       .finally(() => setLoading(false));
   }, [venueId]);
-
-  useEffect(() => {
-    const posts = detail?.realWeddings;
-    if (!posts?.length) return;
-    const visible = postsForWeddingGallery(posts);
-    prefetchEmbedStatuses(visible.map((post) => post.post_url));
-  }, [detail?.realWeddings]);
 
   useEffect(() => {
     setShowStickyTitle(false);

@@ -1,11 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  getCachedEmbedStatus,
-  setCachedEmbedStatus,
-} from "@/app/lib/instagram-embed-status-cache";
-import WeddingPostFallback from "./WeddingPostFallback";
 
 export function proxiedInstagramImageUrl(cdnUrl: string | null | undefined): string | null {
   if (!cdnUrl) return null;
@@ -285,8 +280,6 @@ export default function InstagramEmbed({
   scrollIframe = false,
   mediaWidth,
   mediaHeight,
-  embedAvailable: embedAvailableProp,
-  manageEmbedCheckExternally = false,
 }: {
   postUrl: string;
   caption?: string | null;
@@ -302,66 +295,12 @@ export default function InstagramEmbed({
   scrollIframe?: boolean;
   mediaWidth?: number | null;
   mediaHeight?: number | null;
-  /** When false, use fallback instead of iframe. true = embed OK. undefined = still checking. */
-  embedAvailable?: boolean;
-  /** Parent batch-prefetches embed status (carousel/lightbox). */
-  manageEmbedCheckExternally?: boolean;
 }) {
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [embedAvailable, setEmbedAvailable] = useState<boolean | null>(() => {
-    if (embedAvailableProp === false) return false;
-    if (embedAvailableProp === true) return true;
-    const cached = getCachedEmbedStatus(postUrl);
-    return cached === undefined ? null : cached;
-  });
 
   useEffect(() => {
     setIframeLoaded(false);
   }, [postUrl]);
-
-  useEffect(() => {
-    if (manageEmbedCheckExternally) {
-      if (embedAvailableProp === false) {
-        setEmbedAvailable(false);
-      } else if (embedAvailableProp === true) {
-        setEmbedAvailable(true);
-      } else {
-        const cached = getCachedEmbedStatus(postUrl);
-        setEmbedAvailable(cached === undefined ? null : cached);
-      }
-      return;
-    }
-
-    if (embedAvailableProp === false) {
-      setEmbedAvailable(false);
-      return;
-    }
-    if (embedAvailableProp === true) {
-      setEmbedAvailable(true);
-      return;
-    }
-
-    const cached = getCachedEmbedStatus(postUrl);
-    if (cached !== undefined) {
-      setEmbedAvailable(cached);
-      return;
-    }
-
-    let cancelled = false;
-    fetch(`/api/instagram/embed-status?postUrl=${encodeURIComponent(postUrl)}`)
-      .then((res) => res.json())
-      .then((data: { embedAvailable?: boolean }) => {
-        const available = Boolean(data.embedAvailable);
-        setCachedEmbedStatus(postUrl, available);
-        if (!cancelled) setEmbedAvailable(available);
-      })
-      .catch(() => {
-        if (!cancelled) setEmbedAvailable(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [postUrl, embedAvailableProp, manageEmbedCheckExternally]);
 
   const text = caption?.trim();
   const captioned = lightboxMedia || compact ? false : lightbox ? true : !text;
@@ -388,24 +327,7 @@ export default function InstagramEmbed({
       mode,
     );
 
-  const fallbackVariant =
-    lightbox || lightboxMedia ? "link" : compact ? "display" : "link";
-
-  if (embedAvailable === false) {
-    return (
-      <WeddingPostFallback
-        postUrl={postUrl}
-        height={height}
-        maxWidth={maxWidth}
-        compact={compact}
-        className={className}
-        variant={fallbackVariant}
-      />
-    );
-  }
-
-  const revealIframe = embedAvailable === true && iframeLoaded;
-  const showLoadingOverlay = !revealIframe;
+  const showLoadingOverlay = !iframeLoaded;
 
   return (
     <div
@@ -421,7 +343,7 @@ export default function InstagramEmbed({
         src={src}
         title="Instagram post"
         className={`instagram-embed-iframe w-full border-0 bg-white transition-opacity duration-200 ${
-          revealIframe ? "opacity-100" : "opacity-0"
+          iframeLoaded ? "opacity-100" : "opacity-0"
         }`}
         style={{ width: compact ? maxWidth : undefined, maxWidth, height }}
         scrolling={

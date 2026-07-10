@@ -1,4 +1,6 @@
-/** Caption/mention signals for "real wedding" vs generic venue marketing. */
+/** Caption/mention signals for "real wedding" vs generic venue marketing.
+ *  Not used client-side today — kept for a future scrape-time / batch classifier
+ *  that writes y/n to the DB (e.g. instagram_posts.is_wedding). */
 
 export type WeddingPostSignals = {
   caption?: string | null;
