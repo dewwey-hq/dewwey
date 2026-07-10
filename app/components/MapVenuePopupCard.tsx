@@ -2,7 +2,7 @@
 
 import { Star } from "lucide-react";
 import { formatCount } from "@/app/lib/format-address";
-import { headingClassName } from "@/app/lib/typography";
+import { uiHeadingClassName } from "@/app/lib/typography";
 import VenuePhotoCarousel from "./VenuePhotoCarousel";
 import type { MapVenueCard } from "./venues-browse-types";
 
@@ -45,7 +45,7 @@ export default function MapVenuePopupCard({
       />
       <div className="rounded-b-2xl bg-white px-4 py-3.5 text-left">
         <div className="flex items-start justify-between gap-2">
-          <h3 className={`min-w-0 flex-1 text-lg leading-snug text-gray-900 ${headingClassName}`}>
+          <h3 className={`min-w-0 flex-1 text-lg leading-snug text-gray-900 ${uiHeadingClassName}`}>
             {venue.name}
           </h3>
           {venue.displayRating > 0 ? (

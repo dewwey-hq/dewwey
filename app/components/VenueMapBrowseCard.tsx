@@ -1,7 +1,7 @@
 "use client";
 
 import VenueRating from "./VenueRating";
-import { headingClassName } from "@/app/lib/typography";
+import { uiHeadingClassName } from "@/app/lib/typography";
 import VenuePhotoCarousel from "./VenuePhotoCarousel";
 import type { MapVenueCard } from "./venues-browse-types";
 
@@ -86,7 +86,7 @@ export default function VenueMapBrowseCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h3
-              className={`text-[17px] leading-snug ${headingClassName} ${
+              className={`text-[17px] leading-snug ${uiHeadingClassName} ${
                 active ? "text-gray-950" : "text-gray-900"
               }`}
             >

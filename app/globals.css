@@ -127,6 +127,9 @@
   html {
     @apply font-sans;
   }
+  .font-heading {
+    font-variation-settings: "WONK" 0, "SOFT" 100;
+  }
 }
 
 .instagram-embed-iframe {

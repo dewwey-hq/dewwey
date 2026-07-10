@@ -10,7 +10,7 @@ import { prefetchEmbedStatuses } from "@/app/lib/instagram-embed-status-cache";
 import { displayAddressFor, formatCount } from "@/app/lib/format-address";
 import { venueMatchesSearch } from "@/app/lib/venue-search";
 import { BRAND_EMAIL, BRAND_NAME } from "@/app/lib/brand";
-import { headingClassName } from "@/app/lib/typography";
+import { displayHeadingClassName, uiHeadingClassName } from "@/app/lib/typography";
 import { type MapBounds, venuesInMapBounds } from "@/app/lib/map-bounds";
 import VenuesMapPanel from "./VenuesMapPanel";
 import MapBrowseToolbar from "./MapBrowseToolbar";
@@ -265,7 +265,7 @@ function VenueSectionHeading({
 }) {
   return (
     <div className={`mb-3 ${className}`}>
-      <h3 className={`text-lg leading-snug text-gray-900 ${headingClassName}`}>
+      <h3 className={`text-lg leading-snug text-gray-900 ${uiHeadingClassName}`}>
         {title}
       </h3>
       {subtitle ? <p className="mt-1 text-sm text-gray-500">{subtitle}</p> : null}
@@ -1269,7 +1269,7 @@ function VenueDetailModal({
                     <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-rose-500">
                       {typeLabel}
                     </p>
-                    <h2 className={`text-2xl leading-tight text-gray-900 sm:text-3xl ${headingClassName}`}>
+                    <h2 className={`text-2xl leading-tight text-gray-900 sm:text-3xl ${displayHeadingClassName}`}>
                       {v.name}
                     </h2>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -1886,7 +1886,7 @@ export default function VenuesClient({
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex shrink-0 items-center gap-2">
             <span className="text-2xl text-rose-400">✦</span>
-            <span className={`text-[17px] tracking-tight text-gray-900 ${headingClassName}`}>
+            <span className={`text-[17px] tracking-tight text-gray-900 ${uiHeadingClassName}`}>
               {BRAND_NAME}
             </span>
           </Link>
@@ -1935,7 +1935,7 @@ export default function VenuesClient({
               <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-rose-500">
                 Chicago venues
               </p>
-              <h1 className={`mb-5 text-5xl leading-[1.05] tracking-tight text-gray-900 sm:text-6xl ${headingClassName}`}>
+              <h1 className={`mb-5 text-5xl leading-[1.05] tracking-tight text-gray-900 sm:text-6xl ${displayHeadingClassName}`}>
                 Find the room that feels like your wedding.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-gray-500">
@@ -2048,7 +2048,7 @@ export default function VenuesClient({
                 <p className="text-sm text-gray-400">
                   {filteredVenues.length} of {total} venues · page {currentPage} of {totalPages}
                 </p>
-                <h2 className={`mt-1 text-3xl text-gray-900 ${headingClassName}`}>
+                <h2 className={`mt-1 text-3xl text-gray-900 ${displayHeadingClassName}`}>
                   Chicago venue options
                 </h2>
               </div>
@@ -2166,7 +2166,7 @@ export default function VenuesClient({
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
                 <p className="text-sm uppercase tracking-[0.22em] text-rose-300">Compare</p>
-                <h2 className={`mt-2 text-3xl ${headingClassName}`}>
+                <h2 className={`mt-2 text-3xl ${displayHeadingClassName}`}>
                   Your venue shortlist
                 </h2>
               </div>
