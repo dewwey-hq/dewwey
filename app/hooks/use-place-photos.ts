@@ -10,6 +10,40 @@ function cacheKey(placeId: string, maxWidth: number, count: number) {
   return `${placeId}:${maxWidth}:${count}`;
 }
 
+async function fetchPhotosLegacy(
+  placesLib: google.maps.PlacesLibrary,
+  placeId: string,
+  maxWidth: number,
+  count: number,
+): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const div = document.createElement("div");
+    const service = new placesLib.PlacesService(div);
+    service.getDetails({ placeId, fields: ["photos"] }, (place, status) => {
+      if (status !== google.maps.places.PlacesServiceStatus.OK || !place?.photos?.length) {
+        reject(new Error(`PlacesService status: ${status}`));
+        return;
+      }
+      resolve(
+        place.photos.slice(0, count).map((photo) => photo.getUrl({ maxWidth })),
+      );
+    });
+  });
+}
+
+async function fetchPhotosModern(
+  placesLib: google.maps.PlacesLibrary,
+  placeId: string,
+  maxWidth: number,
+  count: number,
+): Promise<string[]> {
+  const place = new placesLib.Place({ id: placeId });
+  await place.fetchFields({ fields: ["photos"] });
+  return (place.photos ?? [])
+    .slice(0, count)
+    .map((photo) => photo.getURI({ maxWidth }));
+}
+
 export function usePlacePhotos(
   placeId: string | undefined,
   options: { maxWidth?: number; count?: number } = {},
@@ -44,13 +78,15 @@ export function usePlacePhotos(
 
     void (async () => {
       try {
-        const place = new placesLib.Place({ id: placeId });
-        await place.fetchFields({ fields: ["photos"] });
-        if (cancelled) return;
+        let resolved: string[] = [];
+        try {
+          resolved = await fetchPhotosModern(placesLib, placeId, maxWidth, count);
+        } catch {
+          resolved = await fetchPhotosLegacy(placesLib, placeId, maxWidth, count);
+        }
 
-        const resolved = (place.photos ?? [])
-          .slice(0, count)
-          .map((photo) => photo.getURI({ maxWidth }));
+        if (cancelled) return;
+        if (resolved.length === 0) throw new Error("No photos returned");
 
         photoCache.set(key, { urls: resolved, ts: Date.now() });
         setUrls(resolved);
