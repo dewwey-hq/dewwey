@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   clampPhotoWidth,
-  getGooglePlacesApiKey,
   isValidPlacePhotoName,
+  resolvePlacePhotoUri,
 } from "@/app/lib/place-photo";
 
 export async function GET(request: NextRequest) {
@@ -15,33 +15,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid photo name" }, { status: 400 });
   }
 
-  const apiKey = getGooglePlacesApiKey();
-  if (!apiKey) {
-    return NextResponse.json({ error: "Photo service unavailable" }, { status: 503 });
-  }
-
-  const upstreamUrl = new URL(`https://places.googleapis.com/v1/${name}/media`);
-  upstreamUrl.searchParams.set("maxWidthPx", String(width));
-  upstreamUrl.searchParams.set("key", apiKey);
-
-  const upstream = await fetch(upstreamUrl, {
-    next: { revalidate: 86400 },
-  });
-
-  if (!upstream.ok) {
+  const resolved = await resolvePlacePhotoUri(name, width);
+  if (!resolved.ok) {
     return NextResponse.json(
       { error: "Photo unavailable" },
-      { status: upstream.status === 404 ? 404 : 502 },
+      { status: resolved.status === 404 ? 404 : 502 },
     );
   }
 
-  const body = await upstream.arrayBuffer();
-  const contentType = upstream.headers.get("content-type") ?? "image/jpeg";
-
-  return new NextResponse(body, {
+  // Redirect the browser to Google's CDN — img tags follow this, and it avoids
+  // server-side fetch failures against short-lived googleusercontent URLs.
+  return NextResponse.redirect(resolved.photoUri, {
+    status: 302,
     headers: {
-      "Content-Type": contentType,
-      "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
     },
   });
 }
