@@ -7,5 +7,6 @@ export type MapVenueCard = VenueVendor & {
   displayAddress: string;
   photoUrl: string;
   photoUrls: string[];
+  photoFallbackUrls: string[];
   styleLabel: string;
 };

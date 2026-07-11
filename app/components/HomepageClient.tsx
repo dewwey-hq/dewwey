@@ -63,8 +63,13 @@ const PRICE_LABELS: Record<number, string> = { 0: "Free", 1: "$", 2: "$$", 3: "$
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function buildPhotoUrl(photoRef: string): string {
-  return placePhotoProxyUrl(photoRef, 800);
+function buildPhotoUrl(vendor: Vendor): string | null {
+  const ref = vendor.photos?.[0];
+  if (ref && process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY) {
+    return `https://places.googleapis.com/v1/${ref}/media?maxWidthPx=800&key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY}`;
+  }
+  if (!vendor.place_id) return null;
+  return placePhotoProxyUrl(vendor.place_id, 800, 0);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -263,7 +268,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredVendors.map((vendor) => {
-              const photoUrl = vendor.photos?.[0] ? buildPhotoUrl(vendor.photos[0]) : null;
+              const photoUrl = buildPhotoUrl(vendor);
               const badgeColor = BADGE_COLORS[vendor.category] ?? "bg-gray-50 text-gray-700";
               const badgeLabel = CATEGORY_LABELS[vendor.category] ?? vendor.category;
               const priceLabel = vendor.price_level != null ? PRICE_LABELS[vendor.price_level] : null;

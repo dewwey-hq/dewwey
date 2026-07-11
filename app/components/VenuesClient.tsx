@@ -132,6 +132,7 @@ type VenueCard = VenueVendor & {
   displayAddress: string;
   photoUrl: string;
   photoUrls: string[];
+  photoFallbackUrls: string[];
   styleLabel: string;
 };
 
@@ -184,9 +185,31 @@ function budgetLabel(priceLevel: number | null): string {
   return "$".repeat(Math.max(1, Math.min(priceLevel, 4)));
 }
 
-function photoUrlFor(photoRef: string | undefined, maxWidth = 900): string | null {
-  if (!photoRef) return null;
-  return placePhotoProxyUrl(photoRef, maxWidth);
+const CLIENT_PHOTO_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
+
+function directGooglePhotoUrl(photoRef: string | undefined, maxWidth: number): string | null {
+  if (!photoRef || !CLIENT_PHOTO_KEY) return null;
+  return `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=${maxWidth}&key=${CLIENT_PHOTO_KEY}`;
+}
+
+function photoUrlFor(
+  placeId: string | undefined,
+  photoRef: string | undefined,
+  maxWidth = 900,
+  index = 0,
+): string | null {
+  return (
+    directGooglePhotoUrl(photoRef, maxWidth) ??
+    (placeId ? placePhotoProxyUrl(placeId, maxWidth, index) : null)
+  );
+}
+
+function photoFallbackUrlFor(
+  placeId: string | undefined,
+  maxWidth = 900,
+  index = 0,
+): string | null {
+  return placeId ? placePhotoProxyUrl(placeId, maxWidth, index) : null;
 }
 
 function locationFor(v: VenueVendor): string {
@@ -237,10 +260,13 @@ function factsFor(v: VenueVendor): Fact[] {
 
 function buildVenueCards(venues: VenueVendor[]): VenueCard[] {
   return venues.map((venue) => {
-    const photoUrls = (venue.photos ?? [])
-      .slice(0, 5)
-      .map((ref) => photoUrlFor(ref, 900))
-      .filter((url): url is string => Boolean(url));
+    const photoCount = Math.max(1, Math.min((venue.photos ?? []).length, 5));
+    const photoUrls = Array.from({ length: photoCount }, (_, index) =>
+      photoUrlFor(venue.place_id, venue.photos?.[index], 900, index),
+    ).filter((url): url is string => Boolean(url));
+    const photoFallbackUrls = Array.from({ length: photoCount }, (_, index) =>
+      photoFallbackUrlFor(venue.place_id, 900, index),
+    ).filter((url): url is string => Boolean(url));
 
     return {
       ...venue,
@@ -250,6 +276,7 @@ function buildVenueCards(venues: VenueVendor[]): VenueCard[] {
       displayAddress: displayAddressFor(venue),
       photoUrl: photoUrls[0] ?? "",
       photoUrls,
+      photoFallbackUrls,
       styleLabel: formatPrimaryType(venue.primary_type),
     };
   });
@@ -883,7 +910,7 @@ function FrequentlyWorksWith({
           const label = categoryLabel(p.category, null);
           const icon = categoryIcon(p.category, null);
           const photoRef = p.photos?.[0];
-          const photoSrc = photoRef ? photoUrlFor(photoRef, 200) : null;
+          const photoSrc = photoRef ? photoUrlFor(undefined, photoRef, 200) : null;
           const tile = (
             <>
               <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm">
@@ -1157,9 +1184,11 @@ function VenueDetailModal({
   };
 
   const v = detail?.vendor;
-  const photos = (v?.photos ?? [])
-    .map((ref) => photoUrlFor(ref, 1200))
-    .filter((url): url is string => !!url);
+  const photos = v
+    ? Array.from({ length: Math.max(1, Math.min((v.photos ?? []).length, 10)) }, (_, index) =>
+        photoUrlFor(v.place_id, v.photos?.[index], 1200, index),
+      ).filter((url): url is string => !!url)
+    : [];
   const rating = v ? normalizeRating(v.rating) : 0;
   const price = v ? budgetLabel(v.price_level) : "";
   const facts = v ? factsFor(v) : [];

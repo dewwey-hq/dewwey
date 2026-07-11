@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
 
 export default function VenuePhotoCarousel({
   photos,
+  fallbackPhotos,
   alt,
   aspectClass = "aspect-[20/19]",
   roundedClass = "rounded-[1.25rem]",
@@ -17,6 +18,7 @@ export default function VenuePhotoCarousel({
   onInteract,
 }: {
   photos: string[];
+  fallbackPhotos?: string[];
   alt: string;
   aspectClass?: string;
   roundedClass?: string;
@@ -31,8 +33,12 @@ export default function VenuePhotoCarousel({
   const slides = photos.length > 0 ? photos : [];
   const [index, setIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
+  const [failedSlides, setFailedSlides] = useState<Set<number>>(new Set());
   const hasMultiple = slides.length > 1;
   const current = slides[index] ?? null;
+  const currentFallback = fallbackPhotos?.[index] ?? null;
+  const currentSrc =
+    current && failedSlides.has(index) && currentFallback ? currentFallback : current;
 
   const go = (delta: number, e: React.MouseEvent) => {
     e.preventDefault();
@@ -48,9 +54,17 @@ export default function VenuePhotoCarousel({
       onMouseLeave={() => setHovered(false)}
       onClick={onInteract}
     >
-      {current ? (
+      {currentSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={current} alt={alt} className="h-full w-full object-cover" />
+        <img
+          src={currentSrc}
+          alt={alt}
+          className="h-full w-full object-cover"
+          onError={() => {
+            if (!currentFallback || failedSlides.has(index)) return;
+            setFailedSlides((prev) => new Set(prev).add(index));
+          }}
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-rose-100 to-pink-200">
           <span className="text-4xl text-rose-300">✦</span>
