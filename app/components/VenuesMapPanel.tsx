@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { APIProvider, Map, Marker, useMap } from "@vis.gl/react-google-maps";
+import { Map, Marker, useMap } from "@vis.gl/react-google-maps";
 import MapCustomControls from "./MapCustomControls";
 import MapVenueFloatingPopup from "./MapVenueFloatingPopup";
 import { MapBoundsReporter } from "./MapSyncHandlers";
@@ -194,8 +194,7 @@ export default function VenuesMapPanel({
   }
 
   return (
-    <APIProvider apiKey={apiKey}>
-      <div className="relative h-full w-full">
+    <div className="relative h-full w-full">
         <div ref={popupOverlayRef} className="pointer-events-none absolute inset-0 z-[5]" />
         <Map
           defaultCenter={CHICAGO_CENTER}
@@ -244,6 +243,5 @@ export default function VenuesMapPanel({
         ) : null}
         </Map>
       </div>
-    </APIProvider>
   );
 }

@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
+import { usePlacePhotos } from "@/app/hooks/use-place-photos";
 
 export default function VenuePhotoCarousel({
-  photos,
-  fallbackPhotos,
+  placeId,
   alt,
   aspectClass = "aspect-[20/19]",
   roundedClass = "rounded-[1.25rem]",
@@ -13,12 +13,13 @@ export default function VenuePhotoCarousel({
   saved = false,
   styleLabel,
   largeSaveAction = false,
+  maxWidth = 900,
+  photoCount = 5,
   onToggleSave,
   onClose,
   onInteract,
 }: {
-  photos: string[];
-  fallbackPhotos?: string[];
+  placeId?: string;
   alt: string;
   aspectClass?: string;
   roundedClass?: string;
@@ -26,19 +27,18 @@ export default function VenuePhotoCarousel({
   saved?: boolean;
   styleLabel?: string;
   largeSaveAction?: boolean;
+  maxWidth?: number;
+  photoCount?: number;
   onToggleSave?: () => void;
   onClose?: () => void;
   onInteract?: (e: React.MouseEvent) => void;
 }) {
-  const slides = photos.length > 0 ? photos : [];
+  const { urls, loading } = usePlacePhotos(placeId, { maxWidth, count: photoCount });
+  const slides = urls;
   const [index, setIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
-  const [failedSlides, setFailedSlides] = useState<Set<number>>(new Set());
   const hasMultiple = slides.length > 1;
   const current = slides[index] ?? null;
-  const currentFallback = fallbackPhotos?.[index] ?? null;
-  const currentSrc =
-    current && failedSlides.has(index) && currentFallback ? currentFallback : current;
 
   const go = (delta: number, e: React.MouseEvent) => {
     e.preventDefault();
@@ -54,20 +54,16 @@ export default function VenuePhotoCarousel({
       onMouseLeave={() => setHovered(false)}
       onClick={onInteract}
     >
-      {currentSrc ? (
+      {current ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={currentSrc}
-          alt={alt}
-          className="h-full w-full object-cover"
-          onError={() => {
-            if (!currentFallback || failedSlides.has(index)) return;
-            setFailedSlides((prev) => new Set(prev).add(index));
-          }}
-        />
+        <img src={current} alt={alt} className="h-full w-full object-cover" />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-rose-100 to-pink-200">
-          <span className="text-4xl text-rose-300">✦</span>
+          {loading ? (
+            <span className="text-sm text-rose-300/80">Loading…</span>
+          ) : (
+            <span className="text-4xl text-rose-300">✦</span>
+          )}
         </div>
       )}
 

@@ -5,8 +5,5 @@ export type MapVenueCard = VenueVendor & {
   displayReviews: number;
   location: string;
   displayAddress: string;
-  photoUrl: string;
-  photoUrls: string[];
-  photoFallbackUrls: string[];
   styleLabel: string;
 };

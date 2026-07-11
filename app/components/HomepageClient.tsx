@@ -9,7 +9,7 @@ import { displayHeadingClassName, uiHeadingClassName } from "@/app/lib/typograph
 import { SiteNavLinks, SiteNavMobileLinks } from "./SiteNavLinks";
 import { SiteBrand } from "./SiteBrand";
 import { useNavIconsVisible } from "@/app/hooks/use-nav-icons-visible";
-import { placePhotoProxyUrl } from "@/app/lib/place-photo";
+import { VenuePlacePhoto } from "./VenuePlacePhoto";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,17 +60,6 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const PRICE_LABELS: Record<number, string> = { 0: "Free", 1: "$", 2: "$$", 3: "$$$", 4: "$$$$" };
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function buildPhotoUrl(vendor: Vendor): string | null {
-  const ref = vendor.photos?.[0];
-  if (ref && process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY) {
-    return `https://places.googleapis.com/v1/${ref}/media?maxWidthPx=800&key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY}`;
-  }
-  if (!vendor.place_id) return null;
-  return placePhotoProxyUrl(vendor.place_id, 800, 0);
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -268,7 +257,6 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredVendors.map((vendor) => {
-              const photoUrl = buildPhotoUrl(vendor);
               const badgeColor = BADGE_COLORS[vendor.category] ?? "bg-gray-50 text-gray-700";
               const badgeLabel = CATEGORY_LABELS[vendor.category] ?? vendor.category;
               const priceLabel = vendor.price_level != null ? PRICE_LABELS[vendor.price_level] : null;
@@ -281,18 +269,11 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
                 >
                   {/* Photo */}
                   <div className="relative overflow-hidden h-56 bg-gray-100">
-                    {photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={photoUrl}
-                        alt={vendor.name ?? "Vendor photo"}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-rose-100 to-pink-200 flex items-center justify-center">
-                        <span className="text-rose-300 text-4xl">✦</span>
-                      </div>
-                    )}
+                    <VenuePlacePhoto
+                      placeId={vendor.place_id}
+                      alt={vendor.name ?? "Vendor photo"}
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
 
                     {/* Save button */}
                     <button

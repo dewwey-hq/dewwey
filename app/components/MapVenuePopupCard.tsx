@@ -33,8 +33,7 @@ export default function MapVenuePopupCard({
       className="w-[min(300px,calc(100vw-2rem))] cursor-pointer overflow-hidden rounded-2xl bg-white shadow-[0_8px_28px_rgba(0,0,0,0.18)] transition-colors hover:bg-gray-50/80"
     >
       <VenuePhotoCarousel
-        photos={venue.photoUrls}
-        fallbackPhotos={venue.photoFallbackUrls}
+        placeId={venue.place_id}
         alt={venue.name}
         aspectClass="aspect-[4/3]"
         roundedClass="rounded-t-2xl rounded-b-none"

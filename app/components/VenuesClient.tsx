@@ -7,7 +7,6 @@ import InstagramEmbed, {
   computeLightboxEmbedLayout,
 } from "./InstagramEmbed";
 import { displayAddressFor, formatCount } from "@/app/lib/format-address";
-import { placePhotoProxyUrl } from "@/app/lib/place-photo";
 import { venueMatchesSearch } from "@/app/lib/venue-search";
 import { BRAND_EMAIL, BRAND_NAME } from "@/app/lib/brand";
 import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS, SITE_MAX_WIDTH_CLASS, SITE_PADDING_X_CLASS } from "@/app/lib/site-layout";
@@ -22,6 +21,8 @@ import { SiteNavLinks } from "./SiteNavLinks";
 import { SiteBrand } from "./SiteBrand";
 import { useNavIconsVisible } from "@/app/hooks/use-nav-icons-visible";
 import VenueRating from "./VenueRating";
+import { VenuePlacePhoto } from "./VenuePlacePhoto";
+import { usePlacePhotos } from "@/app/hooks/use-place-photos";
 import {
   ArrowUpDown,
   Check,
@@ -130,9 +131,6 @@ type VenueCard = VenueVendor & {
   displayReviews: number;
   location: string;
   displayAddress: string;
-  photoUrl: string;
-  photoUrls: string[];
-  photoFallbackUrls: string[];
   styleLabel: string;
 };
 
@@ -185,33 +183,6 @@ function budgetLabel(priceLevel: number | null): string {
   return "$".repeat(Math.max(1, Math.min(priceLevel, 4)));
 }
 
-const CLIENT_PHOTO_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
-
-function directGooglePhotoUrl(photoRef: string | undefined, maxWidth: number): string | null {
-  if (!photoRef || !CLIENT_PHOTO_KEY) return null;
-  return `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=${maxWidth}&key=${CLIENT_PHOTO_KEY}`;
-}
-
-function photoUrlFor(
-  placeId: string | undefined,
-  photoRef: string | undefined,
-  maxWidth = 900,
-  index = 0,
-): string | null {
-  return (
-    directGooglePhotoUrl(photoRef, maxWidth) ??
-    (placeId ? placePhotoProxyUrl(placeId, maxWidth, index) : null)
-  );
-}
-
-function photoFallbackUrlFor(
-  placeId: string | undefined,
-  maxWidth = 900,
-  index = 0,
-): string | null {
-  return placeId ? placePhotoProxyUrl(placeId, maxWidth, index) : null;
-}
-
 function locationFor(v: VenueVendor): string {
   return v.neighborhood ?? v.short_address ?? v.address ?? "Chicago";
 }
@@ -259,27 +230,14 @@ function factsFor(v: VenueVendor): Fact[] {
 }
 
 function buildVenueCards(venues: VenueVendor[]): VenueCard[] {
-  return venues.map((venue) => {
-    const photoCount = Math.max(1, Math.min((venue.photos ?? []).length, 5));
-    const photoUrls = Array.from({ length: photoCount }, (_, index) =>
-      photoUrlFor(venue.place_id, venue.photos?.[index], 900, index),
-    ).filter((url): url is string => Boolean(url));
-    const photoFallbackUrls = Array.from({ length: photoCount }, (_, index) =>
-      photoFallbackUrlFor(venue.place_id, 900, index),
-    ).filter((url): url is string => Boolean(url));
-
-    return {
-      ...venue,
-      displayRating: normalizeRating(venue.rating),
-      displayReviews: venue.review_count ?? 0,
-      location: venue.neighborhood ?? venue.short_address ?? venue.address ?? "Chicago",
-      displayAddress: displayAddressFor(venue),
-      photoUrl: photoUrls[0] ?? "",
-      photoUrls,
-      photoFallbackUrls,
-      styleLabel: formatPrimaryType(venue.primary_type),
-    };
-  });
+  return venues.map((venue) => ({
+    ...venue,
+    displayRating: normalizeRating(venue.rating),
+    displayReviews: venue.review_count ?? 0,
+    location: venue.neighborhood ?? venue.short_address ?? venue.address ?? "Chicago",
+    displayAddress: displayAddressFor(venue),
+    styleLabel: formatPrimaryType(venue.primary_type),
+  }));
 }
 
 // ── Venue Detail Modal ───────────────────────────────────────────────────────
@@ -389,8 +347,17 @@ function PhotoLightbox({
   );
 }
 
-function PhotoGrid({ photos, alt }: { photos: string[]; alt: string }) {
+function PhotoGrid({ placeId, alt }: { placeId: string; alt: string }) {
+  const { urls: photos, loading } = usePlacePhotos(placeId, { maxWidth: 1200, count: 10 });
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  if (loading && photos.length === 0) {
+    return (
+      <div className="flex h-56 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-100 to-pink-200 sm:h-72">
+        <span className="text-sm text-rose-300/80">Loading photos…</span>
+      </div>
+    );
+  }
 
   if (photos.length === 0) {
     return (
@@ -909,17 +876,10 @@ function FrequentlyWorksWith({
         {partners.map((p) => {
           const label = categoryLabel(p.category, null);
           const icon = categoryIcon(p.category, null);
-          const photoRef = p.photos?.[0];
-          const photoSrc = photoRef ? photoUrlFor(undefined, photoRef, 200) : null;
           const tile = (
             <>
               <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm">
-                {photoSrc ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={photoSrc} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <Image src={icon} alt="" width={26} height={26} className="object-contain" />
-                )}
+                <Image src={icon} alt="" width={26} height={26} className="object-contain" />
               </div>
               <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
               <p className="mt-1 text-sm font-medium leading-snug text-gray-900">{p.name}</p>
@@ -1047,14 +1007,16 @@ function InquireForm({
 }
 
 function VenuePhotoThumb({
-  src,
+  placeId,
   className = "",
   size = "md",
 }: {
-  src?: string | null;
+  placeId?: string;
   className?: string;
   size?: "sm" | "md";
 }) {
+  const { urls } = usePlacePhotos(placeId, { maxWidth: 200, count: 1 });
+  const src = urls[0] ?? null;
   const dim = size === "sm" ? "h-8 w-8" : "h-10 w-10";
   if (src) {
     return (
@@ -1077,10 +1039,10 @@ function VenuePhotoThumb({
 
 function VenueInquiryPanel({
   id,
-  photoUrl,
+  placeId,
 }: {
   id?: string;
-  photoUrl?: string | null;
+  placeId?: string;
 }) {
   const [mode, setMode] = useState<InquiryMode | null>(null);
   const tourWhen = earliestTourLabel();
@@ -1096,7 +1058,7 @@ function VenueInquiryPanel({
             onClick={() => setMode("tour")}
             className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-1.5 rounded-xl bg-rose-400 px-2 py-3.5 text-white shadow-sm transition-colors hover:bg-rose-500"
           >
-            <VenuePhotoThumb src={photoUrl} size="sm" />
+            <VenuePhotoThumb placeId={placeId} size="sm" />
             <div className="min-w-0 text-center">
               <span className="block text-sm font-medium leading-tight">Request a tour</span>
               <span className="block whitespace-nowrap text-[10px] leading-snug text-rose-50/90">{tourWhen}</span>
@@ -1184,11 +1146,6 @@ function VenueDetailModal({
   };
 
   const v = detail?.vendor;
-  const photos = v
-    ? Array.from({ length: Math.max(1, Math.min((v.photos ?? []).length, 10)) }, (_, index) =>
-        photoUrlFor(v.place_id, v.photos?.[index], 1200, index),
-      ).filter((url): url is string => !!url)
-    : [];
   const rating = v ? normalizeRating(v.rating) : 0;
   const price = v ? budgetLabel(v.price_level) : "";
   const facts = v ? factsFor(v) : [];
@@ -1311,7 +1268,7 @@ function VenueDetailModal({
               </div>
 
               <div className="py-5 sm:py-6">
-                <PhotoGrid photos={photos} alt={v.name} />
+                <PhotoGrid placeId={v.place_id} alt={v.name} />
               </div>
             </div>
 
@@ -1352,13 +1309,13 @@ function VenueDetailModal({
                   )}
 
                   <div className="lg:hidden">
-                    <VenueInquiryPanel id="venue-inquiry-form" photoUrl={photos[0]} />
+                    <VenueInquiryPanel id="venue-inquiry-form" placeId={v.place_id} />
                   </div>
                 </div>
 
                 <aside className="hidden lg:block">
                   <div className="sticky top-20">
-                    <VenueInquiryPanel id="venue-inquiry-form-desktop" photoUrl={photos[0]} />
+                    <VenueInquiryPanel id="venue-inquiry-form-desktop" placeId={v.place_id} />
                   </div>
                 </aside>
               </div>
@@ -2053,18 +2010,11 @@ export default function VenuesClient({
                   >
                     {/* Photo */}
                     <div className="relative h-64 overflow-hidden bg-gray-100">
-                      {venue.photoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={venue.photoUrl}
-                          alt={venue.name}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-gradient-to-br from-rose-100 to-pink-200 flex items-center justify-center">
-                          <span className="text-rose-300 text-5xl">✦</span>
-                        </div>
-                      )}
+                      <VenuePlacePhoto
+                        placeId={venue.place_id}
+                        alt={venue.name}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
