@@ -7,6 +7,7 @@ import InstagramEmbed, {
   computeLightboxEmbedLayout,
 } from "./InstagramEmbed";
 import { displayAddressFor, formatCount } from "@/app/lib/format-address";
+import { placePhotoProxyUrl } from "@/app/lib/place-photo";
 import { venueMatchesSearch } from "@/app/lib/venue-search";
 import { BRAND_EMAIL, BRAND_NAME } from "@/app/lib/brand";
 import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS, SITE_MAX_WIDTH_CLASS, SITE_PADDING_X_CLASS } from "@/app/lib/site-layout";
@@ -136,7 +137,6 @@ type VenueCard = VenueVendor & {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const API_PHOTO_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
 const BUDGETS = ["Any", "$", "$$", "$$$", "$$$$"];
 const GUEST_FILTERS = ["Any", "50+", "100+", "150+", "200+"];
 
@@ -185,8 +185,8 @@ function budgetLabel(priceLevel: number | null): string {
 }
 
 function photoUrlFor(photoRef: string | undefined, maxWidth = 900): string | null {
-  if (!photoRef || !API_PHOTO_KEY) return null;
-  return `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=${maxWidth}&key=${API_PHOTO_KEY}`;
+  if (!photoRef) return null;
+  return placePhotoProxyUrl(photoRef, maxWidth);
 }
 
 function locationFor(v: VenueVendor): string {

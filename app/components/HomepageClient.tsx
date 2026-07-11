@@ -9,6 +9,7 @@ import { displayHeadingClassName, uiHeadingClassName } from "@/app/lib/typograph
 import { SiteNavLinks, SiteNavMobileLinks } from "./SiteNavLinks";
 import { SiteBrand } from "./SiteBrand";
 import { useNavIconsVisible } from "@/app/hooks/use-nav-icons-visible";
+import { placePhotoProxyUrl } from "@/app/lib/place-photo";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,8 +64,7 @@ const PRICE_LABELS: Record<number, string> = { 0: "Free", 1: "$", 2: "$$", 3: "$
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildPhotoUrl(photoRef: string): string {
-  const key = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
-  return `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=800&key=${key}`;
+  return placePhotoProxyUrl(photoRef, 800);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
