@@ -271,6 +271,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
                   <div className="relative overflow-hidden h-56 bg-gray-100">
                     <VenuePlacePhoto
                       placeId={vendor.place_id}
+                      photoNames={vendor.photos}
                       alt={vendor.name ?? "Vendor photo"}
                       className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />

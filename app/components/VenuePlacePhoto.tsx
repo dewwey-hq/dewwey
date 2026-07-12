@@ -4,6 +4,7 @@ import { usePlacePhotos } from "@/app/hooks/use-place-photos";
 
 export function VenuePlacePhoto({
   placeId,
+  photoNames,
   alt,
   className = "h-full w-full object-cover",
   maxWidth = 900,
@@ -12,6 +13,7 @@ export function VenuePlacePhoto({
   fallbackClassName = "flex h-full w-full items-center justify-center bg-gradient-to-br from-rose-100 to-pink-200",
 }: {
   placeId?: string;
+  photoNames?: string[] | null;
   alt: string;
   className?: string;
   maxWidth?: number;
@@ -19,7 +21,11 @@ export function VenuePlacePhoto({
   loadingClassName?: string;
   fallbackClassName?: string;
 }) {
-  const { urls, loading } = usePlacePhotos(placeId, { maxWidth, count: index + 1 });
+  const { urls, loading } = usePlacePhotos(placeId, {
+    maxWidth,
+    count: index + 1,
+    photoNames: photoNames ?? undefined,
+  });
   const src = urls[index] ?? urls[0] ?? null;
 
   if (src) {

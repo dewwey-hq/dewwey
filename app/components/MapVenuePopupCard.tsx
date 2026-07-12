@@ -34,6 +34,7 @@ export default function MapVenuePopupCard({
     >
       <VenuePhotoCarousel
         placeId={venue.place_id}
+        photoNames={venue.photos}
         alt={venue.name}
         aspectClass="aspect-[4/3]"
         roundedClass="rounded-t-2xl rounded-b-none"

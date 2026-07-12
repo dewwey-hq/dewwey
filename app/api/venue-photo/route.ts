@@ -25,8 +25,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid place id" }, { status: 400 });
   }
 
+  const photoNames = request.nextUrl.searchParams
+    .getAll("name")
+    .filter(Boolean);
+
   if (format === "json") {
-    const urls = await resolveVenuePhotoUris(placeId, width, count);
+    const urls = await resolveVenuePhotoUris(placeId, width, count, photoNames);
     if (urls.length === 0) {
       return NextResponse.json({ error: "Photos unavailable" }, { status: 404 });
     }

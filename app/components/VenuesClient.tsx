@@ -347,8 +347,20 @@ function PhotoLightbox({
   );
 }
 
-function PhotoGrid({ placeId, alt }: { placeId: string; alt: string }) {
-  const { urls: photos, loading } = usePlacePhotos(placeId, { maxWidth: 1200, count: 10 });
+function PhotoGrid({
+  placeId,
+  photoNames,
+  alt,
+}: {
+  placeId: string;
+  photoNames?: string[] | null;
+  alt: string;
+}) {
+  const { urls: photos, loading } = usePlacePhotos(placeId, {
+    maxWidth: 1200,
+    count: 10,
+    photoNames: photoNames ?? undefined,
+  });
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   if (loading && photos.length === 0) {
@@ -1008,14 +1020,20 @@ function InquireForm({
 
 function VenuePhotoThumb({
   placeId,
+  photoNames,
   className = "",
   size = "md",
 }: {
   placeId?: string;
+  photoNames?: string[] | null;
   className?: string;
   size?: "sm" | "md";
 }) {
-  const { urls } = usePlacePhotos(placeId, { maxWidth: 200, count: 1 });
+  const { urls } = usePlacePhotos(placeId, {
+    maxWidth: 200,
+    count: 1,
+    photoNames: photoNames ?? undefined,
+  });
   const src = urls[0] ?? null;
   const dim = size === "sm" ? "h-8 w-8" : "h-10 w-10";
   if (src) {
@@ -1040,9 +1058,11 @@ function VenuePhotoThumb({
 function VenueInquiryPanel({
   id,
   placeId,
+  photoNames,
 }: {
   id?: string;
   placeId?: string;
+  photoNames?: string[] | null;
 }) {
   const [mode, setMode] = useState<InquiryMode | null>(null);
   const tourWhen = earliestTourLabel();
@@ -1058,7 +1078,7 @@ function VenueInquiryPanel({
             onClick={() => setMode("tour")}
             className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-1.5 rounded-xl bg-rose-400 px-2 py-3.5 text-white shadow-sm transition-colors hover:bg-rose-500"
           >
-            <VenuePhotoThumb placeId={placeId} size="sm" />
+            <VenuePhotoThumb placeId={placeId} photoNames={photoNames} size="sm" />
             <div className="min-w-0 text-center">
               <span className="block text-sm font-medium leading-tight">Request a tour</span>
               <span className="block whitespace-nowrap text-[10px] leading-snug text-rose-50/90">{tourWhen}</span>
@@ -1268,7 +1288,7 @@ function VenueDetailModal({
               </div>
 
               <div className="py-5 sm:py-6">
-                <PhotoGrid placeId={v.place_id} alt={v.name} />
+                <PhotoGrid placeId={v.place_id} photoNames={v.photos} alt={v.name} />
               </div>
             </div>
 
@@ -1309,13 +1329,13 @@ function VenueDetailModal({
                   )}
 
                   <div className="lg:hidden">
-                    <VenueInquiryPanel id="venue-inquiry-form" placeId={v.place_id} />
+                    <VenueInquiryPanel id="venue-inquiry-form" placeId={v.place_id} photoNames={v.photos} />
                   </div>
                 </div>
 
                 <aside className="hidden lg:block">
                   <div className="sticky top-20">
-                    <VenueInquiryPanel id="venue-inquiry-form-desktop" placeId={v.place_id} />
+                    <VenueInquiryPanel id="venue-inquiry-form-desktop" placeId={v.place_id} photoNames={v.photos} />
                   </div>
                 </aside>
               </div>
@@ -2012,6 +2032,7 @@ export default function VenuesClient({
                     <div className="relative h-64 overflow-hidden bg-gray-100">
                       <VenuePlacePhoto
                         placeId={venue.place_id}
+                        photoNames={venue.photos}
                         alt={venue.name}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />

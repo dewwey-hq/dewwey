@@ -68,6 +68,7 @@ export default function VenueMapBrowseCard({
       <div className="relative">
         <VenuePhotoCarousel
           placeId={venue.place_id}
+          photoNames={venue.photos}
           alt={venue.name}
           aspectClass="aspect-[3/2]"
           roundedClass="rounded-none"

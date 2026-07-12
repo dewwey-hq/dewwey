@@ -5,15 +5,22 @@ import { useEffect, useState } from "react";
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const photoCache = new Map<string, { urls: string[]; ts: number }>();
 
-function cacheKey(placeId: string, maxWidth: number, count: number) {
-  return `${placeId}:${maxWidth}:${count}`;
+function cacheKey(
+  placeId: string,
+  maxWidth: number,
+  count: number,
+  photoNames?: string[],
+) {
+  const namesKey = photoNames?.length ? photoNames.slice(0, count).join("|") : "";
+  return `${placeId}:${maxWidth}:${count}:${namesKey}`;
 }
 
 export function usePlacePhotos(
   placeId: string | undefined,
-  options: { maxWidth?: number; count?: number } = {},
+  options: { maxWidth?: number; count?: number; photoNames?: string[] } = {},
 ) {
-  const { maxWidth = 900, count = 5 } = options;
+  const { maxWidth = 900, count = 5, photoNames } = options;
+  const photoNamesKey = (photoNames ?? []).slice(0, count).join("|");
   const [urls, setUrls] = useState<string[]>([]);
   const [loading, setLoading] = useState(Boolean(placeId));
   const [error, setError] = useState(false);
@@ -25,7 +32,7 @@ export function usePlacePhotos(
       return;
     }
 
-    const key = cacheKey(placeId, maxWidth, count);
+    const key = cacheKey(placeId, maxWidth, count, photoNames);
     const cached = photoCache.get(key);
     if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
       setUrls(cached.urls);
@@ -46,6 +53,9 @@ export function usePlacePhotos(
           count: String(count),
           format: "json",
         });
+        for (const name of (photoNames ?? []).slice(0, count)) {
+          params.append("name", name);
+        }
 
         const response = await fetch(`/api/venue-photo?${params.toString()}`);
         if (!response.ok) throw new Error("Photos unavailable");
@@ -71,7 +81,7 @@ export function usePlacePhotos(
     return () => {
       cancelled = true;
     };
-  }, [placeId, maxWidth, count]);
+  }, [placeId, maxWidth, count, photoNamesKey]);
 
   return { urls, loading, error };
 }

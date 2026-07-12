@@ -83,11 +83,43 @@ async function fetchPhotoUri(
   return data.photoUri ?? null;
 }
 
+export async function resolvePhotoNamesToUris(
+  photoNames: string[],
+  width: number,
+): Promise<string[]> {
+  const keys = getServerGoogleApiKeys();
+  if (keys.length === 0) return [];
+
+  const validNames = photoNames.filter(isValidPlacePhotoName);
+  if (validNames.length === 0) return [];
+
+  for (const apiKey of keys) {
+    const urls: string[] = [];
+    for (const photoName of validNames) {
+      const uri = await fetchPhotoUri(photoName, width, apiKey);
+      if (uri) urls.push(uri);
+    }
+    if (urls.length > 0) return urls;
+  }
+
+  return [];
+}
+
 export async function resolveVenuePhotoUris(
   placeId: string,
   width: number,
   count: number,
+  photoNames?: string[],
 ): Promise<string[]> {
+  const cachedNames = (photoNames ?? [])
+    .slice(0, count)
+    .filter(isValidPlacePhotoName);
+
+  if (cachedNames.length > 0) {
+    const fromCache = await resolvePhotoNamesToUris(cachedNames, width);
+    if (fromCache.length > 0) return fromCache;
+  }
+
   const keys = getServerGoogleApiKeys();
   if (keys.length === 0) return [];
 
@@ -103,13 +135,13 @@ export async function resolveVenuePhotoUris(
     if (!upstream.ok) continue;
 
     const data = (await upstream.json()) as { photos?: Array<{ name?: string }> };
-    const photoNames = (data.photos ?? [])
+    const resolvedNames = (data.photos ?? [])
       .slice(0, count)
       .map((photo) => photo.name)
       .filter((name): name is string => Boolean(name && isValidPlacePhotoName(name)));
 
     const urls: string[] = [];
-    for (const photoName of photoNames) {
+    for (const photoName of resolvedNames) {
       const uri = await fetchPhotoUri(photoName, width, apiKey);
       if (uri) urls.push(uri);
     }

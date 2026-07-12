@@ -6,6 +6,7 @@ import { usePlacePhotos } from "@/app/hooks/use-place-photos";
 
 export default function VenuePhotoCarousel({
   placeId,
+  photoNames,
   alt,
   aspectClass = "aspect-[20/19]",
   roundedClass = "rounded-[1.25rem]",
@@ -20,6 +21,7 @@ export default function VenuePhotoCarousel({
   onInteract,
 }: {
   placeId?: string;
+  photoNames?: string[] | null;
   alt: string;
   aspectClass?: string;
   roundedClass?: string;
@@ -33,7 +35,11 @@ export default function VenuePhotoCarousel({
   onClose?: () => void;
   onInteract?: (e: React.MouseEvent) => void;
 }) {
-  const { urls, loading } = usePlacePhotos(placeId, { maxWidth, count: photoCount });
+  const { urls, loading } = usePlacePhotos(placeId, {
+    maxWidth,
+    count: photoCount,
+    photoNames: photoNames ?? undefined,
+  });
   const slides = urls;
   const [index, setIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
