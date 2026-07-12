@@ -1,3 +1,6 @@
+import { unstable_cache } from "next/cache";
+import { PLACE_PHOTO_URI_CACHE_SECONDS } from "@/app/lib/place-photo-cache";
+
 const PLACE_ID = /^[A-Za-z0-9_-]+$/;
 const PLACE_PHOTO_NAME = /^places\/[^/]+\/photos\/[^/]+$/;
 
@@ -31,15 +34,22 @@ export function clampPhotoIndex(index: number | undefined): number {
   return Math.max(0, Math.min(9, Math.round(parsed)));
 }
 
-/** Server-side keys only — avoids browser-referrer restricted keys. */
+/**
+ * Server-side Places key — must NOT use HTTP referrer restrictions.
+ * Set GOOGLE_PLACES_SERVER_API_KEY in Vercel (Application restrictions: None).
+ */
 export function getServerGoogleApiKeys(): string[] {
   const keys = [
-    process.env.GOOGLE_MAPS_API_KEY,
+    process.env.GOOGLE_PLACES_SERVER_API_KEY,
     process.env.GOOGLE_PLACES_API_KEY,
-    process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY,
+    process.env.GOOGLE_MAPS_API_KEY,
   ].filter((key): key is string => Boolean(key));
 
   return [...new Set(keys)];
+}
+
+export function hasServerGoogleApiKey(): boolean {
+  return getServerGoogleApiKeys().length > 0;
 }
 
 async function fetchPhotoName(
@@ -52,7 +62,7 @@ async function fetchPhotoName(
       "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask": "photos",
     },
-    next: { revalidate: 3600 },
+    cache: "no-store",
   });
 
   if (!upstream.ok) return null;
@@ -74,7 +84,7 @@ async function fetchPhotoUri(
 
   const upstream = await fetch(upstreamUrl, {
     headers: { "X-Goog-Api-Key": apiKey },
-    next: { revalidate: 3600 },
+    cache: "no-store",
   });
 
   if (!upstream.ok) return null;
@@ -105,7 +115,7 @@ export async function resolvePhotoNamesToUris(
   return [];
 }
 
-export async function resolveVenuePhotoUris(
+async function resolveVenuePhotoUrisUncached(
   placeId: string,
   width: number,
   count: number,
@@ -129,7 +139,7 @@ export async function resolveVenuePhotoUris(
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": "photos",
       },
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
 
     if (!upstream.ok) continue;
@@ -152,21 +162,33 @@ export async function resolveVenuePhotoUris(
   return [];
 }
 
+function photoNamesCacheKey(photoNames?: string[]): string {
+  return (photoNames ?? []).join("|");
+}
+
+export async function resolveVenuePhotoUris(
+  placeId: string,
+  width: number,
+  count: number,
+  photoNames?: string[],
+): Promise<string[]> {
+  if (!hasServerGoogleApiKey()) return [];
+
+  const namesKey = photoNamesCacheKey(photoNames?.slice(0, count));
+  const cached = unstable_cache(
+    async () => resolveVenuePhotoUrisUncached(placeId, width, count, photoNames),
+    ["venue-photo-uris", placeId, String(width), String(count), namesKey],
+    { revalidate: PLACE_PHOTO_URI_CACHE_SECONDS },
+  );
+
+  return cached();
+}
+
 export async function resolveVenuePhotoUri(
   placeId: string,
   width: number,
   index: number,
 ): Promise<string | null> {
-  const keys = getServerGoogleApiKeys();
-  if (keys.length === 0) return null;
-
-  for (const apiKey of keys) {
-    const photoName = await fetchPhotoName(placeId, index, apiKey);
-    if (!photoName) continue;
-
-    const uri = await fetchPhotoUri(photoName, width, apiKey);
-    if (uri) return uri;
-  }
-
-  return null;
+  const urls = await resolveVenuePhotoUris(placeId, width, index + 1);
+  return urls[index] ?? urls[0] ?? null;
 }

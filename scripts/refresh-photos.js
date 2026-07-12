@@ -5,9 +5,9 @@ const PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places";
 
 function getApiKey() {
   return (
+    process.env.GOOGLE_PLACES_SERVER_API_KEY ??
     process.env.GOOGLE_PLACES_API_KEY ??
-    process.env.GOOGLE_MAPS_API_KEY ??
-    process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY
+    process.env.GOOGLE_MAPS_API_KEY
   );
 }
 
@@ -31,7 +31,9 @@ async function fetchFreshPhotos(placeId, apiKey) {
 async function main() {
   const apiKey = getApiKey();
   if (!apiKey) {
-    console.error("Missing GOOGLE_PLACES_API_KEY or GOOGLE_MAPS_API_KEY in .env.local");
+    console.error(
+      "Missing GOOGLE_PLACES_SERVER_API_KEY, GOOGLE_PLACES_API_KEY, or GOOGLE_MAPS_API_KEY in .env.local",
+    );
     process.exit(1);
   }
 

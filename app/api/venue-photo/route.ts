@@ -3,10 +3,12 @@ import {
   clampPhotoCount,
   clampPhotoIndex,
   clampPhotoWidth,
+  hasServerGoogleApiKey,
   isValidPlaceId,
   resolveVenuePhotoUri,
   resolveVenuePhotoUris,
 } from "@/app/lib/venue-photos-server";
+import { PLACE_PHOTO_URI_CACHE_CONTROL } from "@/app/lib/place-photo-cache";
 
 export async function GET(request: NextRequest) {
   const placeId = request.nextUrl.searchParams.get("place");
@@ -25,6 +27,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid place id" }, { status: 400 });
   }
 
+  if (!hasServerGoogleApiKey()) {
+    return NextResponse.json(
+      {
+        error: "Photos unavailable",
+        reason: "missing_server_api_key",
+        hint: "Set GOOGLE_PLACES_SERVER_API_KEY in Vercel with no HTTP referrer restriction.",
+      },
+      { status: 503 },
+    );
+  }
+
   const photoNames = request.nextUrl.searchParams
     .getAll("name")
     .filter(Boolean);
@@ -32,13 +45,20 @@ export async function GET(request: NextRequest) {
   if (format === "json") {
     const urls = await resolveVenuePhotoUris(placeId, width, count, photoNames);
     if (urls.length === 0) {
-      return NextResponse.json({ error: "Photos unavailable" }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Photos unavailable",
+          reason: "google_places_denied",
+          hint: "Ensure Places API (New) is enabled and the server key has no referrer restriction.",
+        },
+        { status: 404 },
+      );
     }
     return NextResponse.json(
       { urls },
       {
         headers: {
-          "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+          "Cache-Control": PLACE_PHOTO_URI_CACHE_CONTROL,
         },
       },
     );
@@ -52,7 +72,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.redirect(photoUri, {
     status: 302,
     headers: {
-      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+      "Cache-Control": PLACE_PHOTO_URI_CACHE_CONTROL,
     },
   });
 }

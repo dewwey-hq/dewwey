@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  PLACE_PHOTO_URI_CACHE_SECONDS,
+  placePhotoStorageKey,
+  readPlacePhotoUriCache,
+  writePlacePhotoUriCache,
+} from "@/app/lib/place-photo-cache";
 
-const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_TTL_MS = PLACE_PHOTO_URI_CACHE_SECONDS * 1000;
 const photoCache = new Map<string, { urls: string[]; ts: number }>();
 
 function cacheKey(
@@ -33,9 +39,20 @@ export function usePlacePhotos(
     }
 
     const key = cacheKey(placeId, maxWidth, count, photoNames);
+    const storageKey = placePhotoStorageKey(placeId, maxWidth, count, photoNamesKey);
+
     const cached = photoCache.get(key);
     if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
       setUrls(cached.urls);
+      setLoading(false);
+      setError(false);
+      return;
+    }
+
+    const stored = readPlacePhotoUriCache(storageKey);
+    if (stored?.length) {
+      photoCache.set(key, { urls: stored, ts: Date.now() });
+      setUrls(stored);
       setLoading(false);
       setError(false);
       return;
@@ -67,6 +84,7 @@ export function usePlacePhotos(
         if (resolved.length === 0) throw new Error("No photos returned");
 
         photoCache.set(key, { urls: resolved, ts: Date.now() });
+        writePlacePhotoUriCache(storageKey, resolved);
         setUrls(resolved);
       } catch {
         if (!cancelled) {
