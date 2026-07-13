@@ -1592,11 +1592,51 @@ export default function VenuesClient({
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const [mapListPage, setMapListPage] = useState(1);
   const [savedVenueIds, setSavedVenueIds] = useState<Set<number>>(new Set());
+  /** Server search results — needed because list/map props are paginated / capped. */
+  const [searchVenues, setSearchVenues] = useState<VenueVendor[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
   const listItemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const mapListScrollRef = useRef<HTMLDivElement>(null);
   const navIconsVisible = useNavIconsVisible(32, viewMode === "map" ? mapListScrollRef : undefined);
 
-  const venueCards = useMemo(() => buildVenueCards(venues), [venues]);
+  const trimmedQuery = query.trim();
+  const hasTextSearch = trimmedQuery.length > 0;
+
+  useEffect(() => {
+    if (!hasTextSearch) {
+      setSearchVenues(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const handle = window.setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(
+          `${DETAIL_API_URL}?limit=500&offset=0&city=Chicago&category=venue&q=${encodeURIComponent(trimmedQuery)}`,
+          { signal: controller.signal },
+        );
+        if (!res.ok) throw new Error(`search ${res.status}`);
+        const data = await res.json();
+        setSearchVenues(data.vendors ?? []);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        // Fall back to filtering whatever was already loaded.
+        setSearchVenues(null);
+      } finally {
+        if (!controller.signal.aborted) setSearchLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(handle);
+    };
+  }, [hasTextSearch, trimmedQuery]);
+
+  const venueSource = searchVenues ?? venues;
+  const venueCards = useMemo(() => buildVenueCards(venueSource), [venueSource]);
 
   const styleOptions = useMemo(() => {
     const types = new Set(venueCards.map((v) => v.styleLabel));
@@ -1626,9 +1666,14 @@ export default function VenuesClient({
     setMapBounds(bounds);
   }, []);
 
+  // Text search should show matches even if they're outside the current viewport;
+  // map pan/zoom filtering is for browse mode only.
   const mapAreaVenues = useMemo(
-    () => venuesInMapBounds(filteredVenues, mapBounds, mapSelectedId),
-    [filteredVenues, mapBounds, mapSelectedId],
+    () =>
+      hasTextSearch
+        ? filteredVenues
+        : venuesInMapBounds(filteredVenues, mapBounds, mapSelectedId),
+    [filteredVenues, hasTextSearch, mapBounds, mapSelectedId],
   );
 
   const mapListTotalPages = Math.max(1, Math.ceil(mapAreaVenues.length / MAP_LIST_PAGE_SIZE));
@@ -1776,15 +1821,27 @@ export default function VenuesClient({
             />
             <div className="@container px-4 py-4 pb-24 sm:px-6 lg:pointer-events-auto lg:w-[56%] lg:px-6 lg:pr-4 lg:pb-8">
               <p className="mb-4 text-base font-semibold text-gray-900">
-                {mapAreaVenues.length === 1
-                  ? "1 venue in this area"
-                  : `${mapAreaVenues.length} venues in this area`}
+                {searchLoading
+                  ? "Searching…"
+                  : hasTextSearch
+                    ? mapAreaVenues.length === 1
+                      ? "1 venue match"
+                      : `${mapAreaVenues.length} venue matches`
+                    : mapAreaVenues.length === 1
+                      ? "1 venue in this area"
+                      : `${mapAreaVenues.length} venues in this area`}
               </p>
               {paginatedMapVenues.length === 0 ? (
                 <div className="rounded-2xl border border-black/[0.06] bg-gray-50 px-5 py-10 text-center">
-                  <p className="text-sm font-medium text-gray-900">No venues in this map area</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {hasTextSearch
+                      ? "No venues match your search"
+                      : "No venues in this map area"}
+                  </p>
                   <p className="mt-1 text-sm text-gray-500">
-                    Try zooming out, moving the map, or adjusting your filters.
+                    {hasTextSearch
+                      ? "Try a different name, neighborhood, or clear filters."
+                      : "Try zooming out, moving the map, or adjusting your filters."}
                   </p>
                 </div>
               ) : (

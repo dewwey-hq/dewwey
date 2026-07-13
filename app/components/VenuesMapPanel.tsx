@@ -183,10 +183,11 @@ export default function VenuesMapPanel({
         <div>
           <p className="text-sm font-medium text-gray-900">Map not configured</p>
           <p className="mt-1 text-sm text-gray-500">
-            Add{" "}
-            <code className="text-xs">GOOGLE_MAPS_API_KEY</code> or{" "}
-            <code className="text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> in Vercel, then
-            redeploy.
+            Set{" "}
+            <code className="text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> or{" "}
+            <code className="text-xs">GOOGLE_MAPS_API_KEY</code> in{" "}
+            <code className="text-xs">.env.local</code> (restart{" "}
+            <code className="text-xs">npm run dev</code>), or in Vercel then redeploy.
           </p>
         </div>
       </div>

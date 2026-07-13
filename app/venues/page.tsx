@@ -4,7 +4,8 @@ import VenuesClient, { type VenueVendor } from "../components/VenuesClient";
 
 const API_URL = "https://kfln0omb31.execute-api.us-east-1.amazonaws.com/vendors";
 const PAGE_SIZE = 20;
-const MAP_FETCH_LIMIT = 100;
+/** Map view loads all Chicago venues once (client filters by bounds). Keep ≥ DB venue count. */
+const MAP_FETCH_LIMIT = 500;
 
 export const metadata: Metadata = {
   title: `Chicago Wedding Venues | ${BRAND_NAME}`,
@@ -21,7 +22,8 @@ async function getVenues(
   try {
     const res = await fetch(
       `${API_URL}?limit=${limit}&offset=${offset}&city=Chicago&category=venue`,
-      { next: { revalidate: 3600 } },
+      // Map browse needs fresh inventory; list pages can stay lightly cached.
+      mapMode ? { cache: "no-store" } : { next: { revalidate: 300 } },
     );
     if (!res.ok) return { vendors: [], total: 0 };
     const data = await res.json();

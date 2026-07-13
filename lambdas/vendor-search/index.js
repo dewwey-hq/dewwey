@@ -74,6 +74,7 @@ async function searchVendors(event) {
   // Parse and validate parameters
   const category = qs.category || null;
   const city = qs.city || "Chicago";
+  const q = (qs.q || qs.search || "").trim();
   const limit = parseInt(qs.limit || "20", 10);
   const offset = parseInt(qs.offset || "0", 10);
 
@@ -91,7 +92,9 @@ async function searchVendors(event) {
     return respond(400, { error: "offset must be a non-negative integer" });
   }
 
-  const safeLimit = Math.min(limit, 100); // hard cap — prevent runaway queries
+  // Map view / search may request a few hundred venues once; list UI stays at pageSize 20.
+  const safeLimit = Math.min(limit, 500);
+  const searchPattern = q ? `%${q.replace(/[%_\\]/g, "\\$&")}%` : null;
 
   try {
     const { rows } = await getPool().query(
@@ -108,18 +111,33 @@ async function searchVendors(event) {
        FROM vendors
        WHERE ($1::text IS NULL OR category = $1)
          AND city ILIKE $2
+         AND (
+           $5::text IS NULL
+           OR name ILIKE $5 ESCAPE '\\'
+           OR COALESCE(address, '') ILIKE $5 ESCAPE '\\'
+           OR COALESCE(short_address, '') ILIKE $5 ESCAPE '\\'
+           OR COALESCE(neighborhood, '') ILIKE $5 ESCAPE '\\'
+         )
        ORDER BY
          featured DESC,
          rating DESC NULLS LAST,
          review_count DESC NULLS LAST
        LIMIT $3 OFFSET $4`,
-      [category, city, safeLimit, offset]
+      [category, city, safeLimit, offset, searchPattern]
     );
 
     const total = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
     const vendors = rows.map(({ total_count, ...vendor }) => vendor);
 
-    return respond(200, { vendors, total, category, city, limit: safeLimit, offset });
+    return respond(200, {
+      vendors,
+      total,
+      category,
+      city,
+      q: q || null,
+      limit: safeLimit,
+      offset,
+    });
   } catch (err) {
     console.error("vendor-search error:", err);
     return respond(500, { error: "Internal server error" });
