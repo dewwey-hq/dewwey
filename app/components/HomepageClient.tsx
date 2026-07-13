@@ -58,13 +58,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   hair_makeup:  "Hair & Makeup",
 };
 
+import { placesPhotoUrl } from "@/app/lib/places-photo";
+
 const PRICE_LABELS: Record<number, string> = { 0: "Free", 1: "$", 2: "$$", 3: "$$$", 4: "$$$$" };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildPhotoUrl(photoRef: string): string {
-  const key = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
-  return `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=800&key=${key}`;
+  return placesPhotoUrl(photoRef, 800) ?? "";
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
