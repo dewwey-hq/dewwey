@@ -13,6 +13,7 @@
     "scrape-ig-v2": "node scripts/scrape-instagram-v2.js",
     "enrich-venue": "node scripts/enrich-venue-website.js",
     "enrich-venue-llm-pilot": "node scripts/venue-enrichment/llm-pilot.js",
+    "enrich-venues-batch": "node scripts/venue-enrichment/batch-enrich.js",
     "refresh-place-photos": "node scripts/refresh-place-photos.js"
   },
   "dependencies": {

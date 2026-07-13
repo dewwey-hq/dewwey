@@ -1,6 +1,6 @@
 # Vendor information aggregation — strategy
 
-**Status:** Phase 0 / 0b done. **Phase 1 persist in progress** — migration `006_venue_enrichment.sql`, `persist.js`, Lambda detail + venue modal. See [ai-native-data-plane.md](./ai-native-data-plane.md).
+**Status:** Phase 0 / 0b done. **Phase 1 persist shipped.** Phase 2 batch: `npm run enrich-venues-batch`. See [ai-native-data-plane.md](./ai-native-data-plane.md).
 
 **Scope today:** Chicago **venues** only (~85). Same pattern can extend later to caterers, florists, etc.
 

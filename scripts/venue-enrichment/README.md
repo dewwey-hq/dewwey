@@ -41,6 +41,25 @@ npm run enrich-venue -- --url https://example.com --max-depth 3 --max-pages 30 -
 
 Stdout: `{ rules, llm }` JSON. With `--persist`, also upserts `venue_extraction_runs` + `venue_enrichment` (migration `006_`).
 
+## Phase 2 — batch all venues
+
+```bash
+# Remaining venues (skip status=success; re-run failed / never enriched)
+npm run enrich-venues-batch
+
+# Preview queue only
+npm run enrich-venues-batch -- --dry-run
+
+# Cap for a smoke test
+npm run enrich-venues-batch -- --limit 5
+
+# Also re-run needs_review rows, or force everyone
+npm run enrich-venues-batch -- --include-review
+npm run enrich-venues-batch -- --force
+```
+
+Writes a run report under `scripts/venue-enrichment/sample-output/batch-enrich/`.
+
 ## Crawl rules
 
 - Start at the venue homepage (or `--url`)
