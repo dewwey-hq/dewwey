@@ -33,6 +33,12 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# GCP service account keys (never commit)
+*-key.json
+*-sa.json
+google-credentials.json
+service-account*.json
+
 # vercel
 .vercel
 
@@ -42,3 +48,12 @@ next-env.d.ts
 lambdas/vendor-search/node_modules
 response.json
 scripts/*.tsv
+
+# local secrets (SA keys)
+secrets/
+
+# venue enrichment crawl/LLM artifacts (regenerable)
+scripts/venue-enrichment/sample-output/
+
+# lambda deploy zip (build locally)
+lambdas/vendor-search/function.zip

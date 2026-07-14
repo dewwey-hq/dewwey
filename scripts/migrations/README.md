@@ -23,6 +23,9 @@ You'll be prompted for the password (see `.env.local` → `DB_PASSWORD`).
 | `003_instagram_posts_fields.sql` | Adds `post_timestamp`, `image_url`, `likes_count`, `owner_username` to `instagram_posts` |
 | `004_instagram_posts_mentions.sql` | Adds `mentions`, `hashtags`, `post_type`, `images` to `instagram_posts` — mentions replaces caption parsing for vendor relationship graph |
 | `005_instagram_posts_media_dimensions.sql` | Adds `media_width`, `media_height` to `instagram_posts` for accurate Instagram embed sizing |
+| `006_venue_enrichment.sql` | Adds `venue_extraction_runs` (versioned rules/LLM payloads) and `venue_enrichment` (current serving row + indexed capacity/catering/`needs_review`) |
+
+**Related ops (not SQL):** venue website photos use Places photo names that expire — see [docs/places-photos.md](../../docs/places-photos.md) and `npm run refresh-place-photos`.
 
 ## Rules
 

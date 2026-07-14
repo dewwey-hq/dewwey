@@ -42,7 +42,11 @@ import {
   Users,
   Wine,
   X,
+  Clock,
+  Shield,
 } from "lucide-react";
+
+import { placesPhotoUrl } from "@/app/lib/places-photo";
 
 const DETAIL_API_URL = "https://kfln0omb31.execute-api.us-east-1.amazonaws.com/vendors";
 
@@ -118,10 +122,51 @@ type Partner = {
   times_mentioned: number;
 };
 
+type VenueEnrichmentFacts = {
+  about?: { value?: string | null; quote?: string | null; source_url?: string | null } | null;
+  capacity_configurations?: Array<{
+    space?: string | null;
+    setting?: string | null;
+    style?: string | null;
+    guests?: number | null;
+    quote?: string | null;
+    source_url?: string | null;
+  }>;
+  amenities?: Array<{ name?: string; quote?: string | null; source_url?: string | null }>;
+  included_inventory?: Array<{ item?: string; quote?: string | null; source_url?: string | null }>;
+  policies?: {
+    catering?: string | null;
+    byo_alcohol?: boolean | null;
+    alcohol_provided?: boolean | null;
+    event_insurance?: string | null;
+    curfew?: string | null;
+  } | null;
+  pricing_as_stated?: string | null;
+  network_vendors?: Array<{ name?: string; categories?: string[]; relationship?: string }>;
+  faqs?: Array<{ question?: string; answer?: string; source_url?: string }>;
+  llm_confidence?: number | null;
+};
+
+type VenueEnrichment = {
+  vendor_id: number;
+  status: string;
+  needs_review: boolean;
+  capacity_max: number | null;
+  capacity_min: number | null;
+  capacity_as_stated: string | null;
+  catering: string | null;
+  event_insurance: string | null;
+  pricing_model: string | null;
+  price_display: string | null;
+  facts: VenueEnrichmentFacts | null;
+  enriched_at?: string | null;
+};
+
 type VenueDetail = {
   vendor: VenueVendor;
   realWeddings: RealWeddingPost[];
   frequentlyWorksWith: Partner[];
+  enrichment?: VenueEnrichment | null;
 };
 
 type Fact = { Icon: React.ElementType; label: string };
@@ -138,6 +183,10 @@ type VenueCard = VenueVendor & {
 
 const BUDGETS = ["Any", "$", "$$", "$$$", "$$$$"];
 const GUEST_FILTERS = ["Any", "50+", "100+", "150+", "200+"];
+
+function photoUrlFor(photoRef: string | undefined, maxWidth = 900): string | null {
+  return placesPhotoUrl(photoRef, maxWidth);
+}
 
 const CATEGORY_LABELS: Record<string, string> = {
   venue: "Venue",
@@ -210,9 +259,193 @@ function googleMapsUrl(v: VenueVendor): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress(v))}`;
 }
 
-function aboutFor(v: VenueVendor): string | null {
+function aboutFor(v: VenueVendor, enrichment?: VenueEnrichment | null): string | null {
+  const fromSite = enrichment?.facts?.about?.value?.trim();
+  if (fromSite) return fromSite;
   const text = v.editorial_summary?.trim() || v.ai_summary?.trim();
   return text || null;
+}
+
+function cateringLabel(value: string | null | undefined): string | null {
+  if (!value || value === "unknown") return null;
+  const map: Record<string, string> = {
+    open: "Outside catering allowed",
+    preferred_list_required: "Preferred caterers required",
+    exclusive_in_house: "In-house catering only",
+  };
+  return map[value] || value;
+}
+
+function insuranceLabel(value: string | null | undefined): string | null {
+  if (!value || value === "unknown") return null;
+  const map: Record<string, string> = {
+    required: "Event insurance required",
+    not_required: "Event insurance not required",
+    venue_covers: "Venue covers insurance",
+  };
+  return map[value] || value;
+}
+
+function formatConfigRow(c: NonNullable<VenueEnrichmentFacts["capacity_configurations"]>[number]): string {
+  const bits = [
+    c.space,
+    c.style && c.style !== "unknown" ? c.style : null,
+    c.setting && c.setting !== "unknown" ? c.setting : null,
+    c.guests != null ? `${c.guests} guests` : null,
+  ].filter(Boolean);
+  return bits.join(" · ");
+}
+
+function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment }) {
+  const facts = enrichment.facts || {};
+  const configs = (facts.capacity_configurations || []).filter((c) => c.guests != null);
+  const amenities = (facts.amenities || []).map((a) => a.name).filter(Boolean) as string[];
+  const inventory = (facts.included_inventory || [])
+    .map((i) => i.item)
+    .filter(Boolean) as string[];
+  const vendors = facts.network_vendors || [];
+  const catering = cateringLabel(enrichment.catering || facts.policies?.catering);
+  const insurance = insuranceLabel(enrichment.event_insurance || facts.policies?.event_insurance);
+  const curfew = facts.policies?.curfew;
+  const pricing = enrichment.price_display || facts.pricing_as_stated;
+  const sourceUrl =
+    facts.about?.source_url ||
+    configs[0]?.source_url ||
+    null;
+
+  const policyChips: Fact[] = [];
+  if (catering) policyChips.push({ Icon: UtensilsCrossed, label: catering });
+  if (facts.policies?.byo_alcohol) policyChips.push({ Icon: Wine, label: "BYOB allowed" });
+  if (facts.policies?.alcohol_provided) policyChips.push({ Icon: Wine, label: "Bar service available" });
+  if (insurance) policyChips.push({ Icon: Shield, label: insurance });
+  if (curfew) policyChips.push({ Icon: Clock, label: curfew });
+
+  const hasCapacity = enrichment.capacity_max != null || configs.length > 0 || enrichment.capacity_as_stated;
+  const hasAnything =
+    hasCapacity ||
+    policyChips.length > 0 ||
+    pricing ||
+    amenities.length > 0 ||
+    inventory.length > 0 ||
+    vendors.length > 0;
+
+  if (!hasAnything) return null;
+
+  return (
+    <div className="space-y-8">
+      {(hasCapacity || pricing || policyChips.length > 0) && (
+        <div>
+          <VenueSectionHeading
+            title="From the venue website"
+            subtitle="Pulled from their site — always confirm details directly."
+          />
+          <div className="space-y-4 text-sm text-gray-700">
+            {enrichment.capacity_max != null && (
+              <p>
+                <span className="font-medium text-gray-900">Capacity</span>
+                {" — "}
+                up to {enrichment.capacity_max.toLocaleString()} guests
+                {enrichment.capacity_as_stated ? (
+                  <span className="text-gray-500"> ({enrichment.capacity_as_stated})</span>
+                ) : null}
+              </p>
+            )}
+            {enrichment.capacity_max == null && enrichment.capacity_as_stated && (
+              <p>
+                <span className="font-medium text-gray-900">Capacity</span>
+                {" — "}
+                {enrichment.capacity_as_stated}
+              </p>
+            )}
+            {configs.length > 1 && (
+              <ul className="space-y-1.5 border-l-2 border-rose-100 pl-3 text-gray-600">
+                {configs.slice(0, 8).map((c, i) => (
+                  <li key={`${c.space}-${c.style}-${c.guests}-${i}`}>{formatConfigRow(c)}</li>
+                ))}
+              </ul>
+            )}
+            {pricing && (
+              <p>
+                <span className="font-medium text-gray-900">Pricing</span>
+                {" — "}
+                {pricing}
+                {enrichment.pricing_model && enrichment.pricing_model !== "unknown" ? (
+                  <span className="text-gray-500"> · {enrichment.pricing_model.replace(/_/g, " ")}</span>
+                ) : null}
+              </p>
+            )}
+            {policyChips.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {policyChips.map(({ Icon, label }) => (
+                  <span
+                    key={label}
+                    className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-[#fdf8f5] px-3.5 py-2 text-sm text-gray-700"
+                  >
+                    <Icon size={14} className="shrink-0 text-rose-400" />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            )}
+            {sourceUrl && (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm font-medium text-rose-500 hover:text-rose-600"
+              >
+                View source
+                <ExternalLink size={12} />
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {amenities.length > 0 && (
+        <div>
+          <VenueSectionHeading title="Amenities" />
+          <div className="flex flex-wrap gap-2">
+            {amenities.slice(0, 16).map((label) => (
+              <span
+                key={label}
+                className="inline-flex items-center rounded-full border border-black/[0.06] bg-white px-3 py-1.5 text-sm text-gray-700"
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {inventory.length > 0 && (
+        <div>
+          <VenueSectionHeading title="Included with rental" />
+          <p className="text-sm leading-[1.65] text-gray-600">
+            {inventory.slice(0, 12).join(" · ")}
+            {inventory.length > 12 ? " · …" : ""}
+          </p>
+        </div>
+      )}
+
+      {vendors.length > 0 && (
+        <div>
+          <VenueSectionHeading
+            title="Preferred vendors"
+            subtitle={`${vendors.length} listed on their website`}
+          />
+          <p className="text-sm leading-[1.65] text-gray-600">
+            {vendors
+              .slice(0, 10)
+              .map((v) => v.name)
+              .filter(Boolean)
+              .join(" · ")}
+            {vendors.length > 10 ? " · …" : ""}
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // outdoor_seating is true-or-null in our data (never confirmed false), so this
@@ -1169,9 +1402,10 @@ function VenueDetailModal({
   const rating = v ? normalizeRating(v.rating) : 0;
   const price = v ? budgetLabel(v.price_level) : "";
   const facts = v ? factsFor(v) : [];
-  const about = v ? aboutFor(v) : null;
+  const about = v ? aboutFor(v, detail?.enrichment) : null;
   const short = about && about.length > 200 ? about.slice(0, 200) + "…" : about;
   const typeLabel = v ? formatPrimaryType(v.primary_type) : "";
+  const enrichment = detail?.enrichment ?? null;
 
   return (
     <div
@@ -1310,6 +1544,8 @@ function VenueDetailModal({
                       )}
                     </div>
                   )}
+
+                  {enrichment && <VenueWebsiteEnrichment enrichment={enrichment} />}
 
                   {facts.length > 0 && (
                     <div>

@@ -236,10 +236,29 @@ async function getVendorDetail(vendorId) {
       [id]
     );
 
+    let enrichment = null;
+    try {
+      const { rows: enrichmentRows } = await pool.query(
+        `SELECT
+           vendor_id, website, status, needs_review, schema_version,
+           capacity_max, capacity_min, capacity_as_stated,
+           catering, event_insurance, pricing_model, price_display,
+           facts, crawled_at, extracted_at, enriched_at, updated_at
+         FROM venue_enrichment
+         WHERE vendor_id = $1`,
+        [id]
+      );
+      enrichment = enrichmentRows[0] || null;
+    } catch (enrichErr) {
+      // Table may not exist until migration 006 is applied — detail still works.
+      console.warn("venue_enrichment query skipped:", enrichErr.message);
+    }
+
     return respond(200, {
       vendor: vendorRows[0],
       realWeddings,
       frequentlyWorksWith,
+      enrichment,
     });
   } catch (err) {
     console.error("vendor-detail error:", err);

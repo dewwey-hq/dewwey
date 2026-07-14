@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { Map, Marker, useMap } from "@vis.gl/react-google-maps";
+import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { AdvancedMarker, AdvancedMarkerAnchorPoint, Map, useMap } from "@vis.gl/react-google-maps";
 import MapCustomControls from "./MapCustomControls";
 import MapVenueFloatingPopup from "./MapVenueFloatingPopup";
 import { MapBoundsReporter } from "./MapSyncHandlers";
@@ -109,26 +109,19 @@ function VenuePinMarker({
   const w = selected ? 42 : highlighted ? 40 : 36;
   const h = selected ? 50 : highlighted ? 48 : 44;
   const pinUrl = selected ? PIN_SELECTED_URL : PIN_URL;
-  const [icon, setIcon] = useState<string | google.maps.Icon | undefined>(pinUrl);
-
-  useEffect(() => {
-    if (typeof google === "undefined") return;
-    setIcon({
-      url: pinUrl,
-      scaledSize: new google.maps.Size(w, h),
-      anchor: new google.maps.Point(w / 2, h),
-    });
-  }, [pinUrl, w, h]);
 
   return (
-    <Marker
+    <AdvancedMarker
       position={pos}
       onClick={onSelect}
-      onMouseOver={onHover}
-      onMouseOut={onHoverEnd}
+      onMouseEnter={onHover}
+      onMouseLeave={onHoverEnd}
       zIndex={selected ? 1000 : highlighted ? 500 : 1}
-      icon={icon}
-    />
+      anchorPoint={AdvancedMarkerAnchorPoint.BOTTOM_CENTER}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={pinUrl} alt="" width={w} height={h} draggable={false} className="block" />
+    </AdvancedMarker>
   );
 }
 
@@ -162,6 +155,7 @@ export default function VenuesMapPanel({
   onToggleSave: (id: number) => void;
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
   const popupOverlayRef = useRef<HTMLDivElement>(null);
   const userMovedMapRef = useRef(false);
   const mappable = useMemo(() => venues.filter((v) => venueCoords(v)), [venues]);
@@ -177,15 +171,15 @@ export default function VenuesMapPanel({
   const selected = mappable.find((v) => v.id === selectedId) ?? null;
   const selectedPos = selected ? venueCoords(selected) : null;
 
-  if (!apiKey) {
+  if (!apiKey || !mapId) {
     return (
       <div className="flex h-full items-center justify-center bg-[#fdf8f5] p-8 text-center">
         <div>
           <p className="text-sm font-medium text-gray-900">Map not configured</p>
           <p className="mt-1 text-sm text-gray-500">
             Set{" "}
-            <code className="text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> or{" "}
-            <code className="text-xs">GOOGLE_MAPS_API_KEY</code> in{" "}
+            <code className="text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> and{" "}
+            <code className="text-xs">NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID</code> in{" "}
             <code className="text-xs">.env.local</code> (restart{" "}
             <code className="text-xs">npm run dev</code>), or in Vercel then redeploy.
           </p>
@@ -196,30 +190,31 @@ export default function VenuesMapPanel({
 
   return (
     <div className="relative h-full w-full">
-        <div ref={popupOverlayRef} className="pointer-events-none absolute inset-0 z-[5]" />
-        <Map
-          defaultCenter={CHICAGO_CENTER}
-          defaultZoom={DEFAULT_ZOOM}
-          gestureHandling="greedy"
-          fullscreenControl={false}
-          zoomControl={false}
-          mapTypeControl={false}
-          streetViewControl={false}
-          style={{ width: "100%", height: "100%" }}
-        >
-          <MapCustomControls expanded={mapExpanded} onToggleExpanded={onToggleMapExpanded} />
-          <MapResizeHandler layoutKey={mapLayoutKey} />
-          <MapBoundsReporter
-            onBoundsChange={onBoundsChange}
-            onUserMove={() => {
-              userMovedMapRef.current = true;
-            }}
-          />
-          <MapVenueBoundsHandler
-            venueKey={mappableKey}
-            venues={fitMappable}
-            userMovedMapRef={userMovedMapRef}
-          />
+      <div ref={popupOverlayRef} className="pointer-events-none absolute inset-0 z-[5]" />
+      <Map
+        mapId={mapId}
+        defaultCenter={CHICAGO_CENTER}
+        defaultZoom={DEFAULT_ZOOM}
+        gestureHandling="greedy"
+        fullscreenControl={false}
+        zoomControl={false}
+        mapTypeControl={false}
+        streetViewControl={false}
+        style={{ width: "100%", height: "100%" }}
+      >
+        <MapCustomControls expanded={mapExpanded} onToggleExpanded={onToggleMapExpanded} />
+        <MapResizeHandler layoutKey={mapLayoutKey} />
+        <MapBoundsReporter
+          onBoundsChange={onBoundsChange}
+          onUserMove={() => {
+            userMovedMapRef.current = true;
+          }}
+        />
+        <MapVenueBoundsHandler
+          venueKey={mappableKey}
+          venues={fitMappable}
+          userMovedMapRef={userMovedMapRef}
+        />
         {mappable.map((venue) => (
           <VenuePinMarker
             key={venue.id}
@@ -242,7 +237,7 @@ export default function VenuesMapPanel({
             onOpen={() => onOpenVenue(selected.id)}
           />
         ) : null}
-        </Map>
-      </div>
+      </Map>
+    </div>
   );
 }
