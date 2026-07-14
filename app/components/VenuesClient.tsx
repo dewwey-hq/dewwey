@@ -132,6 +132,38 @@ type VenueEnrichmentFacts = {
     quote?: string | null;
     source_url?: string | null;
   }>;
+  spaces?: Array<{
+    name?: string;
+    bookable_separately?: boolean | null;
+    description?: string | null;
+    sq_ft?: number | null;
+    capacity?: {
+      seated_max?: number | null;
+      seated_with_dance?: number | null;
+      cocktail_max?: number | null;
+      ceremony_max?: number | null;
+      as_stated?: string | null;
+    } | null;
+    setting?: string | null;
+    amenities?: Array<{ name?: string; quote?: string | null; source_url?: string | null }>;
+    fees?: Array<{
+      space?: string | null;
+      day?: string | null;
+      season?: string | null;
+      amount?: number | null;
+      unit?: string | null;
+      includes?: string | null;
+    }>;
+    source_url?: string | null;
+  }>;
+  fee_schedule?: Array<{
+    space?: string | null;
+    day?: string | null;
+    season?: string | null;
+    amount?: number | null;
+    unit?: string | null;
+    includes?: string | null;
+  }>;
   amenities?: Array<{ name?: string; quote?: string | null; source_url?: string | null }>;
   included_inventory?: Array<{ item?: string; quote?: string | null; source_url?: string | null }>;
   policies?: {
@@ -296,8 +328,38 @@ function formatConfigRow(c: NonNullable<VenueEnrichmentFacts["capacity_configura
   return bits.join(" · ");
 }
 
+function formatSpaceCapacity(
+  space: NonNullable<VenueEnrichmentFacts["spaces"]>[number],
+): string {
+  const cap = space.capacity || {};
+  const bits: string[] = [];
+  if (cap.seated_max != null) bits.push(`seated ${cap.seated_max}`);
+  if (cap.seated_with_dance != null && cap.seated_with_dance !== cap.seated_max) {
+    bits.push(`with dance ${cap.seated_with_dance}`);
+  }
+  if (cap.cocktail_max != null) bits.push(`cocktail ${cap.cocktail_max}`);
+  if (space.sq_ft != null) bits.push(`${space.sq_ft.toLocaleString()} sq ft`);
+  return bits.join(" · ");
+}
+
+function formatFeeRow(
+  fee: NonNullable<NonNullable<VenueEnrichmentFacts["spaces"]>[number]["fees"]>[number],
+): string {
+  const day = fee.day && fee.day !== "any" && fee.day !== "all" ? fee.day : null;
+  const season = fee.season && fee.season !== "all" ? fee.season : null;
+  const when = [season, day].filter(Boolean).join(" ");
+  const amount =
+    fee.amount != null
+      ? fee.unit === "per_guest_usd"
+        ? `$${fee.amount.toLocaleString()}/guest`
+        : `$${fee.amount.toLocaleString()}`
+      : null;
+  return [when, amount, fee.includes].filter(Boolean).join(" — ");
+}
+
 function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment }) {
   const facts = enrichment.facts || {};
+  const spaces = (facts.spaces || []).filter((s) => s.name);
   const configs = (facts.capacity_configurations || []).filter((c) => c.guests != null);
   const amenities = (facts.amenities || []).map((a) => a.name).filter(Boolean) as string[];
   const inventory = (facts.included_inventory || [])
@@ -310,6 +372,7 @@ function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment })
   const pricing = enrichment.price_display || facts.pricing_as_stated;
   const sourceUrl =
     facts.about?.source_url ||
+    spaces[0]?.source_url ||
     configs[0]?.source_url ||
     null;
 
@@ -320,11 +383,15 @@ function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment })
   if (insurance) policyChips.push({ Icon: Shield, label: insurance });
   if (curfew) policyChips.push({ Icon: Clock, label: curfew });
 
-  const hasCapacity = enrichment.capacity_max != null || configs.length > 0 || enrichment.capacity_as_stated;
+  const hasCapacity =
+    enrichment.capacity_max != null ||
+    spaces.length > 0 ||
+    configs.length > 0 ||
+    Boolean(enrichment.capacity_as_stated);
   const hasAnything =
     hasCapacity ||
     policyChips.length > 0 ||
-    pricing ||
+    Boolean(pricing) ||
     amenities.length > 0 ||
     inventory.length > 0 ||
     vendors.length > 0;
@@ -345,7 +412,9 @@ function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment })
                 <span className="font-medium text-gray-900">Capacity</span>
                 {" — "}
                 up to {enrichment.capacity_max.toLocaleString()} guests
-                {enrichment.capacity_as_stated ? (
+                {spaces.length > 1 ? (
+                  <span className="text-gray-500"> · {spaces.length} spaces</span>
+                ) : enrichment.capacity_as_stated ? (
                   <span className="text-gray-500"> ({enrichment.capacity_as_stated})</span>
                 ) : null}
               </p>
@@ -357,13 +426,39 @@ function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment })
                 {enrichment.capacity_as_stated}
               </p>
             )}
-            {configs.length > 1 && (
+            {spaces.length > 0 ? (
+              <ul className="space-y-3 border-l-2 border-rose-100 pl-3 text-gray-600">
+                {spaces.slice(0, 6).map((space) => {
+                  const capLine = formatSpaceCapacity(space);
+                  const feeLines = (space.fees || [])
+                    .slice(0, 4)
+                    .map(formatFeeRow)
+                    .filter(Boolean);
+                  return (
+                    <li key={space.name}>
+                      <p className="font-medium text-gray-800">{space.name}</p>
+                      {space.description ? (
+                        <p className="mt-0.5 text-gray-600">{space.description}</p>
+                      ) : null}
+                      {capLine ? <p className="mt-0.5">{capLine}</p> : null}
+                      {feeLines.length > 0 ? (
+                        <ul className="mt-1 space-y-0.5 text-gray-500">
+                          {feeLines.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : configs.length > 1 ? (
               <ul className="space-y-1.5 border-l-2 border-rose-100 pl-3 text-gray-600">
                 {configs.slice(0, 8).map((c, i) => (
                   <li key={`${c.space}-${c.style}-${c.guests}-${i}`}>{formatConfigRow(c)}</li>
                 ))}
               </ul>
-            )}
+            ) : null}
             {pricing && (
               <p>
                 <span className="font-medium text-gray-900">Pricing</span>

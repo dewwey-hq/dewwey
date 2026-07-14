@@ -76,6 +76,122 @@ const GEMINI_RESPONSE_SCHEMA = {
         required: ["space", "setting", "style", "guests", "quote", "source_url"],
       },
     },
+    spaces: {
+      type: "ARRAY",
+      description:
+        "Bookable rooms under this venue. Empty if only one undifferentiated space. Include Entire Venue when priced separately.",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING" },
+          bookable_separately: { type: "BOOLEAN", nullable: true },
+          description: { type: "STRING", nullable: true },
+          sq_ft: { type: "NUMBER", nullable: true },
+          capacity: {
+            type: "OBJECT",
+            properties: {
+              seated_max: { type: "NUMBER", nullable: true },
+              seated_with_dance: { type: "NUMBER", nullable: true },
+              cocktail_max: { type: "NUMBER", nullable: true },
+              ceremony_max: { type: "NUMBER", nullable: true },
+              as_stated: { type: "STRING", nullable: true },
+            },
+            required: [
+              "seated_max",
+              "seated_with_dance",
+              "cocktail_max",
+              "ceremony_max",
+              "as_stated",
+            ],
+          },
+          setting: {
+            type: "STRING",
+            nullable: true,
+            description: "indoor | outdoor | either | unknown",
+          },
+          amenities: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                name: { type: "STRING" },
+                quote: { type: "STRING", nullable: true },
+                source_url: { type: "STRING", nullable: true },
+              },
+              required: ["name", "quote", "source_url"],
+            },
+          },
+          included_inventory: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                item: { type: "STRING" },
+                quote: { type: "STRING", nullable: true },
+                source_url: { type: "STRING", nullable: true },
+              },
+              required: ["item", "quote", "source_url"],
+            },
+          },
+          assets: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                url: { type: "STRING" },
+                kind: { type: "STRING" },
+                label: { type: "STRING", nullable: true },
+                source_url: { type: "STRING", nullable: true },
+              },
+              required: ["url", "kind", "label", "source_url"],
+            },
+          },
+          source_url: { type: "STRING", nullable: true },
+        },
+        required: [
+          "name",
+          "bookable_separately",
+          "description",
+          "sq_ft",
+          "capacity",
+          "setting",
+          "amenities",
+          "included_inventory",
+          "assets",
+          "source_url",
+        ],
+      },
+    },
+    fee_schedule: {
+      type: "ARRAY",
+      description:
+        "Fees keyed by space x day x season when published. Empty if inquire-only.",
+      items: {
+        type: "OBJECT",
+        properties: {
+          space: { type: "STRING", nullable: true },
+          day: { type: "STRING", nullable: true },
+          season: { type: "STRING", nullable: true },
+          amount: { type: "NUMBER" },
+          currency: { type: "STRING" },
+          unit: { type: "STRING" },
+          includes: { type: "STRING", nullable: true },
+          quote: { type: "STRING", nullable: true },
+          source_url: { type: "STRING", nullable: true },
+        },
+        required: [
+          "space",
+          "day",
+          "season",
+          "amount",
+          "currency",
+          "unit",
+          "includes",
+          "quote",
+          "source_url",
+        ],
+      },
+    },
     price_display: provString(
       "Short pricing as shown on site. Null if inquire-only or not stated.",
     ),
@@ -185,6 +301,8 @@ const GEMINI_RESPONSE_SCHEMA = {
     "capacity_min",
     "capacity_as_stated",
     "capacity_configurations",
+    "spaces",
+    "fee_schedule",
     "price_display",
     "pricing_model",
     "pricing_as_stated",

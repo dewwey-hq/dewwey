@@ -5,7 +5,9 @@
  * See docs/ai-native-data-plane.md.
  */
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
+
+const { buildSpacesServing } = require("./spaces");
 
 function provValue(field) {
   if (field == null) return null;
@@ -140,15 +142,25 @@ function buildServingFacts(rules, llmExtraction = null) {
         ? "success"
         : "partial";
 
+  const capacityConfigurations = Array.isArray(llm?.capacity_configurations)
+    ? llm.capacity_configurations
+    : [];
+
+  const { spaces, fee_schedule } = buildSpacesServing({
+    capacityConfigurations,
+    llmSpaces: Array.isArray(llm?.spaces) ? llm.spaces : [],
+    feeSchedule: Array.isArray(llm?.fee_schedule) ? llm.fee_schedule : [],
+  });
+
   const facts = {
     about,
     capacity_max: capacityMax,
     capacity_min: capacityMin,
     capacity_as_stated: capacityAsStated,
-    capacity_configurations: Array.isArray(llm?.capacity_configurations)
-      ? llm.capacity_configurations
-      : [],
+    capacity_configurations: capacityConfigurations,
     capacity_provenance: llm?.capacity_max || null,
+    spaces,
+    fee_schedule,
     price_display: priceDisplay,
     pricing_model: pricingModel,
     pricing_as_stated: provValue(llm?.pricing_as_stated),

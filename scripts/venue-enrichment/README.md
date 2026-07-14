@@ -114,9 +114,45 @@ Each entry:
 
 Dedupe by normalized URL or normalized name per venue.
 
-## Full output schema (v1)
+## Full output schema (v1 rules / v2 serving)
 
-See `enrich.js`. Major sections: `about`, `contact`, `social`, `amenities`, `policies`, `pricing`, `spaces`, `included_inventory`, `addons`, `assets`, `network_vendors`, `faqs`, `raw_lists`, `sources`, `pages_crawled`.
+See `enrich.js` for rules baseline. Major sections: `about`, `contact`, `social`, `amenities`, `policies`, `pricing`, `spaces`, `included_inventory`, `addons`, `assets`, `network_vendors`, `faqs`, `raw_lists`, `sources`, `pages_crawled`.
+
+### Serving spaces (`facts.spaces[]`, schema_version 2)
+
+One vendor row; rooms are JSONB child facts — **no new tables**.
+
+```json
+{
+  "name": "Pavilion",
+  "bookable_separately": true,
+  "description": "Glass-enclosed main hall…",
+  "sq_ft": 10000,
+  "capacity": {
+    "seated_max": 450,
+    "seated_with_dance": 350,
+    "cocktail_max": 900,
+    "ceremony_max": null,
+    "as_stated": null
+  },
+  "setting": "indoor",
+  "amenities": [],
+  "included_inventory": [],
+  "fees": [
+    { "day": "saturday", "season": null, "amount": 6000, "unit": "venue_fee_usd", "includes": null }
+  ],
+  "assets": [],
+  "source_url": "https://…"
+}
+```
+
+Built in `persist.js` via `spaces.js`:
+
+1. Roll up `capacity_configurations[]` → named spaces + capacity breakdown  
+2. Merge LLM `spaces[]` (description, sq_ft, room fees)  
+3. Attach matching `fee_schedule[]` rows onto `spaces[].fees`; unmatched fees stay venue-level  
+
+Backfill existing rows without re-LLM: `npm run enrich-venues-backfill-spaces`.
 
 ## LLM pilot (Phase 0b)
 
@@ -151,9 +187,9 @@ npm run enrich-venue-llm-pilot -- --rules-only
 - `gemini-3.1-flash-lite` — cheap scale comparison
 - `--models flash|lite|all` to choose which to run
 
-LLM schema notes (v3):
-- **Capacity:** `capacity_max` + `capacity_as_stated` + `capacity_configurations[]` (space × setting × style × guests)
-- **Pricing:** `price_display` + `pricing_model` (+ `mixed`) + `pricing_as_stated`
+LLM schema notes (v3 + spaces):
+- **Capacity:** `capacity_max` (seated-preferring) + `capacity_as_stated` + `capacity_configurations[]` + `spaces[]`
+- **Pricing:** `price_display` + `pricing_model` (+ `mixed`) + `pricing_as_stated` + `fee_schedule[]`
 - **Assets:** rules `assets[]` ∪ LLM `discovered_assets[]` — **URLs only**, never PDF binaries; prompt gets capped `ASSET CANDIDATES` link list
 
 Output per venue: `{slug}-rules.json`, `{slug}-llm-gemini-3-5-flash.json`, `{slug}-llm-gemini-3-1-flash-lite.json`, `_summary.json`.

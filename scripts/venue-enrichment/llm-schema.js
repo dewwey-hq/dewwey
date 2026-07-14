@@ -88,6 +88,153 @@ const LLM_EXTRACTION_SCHEMA = {
           required: ["space", "setting", "style", "guests", "quote", "source_url"],
         },
       },
+      spaces: {
+        type: "array",
+        description:
+          "Bookable rooms/areas under this venue (e.g. The Pavilion, La Pergola). Empty if the site only describes one undifferentiated space. Prefer one object per distinct bookable room; include Entire Venue as its own space when priced that way.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            name: { type: "string", description: "Space name as marketed." },
+            bookable_separately: {
+              type: ["boolean", "null"],
+              description: "True if couples can book this space without the others.",
+            },
+            description: {
+              type: ["string", "null"],
+              description: "1–3 sentence description of this space for wedding couples.",
+            },
+            sq_ft: { type: ["number", "null"], description: "Square footage if stated." },
+            capacity: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                seated_max: { type: ["number", "null"] },
+                seated_with_dance: { type: ["number", "null"] },
+                cocktail_max: { type: ["number", "null"] },
+                ceremony_max: { type: ["number", "null"] },
+                as_stated: { type: ["string", "null"] },
+              },
+              required: [
+                "seated_max",
+                "seated_with_dance",
+                "cocktail_max",
+                "ceremony_max",
+                "as_stated",
+              ],
+            },
+            setting: {
+              type: ["string", "null"],
+              description: "indoor | outdoor | either | unknown",
+            },
+            amenities: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  name: { type: "string" },
+                  quote: { type: ["string", "null"] },
+                  source_url: { type: ["string", "null"] },
+                },
+                required: ["name", "quote", "source_url"],
+              },
+            },
+            included_inventory: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  item: { type: "string" },
+                  quote: { type: ["string", "null"] },
+                  source_url: { type: ["string", "null"] },
+                },
+                required: ["item", "quote", "source_url"],
+              },
+            },
+            assets: {
+              type: "array",
+              description: "Floor plans / assets specific to this space. Empty if none.",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  url: { type: "string" },
+                  kind: { type: "string" },
+                  label: { type: ["string", "null"] },
+                  source_url: { type: ["string", "null"] },
+                },
+                required: ["url", "kind", "label", "source_url"],
+              },
+            },
+            source_url: {
+              type: ["string", "null"],
+              description: "Primary page describing this space.",
+            },
+          },
+          required: [
+            "name",
+            "bookable_separately",
+            "description",
+            "sq_ft",
+            "capacity",
+            "setting",
+            "amenities",
+            "included_inventory",
+            "assets",
+            "source_url",
+          ],
+        },
+      },
+      fee_schedule: {
+        type: "array",
+        description:
+          "Venue fee / package amounts keyed by space × day × season when stated (e.g. Saturday Pavilion $6000). Empty if inquire-only or not published. Prefer separate rows per space/day; use space=null for whole-property fees.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            space: {
+              type: ["string", "null"],
+              description: "Space name if fee is room-specific; null for entire venue.",
+            },
+            day: {
+              type: ["string", "null"],
+              description:
+                "friday | saturday | sunday | weekday | monday | tuesday | wednesday | thursday | any | null",
+            },
+            season: {
+              type: ["string", "null"],
+              description: "peak | off_peak | holiday | null",
+            },
+            amount: { type: "number", description: "Fee amount in currency units." },
+            currency: { type: "string", description: "Usually USD." },
+            unit: {
+              type: "string",
+              description: "venue_fee_usd | per_guest_usd | package_usd | other",
+            },
+            includes: {
+              type: ["string", "null"],
+              description: "What the fee includes if stated (hours, getting-ready time, etc).",
+            },
+            quote: { type: ["string", "null"] },
+            source_url: { type: ["string", "null"] },
+          },
+          required: [
+            "space",
+            "day",
+            "season",
+            "amount",
+            "currency",
+            "unit",
+            "includes",
+            "quote",
+            "source_url",
+          ],
+        },
+      },
       price_display: provenanceString(
         "Pricing as shown on site (e.g. 'from $5,000', 'packages start at $85/person'). Null if inquire-only or not stated.",
       ),
@@ -212,6 +359,8 @@ const LLM_EXTRACTION_SCHEMA = {
       "capacity_min",
       "capacity_as_stated",
       "capacity_configurations",
+      "spaces",
+      "fee_schedule",
       "price_display",
       "pricing_model",
       "pricing_as_stated",
@@ -235,6 +384,8 @@ Rules:
   - capacity_max: one primary guest number for wedding reception filters/cards. Prefer the largest *seated* (or seated+dance) figure across spaces — NOT cocktail/standing standing-room max. Example: Pavilion seated 450 + cocktail 900 → capacity_max=450; keep cocktail in capacity_configurations and capacity_as_stated. Only use cocktail/standing as capacity_max if the venue markets no seated figure.
   - capacity_as_stated: copy their capacity wording broadly (seated/standing/cocktail/floor-plan lines are fine in one string).
   - capacity_configurations: when the site lists multiple spaces or styles, emit one row per distinct (space × style) with guests, setting (indoor/outdoor/either/unknown), and style (seated/standing/cocktail/theater/ceremony/mixed/unknown). Empty array if only a single undifferentiated number. Do not invent rows.
+  - spaces: when the venue markets distinct bookable rooms (Pavilion vs Pergola, Grand Ballroom vs Terrace, Entire Venue), emit one spaces[] object per room with description, sq_ft, capacity breakdown, room-specific amenities/inventory/assets when stated. Empty array if only one undifferentiated space. Set bookable_separately=true when couples can book a room alone.
+  - fee_schedule: room × day × season venue fees when published (e.g. Sat Pavilion $6000, Sun Pergola $1000, Entire Venue $9000). Empty if inquire-only. Also capture per-guest package amounts as unit=per_guest_usd when clearly stated.
   - Ignore contact-form guest-count dropdowns (e.g. "0-49 … 1000+") as capacity — those are form options, not venue capacity.
 - Pricing:
   - price_display: short card-friendly string (e.g. "Fri $6k / Sat $7k" or "from $12,000").

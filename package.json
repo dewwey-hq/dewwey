@@ -16,6 +16,7 @@
     "enrich-venue": "node scripts/enrich-venue-website.js",
     "enrich-venue-llm-pilot": "node scripts/venue-enrichment/llm-pilot.js",
     "enrich-venues-batch": "node scripts/venue-enrichment/batch-enrich.js",
+    "enrich-venues-backfill-spaces": "node scripts/venue-enrichment/backfill-spaces.js",
     "refresh-place-photos": "node scripts/refresh-place-photos.js"
   },
   "dependencies": {

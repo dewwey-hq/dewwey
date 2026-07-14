@@ -2,7 +2,9 @@
 
 **Status:** Phase 0 / 0b / 1 done. **Phase 2 batch done** for the original Chicago venue set. Enrichment merged onto main with Places photo work (`cursor/merge-enrichment-photos`). See [ai-native-data-plane.md](./ai-native-data-plane.md).
 
-**Pinned / deferred:** Newer venue imports (hotels, museums, clubs — roughly `vendors.id` ≥ 478) are **not** in enrichment scope yet. Do not run `enrich-venues-batch` across that set until we deliberately reopen it. Also deferred: `spaces[]` / fee-schedule rollup for multi-room venues (Marchetti-style).
+**Pinned / deferred:** Newer venue imports (hotels, museums, clubs — roughly `vendors.id` ≥ 478) are **not** in enrichment scope yet. Do not run `enrich-venues-batch` across that set until we deliberately reopen it. Pilot those after the spaces shape proves out on a handful of hotels/museums.
+
+**Spaces shape (v2):** Multi-room venues keep **one vendor row**. Bookable rooms live in `venue_enrichment.facts.spaces[]` (+ `fee_schedule[]`) — no new RDS tables for v1.
 
 **Scope today:** Original Chicago **venues** only. Same pattern can extend later to the expanded catalog, then caterers, florists, etc.
 
@@ -53,8 +55,8 @@ vendors.website → crawl → extract (rules + LLM) → normalize → store → 
 ### Schema mindset
 
 - **Broad storage, conservative filters** — collect wide; only promote high-coverage, low-risk fields into browse filters later.
-- Capacity stays **broad** for now: `capacity_max` + `capacity_as_stated` + `capacity_configurations[]` (space × seated/standing / indoor/outdoor rows). Normalize for filters later.
-- Pricing: `price_display` + `pricing_model` + `pricing_as_stated` (peak/off-peak nuances in the string/tiers later).
+- Capacity: card scalar `capacity_max` (prefer largest **seated** figure) + `capacity_as_stated` + provenance-rich `capacity_configurations[]`. Serving UI uses rolled-up `spaces[]` (name, description, sq_ft, capacity breakdown, room fees).
+- Pricing: short `price_display` + `pricing_model` + `pricing_as_stated`; day/season × room matrices go in `fee_schedule[]` / `spaces[].fees`.
 - Catering enum: `open` | `preferred_list_required` | `exclusive_in_house` | `unknown`.
 - Event insurance: `required` | `not_required` | `venue_covers` | `unknown`.
 - Assets: **store URLs only** (no PDF binaries). Rules discover links; LLM `discovered_assets` can catch misses from an `ASSET CANDIDATES` link list in the prompt (cheap — no PDF bytes in the model).
@@ -134,7 +136,9 @@ flowchart LR
 | `capacity_max` | **LLM** | Primary wedding guest number as stated (prefer seated reception when both exist) | Keep broad; don’t force filters yet |
 | `capacity_min` | **LLM** | Min guests if stated | Often null |
 | `capacity_as_stated` | **LLM** | Verbatim capacity wording | Downstream normalize later |
-| `capacity_configurations[]` | **LLM** | Rows: space, setting (indoor/outdoor), style (seated/standing/…), guests + provenance | Empty if single number; detail UI / AI later |
+| `capacity_configurations[]` | **LLM** | Rows: space, setting (indoor/outdoor), style (seated/standing/…), guests + provenance | Empty if single number; feeds spaces rollup |
+| `spaces[]` | **LLM + rollup** | One object per bookable room: description, sq_ft, capacity breakdown, amenities, fees, source_url | Serving/UI shape; merged from configs + LLM in `persist` (`schema_version` 2) |
+| `fee_schedule[]` | **LLM** | Room × day × season venue fees (amounts + includes) | Attached to matching `spaces[].fees` when `space` matches; leftovers stay venue-level |
 | `price_display` | **LLM** | Short card string (“Fri $6k / Sat $7k”) | Null if inquire-only |
 | `pricing_model` | **LLM** | `flat` \| `per_head` \| `package` \| `inquire_only` \| `mixed` \| `unknown` | `mixed` for peak/off-peak |
 | `pricing_as_stated` | **LLM** | Richer verbatim pricing nuances | |
@@ -178,15 +182,16 @@ Still extracted for audit and fallback; **not** the primary serving shape once L
 
 ### Capacity, pricing, and assets (shape decisions)
 
-**Capacity** — store three layers:
+**Capacity** — store four layers:
 
-1. `capacity_max` — one number for cards/filters  
+1. `capacity_max` — one seated-preferring number for cards/filters  
 2. `capacity_as_stated` — verbatim blob (always keep)  
-3. `capacity_configurations[]` — structured rows when the site lists spaces/styles  
+3. `capacity_configurations[]` — provenance-rich rows (space × style)  
+4. `spaces[]` — serving shape: rollup of configs + LLM room metadata (description, sq_ft, fee attachments)  
 
-Filters stay simple; detail pages and AI use configurations.
+Filters stay simple; venue modal prefers `spaces[]` when present, else falls back to config rows.
 
-**Pricing** — same idea: short `price_display` + `pricing_model` + `pricing_as_stated` for peak/off-peak / package nuance. Structured `pricing_tiers[]` can wait until we see enough public pricing.
+**Pricing** — short `price_display` + `pricing_model` + `pricing_as_stated`, plus structured `fee_schedule[]` for published room × day × season amounts (Marchetti Fri/Sat/Sun × Pavilion/Pergola/Entire).
 
 **Assets / PDFs** — **URL only.** PDFs are heavy, often copyrighted packages, and link-rot is acceptable to re-fetch when needed. Split two jobs:
 

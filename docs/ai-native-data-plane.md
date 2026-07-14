@@ -55,7 +55,7 @@ Avoid: one giant blob with no indexes **and** no run history.
 - **`venue_crawl_runs`** — when, start URL, page_count, status, storage prefix
 - **`venue_pages`** — url, content_hash, storage_key, optional cleaned_text_ref
 - **`venue_extraction_runs`** — method (`rules_v1` / `vertex:gemini-3.5-flash`), schema_version, cost, latency, status
-- **`venue_enrichment` (serving)** — one **current** row per vendor: capacity, catering, insurance, amenities JSON, `capacity_as_stated`, `needs_review`, pointers to latest run ids
+- **`venue_enrichment` (serving)** — one **current** row per vendor: capacity, catering, insurance, amenities JSON, `capacity_as_stated`, `needs_review`, pointers to latest run ids. Multi-room details live in `facts.spaces[]` / `fee_schedule[]` (schema_version 2) — not separate tables.
 - **Claims** stay nested with provenance inside JSONB (or a `venue_claims` table if we go hardcore later)
 
 Default lean choice: **JSONB + a few indexed columns** for serving; normalize further only when query patterns demand it.
