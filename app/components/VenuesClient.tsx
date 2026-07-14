@@ -138,6 +138,7 @@ type VenueEnrichmentFacts = {
     description?: string | null;
     sq_ft?: number | null;
     capacity?: {
+      seated_min?: number | null;
       seated_max?: number | null;
       seated_with_dance?: number | null;
       cocktail_max?: number | null;
@@ -333,11 +334,16 @@ function formatSpaceCapacity(
 ): string {
   const cap = space.capacity || {};
   const bits: string[] = [];
-  if (cap.seated_max != null) bits.push(`seated ${cap.seated_max}`);
+  if (cap.ceremony_max != null) bits.push(`ceremony ${cap.ceremony_max}`);
+  if (cap.seated_min != null && cap.seated_max != null && cap.seated_min !== cap.seated_max) {
+    bits.push(`banquet ${cap.seated_min}–${cap.seated_max}`);
+  } else if (cap.seated_max != null) {
+    bits.push(`seated ${cap.seated_max}`);
+  }
   if (cap.seated_with_dance != null && cap.seated_with_dance !== cap.seated_max) {
     bits.push(`with dance ${cap.seated_with_dance}`);
   }
-  if (cap.cocktail_max != null) bits.push(`cocktail ${cap.cocktail_max}`);
+  if (cap.cocktail_max != null) bits.push(`reception ${cap.cocktail_max}`);
   if (space.sq_ft != null) bits.push(`${space.sq_ft.toLocaleString()} sq ft`);
   return bits.join(" · ");
 }

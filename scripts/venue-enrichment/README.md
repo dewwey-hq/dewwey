@@ -43,11 +43,10 @@ Stdout: `{ rules, llm }` JSON. With `--persist`, also upserts `venue_extraction_
 
 ## Phase 2 — batch all venues
 
-**Done** for the original Chicago venue set. **Pinned:** do not batch-enrich the newer hotel/museum/club import (`vendors.id` ≥ ~478) until we reopen that scope.
+**Done** for the original Chicago venue set. **Expanded catalog** (hotels/museums/clubs, often `id >= ~478`) — pin lifted after hygiene pilots; Jul 2026 remaining batch: **37 success / 23 partial / 22 failed** (~$3.37 Vertex; see strategy status + `sample-output/batch-enrich/run-1784000898170.json`). Re-run skips `success` unless `--force`.
 
 ```bash
 # Remaining venues (skip status=success; re-run failed / never enriched)
-# Only use for the original set / failures — not the expanded catalog yet
 npm run enrich-venues-batch
 
 # Preview queue only
@@ -61,16 +60,51 @@ npm run enrich-venues-batch -- --include-review
 npm run enrich-venues-batch -- --force
 ```
 
-Writes a run report under `scripts/venue-enrichment/sample-output/batch-enrich/`.
+Single venue (preferred for spot-checks):
+
+```bash
+npm run enrich-venue -- --vendor-id 478 --use-llm --persist
+```
+
+### Spaces backfill (no LLM)
+
+Rebuilds `facts.spaces[]` from existing `capacity_configurations` and bumps `schema_version` to 2:
+
+```bash
+npm run enrich-venues-backfill-spaces
+npm run enrich-venues-backfill-spaces -- --vendor-id 7
+npm run enrich-venues-backfill-spaces -- --dry-run --limit 15
+```
+
+### Expanded catalog pilots + batch
+
+Wave 1 (spaces): Drake `478`, Field `479`, Adler `480`, Langham `483`, Art Institute `489`, CAA `492`.  
+Wave 2: Botanic `481`, Peninsula `484`, LondonHouse `506`, Palmer House `505`, Shedd `546`.
+
+**Status:** pilots done; **full remaining-venue batch DONE** (82 processed ≈$3.37; enrichment ~37 success / 23 partial / 22 failed — mostly 403/empty). Palmer `505` / Field `479` → **`partial`** after capacity guards. Peninsula `484` → **failed** (HTTP 403). Strategy status block is source of truth.
+
+Hygiene: lodging URL skip; museum rental bias; ADR `price_display` reject; null `≤0` caps; wedding-space filter; labeled Ceremony / Banquet / Reception + seated with|without dance → `spaces[]` fields.
+
+Dumps: `sample-output/pilot-hygiene/` · `sample-output/pilot-wave2/stdout-{id}.json`. Details in [vendor-aggregation-strategy.md](../../docs/vendor-aggregation-strategy.md) status block.
+
+Gold-test multi-space venue: Galleria Marchetti `7` (fees + descriptions + sq ft).
+
+```bash
+# Re-enrich one venue after extractor changes
+npm run enrich-venue -- --vendor-id 478 --use-llm --persist
+```
+
+Writes run reports under `scripts/venue-enrichment/sample-output/batch-enrich/`.
 
 ## Crawl rules
 
 - Start at the venue homepage (or `--url`)
-- **Wedding-focused by default** — skip corporate, mitzvahs, blog/calendar, private events
+- **Wedding-focused by default** — skip corporate, mitzvahs, blog/calendar; museum public programs (`/our-events`, educational) skipped when possible
+- Prefer wedding / venue-rental / private-events / banquet / ballroom paths; **hard-skip hotel lodging** (`/rooms`, `/accommodations`, `/stay`, rates, reservations)
 - Follow **nav/header/footer links** + links whose URL matches wedding/event/policy/vendor keywords
-- Same origin only, **max depth 3**, **max pages 18**
+- Same origin only, **max depth 3**, **max pages ~30**
 - Skip images, PDFs, and `/wp-content/uploads/` paths (assets extracted from HTML, not crawled as pages)
-- Optional `--probe-seeds`: also try common paths like `/weddings`, `/contact-us` (off by default — many sites 404)
+- Optional `--probe-seeds`: also try common paths like `/weddings`, `/venue-rentals`, `/private-events` (off by default — many sites 404)
 - Optional `--all-events`: disable wedding filter and include corporate/social pages
 
 ## FAQs (`faqs[]`)
@@ -152,6 +186,8 @@ Built in `persist.js` via `spaces.js`:
 2. Merge LLM `spaces[]` (description, sq_ft, room fees)  
 3. Attach matching `fee_schedule[]` rows onto `spaces[].fees`; unmatched fees stay venue-level  
 
+**Card `capacity_max` guards:** ignore amalgam room names (`Combined`, `Three Ballrooms`, …); never promote cocktail/reception alone to the card scalar; `≥1000` → null + `needs_review` / `partial`. Prefer seated / banquet / with-dance from labeled tables when present.
+
 Backfill existing rows without re-LLM: `npm run enrich-venues-backfill-spaces`.
 
 ## LLM pilot (Phase 0b)
@@ -231,7 +267,7 @@ Rules extraction already uses `sources[]` with `{ field, url, quote }` — same 
 
 ### Fetch strategy: HTTP first, Playwright fallback
 
-Batch 1–3 (~30 venues) succeeded with plain `fetch` — no Playwright. Treat headless browser as **escalation only** when a page is an empty SPA shell or content is JS-rendered. Not the default path.
+Batch enrichment uses plain `fetch` — no Playwright by default. Escalate only for empty SPA shells / JS-rendered tables. **Known deferral:** Langham Chicago wedding-venues comparison table (caps thin without SPA render) — Playwright later, not blocking hotel batch.
 
 ### Object storage (S3/R2): defer for now
 

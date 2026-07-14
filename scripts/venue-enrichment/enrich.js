@@ -25,6 +25,7 @@ function emptyEnrichment(input = {}) {
       capacity_max: null,
       capacity_min: null,
       capacity_context: null,
+      capacity_configurations: [],
     },
     spaces: [],
     included_inventory: [],
@@ -59,6 +60,7 @@ async function mergeEnrichment(pages, startUrl, vendorMeta = null) {
     extractFaqs,
     scanTextSignals,
     pickWeddingCapacity,
+    extractLabeledCapacitiesFromHtml,
   } = require("./extract");
   const {
     classifyPageContext,
@@ -76,6 +78,7 @@ async function mergeEnrichment(pages, startUrl, vendorMeta = null) {
   const policyPriority = new Map();
   const amenityPriority = new Map();
   const capacityCandidates = [];
+  const capacityConfigMap = new Map();
   let bestAbout = null;
 
   function signalPriority(pageUrl, pageContext) {
@@ -181,6 +184,10 @@ async function mergeEnrichment(pages, startUrl, vendorMeta = null) {
       for (const candidate of signals.capacity_candidates || []) {
         capacityCandidates.push({ ...candidate, pageContext, pagePriority: priority });
       }
+      for (const row of extractLabeledCapacitiesFromHtml(html, url)) {
+        const key = `${(row.space || "").toLowerCase()}|${row.style}|${row.guests}|${row.guests_min || ""}`;
+        if (!capacityConfigMap.has(key)) capacityConfigMap.set(key, row);
+      }
       if (signals.price_display && !result.pricing.display) {
         result.pricing.display = signals.price_display;
       }
@@ -201,6 +208,7 @@ async function mergeEnrichment(pages, startUrl, vendorMeta = null) {
       result.sources.push(capacityPick.source);
     }
   }
+  result.pricing.capacity_configurations = [...capacityConfigMap.values()];
 
   result.about = bestAbout;
   result.contact.emails = [...allEmails];

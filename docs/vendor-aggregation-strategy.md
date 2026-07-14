@@ -1,14 +1,37 @@
 # Vendor information aggregation — strategy
 
-**Status:** Phase 0 / 0b / 1 done. **Phase 2 batch done** for the original Chicago venue set. Enrichment merged onto main with Places photo work (`cursor/merge-enrichment-photos`). See [ai-native-data-plane.md](./ai-native-data-plane.md).
+**Status:** Phase 0 / 0b / 1 done. **Phase 2 batch done** for the original Chicago venue set. Enrichment + Places photos live on branch `cursor/merge-enrichment-photos`. See [ai-native-data-plane.md](./ai-native-data-plane.md).
 
-**Pinned / deferred:** Newer venue imports (hotels, museums, clubs — roughly `vendors.id` ≥ 478) are **not** in enrichment scope yet. Do not run `enrich-venues-batch` across that set until we deliberately reopen it. Pilot those after the spaces shape proves out on a handful of hotels/museums.
+**Spaces shape (v2) — landed:** Multi-room venues keep **one vendor row**. Bookable rooms live in `venue_enrichment.facts.spaces[]` (+ `fee_schedule[]`) — no new RDS tables. Persist uses `schema_version` 2 via `scripts/venue-enrichment/spaces.js`. Venue modal prefers `spaces[]` over raw `capacity_configurations[]`. Existing original-set rows were backfilled (`npm run enrich-venues-backfill-spaces`). Galleria Marchetti (`vendor_id` 7) re-enriched as gold test (Pavilion / La Pergola + Fri–Sun fees + packages).
 
-**Spaces shape (v2):** Multi-room venues keep **one vendor row**. Bookable rooms live in `venue_enrichment.facts.spaces[]` (+ `fee_schedule[]`) — no new RDS tables for v1.
+**Serving capacity shape:** Per space: `ceremony_max`, `seated_min`/`seated_max` (banquet ranges), `seated_with_dance`, `cocktail_max` (reception), `as_stated`. Rules parse labeled tables (`Ceremony: 495`, `Banquet: 100-500`, `320: Seated with dance floor`). Card scalar `capacity_max` is **seated-preferring** on non-amalgam rooms only.
 
-**Scope today:** Original Chicago **venues** only. Same pattern can extend later to the expanded catalog, then caterers, florists, etc.
+**Hotel / museum hygiene — landed:** Skip lodging URLs (`/rooms`, `/accommodations`, `/stay`, rates); bias wedding / `venue-rental` / `private-events` / ballroom; reject ADR `price_display` (`From $163`); null `≤0` capacities/sq_ft; wedding-spaces filter drops private dining / package products.
 
-**Code:** `scripts/venue-enrichment/` · ops details in that folder’s [README](../scripts/venue-enrichment/README.md).
+**`capacity_max` guards — landed** (`persist.js` / `spaces.js`):
+1. Ignore amalgam names (`Combined`, `Three Ballrooms`, `Entire Venue`, …) for the card scalar (keep in `spaces[]` as context).
+2. **No cocktail → `capacity_max` fallback** — if no seated / with-dance on real rooms → `capacity_max=null` + `needs_review`.
+3. **`capacity_max ≥ 1000` → null + `needs_review`** (blocks stacked Hilton reception prose).
+
+**Expanded catalog (`vendors.id` ≥ ~478):** Pilot waves done; **full `enrich-venues-batch` for remaining never-enriched / failed DONE** (82 queued, ~48 min, cost ≈$3.37). Enrichment outcomes: **37 success / 23 partial / 22 failed** (batch runner `ok=82` = no pipeline crashes; venue `status=failed` is mostly HTTP 403 / empty crawl). Palmer `505` + Field `479` reclassified **`partial`** after guards. **Langham SPA venue-comparison table:** later Playwright escalation only — not blocking batch.
+
+| Pilot / wave | id | Result (short) |
+|--------------|----|----------------|
+| The Drake Hotel | 478 | Gold Coast ceremony 495 / banquet 100–500 / reception 900; `capacity_max=500` seated; ADR null |
+| Field Museum | 479 | named spaces, thin caps → **`partial`** after guards (`capacity_max` null) |
+| Adler Planetarium | 480 | Solarium 320 with dance / 370 seated / 477 reception; Skyline Terrace 120–150 reception |
+| The Langham, Chicago | 483 | 5 wedding rooms (dining stripped); caps thin — **SPA table = Playwright later** |
+| Art Institute | 489 | 10 spaces w/ caps; seated `capacity_max=400` |
+| Chicago Athletic Association | 492 | 5 rooms + sq ft; seated `capacity_max=280` |
+| Botanic Garden | 481 | **A** — 9 spaces, rich ceremony/banquet/dance |
+| Peninsula | 484 | **failed** — domain HTTP 403 (URL correct) |
+| LondonHouse | 506 | **A−** — Juliette 75–190 + Étoile; package $/person |
+| Palmer House | 505 | rooms/sq ft/inventory OK; combined 1690 rejected → **`partial`** |
+| Shedd Aquarium | 546 | **partial** — Azure caterer site, no capacities |
+
+**Next:** Triage `failed` / `needs_review` (403 WAF hotels, SPA venue tables, thin park/caterer sites) → optional Playwright for Langham-class tables only → product filters on capacity / spaces.
+
+**Scope / code:** Chicago venues → later caterers/florists. `scripts/venue-enrichment/` · [README](../scripts/venue-enrichment/README.md).
 
 ---
 
@@ -220,6 +243,8 @@ Do **not** put full PDF text into the default LLM call (cost). Optional later: e
 | Phase 0b | 10-venue Vertex pilot vs rules | Validate hybrid + provenance + cost |
 | Phase 1 | Persist + API + venue modal | Serving layer (`venue_enrichment` + Lambda detail + modal) |
 | Phase 2 | Batch ~85, `needs_review`, re-run | Coverage + ops |
+| Spaces v2 | `facts.spaces[]` + fees + UI + backfill | Serving multi-room without new tables |
+| Expanded pilot | 6 hotels/museums (`478+`) | Quality baselines; **not** full batch yet |
 | Phase 3 | Browse filters / compare | Product leverage of enrichment |
 
 **Not yet:** object-store HTML archive as source of truth (local cache mirrors future key layout; promote when batch/re-extract needs it). See data-plane doc for the intended split.

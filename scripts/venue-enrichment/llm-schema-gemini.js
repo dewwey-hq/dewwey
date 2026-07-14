@@ -67,19 +67,25 @@ const GEMINI_RESPONSE_SCHEMA = {
           style: {
             type: "STRING",
             nullable: true,
-            description: "seated | standing | cocktail | theater | ceremony | mixed | unknown",
+            description:
+              "seated | seated_with_dance | banquet | standing | cocktail | reception | theater | ceremony | mixed | unknown",
           },
-          guests: { type: "NUMBER", description: "Guest count for this row." },
+          guests: { type: "NUMBER", description: "Guest count (high end of a range)." },
+          guests_min: {
+            type: "NUMBER",
+            nullable: true,
+            description: "Low end when site states a range (Banquet 100-500).",
+          },
           quote: { type: "STRING", nullable: true },
           source_url: { type: "STRING", nullable: true },
         },
-        required: ["space", "setting", "style", "guests", "quote", "source_url"],
+        required: ["space", "setting", "style", "guests", "guests_min", "quote", "source_url"],
       },
     },
     spaces: {
       type: "ARRAY",
       description:
-        "Bookable rooms under this venue. Empty if only one undifferentiated space. Include Entire Venue when priced separately.",
+        "WEDDING venues only (not private dining / packages). Hotels: rooms under Wedding Venues. Use null not 0 for unknown caps.",
       items: {
         type: "OBJECT",
         properties: {
@@ -90,6 +96,7 @@ const GEMINI_RESPONSE_SCHEMA = {
           capacity: {
             type: "OBJECT",
             properties: {
+              seated_min: { type: "NUMBER", nullable: true },
               seated_max: { type: "NUMBER", nullable: true },
               seated_with_dance: { type: "NUMBER", nullable: true },
               cocktail_max: { type: "NUMBER", nullable: true },
@@ -97,6 +104,7 @@ const GEMINI_RESPONSE_SCHEMA = {
               as_stated: { type: "STRING", nullable: true },
             },
             required: [
+              "seated_min",
               "seated_max",
               "seated_with_dance",
               "cocktail_max",
@@ -193,7 +201,7 @@ const GEMINI_RESPONSE_SCHEMA = {
       },
     },
     price_display: provString(
-      "Short pricing as shown on site. Null if inquire-only or not stated.",
+      "Short EVENT/venue pricing as shown. Null if inquire-only, not stated, or only hotel guest-room/nightly ADR (e.g. From $163).",
     ),
     pricing_model: {
       type: "OBJECT",

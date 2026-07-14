@@ -814,6 +814,177 @@ function pickWeddingCapacity(candidates) {
   };
 }
 
+/**
+ * Infer a room name from a space detail URL (e.g. /gold-coast-room → Gold Coast Room).
+ */
+function inferSpaceNameFromUrl(pageUrl) {
+  try {
+    const parts = new URL(pageUrl).pathname
+      .replace(/\/+$/, "")
+      .split("/")
+      .filter(Boolean);
+    if (!parts.length) return null;
+    const slug = parts[parts.length - 1];
+    if (
+      /^(weddings?|events?|spaces?|event-spaces?|venues?|venue-rentals?|floor-plans?|gallery|contact|about|meetings?)$/i.test(
+        slug,
+      )
+    ) {
+      return null;
+    }
+    return slug
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  } catch {
+    return null;
+  }
+}
+
+function parseGuestRange(raw) {
+  const s = String(raw).replace(/,/g, "").trim();
+  const range = s.match(/^(\d{2,4})\s*[-–—to]+\s*(\d{2,4})$/i);
+  if (range) {
+    const a = parseInt(range[1], 10);
+    const b = parseInt(range[2], 10);
+    return { guests: Math.max(a, b), guests_min: Math.min(a, b) };
+  }
+  const n = parseInt(s, 10);
+  if (Number.isFinite(n) && n > 0) return { guests: n, guests_min: null };
+  return null;
+}
+
+function styleFromCapacityLabel(label) {
+  const l = String(label || "").toLowerCase();
+  if (/ceremony/.test(l)) return "ceremony";
+  if (/with\s+dance/.test(l) && !/without\s+dance/.test(l)) return "seated_with_dance";
+  if (/without\s+dance/.test(l)) return "seated";
+  if (/reception|cocktail|standing/.test(l)) return "reception";
+  if (/banquet|seated|dinner|theater|theatre|cabaret|classroom/.test(l)) return "seated";
+  return "unknown";
+}
+
+/**
+ * Parse labeled capacity tables from page text.
+ * Drake: "Ceremony: 495 Banquet: 100-500 Reception: 900"
+ * Adler: "320: Seated with dance floor" / "Capacity120-150: Reception"
+ */
+function extractLabeledCapacityRows(allText, pageUrl, spaceHint = null) {
+  if (!allText) return [];
+  const space = spaceHint || inferSpaceNameFromUrl(pageUrl);
+  const rows = [];
+  const seen = new Set();
+
+  function push(style, guests, guestsMin, quote) {
+    if (!guests || guests <= 0) return;
+    const key = `${space || ""}|${style}|${guests}|${guestsMin || ""}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push({
+      space,
+      setting: null,
+      style,
+      guests,
+      guests_min: guestsMin,
+      quote: String(quote).replace(/\s+/g, " ").trim().slice(0, 160),
+      source_url: pageUrl,
+      origin: "rules",
+    });
+  }
+
+  const labeled =
+    /\b(Ceremony|Banquet|Reception|Cocktail|Seated(?:\s+with\s+dance(?:\s+floor)?)?|Seated(?:\s+without\s+dance(?:\s+floor)?)?|Standing)\s*:\s*(\d{2,4}(?:\s*[-–—to]+\s*\d{2,4})?)/gi;
+  let m;
+  while ((m = labeled.exec(allText))) {
+    const parsed = parseGuestRange(m[2]);
+    if (!parsed) continue;
+    push(styleFromCapacityLabel(m[1]), parsed.guests, parsed.guests_min, m[0]);
+  }
+
+  const numbered =
+    /(?:Capacity\s*)?(\d{2,4}(?:\s*[-–—to]+\s*\d{2,4})?)\s*:\s*(Seated with dance floor|Seated without dance floor|Seated program|Seated|Reception|Cocktail|Ceremony|Standing|Banquet)(?=\d|\s|$|[^a-z])/gi;
+  while ((m = numbered.exec(allText))) {
+    const parsed = parseGuestRange(m[1]);
+    if (!parsed) continue;
+    push(styleFromCapacityLabel(m[2]), parsed.guests, parsed.guests_min, m[0]);
+  }
+
+  return rows;
+}
+
+/**
+ * Walk h2/h3 sections so listing pages (Adler event-spaces) attach capacities
+ * to the nearest room heading instead of dumping everything unscoped.
+ */
+function extractLabeledCapacitiesFromHtml(html, pageUrl) {
+  if (!html) return extractLabeledCapacityRows("", pageUrl);
+  const $ = cheerio.load(html);
+  const rows = [];
+  const headings = $("h1, h2, h3").toArray();
+
+  for (let i = 0; i < headings.length; i++) {
+    const el = headings[i];
+    const name = $(el).text().replace(/\s+/g, " ").trim();
+    if (!name || name.length < 3 || name.length > 100) continue;
+    if (
+      /^(capacities?|about|contact|enquire|event inquiry|discover|add-?on|menu|book|event spaces?|sign up|newsletter|are you at|follow|privacy|directions)/i.test(
+        name,
+      )
+    ) {
+      continue;
+    }
+
+    // Prefer the enclosing card/columns block (Adler puts Capacity in a sibling column).
+    let cardText = "";
+    const $columns = $(el).closest(".wp-block-columns");
+    if ($columns.length) {
+      cardText = $columns.first().text().replace(/\s+/g, " ").trim();
+    }
+    // Skip oversized parents that swallowed the whole page (footer headings).
+    if (!cardText || cardText.length > 1200) {
+      const chunk = [];
+      let node = el.nextSibling;
+      while (node) {
+        if (node.type === "tag") {
+          const tag = (node.tagName || "").toLowerCase();
+          if (/^h[1-3]$/.test(tag)) break;
+          chunk.push($(node).text());
+        } else if (node.type === "text") {
+          chunk.push(node.data || "");
+        }
+        node = node.nextSibling;
+      }
+      cardText = chunk.join(" ").replace(/\s+/g, " ").trim();
+    }
+    if (!cardText || cardText.length < 8 || cardText.length > 1200) continue;
+    if (!/\d{2,4}/.test(cardText)) continue;
+    if (!/capacity|seated|reception|ceremony|banquet|cocktail|guests?/i.test(cardText)) {
+      continue;
+    }
+
+    for (const row of extractLabeledCapacityRows(cardText, pageUrl, name)) {
+      rows.push(row);
+    }
+  }
+
+  // Also parse whole page when a detail URL names a room (Drake Gold Coast).
+  const fromUrl = inferSpaceNameFromUrl(pageUrl);
+  if (fromUrl) {
+    for (const row of extractLabeledCapacityRows($("body").text(), pageUrl, fromUrl)) {
+      rows.push(row);
+    }
+  }
+
+  // Dedupe — if the same guests/style appears under multiple headings from a
+  // shared parent, prefer the heading whose name appears nearest the quote.
+  const seen = new Set();
+  return rows.filter((r) => {
+    const key = `${r.space}|${r.style}|${r.guests}|${r.guests_min || ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return Boolean(r.space);
+  });
+}
+
 function scanTextSignals(allText, pageUrl) {
   const amenities = {};
   const policies = {};
@@ -836,13 +1007,28 @@ function scanTextSignals(allText, pageUrl) {
   }
 
   const capacityCandidates = extractCapacityCandidates(allText, pageUrl);
-  const pricingMatch = allText.match(/(?:from|starting at)\s*\$[\d,]+(?:\.\d{2})?/i);
+  const capacityConfigurations = extractLabeledCapacityRows(allText, pageUrl);
+
+  // Prefer event-fee language; reject low bare "from $NNN" (hotel ADR noise).
+  let priceDisplay = null;
+  const pricingMatch = allText.match(
+    /(?:from|starting at)\s*\$[\d,]+(?:\.\d{2})?(?:\s*(?:\/\s*person|per\s*(?:person|guest|head)|pp|package))?/i,
+  );
+  if (pricingMatch) {
+    const raw = pricingMatch[0];
+    const amt = parseFloat((raw.match(/\$\s*([\d,]+)/) || [])[1]?.replace(/,/g, "") || "");
+    const hasEventUnit = /person|guest|head|pp|package/i.test(raw);
+    if (hasEventUnit || (Number.isFinite(amt) && amt >= 800)) {
+      priceDisplay = raw;
+    }
+  }
 
   return {
     amenities,
     policies,
     capacity_candidates: capacityCandidates,
-    price_display: pricingMatch ? pricingMatch[0] : null,
+    capacity_configurations: capacityConfigurations,
+    price_display: priceDisplay,
     sources,
   };
 }
@@ -857,6 +1043,9 @@ module.exports = {
   extractFaqs,
   scanTextSignals,
   extractCapacityCandidates,
+  extractLabeledCapacityRows,
+  extractLabeledCapacitiesFromHtml,
   pickWeddingCapacity,
   extractInstagramHandle,
+  inferSpaceNameFromUrl,
 };

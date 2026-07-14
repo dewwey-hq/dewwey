@@ -79,19 +79,23 @@ const LLM_EXTRACTION_SCHEMA = {
             style: {
               type: ["string", "null"],
               description:
-                "seated | standing | cocktail | theater | ceremony | mixed | unknown",
+                "seated | seated_with_dance | banquet | standing | cocktail | reception | theater | ceremony | mixed | unknown. Use seated_with_dance when the site lists a lower seated count with dance floor. Use banquet for Banquet: N. Use ceremony / reception labels when the site uses those words.",
             },
-            guests: { type: "number", description: "Guest count for this row." },
+            guests: { type: "number", description: "Guest count for this row (use the high end of a range)." },
+            guests_min: {
+              type: ["number", "null"],
+              description: "Low end when the site states a range (e.g. Banquet 100-500 → guests_min=100, guests=500). Null if a single number.",
+            },
             quote: { type: ["string", "null"] },
             source_url: { type: ["string", "null"] },
           },
-          required: ["space", "setting", "style", "guests", "quote", "source_url"],
+          required: ["space", "setting", "style", "guests", "guests_min", "quote", "source_url"],
         },
       },
       spaces: {
         type: "array",
         description:
-          "Bookable rooms/areas under this venue (e.g. The Pavilion, La Pergola). Empty if the site only describes one undifferentiated space. Prefer one object per distinct bookable room; include Entire Venue as its own space when priced that way.",
+          "WEDDING / event-rental rooms only (ballrooms, halls, plazas marketed for weddings). Do NOT include private dining, restaurant buyouts, meeting rooms, or package products like 'Petite Weddings'. Hotels: only the venues listed under Weddings / Wedding Venues (often 2–4 rooms). Museums: named halls/galleries on venue-rental pages. Empty ONLY if one undifferentiated space. Use null (not 0) for unknown capacity fields.",
         items: {
           type: "object",
           additionalProperties: false,
@@ -110,13 +114,30 @@ const LLM_EXTRACTION_SCHEMA = {
               type: "object",
               additionalProperties: false,
               properties: {
-                seated_max: { type: ["number", "null"] },
-                seated_with_dance: { type: ["number", "null"] },
-                cocktail_max: { type: ["number", "null"] },
-                ceremony_max: { type: ["number", "null"] },
+                seated_min: {
+                  type: ["number", "null"],
+                  description: "Low end of banquet/seated range when stated (e.g. Banquet 100-500 → 100).",
+                },
+                seated_max: {
+                  type: ["number", "null"],
+                  description: "Banquet / seated without dance floor (high end of range).",
+                },
+                seated_with_dance: {
+                  type: ["number", "null"],
+                  description: "Seated capacity with dance floor when listed separately.",
+                },
+                cocktail_max: {
+                  type: ["number", "null"],
+                  description: "Reception / cocktail / standing capacity.",
+                },
+                ceremony_max: {
+                  type: ["number", "null"],
+                  description: "Ceremony capacity when listed separately.",
+                },
                 as_stated: { type: ["string", "null"] },
               },
               required: [
+                "seated_min",
                 "seated_max",
                 "seated_with_dance",
                 "cocktail_max",
@@ -236,7 +257,7 @@ const LLM_EXTRACTION_SCHEMA = {
         },
       },
       price_display: provenanceString(
-        "Pricing as shown on site (e.g. 'from $5,000', 'packages start at $85/person'). Null if inquire-only or not stated.",
+        "Event/venue pricing as shown on site (e.g. 'from $5,000', 'packages start at $85/person', 'Fri $6k / Sat $7k'). Null if inquire-only, not stated, OR if the only prices are hotel guest-room / nightly ADR rates (e.g. 'From $163', '$289/night').",
       ),
       pricing_model: {
         type: "object",
@@ -379,17 +400,20 @@ const SYSTEM_PROMPT = `You extract wedding-planning facts from venue website tex
 Rules:
 - Use ONLY the provided document. Each section starts with --- PAGE: <url> ---.
 - If a field is not clearly stated, set value to null and quote/source_url to null. Do NOT guess or invent.
+- Prefer wedding / private-event / venue-rental / banquet / ballroom pages over hotel lodging, guest-room, reservations, or room-rate pages. Ignore accommodations marketing.
 - Capacity (keep broad — do not over-normalize):
   - Prefer WEDDING ceremony/reception capacity over gala/corporate-only numbers when both exist.
-  - capacity_max: one primary guest number for wedding reception filters/cards. Prefer the largest *seated* (or seated+dance) figure across spaces — NOT cocktail/standing standing-room max. Example: Pavilion seated 450 + cocktail 900 → capacity_max=450; keep cocktail in capacity_configurations and capacity_as_stated. Only use cocktail/standing as capacity_max if the venue markets no seated figure.
-  - capacity_as_stated: copy their capacity wording broadly (seated/standing/cocktail/floor-plan lines are fine in one string).
-  - capacity_configurations: when the site lists multiple spaces or styles, emit one row per distinct (space × style) with guests, setting (indoor/outdoor/either/unknown), and style (seated/standing/cocktail/theater/ceremony/mixed/unknown). Empty array if only a single undifferentiated number. Do not invent rows.
-  - spaces: when the venue markets distinct bookable rooms (Pavilion vs Pergola, Grand Ballroom vs Terrace, Entire Venue), emit one spaces[] object per room with description, sq_ft, capacity breakdown, room-specific amenities/inventory/assets when stated. Empty array if only one undifferentiated space. Set bookable_separately=true when couples can book a room alone.
+  - capacity_max: one primary guest number for wedding reception filters/cards. Prefer the largest *seated without dance* / banquet figure across spaces — NOT cocktail/reception standing-room max and NOT combined-ballroom totals. Example: Solarium seated-with-dance 320 + seated 370 + reception 477 → capacity_max=370; keep all three in capacity_configurations and spaces[].capacity. If only cocktail/reception figures exist (no seated), set capacity_max to null.
+  - capacity_as_stated: copy their capacity wording broadly (Ceremony/Banquet/Reception lines, seated with/without dance, etc.).
+  - capacity_configurations: emit ONE ROW PER LABELED STYLE. If the site says "Ceremony: 495 Banquet: 100-500 Reception: 900", emit three rows (ceremony 495; banquet/seated guests=500 guests_min=100; reception 900). If "320: Seated with dance floor / 370: Seated without dance floor / 477: Reception", emit seated_with_dance 320, seated 370, reception 477. Guest counts must be > 0; never emit 0. Include guests_min for ranges.
+  - spaces: WEDDING venues only. Hotels: only rooms under Weddings / Wedding Venues (e.g. Devonshire Ballroom, Langham Plaza, Cambridge — typically 2–4), NOT private dining, Travelle tables, restaurant buyouts, or "Petite Weddings" packages. Do NOT invent amalgam spaces like "Grand Ballroom & State Combined" or "Three Ballrooms" unless the site lists that as a separately priced package — prefer one object per named room. Museums/clubs: named halls on venue-rental pages. For each space fill capacity.ceremony_max / seated_min / seated_max / seated_with_dance / cocktail_max from labeled tables (Reception→cocktail_max, Banquet→seated_*, Ceremony→ceremony_max). Empty array ONLY when one undifferentiated space.
+  - capacity_max: Prefer the largest *seated without dance* / banquet figure across individual rooms — NOT combined-ballroom reception totals and NOT cocktail-only standing room. If the site only publishes cocktail/reception figures with no seated counts, set capacity_max to null.
   - fee_schedule: room × day × season venue fees when published (e.g. Sat Pavilion $6000, Sun Pergola $1000, Entire Venue $9000). Empty if inquire-only. Also capture per-guest package amounts as unit=per_guest_usd when clearly stated.
   - Ignore contact-form guest-count dropdowns (e.g. "0-49 … 1000+") as capacity — those are form options, not venue capacity.
 - Pricing:
-  - price_display: short card-friendly string (e.g. "Fri $6k / Sat $7k" or "from $12,000").
-  - pricing_as_stated: richer verbatim peak/off-peak / weekday nuances when present.
+  - price_display: short card-friendly EVENT/VENUE pricing only (e.g. "Fri $6k / Sat $7k" or "from $12,000" or "$85/person"). Null when inquire-only.
+  - NEVER put hotel guest-room or nightly ADR into price_display (reject "From $163", "$289/night", "rooms starting at…"). Those are lodging rates, not wedding venue fees.
+  - pricing_as_stated: richer verbatim peak/off-peak / weekday nuances when present (event fees only).
   - pricing_model: flat | per_head | package | inquire_only | mixed | unknown (mixed when amounts differ by day/season).
 - discovered_assets:
   - List wedding-relevant PDFs/floor plans/brochures/vendor-list links from ASSET CANDIDATES blocks (preferred) or clearly stated URLs in text.

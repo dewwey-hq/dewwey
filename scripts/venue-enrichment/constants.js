@@ -32,13 +32,22 @@ const SPECIALTY_KEYWORDS = [
 ];
 
 const CRAWL_LINK_KEYWORDS =
-  /wedding|event|policy|policies|cater|floor|plan|package|faq|contact|parking|hotel|vendor|partner|resource|tour|usage|brochure|preferred|recommended|local-|amenities|guidelines/i;
+  /wedding|event|policy|policies|cater|floor|plan|package|faq|contact|parking|vendor|partner|resource|tour|usage|brochure|preferred|recommended|local-|amenities|guidelines|banquet|ballroom|venue-rental|host-an-event|facility|celebrate|private-event|meeting/i;
 
 const SEED_PATHS = [
   "/",
   "/weddings",
   "/wedding",
   "/events",
+  "/events/weddings",
+  "/weddings-events",
+  "/private-events",
+  "/venue-rental",
+  "/venue-rentals",
+  "/host-an-event",
+  "/facility-rental",
+  "/page/weddings",
+  "/page/contact-venue-rentals",
   "/contact",
   "/contact-us",
   "/about",

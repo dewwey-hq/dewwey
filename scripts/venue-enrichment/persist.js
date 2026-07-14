@@ -7,7 +7,7 @@
 
 const SCHEMA_VERSION = 2;
 
-const { buildSpacesServing } = require("./spaces");
+const { buildSpacesServing, isAmalgamSpaceName, isNoiseSpaceName } = require("./spaces");
 
 function provValue(field) {
   if (field == null) return null;
@@ -15,25 +15,46 @@ function provValue(field) {
   return field;
 }
 
+const CAPACITY_MAX_REVIEW_THRESHOLD = 1000;
+
 /**
  * Prefer seated (or seated+dance / mixed) over cocktail/standing for the indexed max.
- * Cocktail standing-room (e.g. 900) should not win over seated 450.
+ * Never returns cocktail/reception-only LLM max — that poisons guest filters (Palmer 1690).
  */
-function preferSeatedCapacityMax(llmExtraction, rulesFallback) {
-  const configs = Array.isArray(llmExtraction?.capacity_configurations)
-    ? llmExtraction.capacity_configurations
-    : [];
+function preferSeatedCapacityMax(llmExtraction, rulesFallback, configsOverride = null) {
+  const configs = Array.isArray(configsOverride)
+    ? configsOverride
+    : Array.isArray(llmExtraction?.capacity_configurations)
+      ? llmExtraction.capacity_configurations
+      : [];
 
   const seatedish = configs.filter((c) => {
+    if (isAmalgamSpaceName(c?.space) || isNoiseSpaceName(c?.space)) return false;
     const style = String(c?.style || "").toLowerCase();
     const guests = Number(c?.guests);
     if (!Number.isFinite(guests) || guests <= 0) return false;
+    if (
+      style === "cocktail" ||
+      style === "standing" ||
+      style === "reception" ||
+      style === "ceremony"
+    ) {
+      return false;
+    }
+    if (
+      /\b(reception|cocktail|standing|ceremony)\b/i.test(String(c?.quote || "")) &&
+      !/\bseated\b/i.test(String(c?.quote || ""))
+    ) {
+      return false;
+    }
     return (
       style === "seated" ||
+      style === "seated_with_dance" ||
+      style === "banquet" ||
       style === "mixed" ||
-      style === "ceremony" ||
       style === "theater" ||
-      /seat|dinner|reception|dance/i.test(String(c?.quote || ""))
+      (/seat|dinner|plated|banquet|with\s+dance|without\s+dance/i.test(String(c?.quote || "")) &&
+        !/cocktail|standing|reception/i.test(String(c?.quote || "")))
     );
   });
 
@@ -41,21 +62,104 @@ function preferSeatedCapacityMax(llmExtraction, rulesFallback) {
     return Math.max(...seatedish.map((c) => Number(c.guests)));
   }
 
+  // LLM capacity_max only if as_stated clearly gives a seated figure lower than cocktail prose.
   const llmMax = provValue(llmExtraction?.capacity_max);
   if (llmMax != null) {
     const asStated = String(provValue(llmExtraction?.capacity_as_stated) || "");
-    const raw = Number(llmMax);
-    // If LLM returned cocktail-only max but configs have no seated rows, keep LLM value.
-    // If as_stated mentions seated at a lower number, prefer that.
     const seatedMatch = asStated.match(/seated[^0-9]{0,40}(\d{2,4})/i);
     if (seatedMatch) {
       const seatedN = parseInt(seatedMatch[1], 10);
-      if (Number.isFinite(seatedN) && seatedN > 0 && seatedN < raw) return seatedN;
+      if (Number.isFinite(seatedN) && seatedN > 0) return seatedN;
     }
-    return raw;
   }
 
-  return rulesFallback ?? null;
+  const rulesN = Number(rulesFallback);
+  if (Number.isFinite(rulesN) && rulesN > 0 && rulesN < CAPACITY_MAX_REVIEW_THRESHOLD) {
+    // Rules scalar only when modest — avoid promoting combined-hotel prose.
+    return rulesN;
+  }
+
+  return null;
+}
+
+/**
+ * Card capacity: largest seated / with-dance on non-amalgam rooms only.
+ * Do not fall back to cocktail/reception — null + needs_review is safer for filters.
+ */
+function capacityMaxFromSpaces(spaces, fallback = null) {
+  if (!Array.isArray(spaces) || spaces.length === 0) return fallback ?? null;
+  const bookable = spaces.filter(
+    (s) => !isAmalgamSpaceName(s?.name) && !isNoiseSpaceName(s?.name),
+  );
+  const seated = bookable
+    .map((s) => Number(s?.capacity?.seated_max))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (seated.length) return Math.max(...seated);
+  const withDance = bookable
+    .map((s) => Number(s?.capacity?.seated_with_dance))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (withDance.length) return Math.max(...withDance);
+  return fallback ?? null;
+}
+
+function capacityNeedsReview(capacityMax, spaces) {
+  if (capacityMax == null) return true;
+  if (capacityMax >= CAPACITY_MAX_REVIEW_THRESHOLD) return true;
+  const bookable = (spaces || []).filter(
+    (s) => !isAmalgamSpaceName(s?.name) && !isNoiseSpaceName(s?.name),
+  );
+  const hasSeated = bookable.some((s) => {
+    const a = Number(s?.capacity?.seated_max);
+    const b = Number(s?.capacity?.seated_with_dance);
+    return (Number.isFinite(a) && a > 0) || (Number.isFinite(b) && b > 0);
+  });
+  const hasCocktailOnly =
+    !hasSeated &&
+    bookable.some((s) => {
+      const c = Number(s?.capacity?.cocktail_max);
+      return Number.isFinite(c) && c > 0;
+    });
+  if (hasCocktailOnly) return true;
+  return false;
+}
+
+function mergeCapacityConfigurations(rulesConfigs = [], llmConfigs = []) {
+  const out = [];
+  const seen = new Set();
+  const rulesSpaceKeys = new Set(
+    (rulesConfigs || [])
+      .map((r) => String(r?.space || "").toLowerCase().trim())
+      .filter(Boolean),
+  );
+
+  function push(row, origin) {
+    if (!row || row.guests == null) return;
+    const guests = Number(row.guests);
+    if (!Number.isFinite(guests) || guests <= 0) return;
+    const key = `${String(row.space || "").toLowerCase()}|${String(row.style || "").toLowerCase()}|${guests}|${row.guests_min ?? ""}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      space: row.space ?? null,
+      setting: row.setting ?? null,
+      style: row.style ?? null,
+      guests,
+      guests_min: row.guests_min != null ? Number(row.guests_min) : null,
+      quote: row.quote ?? null,
+      source_url: row.source_url ?? null,
+      origin: row.origin || origin,
+    });
+  }
+
+  for (const row of rulesConfigs || []) push(row, "rules");
+  // When rules already labeled a space (Drake/Adler tables), ignore LLM rows for
+  // that space — models often swap neighboring hall capacities.
+  for (const row of llmConfigs || []) {
+    const sk = String(row?.space || "").toLowerCase().trim();
+    if (sk && rulesSpaceKeys.has(sk)) continue;
+    push(row, "llm");
+  }
+  return out;
 }
 
 function uniqAssetsByUrl(list) {
@@ -71,15 +175,40 @@ function uniqAssetsByUrl(list) {
 }
 
 /**
+ * Reject hotel ADR / guest-room rates that pollute wedding price_display
+ * (e.g. Drake "From $163"). Keep event fees, packages, and per-person F&B.
+ */
+function sanitizeEventPriceDisplay(raw) {
+  if (raw == null) return null;
+  const s = String(raw).replace(/\s+/g, " ").trim();
+  if (!s) return null;
+
+  if (/\/\s*night|per\s*night|nightly|room\s*rates?|\badr\b|guest\s*room/i.test(s)) {
+    return null;
+  }
+
+  // Bare "From $163" / "Starting at $189" with a low dollar amount → lodging ADR.
+  // Wedding venue fees are almost always $800+ (or explicitly /person|package|guest).
+  if (
+    /(?:from|starting(?:\s+at)?)\s*\$\s*[\d,]+/i.test(s) &&
+    !/(?:\/\s*person|per\s*(?:person|guest|head)|pp\b|package|venue\s*fee|rental|event)/i.test(s)
+  ) {
+    const amounts = [...s.matchAll(/\$\s*([\d,]+(?:\.\d{2})?)/g)].map((m) =>
+      parseFloat(m[1].replace(/,/g, "")),
+    );
+    const maxAmt = amounts.length ? Math.max(...amounts) : NaN;
+    if (Number.isFinite(maxAmt) && maxAmt > 0 && maxAmt < 800) return null;
+  }
+
+  return s;
+}
+
+/**
  * Merge rules baseline + optional LLM extraction into the serving `facts` document.
  */
 function buildServingFacts(rules, llmExtraction = null) {
   const llm = llmExtraction || null;
 
-  const capacityMax = preferSeatedCapacityMax(
-    llm,
-    rules?.pricing?.capacity_max ?? null,
-  );
   const capacityMin = provValue(llm?.capacity_min) ?? rules?.pricing?.capacity_min ?? null;
   const capacityAsStated =
     provValue(llm?.capacity_as_stated) ?? rules?.pricing?.capacity_context ?? null;
@@ -94,8 +223,9 @@ function buildServingFacts(rules, llmExtraction = null) {
 
   const eventInsurance = provValue(llm?.policies?.event_insurance) ?? null;
   const pricingModel = provValue(llm?.pricing_model) ?? null;
-  const priceDisplay =
-    provValue(llm?.price_display) ?? rules?.pricing?.display ?? null;
+  const priceDisplay = sanitizeEventPriceDisplay(
+    provValue(llm?.price_display) ?? rules?.pricing?.display ?? null,
+  );
 
   const rulesAssets = Array.isArray(rules?.assets) ? rules.assets : [];
   const discovered = Array.isArray(llm?.discovered_assets) ? llm.discovered_assets : [];
@@ -127,10 +257,36 @@ function buildServingFacts(rules, llmExtraction = null) {
       : null;
 
   const confidence = typeof llm?.confidence === "number" ? llm.confidence : null;
+
+  const capacityConfigurations = mergeCapacityConfigurations(
+    rules?.pricing?.capacity_configurations || [],
+    Array.isArray(llm?.capacity_configurations) ? llm.capacity_configurations : [],
+  );
+
+  const { spaces, fee_schedule } = buildSpacesServing({
+    capacityConfigurations,
+    llmSpaces: Array.isArray(llm?.spaces) ? llm.spaces : [],
+    feeSchedule: Array.isArray(llm?.fee_schedule) ? llm.fee_schedule : [],
+  });
+
+  // Card scalar: seated on real rooms only — never amalgam cocktail totals.
+  const capacityMaxRaw = capacityMaxFromSpaces(
+    spaces,
+    preferSeatedCapacityMax(
+      llm,
+      rules?.pricing?.capacity_max ?? null,
+      capacityConfigurations,
+    ),
+  );
+  const capacityMax =
+    capacityMaxRaw != null && capacityMaxRaw >= CAPACITY_MAX_REVIEW_THRESHOLD
+      ? null
+      : capacityMaxRaw;
+
   const crawlFailed = !rules || rules.status === "failed" || (rules.pages_crawled || []).length === 0;
   const needsReview =
     crawlFailed ||
-    capacityMax == null ||
+    capacityNeedsReview(capacityMax, spaces) ||
     (confidence != null && confidence < 0.45) ||
     Boolean(llm?.notes && /conflict|unclear|uncertain/i.test(llm.notes));
 
@@ -141,16 +297,6 @@ function buildServingFacts(rules, llmExtraction = null) {
       : rules?.status === "success"
         ? "success"
         : "partial";
-
-  const capacityConfigurations = Array.isArray(llm?.capacity_configurations)
-    ? llm.capacity_configurations
-    : [];
-
-  const { spaces, fee_schedule } = buildSpacesServing({
-    capacityConfigurations,
-    llmSpaces: Array.isArray(llm?.spaces) ? llm.spaces : [],
-    feeSchedule: Array.isArray(llm?.fee_schedule) ? llm.fee_schedule : [],
-  });
 
   const facts = {
     about,
@@ -357,4 +503,9 @@ module.exports = {
   SCHEMA_VERSION,
   buildServingFacts,
   persistVenueEnrichment,
+  sanitizeEventPriceDisplay,
+  capacityMaxFromSpaces,
+  capacityNeedsReview,
+  preferSeatedCapacityMax,
+  CAPACITY_MAX_REVIEW_THRESHOLD,
 };

@@ -6,7 +6,7 @@ const {
   DEFAULT_MAX_PAGES,
   FETCH_DELAY_MS,
 } = require("./constants");
-const { classifyPageContext } = require("./classify");
+const { classifyPageContext, isLodgingPath } = require("./classify");
 const { fetchHtml, sleep } = require("./fetch");
 
 function normalizeUrl(url, base) {
@@ -103,7 +103,7 @@ function seedUrls(origin) {
 }
 
 function linkPriority(link) {
-  if (/wedding-ideas|\/ideas\/|\/blog\//i.test(link)) return 5;
+  if (isLodgingPath(link) || /wedding-ideas|\/ideas\/|\/blog\//i.test(link)) return 5;
   if (
     /\/wedding-vendors\/|\/resources\/|preferred-vendor|preferred-cater|local-resource|caterers?-partners?|\/partners?\/|approved-cater/i.test(
       link,
@@ -111,8 +111,17 @@ function linkPriority(link) {
   ) {
     return 0;
   }
+  // Hotels/museums: pull event rental + ballroom pages before generic marketing.
+  if (
+    /venue-rental|host-an-event|facility-rental|private-events?|banquet|ballroom|event-spaces?|weddings?-events|events?-weddings|floor-?plan|capacity|events-and-spaces|contact-venue-rental/i.test(
+      link,
+    )
+  ) {
+    return 0;
+  }
   if (/preferred|vendor|partner|resource|policy|floor|package|cater|guideline|amenit/i.test(link)) return 0;
   if (/wedding|bridal|ceremony|reception/i.test(link) && !/wedding-ideas/i.test(link)) return 1;
+  if (/\/events?(?:\/|$)|\/meetings?(?:\/|$)|celebrate/i.test(link)) return 1;
   if (/contact|about|tour|faq|floor|plan|package|amenit/i.test(link)) return 2;
   return 3;
 }
@@ -122,6 +131,7 @@ const VENDOR_PROFILE_PATH_RE = /\/wedding-vendor\/[^/?#]+/i;
 
 function shouldCrawlLink(url, weddingOnly = true) {
   if (!isLikelyPageUrl(url)) return false;
+  if (isLodgingPath(url)) return false;
   try {
     if (VENDOR_PROFILE_PATH_RE.test(new URL(url).pathname)) return false;
   } catch {
