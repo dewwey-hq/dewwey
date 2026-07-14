@@ -232,7 +232,7 @@ Rules:
 - If a field is not clearly stated, set value to null and quote/source_url to null. Do NOT guess or invent.
 - Capacity (keep broad — do not over-normalize):
   - Prefer WEDDING ceremony/reception capacity over gala/corporate-only numbers when both exist.
-  - capacity_max: one primary guest number the venue associates with weddings (as they state it). Prefer the largest *seated wedding/reception* figure when both seated and standing exist, unless the venue only markets standing/cocktail.
+  - capacity_max: one primary guest number for wedding reception filters/cards. Prefer the largest *seated* (or seated+dance) figure across spaces — NOT cocktail/standing standing-room max. Example: Pavilion seated 450 + cocktail 900 → capacity_max=450; keep cocktail in capacity_configurations and capacity_as_stated. Only use cocktail/standing as capacity_max if the venue markets no seated figure.
   - capacity_as_stated: copy their capacity wording broadly (seated/standing/cocktail/floor-plan lines are fine in one string).
   - capacity_configurations: when the site lists multiple spaces or styles, emit one row per distinct (space × style) with guests, setting (indoor/outdoor/either/unknown), and style (seated/standing/cocktail/theater/ceremony/mixed/unknown). Empty array if only a single undifferentiated number. Do not invent rows.
   - Ignore contact-form guest-count dropdowns (e.g. "0-49 … 1000+") as capacity — those are form options, not venue capacity.

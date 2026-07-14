@@ -21,8 +21,25 @@ function pageTitle($) {
 }
 
 function mainRoot($) {
-  const sel = $("main, article, [role='main'], .entry-content, .page-content, #content, .content");
-  if (sel.length) return sel.first();
+  // Try selectors one-by-one (NOT a comma list). Cheerio returns comma matches in
+  // document order, so a skip-link `<a id="content">` would beat `[role=main]`.
+  const candidates = [
+    "main",
+    "article",
+    "[role='main']",
+    ".entry-content",
+    ".page-content",
+    "#content",
+    ".content",
+  ];
+  for (const sel of candidates) {
+    const el = $(sel).first();
+    if (!el.length) continue;
+    // Skip empty anchors / wrappers (e.g. "Skip to content")
+    const textLen = el.text().replace(/\s+/g, " ").trim().length;
+    if (textLen < 80) continue;
+    return el;
+  }
   return $("body");
 }
 

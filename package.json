@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "node scripts/seed.js",
+    "venue-coverage": "node scripts/venue-coverage-report.js",
+    "seed-popular-venues": "node scripts/seed-popular-venues.js",
     "extract-social": "node scripts/extract-social-links.js",
     "scrape-ig": "node scripts/scrape-instagram.js",
     "scrape-ig-v2": "node scripts/scrape-instagram-v2.js",

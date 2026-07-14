@@ -409,6 +409,108 @@ function normalizeFaqQuestion(q) {
   return q.toLowerCase().replace(/[^a-z0-9? ]/g, "").replace(/\s+/g, " ").trim();
 }
 
+/** Framer/homepage sections often omit the trailing "?". */
+function ensureFaqQuestionMark(q) {
+  const t = q.replace(/\s+/g, " ").trim();
+  if (!t || t.endsWith("?")) return t;
+  if (
+    /^(what|when|where|who|why|how|can|could|do|does|did|is|are|will|would|should|may|have|has|is there|are there)\b/i.test(
+      t,
+    )
+  ) {
+    return `${t}?`;
+  }
+  return t;
+}
+
+function faqSourceUrl(pageUrl, fromSection) {
+  if (!fromSection) return pageUrl;
+  try {
+    const u = new URL(pageUrl);
+    u.hash = "faqs";
+    return u.toString();
+  } catch {
+    return `${pageUrl.replace(/#.*$/, "")}#faqs`;
+  }
+}
+
+function findFaqSectionRoots($) {
+  const roots = [];
+  const seen = new Set();
+  const add = (el) => {
+    if (!el || seen.has(el)) return;
+    seen.add(el);
+    roots.push(el);
+  };
+
+  $("#faqs, #faq").each((_, el) => add(el));
+  $('[id*="faq" i]').each((_, el) => add(el));
+  $('[data-framer-name="FAQs"], [data-framer-name="FAQ"]').each((_, el) => add(el));
+
+  $("section, div, article").each((_, el) => {
+    const $el = $(el);
+    const heading = $el
+      .children("h1,h2,h3,[data-framer-name='Badge'],[data-framer-name='Header']")
+      .first()
+      .text()
+      .replace(/\s+/g, " ")
+      .trim();
+    if (/^faqs?$/i.test(heading) || /^frequently asked/i.test(heading)) add(el);
+  });
+
+  return roots;
+}
+
+/**
+ * Framer accordion: Open/Closed items with Title + Content children.
+ * Also works when Title/Content sit under a shared parent without Open/Closed.
+ */
+function extractFramerSectionFaqs($, root, pageUrl) {
+  const faqs = [];
+  const seen = new Set();
+  const source = faqSourceUrl(pageUrl, true);
+  const $root = $(root);
+
+  const addPair = (question, answer) => {
+    const q = ensureFaqQuestionMark(question);
+    const a = (answer || "").replace(/\s+/g, " ").trim();
+    if (!q || q.length < 10 || q.length > 300) return;
+    if (!q.endsWith("?")) return;
+    if (a.length < 15 || a.length > 2000 || JUNK_FAQ_ANSWER.test(a)) return;
+    const key = normalizeFaqQuestion(q);
+    if (seen.has(key)) return;
+    seen.add(key);
+    faqs.push({ question: q, answer: a, source_url: source });
+  };
+
+  const items = $root.find(
+    '[data-framer-name="Open"], [data-framer-name="Closed"], [data-framer-name="FAQ Item"], [data-framer-name="Accordion Item"]',
+  );
+  if (items.length) {
+    items.each((_, el) => {
+      const $item = $(el);
+      const q = $item.find('[data-framer-name="Title"]').first().text();
+      const a = $item.find('[data-framer-name="Content"]').first().text();
+      addPair(q, a);
+    });
+  }
+
+  if (faqs.length === 0) {
+    $root.find('[data-framer-name="Title"]').each((_, el) => {
+      const $title = $(el);
+      const q = $title.text();
+      const $parent = $title.parent();
+      let a = $parent.find('[data-framer-name="Content"]').first().text();
+      if (!a) {
+        a = $title.nextAll('[data-framer-name="Content"]').first().text();
+      }
+      addPair(q, a);
+    });
+  }
+
+  return faqs;
+}
+
 const JUNK_FAQ_ANSWER = /copyright|all rights reserved|^\d{3,5}\s+\w+\s+(street|st|avenue|ave|blvd)|info@/i;
 
 const FAQ_MATCH_RULES = [
@@ -489,21 +591,44 @@ function extractSquarespaceFaqs($, pageUrl) {
 function extractFaqs(html, pageUrl) {
   const $ = cheerio.load(html);
   const title = pageTitle($);
-  if (!isFaqPage(pageUrl, title)) return [];
 
   const faqs = [];
   const seen = new Set();
 
-  const add = (question, answer) => {
-    const q = question.replace(/\s+/g, " ").trim();
-    const a = answer.replace(/\s+/g, " ").trim();
+  const add = (question, answer, sourceUrl = pageUrl) => {
+    const q = ensureFaqQuestionMark(question);
+    const a = (answer || "").replace(/\s+/g, " ").trim();
     if (!q.endsWith("?") || q.length < 10 || q.length > 300) return;
     if (a.length < 15 || a.length > 2000 || JUNK_FAQ_ANSWER.test(a)) return;
     const key = normalizeFaqQuestion(q);
     if (seen.has(key)) return;
     seen.add(key);
-    faqs.push({ question: q, answer: a, source_url: pageUrl });
+    faqs.push({ question: q, answer: a, source_url: sourceUrl });
   };
+
+  // Homepage / SPA hash sections (#faqs) — e.g. Framer Galleria Marchetti
+  for (const root of findFaqSectionRoots($)) {
+    for (const faq of extractFramerSectionFaqs($, root, pageUrl)) {
+      add(faq.question, faq.answer, faq.source_url);
+    }
+
+    if (faqs.length === 0) {
+      const $root = $(root);
+      $root.find("details").each((_, el) => {
+        const $el = $(el);
+        add(
+          $el.find("summary").first().text(),
+          $el.find("p").first().text(),
+          faqSourceUrl(pageUrl, true),
+        );
+      });
+    }
+  }
+
+  if (faqs.length > 0) return faqs;
+
+  // Full-page FAQ URLs / titles only — avoid false positives on every page
+  if (!isFaqPage(pageUrl, title)) return [];
 
   $("details").each((_, el) => {
     const $el = $(el);
@@ -529,13 +654,13 @@ function extractFaqs(html, pageUrl) {
       const $q = $p.children("strong, b").first();
       if (!$q.length) return;
       const q = $q.text().replace(/\s+/g, " ").trim();
-      if (!q.endsWith("?")) return;
+      if (!q.endsWith("?") && !/^(what|can|do|is|are|how)\b/i.test(q)) return;
       // Prefer following sibling paragraphs as the answer
       let a = "";
       let $next = $p.next();
       while ($next.length && $next.is("p")) {
         const nextStrong = $next.children("strong, b").first().text().replace(/\s+/g, " ").trim();
-        if (nextStrong.endsWith("?")) break;
+        if (nextStrong.endsWith("?") || /^(what|can|do|is|are|how)\b/i.test(nextStrong)) break;
         const chunk = $next.text().replace(/\s+/g, " ").trim();
         if (chunk) a = a ? `${a} ${chunk}` : chunk;
         if (a.length > 40) break;
@@ -557,7 +682,7 @@ function extractFaqs(html, pageUrl) {
     const questionOrder = [];
     const seenQ = new Set();
     $("h1,h2,h3,h4,h5,strong,b").each((_, el) => {
-      const q = $(el).text().replace(/\s+/g, " ").trim();
+      const q = ensureFaqQuestionMark($(el).text());
       const key = normalizeFaqQuestion(q);
       if (!q.endsWith("?") || q.length < 10 || q.length > 300 || seenQ.has(key)) return;
       seenQ.add(key);

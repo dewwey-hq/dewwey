@@ -41,7 +41,7 @@ const GEMINI_RESPONSE_SCHEMA = {
   properties: {
     about: provString("1-3 sentence venue description for wedding couples."),
     capacity_max: provNumber(
-      "Primary wedding guest capacity. Prefer largest seated wedding/reception figure when seated and standing both exist. Null if not stated. Ignore contact-form guest-count dropdowns.",
+      "Primary wedding guest capacity for filters/cards. Prefer largest *seated* (or seated+dance) figure — NOT cocktail/standing max (e.g. seated 450 beats cocktail 900). Null if not stated. Ignore contact-form guest-count dropdowns.",
     ),
     capacity_min: provNumber("Minimum guest count if stated, else null."),
     capacity_as_stated: provString(

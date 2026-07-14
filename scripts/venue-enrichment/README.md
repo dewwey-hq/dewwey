@@ -43,8 +43,11 @@ Stdout: `{ rules, llm }` JSON. With `--persist`, also upserts `venue_extraction_
 
 ## Phase 2 — batch all venues
 
+**Done** for the original Chicago venue set. **Pinned:** do not batch-enrich the newer hotel/museum/club import (`vendors.id` ≥ ~478) until we reopen that scope.
+
 ```bash
 # Remaining venues (skip status=success; re-run failed / never enriched)
+# Only use for the original set / failures — not the expanded catalog yet
 npm run enrich-venues-batch
 
 # Preview queue only
@@ -72,7 +75,7 @@ Writes a run report under `scripts/venue-enrichment/sample-output/batch-enrich/`
 
 ## FAQs (`faqs[]`)
 
-Structured Q&A from `/faq` and similar pages:
+Structured Q&A from `/faq` pages **and** in-page FAQ sections (e.g. homepage `#faqs` / Framer accordions):
 
 ```json
 {

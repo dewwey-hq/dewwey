@@ -13,6 +13,49 @@ function provValue(field) {
   return field;
 }
 
+/**
+ * Prefer seated (or seated+dance / mixed) over cocktail/standing for the indexed max.
+ * Cocktail standing-room (e.g. 900) should not win over seated 450.
+ */
+function preferSeatedCapacityMax(llmExtraction, rulesFallback) {
+  const configs = Array.isArray(llmExtraction?.capacity_configurations)
+    ? llmExtraction.capacity_configurations
+    : [];
+
+  const seatedish = configs.filter((c) => {
+    const style = String(c?.style || "").toLowerCase();
+    const guests = Number(c?.guests);
+    if (!Number.isFinite(guests) || guests <= 0) return false;
+    return (
+      style === "seated" ||
+      style === "mixed" ||
+      style === "ceremony" ||
+      style === "theater" ||
+      /seat|dinner|reception|dance/i.test(String(c?.quote || ""))
+    );
+  });
+
+  if (seatedish.length) {
+    return Math.max(...seatedish.map((c) => Number(c.guests)));
+  }
+
+  const llmMax = provValue(llmExtraction?.capacity_max);
+  if (llmMax != null) {
+    const asStated = String(provValue(llmExtraction?.capacity_as_stated) || "");
+    const raw = Number(llmMax);
+    // If LLM returned cocktail-only max but configs have no seated rows, keep LLM value.
+    // If as_stated mentions seated at a lower number, prefer that.
+    const seatedMatch = asStated.match(/seated[^0-9]{0,40}(\d{2,4})/i);
+    if (seatedMatch) {
+      const seatedN = parseInt(seatedMatch[1], 10);
+      if (Number.isFinite(seatedN) && seatedN > 0 && seatedN < raw) return seatedN;
+    }
+    return raw;
+  }
+
+  return rulesFallback ?? null;
+}
+
 function uniqAssetsByUrl(list) {
   const seen = new Set();
   const out = [];
@@ -31,8 +74,10 @@ function uniqAssetsByUrl(list) {
 function buildServingFacts(rules, llmExtraction = null) {
   const llm = llmExtraction || null;
 
-  const capacityMax =
-    provValue(llm?.capacity_max) ?? rules?.pricing?.capacity_max ?? null;
+  const capacityMax = preferSeatedCapacityMax(
+    llm,
+    rules?.pricing?.capacity_max ?? null,
+  );
   const capacityMin = provValue(llm?.capacity_min) ?? rules?.pricing?.capacity_min ?? null;
   const capacityAsStated =
     provValue(llm?.capacity_as_stated) ?? rules?.pricing?.capacity_context ?? null;

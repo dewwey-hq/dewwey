@@ -1,8 +1,10 @@
 # Vendor information aggregation — strategy
 
-**Status:** Phase 0 / 0b done. **Phase 1 persist shipped.** Phase 2 batch: `npm run enrich-venues-batch`. See [ai-native-data-plane.md](./ai-native-data-plane.md).
+**Status:** Phase 0 / 0b / 1 done. **Phase 2 batch done** for the original Chicago venue set. Enrichment merged onto main with Places photo work (`cursor/merge-enrichment-photos`). See [ai-native-data-plane.md](./ai-native-data-plane.md).
 
-**Scope today:** Chicago **venues** only (~85). Same pattern can extend later to caterers, florists, etc.
+**Pinned / deferred:** Newer venue imports (hotels, museums, clubs — roughly `vendors.id` ≥ 478) are **not** in enrichment scope yet. Do not run `enrich-venues-batch` across that set until we deliberately reopen it. Also deferred: `spaces[]` / fee-schedule rollup for multi-room venues (Marchetti-style).
+
+**Scope today:** Original Chicago **venues** only. Same pattern can extend later to the expanded catalog, then caterers, florists, etc.
 
 **Code:** `scripts/venue-enrichment/` · ops details in that folder’s [README](../scripts/venue-enrichment/README.md).
 
