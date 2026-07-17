@@ -53,9 +53,13 @@ Cadence suggestion: after seed, and ~monthly (or when broken images show up in p
 ## Cost-optimized architecture (current)
 
 ```text
-Browse / modal
+Browse / cards / map
+  → 1 photo from vendors.photos[0]
   → <img src="https://places.googleapis.com/v1/{photoName}/media?…&key=BROWSER_KEY">
-  → Google serves image (browser/CDN cache)
+  → Google serves image (browser cache helps on repeat views)
+
+Venue modal
+  → up to 3 photos (same direct media URLs)
 
 Ops (rare)
   → npm run refresh-place-photos
@@ -63,9 +67,9 @@ Ops (rare)
   → UPDATE vendors.photos
 ```
 
-**Do not** proxy every photo through our Next API on each view. That turns every card render into billable Places traffic + serverless cost.
+**Do not** proxy every photo through `/api/venue-photo` on each view. That was billing Place Details Photos (and sometimes Place Details) on every card — June 2026 was ~6.2k photo SKUs (~$37 before promo credit). UI now builds direct media URLs via `placesPhotoUrl` / `usePlacePhotos`.
 
-We briefly tried `/api/places-photo` for localhost; it fixed display but was the wrong long-term cost model. Removed in favor of referrer allowlist + periodic refresh.
+Each successful media request still bills **Place Details Photos** (~$7/1k after free tier). Fewer images on browse is the main dial. Self-hosting Google photos or scraping venue-site images has ToS/copyright issues — not the default path.
 
 ---
 

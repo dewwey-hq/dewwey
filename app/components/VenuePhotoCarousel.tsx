@@ -15,7 +15,7 @@ export default function VenuePhotoCarousel({
   styleLabel,
   largeSaveAction = false,
   maxWidth = 900,
-  photoCount = 5,
+  photoCount = 1,
   onToggleSave,
   onClose,
   onInteract,

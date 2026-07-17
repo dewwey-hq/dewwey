@@ -690,20 +690,12 @@ function PhotoGrid({
   photoNames?: string[] | null;
   alt: string;
 }) {
-  const { urls: photos, loading } = usePlacePhotos(placeId, {
+  const { urls: photos } = usePlacePhotos(placeId, {
     maxWidth: 1200,
-    count: 10,
+    count: 3,
     photoNames: photoNames ?? undefined,
   });
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-
-  if (loading && photos.length === 0) {
-    return (
-      <div className="flex h-56 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-100 to-pink-200 sm:h-72">
-        <span className="text-sm text-rose-300/80">Loading photos…</span>
-      </div>
-    );
-  }
 
   if (photos.length === 0) {
     return (
@@ -714,8 +706,8 @@ function PhotoGrid({
   }
 
   const open = (index: number) => setLightboxIndex(index);
-  const gridPhotos = photos.slice(0, 5);
-  const extraCount = photos.length - 5;
+  const gridPhotos = photos.slice(0, 3);
+  const extraCount = photos.length - 3;
 
   const cell = (src: string, index: number, className: string, showMore?: boolean) => (
     <button
