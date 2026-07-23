@@ -1,7 +1,15 @@
 const SALT = "dewwey-beta-v1";
 export const BETA_ACCESS_COOKIE = "beta-access";
+const BETA_HOST = "beta.dewwey.com";
 
-export function isBetaAccessEnabled(): boolean {
+export function isBetaAccessHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().split(":")[0];
+  return host === BETA_HOST;
+}
+
+/** Gate only beta.dewwey.com when BETA_ACCESS_PASSWORD is set. */
+export function isBetaAccessEnabled(hostname: string): boolean {
+  if (!isBetaAccessHost(hostname)) return false;
   return Boolean(process.env.BETA_ACCESS_PASSWORD?.trim());
 }
 

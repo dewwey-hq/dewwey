@@ -28,7 +28,9 @@ feature/foo  →  PR → beta  →  validate on beta.dewwey.com  →  PR → mai
 | Variable | Production (`main`) | Preview / `beta` branch |
 |----------|-------------------|-------------------------|
 | `NEXT_PUBLIC_VENDOR_API_URL` | `https://kfln0omb31.execute-api.us-east-1.amazonaws.com/vendors` | `https://rm4ubmuksa.execute-api.us-east-1.amazonaws.com/vendors` |
-| `BETA_ACCESS_PASSWORD` | *(unset)* | shared demo password — enables app-level gate |
+| `BETA_ACCESS_PASSWORD` | *(unset)* | shared demo password — gates **beta.dewwey.com** only |
+
+Set `BETA_ACCESS_PASSWORD` on **Production and Preview** in Vercel if the beta custom domain does not receive Preview env vars. `dewwey.com` stays public because middleware only gates `beta.dewwey.com`.
 | `NEXT_PUBLIC_GOOGLE_*` | same keys | same keys |
 | Google referrer allowlist | prod + beta domains | prod + beta domains |
 

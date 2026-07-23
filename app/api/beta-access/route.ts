@@ -6,7 +6,11 @@ import {
 } from "@/lib/beta-access";
 
 export async function POST(request: Request) {
-  if (!isBetaAccessEnabled()) {
+  const hostname =
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    new URL(request.url).hostname;
+
+  if (!isBetaAccessEnabled(hostname)) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 

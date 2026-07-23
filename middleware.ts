@@ -7,7 +7,11 @@ import {
 } from "@/lib/beta-access";
 
 export async function middleware(request: NextRequest) {
-  if (!isBetaAccessEnabled()) {
+  const hostname =
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    request.nextUrl.hostname;
+
+  if (!isBetaAccessEnabled(hostname)) {
     return NextResponse.next();
   }
 
@@ -32,5 +36,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  matcher: [
+    "/",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
 };
