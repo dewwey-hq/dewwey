@@ -1,6 +1,6 @@
 # Vendor information aggregation — strategy
 
-**Status:** Phase 0 / 0b / 1 done. **Phase 2 batch done** for the original Chicago venue set. Enrichment + Places photos live on branch `cursor/merge-enrichment-photos`. See [ai-native-data-plane.md](./ai-native-data-plane.md).
+**Status:** Phase 0 / 0b / 1 done. **Phase 2 batch done** for the original Chicago venue set. Enrichment + Places photos live on branch `cursor/merge-enrichment-photos`. See [data-plane.md](../engineering/venue-enrichment/data-plane.md).
 
 **Spaces shape (v2) — landed:** Multi-room venues keep **one vendor row**. Bookable rooms live in `venue_enrichment.facts.spaces[]` (+ `fee_schedule[]`) — no new RDS tables. Persist uses `schema_version` 2 via `scripts/venue-enrichment/spaces.js`. Venue modal prefers `spaces[]` over raw `capacity_configurations[]`. Existing original-set rows were backfilled (`npm run enrich-venues-backfill-spaces`). Galleria Marchetti (`vendor_id` 7) re-enriched as gold test (Pavilion / La Pergola + Fri–Sun fees + packages).
 
@@ -132,7 +132,7 @@ Per venue, given `website` (or `--url`):
 
 5. PERSIST (Phase 1+)
    Write extraction_run(s) + update current venue_enrichment serving row
-   See ai-native-data-plane.md for source vs derived vs serving
+   See engineering/venue-enrichment/data-plane.md for source vs derived vs serving
 ```
 
 ```mermaid
@@ -273,7 +273,7 @@ Phase numbers are **delivery milestones**, not “Cheerio phase vs LLM phase.”
 4. **One LLM call per venue** keeps cost tiny at Chicago scale (~$0.03–0.05/venue ballpark in pilot) while forcing a single grounded schema.
 5. **Provenance from day one** so UI and future AI can cite the site, not invent.
 6. **HTTP before Playwright** matches what we saw on real Chicago venues; escalate only when the HTML shell is empty.
-7. **No RL / no forever HTML mirror as v1** — versioned extractions + optional TTL cache are enough; see [ai-native-data-plane.md](./ai-native-data-plane.md) and legal notes there.
+7. **No RL / no forever HTML mirror as v1** — versioned extractions + optional TTL cache are enough; see [data-plane.md](../engineering/venue-enrichment/data-plane.md) and legal notes there.
 
 ---
 

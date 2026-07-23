@@ -6,7 +6,7 @@
  * even though the browser API key is fine. Run this periodically — not on every
  * page view — so we don't burn Places quota serving pictures.
  *
- * Docs: docs/places-photos.md
+ * Docs: docs/engineering/places-photos.md
  *
  *   npm run refresh-place-photos
  *   npm run refresh-place-photos -- --category venue

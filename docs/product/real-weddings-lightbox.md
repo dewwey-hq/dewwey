@@ -160,11 +160,11 @@ Manual check: open `/venues` → venue modal → **View weddings** → click thr
 - Portal carousel layout and card sizing
 - Photo gallery lightbox (Google venue photos) — separate component
 - Reels (`9:16`) — different embed type; not sized for wedding lightbox today
-- `post_vendors` junction table — still planned in `scripts/instagram_posts.md`
+- `post_vendors` junction table — still planned, see ROADMAP.md
 
 ---
 
 ## Related docs
 
-- `scripts/instagram_posts.md` — scrape pipeline, v2 batching, future schema
+- `ROADMAP.md` — scrape pipeline v2 batching and future schema work
 - `scripts/migrations/README.md` — migration index including 005
