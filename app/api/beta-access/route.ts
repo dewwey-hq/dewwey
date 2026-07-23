@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     new URL(request.url).hostname;
 
   if (!isBetaAccessEnabled(hostname)) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/", request.url), 303);
   }
 
   const form = await request.formData();
@@ -24,12 +24,12 @@ export async function POST(request: Request) {
   if (submitted !== password) {
     redirectBase.searchParams.set("error", "1");
     redirectBase.searchParams.set("next", nextPath);
-    return NextResponse.redirect(redirectBase);
+    return NextResponse.redirect(redirectBase, 303);
   }
 
   const token = await betaAccessToken(password);
   const destination = new URL(nextPath, request.url);
-  const response = NextResponse.redirect(destination);
+  const response = NextResponse.redirect(destination, 303);
   response.cookies.set(BETA_ACCESS_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
