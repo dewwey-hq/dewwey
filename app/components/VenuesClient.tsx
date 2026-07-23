@@ -47,8 +47,7 @@ import {
 } from "lucide-react";
 
 import { placesPhotoUrl } from "@/app/lib/places-photo";
-
-const DETAIL_API_URL = "https://kfln0omb31.execute-api.us-east-1.amazonaws.com/vendors";
+import { getVendorApiBaseUrl } from "@/app/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1442,7 +1441,7 @@ function VenueDetailModal({
   const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch(`${DETAIL_API_URL}/${venueId}`)
+    fetch(`${getVendorApiBaseUrl()}/${venueId}`)
       .then((res) => res.json())
       .then((data) => setDetail(data))
       .finally(() => setLoading(false));
@@ -1943,7 +1942,7 @@ export default function VenuesClient({
       setSearchLoading(true);
       try {
         const res = await fetch(
-          `${DETAIL_API_URL}?limit=500&offset=0&city=Chicago&category=venue&q=${encodeURIComponent(trimmedQuery)}`,
+          `${getVendorApiBaseUrl()}?limit=500&offset=0&city=Chicago&category=venue&q=${encodeURIComponent(trimmedQuery)}`,
           { signal: controller.signal },
         );
         if (!res.ok) throw new Error(`search ${res.status}`);

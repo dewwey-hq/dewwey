@@ -11,3 +11,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Before switching between AI tools, commit or stash in-progress changes so the next tool starts from a clear working tree.
 - Avoid having multiple tools edit the same files at the same time. If work diverges or competing approaches are needed, create separate clearly named branches.
 - Keep commits focused and exclude unrelated local changes.
+
+## Environments
+
+- **Prod** = `main` branch + prod Vercel + prod Lambda + prod RDS.
+- **Beta** = `beta` branch + beta domain + beta Lambda + beta RDS. Merge here before prod.
+- Local scripts should target **beta** DB (see `docs/ops/environments.md`). Use `ALLOW_PROD_DB=true` only when intentionally touching prod.
+- Frontend API URL: `NEXT_PUBLIC_VENDOR_API_URL` (see `app/lib/api.ts`).

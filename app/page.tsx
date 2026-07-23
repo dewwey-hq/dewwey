@@ -1,10 +1,9 @@
 import HomepageClient, { type Vendor } from "./components/HomepageClient";
-
-const API_URL = "https://kfln0omb31.execute-api.us-east-1.amazonaws.com/vendors";
+import { getVendorApiBaseUrl } from "./lib/api";
 
 async function getFeaturedVendors(): Promise<Vendor[]> {
   try {
-    const res = await fetch(`${API_URL}?limit=3&city=Chicago`, {
+    const res = await fetch(`${getVendorApiBaseUrl()}?limit=3&city=Chicago`, {
       next: { revalidate: 3600 }, // revalidate at most once per hour
     });
     if (!res.ok) return [];

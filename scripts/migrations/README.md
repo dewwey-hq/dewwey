@@ -4,7 +4,17 @@ Migrations are plain SQL files run manually against the RDS instance. They are n
 
 ## Running a migration
 
+**Beta first**, then prod. See [docs/ops/environments.md](../../docs/ops/environments.md).
+
 ```bash
+# Beta
+psql \
+  -h wedding-app-beta-db.CHANGE_ME.us-east-1.rds.amazonaws.com \
+  -U postgres \
+  -d postgres \
+  -f scripts/migrations/001_vendor_relationships.sql
+
+# Prod (after beta validation)
 psql \
   -h wedding-app-prod-db.c8zk0w2mm2mu.us-east-1.rds.amazonaws.com \
   -U postgres \
