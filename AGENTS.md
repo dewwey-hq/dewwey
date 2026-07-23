@@ -23,6 +23,7 @@ If you make a decision that would be expensive to re-derive later, add it to `do
 - Before switching between AI tools, commit or stash in-progress changes so the next tool starts from a clear working tree.
 - Avoid having multiple tools edit the same files at the same time. If work diverges or competing approaches are needed, create separate clearly named branches.
 - Keep commits focused and exclude unrelated local changes.
+- Changes to `main` and `beta` go through a PR — push a branch, open a PR, let CI run, then merge. This is convention, not enforced (branch protection needs GitHub Pro on a private repo, which this isn't on) — treat it as required anyway.
 
 ## Environments
 
