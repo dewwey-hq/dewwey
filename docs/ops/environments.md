@@ -28,6 +28,7 @@ feature/foo  →  PR → beta  →  validate on beta.dewwey.com  →  PR → mai
 | Variable | Production (`main`) | Preview / `beta` branch |
 |----------|-------------------|-------------------------|
 | `NEXT_PUBLIC_VENDOR_API_URL` | `https://kfln0omb31.execute-api.us-east-1.amazonaws.com/vendors` | `https://rm4ubmuksa.execute-api.us-east-1.amazonaws.com/vendors` |
+| `BETA_ACCESS_PASSWORD` | *(unset)* | shared demo password — enables app-level gate |
 | `NEXT_PUBLIC_GOOGLE_*` | same keys | same keys |
 | Google referrer allowlist | prod + beta domains | prod + beta domains |
 
@@ -121,6 +122,7 @@ Existing scripts still use inline `Pool` config — migrate over time.
 ## What we are not doing yet
 
 - Feature flag SaaS (beta branch is the gate)
+- Vercel Pro password protection (using app-level `BETA_ACCESS_PASSWORD` on beta instead)
 - Separate AWS accounts
 - RDS Proxy (see [SCALING.md](../../SCALING.md))
 - Automated beta DB refresh (manual snapshot monthly is enough for now)
