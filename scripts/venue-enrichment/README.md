@@ -4,8 +4,8 @@ Extract wedding planning facts, assets, contact/social, and **network vendors** 
 
 **Strategy notes (why / phases / AI-native store):**
 
-- [Vendor aggregation strategy](../../docs/vendor-aggregation-strategy.md)
-- [AI-native data plane](../../docs/ai-native-data-plane.md)
+- [Venue enrichment strategy](../../docs/product/venue-enrichment.md)
+- [AI-native data plane](../../docs/engineering/venue-enrichment/data-plane.md)
 
 ## Phases (not just Cheerio vs LLM)
 
@@ -85,7 +85,7 @@ Wave 2: Botanic `481`, Peninsula `484`, LondonHouse `506`, Palmer House `505`, S
 
 Hygiene: lodging URL skip; museum rental bias; ADR `price_display` reject; null `≤0` caps; wedding-space filter; labeled Ceremony / Banquet / Reception + seated with|without dance → `spaces[]` fields.
 
-Dumps: `sample-output/pilot-hygiene/` · `sample-output/pilot-wave2/stdout-{id}.json`. Details in [vendor-aggregation-strategy.md](../../docs/vendor-aggregation-strategy.md) status block.
+Dumps: `sample-output/pilot-hygiene/` · `sample-output/pilot-wave2/stdout-{id}.json`. Details in [venue-enrichment.md](../../docs/product/venue-enrichment.md) status block.
 
 Gold-test multi-space venue: Galleria Marchetti `7` (fees + descriptions + sq ft).
 

@@ -73,4 +73,4 @@ Track broken third-party embeds (e.g. Colvin House `DZnnI8xv6dZ`) and show previ
 - `app/lib/instagram-embed-check.ts`
 - `app/api/instagram/embed-status/route.ts`
 - `app/components/InstagramEmbed.tsx`
-- `docs/real-weddings-lightbox.md`
+- `docs/product/real-weddings-lightbox.md`

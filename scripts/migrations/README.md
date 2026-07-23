@@ -4,7 +4,7 @@ Migrations are plain SQL files run manually against the RDS instance. They are n
 
 ## Running a migration
 
-**Beta first**, then prod. See [docs/ops/environments.md](../../docs/ops/environments.md).
+**Beta first**, then prod. See [docs/engineering/environments.md](../../docs/engineering/environments.md).
 
 ```bash
 # Beta
@@ -35,7 +35,7 @@ You'll be prompted for the password (see `.env.local` → `DB_PASSWORD`).
 | `005_instagram_posts_media_dimensions.sql` | Adds `media_width`, `media_height` to `instagram_posts` for accurate Instagram embed sizing |
 | `006_venue_enrichment.sql` | Adds `venue_extraction_runs` (versioned rules/LLM payloads) and `venue_enrichment` (current serving row + indexed capacity/catering/`needs_review`) |
 
-**Related ops (not SQL):** venue website photos use Places photo names that expire — see [docs/places-photos.md](../../docs/places-photos.md) and `npm run refresh-place-photos`.
+**Related ops (not SQL):** venue website photos use Places photo names that expire — see [docs/engineering/places-photos.md](../../docs/engineering/places-photos.md) and `npm run refresh-place-photos`.
 
 ## Rules
 

@@ -1,6 +1,6 @@
 # AI-native data plane for venue enrichment
 
-**Status:** Phase 1 DDL + persist path landed (`006_venue_enrichment.sql`, `venue_extraction_runs` + `venue_enrichment`). HTML still local/cache-only. Complements [vendor-aggregation-strategy.md](./vendor-aggregation-strategy.md).
+**Status:** Phase 1 DDL + persist path landed (`006_venue_enrichment.sql`, `venue_extraction_runs` + `venue_enrichment`). HTML still local/cache-only. Complements [venue-enrichment.md](../../product/venue-enrichment.md).
 
 **Goal:** Store enrichment so the app can query facts *and* future AI features can treat venues as grounded, re-processable knowledge — without bolting RAG/agents onto a one-shot JSON dump later.
 
@@ -108,4 +108,4 @@ Merge / validate   →  venue_enrichment current row (serving)
 needs_review       →  ops + future eval
 ```
 
-Ops, phases, **pipeline algorithm**, and the **field catalog** (owner + pull logic per column) live in [vendor-aggregation-strategy.md](./vendor-aggregation-strategy.md). This doc owns **how we store and evolve** what that pipeline produces so AI features stay cheap to add.
+Ops, phases, **pipeline algorithm**, and the **field catalog** (owner + pull logic per column) live in [venue-enrichment.md](../../product/venue-enrichment.md). This doc owns **how we store and evolve** what that pipeline produces so AI features stay cheap to add.

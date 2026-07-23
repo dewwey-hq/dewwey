@@ -2,7 +2,7 @@
  * Persist hybrid venue enrichment to RDS (Phase 1).
  *
  * Writes venue_extraction_runs (history) + upserts venue_enrichment (serving).
- * See docs/ai-native-data-plane.md.
+ * See docs/engineering/venue-enrichment/data-plane.md.
  */
 
 const SCHEMA_VERSION = 2;

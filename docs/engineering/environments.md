@@ -68,7 +68,7 @@ See [lambdas/vendor-search/README.md](../../lambdas/vendor-search/README.md) for
 Copy [env.example](./env.example) → `.env.local` and point `DB_HOST` at **beta**.
 
 ```bash
-cp docs/ops/env.example .env.local
+cp docs/engineering/env.example .env.local
 # edit values
 ```
 
@@ -126,7 +126,7 @@ Existing scripts still use inline `Pool` config — migrate over time.
 - Feature flag SaaS (beta branch is the gate)
 - Vercel Pro password protection (using app-level `BETA_ACCESS_PASSWORD` on beta instead)
 - Separate AWS accounts
-- RDS Proxy (see [SCALING.md](../../SCALING.md))
+- RDS Proxy (see [scaling.md](scaling.md))
 - Automated beta DB refresh (manual snapshot monthly is enough for now)
 
 ---

@@ -1,17 +1,17 @@
 # vendor-search Lambda
 
-HTTP API backend for vendor list + detail. Deploy **prod** and **beta** as separate Lambdas with different `DB_*` env vars (see [docs/ops/environments.md](../../docs/ops/environments.md)).
+HTTP API backend for vendor list + detail. Deploy **prod** and **beta** as separate Lambdas with different `DB_*` env vars (see [docs/engineering/environments.md](../../docs/engineering/environments.md)).
 
 ## Prod
 
-- **Function:** `vendor-search`
+- **Function:** `wedding-app-vendor-search`
 - **API:** `https://kfln0omb31.execute-api.us-east-1.amazonaws.com`
 - **Routes:** `GET /vendors`, `GET /vendors/{id}`
 - **DB:** `wedding-app-prod-db` (via Lambda env vars)
 
 ## Beta
 
-- **Function:** `vendor-search-beta`
+- **Function:** `wedding-app-vendor-search-beta`
 - **API:** `https://rm4ubmuksa.execute-api.us-east-1.amazonaws.com`
 - **Routes:** `GET /vendors`, `GET /vendors/{id}`
 - **DB:** `wedding-app-beta-db` (via Lambda env vars)
@@ -32,12 +32,12 @@ Upload `function.zip` to the target Lambda (AWS Console → Lambda → Upload fr
 ```bash
 # Prod
 aws lambda update-function-code \
-  --function-name vendor-search \
+  --function-name wedding-app-vendor-search \
   --zip-file fileb://function.zip
 
 # Beta
 aws lambda update-function-code \
-  --function-name vendor-search-beta \
+  --function-name wedding-app-vendor-search-beta \
   --zip-file fileb://function.zip
 ```
 
@@ -53,7 +53,7 @@ After code upload, confirm environment variables on each function:
 
 ## API Gateway notes
 
-Prod uses HTTP API `kfln0omb31`; beta uses `rm4ubmuksa`. For vendor detail (`GET /vendors/{id}`), API Gateway needs a route with `{id}` path param and a Lambda resource policy allowing invoke on `/vendors/*` (see `scripts/instagram_posts.md`).
+Prod uses HTTP API `kfln0omb31`; beta uses `rm4ubmuksa`. For vendor detail (`GET /vendors/{id}`), API Gateway needs a route with `{id}` path param and a Lambda resource policy allowing invoke on `/vendors/*`.
 
 ## Smoke test
 
