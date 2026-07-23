@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "seed": "node scripts/seed.js",
     "venue-coverage": "node scripts/venue-coverage-report.js",
     "seed-popular-venues": "node scripts/seed-popular-venues.js",
