@@ -23,6 +23,7 @@ Single prioritized view across all in-flight and near-term work. Update this fil
 
 ## Recently shipped
 
+- 2026-08-11 — `vendor-search` Lambda (beta + prod) moved off the `postgres` superuser onto a least-privilege, read-only `app_readonly` DB role — [docs/decisions.md](docs/decisions.md) D005
 - 2026-07-23 — Beta environment (RDS + Lambda + API Gateway + domain + password gate) — [docs/engineering/beta-environment.md](docs/engineering/beta-environment.md)
 - 2026-07-23 — Frontend wired to per-environment vendor API URL (beta vs. prod)
 - Venue enrichment Phase 0/0b/1/2 batch — [docs/product/venue-enrichment.md](docs/product/venue-enrichment.md)
