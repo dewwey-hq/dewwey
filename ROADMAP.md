@@ -11,6 +11,11 @@ Single prioritized view across all in-flight and near-term work. Update this fil
 
 ## Next (scoped, queued)
 
+- Adopt `zod` for input validation on the 3 existing API routes (`beta-access`, `venue-photo`, `instagram-image`), then require it on new routes — [docs/engineering/ai-constitution.md](docs/engineering/ai-constitution.md) Security
+- Add secret-scanning to CI (e.g. gitleaks) — closes the constitution's `[partial]` secrets tag to `[enforced]` — [docs/engineering/ai-constitution.md](docs/engineering/ai-constitution.md) Security
+- Rotate the shared `postgres` superuser password — beta and prod currently use the identical password — [docs/decisions.md](docs/decisions.md) D005
+- Decide on GitHub branch protection (needs a paid plan on this private repo) — currently nothing technically blocks a direct push to `main`/`beta` or a merge past a red CI — [docs/engineering/ai-constitution.md](docs/engineering/ai-constitution.md) Deployment
+- Stand up a Playwright/e2e suite once there are real user flows worth covering — referenced as `[future]` in the constitution's Definition of Done
 - RDS Proxy — pre-launch hardening before any press/traffic spike — [docs/engineering/scaling.md](docs/engineering/scaling.md)
 - Instagram embed Layer 3 — `embed_available` DB column + backfill, so availability doesn't need a live check per render — [docs/product/instagram-embed-todo.md](docs/product/instagram-embed-todo.md)
 - Place photo cron automation — [docs/engineering/place-photo-automation-todo.md](docs/engineering/place-photo-automation-todo.md)
