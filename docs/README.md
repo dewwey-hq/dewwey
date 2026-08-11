@@ -24,6 +24,7 @@ Every substantial doc leads with a short **TLDR** (plain language, for a human s
 
 ## Engineering
 
+- [`ai-constitution.md`](engineering/ai-constitution.md) — standing rules for AI tools (and humans) working in this repo: architecture, security, database, AI workflow, deployment
 - [`environments.md`](engineering/environments.md) — prod/beta architecture, git→Vercel promotion, AWS setup
 - [`env.example`](engineering/env.example) — env var template
 - [`scaling.md`](engineering/scaling.md) — current bottlenecks, fix tiers (RDS Proxy, etc.)
