@@ -9,10 +9,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This repo is the single source of truth for engineering AND business/strategy — not just code.
 
 1. `docs/README.md` — index of everything below
-2. `ROADMAP.md` — what's actively being worked on, before picking up any thread
-3. `docs/decisions.md` — skim the top 5-10 entries
-4. The specific `docs/product/` or `docs/engineering/` doc for the task at hand
-5. If touching env/deploys/DB: `docs/engineering/environments.md` and `docs/engineering/scaling.md`
+2. `docs/engineering/ai-constitution.md` — standing rules on architecture, security, database, AI workflow, and deployment; what you may do without asking first
+3. `ROADMAP.md` — what's actively being worked on, before picking up any thread
+4. `docs/decisions.md` — skim the top 5-10 entries
+5. The specific `docs/product/` or `docs/engineering/` doc for the task at hand
+6. If touching env/deploys/DB: `docs/engineering/environments.md` and `docs/engineering/scaling.md`
 
 If you make a decision that would be expensive to re-derive later, add it to `docs/decisions.md` before ending the session. If you start or advance a feature, use `docs/product/TEMPLATE.md` and update its status in `ROADMAP.md`. **Check ROADMAP's "Now" section before starting a thread** — two sessions colliding on the same in-flight work (e.g. beta environment setup) is exactly what this is meant to prevent.
 

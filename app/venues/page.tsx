@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { BRAND_NAME } from "../lib/brand";
+import { getVendorApiBaseUrl } from "../lib/api";
 import VenuesClient, { type VenueVendor } from "../components/VenuesClient";
-
-const API_URL = "https://kfln0omb31.execute-api.us-east-1.amazonaws.com/vendors";
 const PAGE_SIZE = 20;
 /** Map view loads all Chicago venues once (client filters by bounds). Keep ≥ DB venue count. */
 const MAP_FETCH_LIMIT = 500;
@@ -21,7 +20,7 @@ async function getVenues(
   const offset = mapMode ? 0 : (page - 1) * PAGE_SIZE;
   try {
     const res = await fetch(
-      `${API_URL}?limit=${limit}&offset=${offset}&city=Chicago&category=venue`,
+      `${getVendorApiBaseUrl()}?limit=${limit}&offset=${offset}&city=Chicago&category=venue`,
       // Map browse needs fresh inventory; list pages can stay lightly cached.
       mapMode ? { cache: "no-store" } : { next: { revalidate: 300 } },
     );
