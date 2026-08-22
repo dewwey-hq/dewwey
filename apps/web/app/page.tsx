@@ -1,14 +1,12 @@
 import HomepageClient, { type Vendor } from "./components/HomepageClient";
-import { getVendorApiBaseUrl } from "./lib/api";
+import { searchVendors } from "@/lib/server/vendors";
+
+export const revalidate = 3600; // rebuild at most once per hour
 
 async function getFeaturedVendors(): Promise<Vendor[]> {
   try {
-    const res = await fetch(`${getVendorApiBaseUrl()}?limit=3&city=Chicago`, {
-      next: { revalidate: 3600 }, // revalidate at most once per hour
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.vendors ?? [];
+    const { vendors } = await searchVendors({ limit: 3, city: "Chicago" });
+    return (vendors as Vendor[]) ?? [];
   } catch {
     return [];
   }

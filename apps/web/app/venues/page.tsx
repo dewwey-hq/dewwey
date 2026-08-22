@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { BRAND_NAME } from "../lib/brand";
-import { getVendorApiBaseUrl } from "../lib/api";
+import { searchVendors } from "@/lib/server/vendors";
 import VenuesClient, { type VenueVendor } from "../components/VenuesClient";
 const PAGE_SIZE = 20;
 /** Map view loads all Chicago venues once (client filters by bounds). Keep ≥ DB venue count. */
@@ -19,14 +19,13 @@ async function getVenues(
   const limit = mapMode ? MAP_FETCH_LIMIT : PAGE_SIZE;
   const offset = mapMode ? 0 : (page - 1) * PAGE_SIZE;
   try {
-    const res = await fetch(
-      `${getVendorApiBaseUrl()}?limit=${limit}&offset=${offset}&city=Chicago&category=venue`,
-      // Map browse needs fresh inventory; list pages can stay lightly cached.
-      mapMode ? { cache: "no-store" } : { next: { revalidate: 300 } },
-    );
-    if (!res.ok) return { vendors: [], total: 0 };
-    const data = await res.json();
-    return { vendors: data.vendors ?? [], total: data.total ?? 0 };
+    const { vendors, total } = await searchVendors({
+      limit,
+      offset,
+      city: "Chicago",
+      category: "venue",
+    });
+    return { vendors: (vendors as VenueVendor[]) ?? [], total: total ?? 0 };
   } catch {
     return { vendors: [], total: 0 };
   }

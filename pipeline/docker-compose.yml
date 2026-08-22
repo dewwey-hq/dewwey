@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: dewwey-db
+    environment:
+      POSTGRES_USER: dewwey
+      POSTGRES_PASSWORD: dewwey
+      POSTGRES_DB: dewwey
+    ports:
+      - "5442:5432"
+    volumes:
+      - dewwey_pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+volumes:
+  dewwey_pgdata:

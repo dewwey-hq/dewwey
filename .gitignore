@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.env
+.env.local
+.env*.local
+__pycache__/
+*.pyc
+.DS_Store
+avatars/
+backups/
+*.log
+state.json
+.vercel
+secrets/
