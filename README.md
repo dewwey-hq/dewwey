@@ -14,7 +14,7 @@ preference. Nobody else has that graph.
 
 ## Layout
 
-```
+```text
 apps/web/    Next.js app (Vercel). API routes replaced the old Lambda.
 pipeline/    Crawler + parser (Python today, TypeScript port planned).
 docs/        Merge evaluation, plans, decisions.
@@ -23,8 +23,8 @@ docs/        Merge evaluation, plans, decisions.
 ## Stack — deliberately few variables
 
 | Concern | Choice | Replaces |
-|---|---|---|
-| Database | **Supabase Postgres** (project `dewwey`, us-east-1) | AWS RDS ×2, RDS Proxy plans |
+| --- | --- | --- |
+| Database | **Supabase Postgres** (Dewwey org, us-east-1) | AWS RDS ×2, RDS Proxy plans |
 | App + API | **Next.js on Vercel**, route handlers | Lambda + API Gateway ×2 |
 | Environments | **Vercel preview branches** | beta branch/domain/DB/Lambda stack |
 | Images | **Cloudflare R2** (zero egress) | IG/Places hotlinks + refresh cron |
@@ -65,5 +65,3 @@ python3 pipeline.py [m2|ingest|enrich|dedup|report|all]
 - [ ] Link repo to Vercel, point dewwey.com here
 - [ ] Re-parse Jeremy's 47k stored captions through the Haiku sweep
 - [ ] TypeScript port of the pipeline (926 lines of Python)
-- [ ] Transfer repo to a GitHub org (`dewwey` username is squatted; pick
-      `dewweyhq`/`getdewwey` and transfer in Settings)
