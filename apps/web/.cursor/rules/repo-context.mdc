@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+Read AGENTS.md and docs/README.md before starting work in this repo. They contain the required reading order for AI-tool instructions and project documentation (product, business, strategy, engineering). Do not duplicate that content here — this file exists only to guarantee Cursor sees it.
