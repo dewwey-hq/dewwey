@@ -5,10 +5,9 @@ export type SiteNavItem = {
 };
 
 export const SITE_NAV_ITEMS: SiteNavItem[] = [
+  { label: "Weddings", href: "/weddings", iconSrc: "/icons/newlyweds-wedding-svgrepo-com.svg" },
   { label: "Venues", href: "/venues", iconSrc: "/icons/wedding-location-svgrepo-com.svg" },
-  { label: "Catering", href: "#", iconSrc: "/icons/tray-plate-svgrepo-com.svg" },
-  { label: "Florals", href: "#", iconSrc: "/icons/bouquet-svgrepo-com.svg" },
-  { label: "Photography", href: "#", iconSrc: "/icons/photo-camera-photograph-svgrepo-com.svg" },
+  { label: "Vendors", href: "/vendors", iconSrc: "/icons/bouquet-svgrepo-com.svg" },
 ];
 
 /** Map browse keeps Venues highlighted but links to map view. */

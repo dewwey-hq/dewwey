@@ -1,0 +1,431 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "✦ Dewwey" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e6]: ✦
+          - generic [ref=e7]: Dewwey
+        - navigation [ref=e8]:
+          - link "Venues" [ref=e9] [cursor=pointer]:
+            - /url: /venues
+          - link "Catering" [ref=e11] [cursor=pointer]:
+            - /url: "#"
+          - link "Florals" [ref=e13] [cursor=pointer]:
+            - /url: "#"
+          - link "Photography" [ref=e15] [cursor=pointer]:
+            - /url: "#"
+        - link "Compare" [ref=e17] [cursor=pointer]:
+          - /url: "#compare"
+    - main [ref=e18]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - paragraph [ref=e22]: Chicago venues
+          - heading "Find the room that feels like your wedding." [level=1] [ref=e23]
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e30]: Search venues
+            - textbox "Search venues" [ref=e31]:
+              - /placeholder: Search name, address, or venue type
+          - generic [ref=e32]:
+            - generic [ref=e33]: Guests
+            - spinbutton "Guests" [ref=e34]
+          - generic [ref=e35]:
+            - generic [ref=e36]: Sort
+            - combobox "Sort" [ref=e37]:
+              - option "Recommended" [selected]
+              - option "Highest rated"
+          - button "Browse venues" [ref=e38]
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - generic [ref=e42]: Refine your shortlist
+          - generic [ref=e44]:
+            - link "List" [ref=e45] [cursor=pointer]:
+              - /url: /venues
+            - link "Map" [ref=e47] [cursor=pointer]:
+              - /url: /venues?view=map
+        - generic [ref=e50]:
+          - button "All" [ref=e51]
+          - button "Venue" [ref=e52]
+          - button "Any" [ref=e54]
+          - button "$" [ref=e55]
+          - button "$$" [ref=e56]
+          - button "$$$" [ref=e57]
+          - button "$$$$" [ref=e58]
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - paragraph [ref=e63]: 20 of 277 venues · page 1 of 14
+            - heading "Chicago venue options" [level=2] [ref=e64]
+          - generic [ref=e65]: Compare favorites as you browse
+        - generic [ref=e69]:
+          - article [ref=e70] [cursor=pointer]:
+            - generic [ref=e71]:
+              - img "University Club of Chicago" [ref=e72]
+              - button "Compare" [ref=e73]
+              - generic [ref=e74]: Venue
+            - generic [ref=e75]:
+              - generic [ref=e76]:
+                - generic [ref=e77]:
+                  - heading "University Club of Chicago" [level=3] [ref=e78]
+                  - paragraph [ref=e79]: 76 E Monroe St, Chicago, IL
+                - generic [ref=e83]:
+                  - generic [ref=e86]: "4.7"
+                  - generic [ref=e87]: (708)
+              - generic [ref=e88]:
+                - link "Visit website →" [ref=e89]:
+                  - /url: https://www.ucco.com/events
+                - link "Claim this listing" [ref=e91]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: University%20Club%20of%20Chicago"
+          - article [ref=e92] [cursor=pointer]:
+            - generic [ref=e93]:
+              - img "Morgan MFG" [ref=e94]
+              - button "Compare" [ref=e95]
+              - generic [ref=e96]: Venue
+            - generic [ref=e97]:
+              - generic [ref=e98]:
+                - generic [ref=e99]:
+                  - heading "Morgan MFG" [level=3] [ref=e100]
+                  - paragraph [ref=e101]: 401 N Morgan St Ste 100, Chicago, IL
+                - generic [ref=e105]:
+                  - generic [ref=e108]: "4.6"
+                  - generic [ref=e109]: (581)
+              - generic [ref=e110]:
+                - link "Visit website →" [ref=e111]:
+                  - /url: http://morgan-mfg.com/
+                - link "Claim this listing" [ref=e113]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Morgan%20MFG"
+          - article [ref=e114] [cursor=pointer]:
+            - generic [ref=e115]:
+              - img "The Geraghty" [ref=e116]
+              - button "Compare" [ref=e117]
+              - generic [ref=e118]: Venue
+            - generic [ref=e119]:
+              - generic [ref=e120]:
+                - generic [ref=e121]:
+                  - heading "The Geraghty" [level=3] [ref=e122]
+                  - paragraph [ref=e123]: 2,520 S Hoyne Ave, Chicago, IL
+                - generic [ref=e127]:
+                  - generic [ref=e130]: "4.7"
+                  - generic [ref=e131]: (418)
+              - generic [ref=e132]:
+                - link "Visit website →" [ref=e133]:
+                  - /url: http://www.thegeraghty.com/
+                - link "Claim this listing" [ref=e135]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: The%20Geraghty"
+          - article [ref=e136] [cursor=pointer]:
+            - generic [ref=e137]:
+              - img "Artifact Events" [ref=e138]
+              - button "Compare" [ref=e139]
+              - generic [ref=e140]: Venue
+            - generic [ref=e141]:
+              - generic [ref=e142]:
+                - generic [ref=e143]:
+                  - heading "Artifact Events" [level=3] [ref=e144]
+                  - paragraph [ref=e145]: 4,325 N Ravenswood Ave, Chicago, IL
+                - generic [ref=e149]:
+                  - generic [ref=e152]: "4.7"
+                  - generic [ref=e153]: (405)
+              - generic [ref=e154]:
+                - link "Visit website →" [ref=e155]:
+                  - /url: http://artifacteventschicago.com/
+                - link "Claim this listing" [ref=e157]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Artifact%20Events"
+          - article [ref=e158] [cursor=pointer]:
+            - generic [ref=e159]:
+              - img "Galleria Marchetti" [ref=e160]
+              - button "Compare" [ref=e161]
+              - generic [ref=e162]: Venue
+            - generic [ref=e163]:
+              - generic [ref=e164]:
+                - generic [ref=e165]:
+                  - heading "Galleria Marchetti" [level=3] [ref=e166]
+                  - paragraph [ref=e167]: 825 W Erie St, Chicago, IL
+                - generic [ref=e171]:
+                  - generic [ref=e174]: "4.5"
+                  - generic [ref=e175]: (379)
+              - generic [ref=e176]:
+                - link "Visit website →" [ref=e177]:
+                  - /url: http://galleriamarchetti.com/
+                - generic [ref=e178]:
+                  - generic [ref=e179]: $
+                  - link "Claim this listing" [ref=e180]:
+                    - /url: "mailto:hello@dewwey.com?subject=Claim listing: Galleria%20Marchetti"
+          - article [ref=e181] [cursor=pointer]:
+            - generic [ref=e182]:
+              - img "Chicago Winery" [ref=e183]
+              - button "Compare" [ref=e184]
+              - generic [ref=e185]: Venue
+            - generic [ref=e186]:
+              - generic [ref=e187]:
+                - generic [ref=e188]:
+                  - heading "Chicago Winery" [level=3] [ref=e189]
+                  - paragraph [ref=e190]: 739 N Clark St, Chicago, IL
+                - generic [ref=e194]:
+                  - generic [ref=e197]: "4.6"
+                  - generic [ref=e198]: (302)
+              - generic [ref=e199]:
+                - link "Visit website →" [ref=e200]:
+                  - /url: https://www.chiwinery.com/
+                - link "Claim this listing" [ref=e202]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Chicago%20Winery"
+          - article [ref=e203] [cursor=pointer]:
+            - generic [ref=e204]:
+              - img "Greenhouse Loft" [ref=e205]
+              - button "Compare" [ref=e206]
+              - generic [ref=e207]: Venue
+            - generic [ref=e208]:
+              - generic [ref=e209]:
+                - generic [ref=e210]:
+                  - heading "Greenhouse Loft" [level=3] [ref=e211]
+                  - paragraph [ref=e212]: 2,545 W Diversey Ave, Chicago, IL
+                - generic [ref=e216]:
+                  - generic [ref=e219]: "4.8"
+                  - generic [ref=e220]: (246)
+              - generic [ref=e221]:
+                - link "Visit website →" [ref=e222]:
+                  - /url: http://greenhouseloft.com/
+                - link "Claim this listing" [ref=e224]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Greenhouse%20Loft"
+          - article [ref=e225] [cursor=pointer]:
+            - generic [ref=e226]:
+              - img "Fairlie" [ref=e227]
+              - button "Compare" [ref=e228]
+              - generic [ref=e229]: Venue
+            - generic [ref=e230]:
+              - generic [ref=e231]:
+                - generic [ref=e232]:
+                  - heading "Fairlie" [level=3] [ref=e233]
+                  - paragraph [ref=e234]: 339 N Bell Ave, Chicago, IL
+                - generic [ref=e238]:
+                  - generic [ref=e241]: "4.8"
+                  - generic [ref=e242]: (154)
+              - generic [ref=e243]:
+                - link "Visit website →" [ref=e244]:
+                  - /url: http://fairliechicago.com/
+                - link "Claim this listing" [ref=e246]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Fairlie"
+          - article [ref=e247] [cursor=pointer]:
+            - generic [ref=e248]:
+              - img "Room 1520" [ref=e249]
+              - button "Compare" [ref=e250]
+              - generic [ref=e251]: Venue
+            - generic [ref=e252]:
+              - generic [ref=e253]:
+                - generic [ref=e254]:
+                  - heading "Room 1520" [level=3] [ref=e255]
+                  - paragraph [ref=e256]: 1,520 W Fulton St, Chicago, IL
+                - generic [ref=e260]:
+                  - generic [ref=e263]: "4.5"
+                  - generic [ref=e264]: (172)
+              - generic [ref=e265]:
+                - link "Visit website →" [ref=e266]:
+                  - /url: http://www.room1520.com/
+                - link "Claim this listing" [ref=e268]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Room%201520"
+          - article [ref=e269] [cursor=pointer]:
+            - generic [ref=e270]:
+              - img "The Arbory" [ref=e271]
+              - button "Compare" [ref=e272]
+              - generic [ref=e273]: Venue
+            - generic [ref=e274]:
+              - generic [ref=e275]:
+                - generic [ref=e276]:
+                  - heading "The Arbory" [level=3] [ref=e277]
+                  - paragraph [ref=e278]: 2,219 W Grand Ave, Chicago, IL
+                - generic [ref=e282]:
+                  - generic [ref=e285]: "4.8"
+                  - generic [ref=e286]: (141)
+              - generic [ref=e287]:
+                - link "Visit website →" [ref=e288]:
+                  - /url: http://www.thearborychicago.com/
+                - link "Claim this listing" [ref=e290]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: The%20Arbory"
+          - article [ref=e291] [cursor=pointer]:
+            - generic [ref=e292]:
+              - img "The Ivy Room At Tree Studios" [ref=e293]
+              - button "Compare" [ref=e294]
+              - generic [ref=e295]: Venue
+            - generic [ref=e296]:
+              - generic [ref=e297]:
+                - generic [ref=e298]:
+                  - heading "The Ivy Room At Tree Studios" [level=3] [ref=e299]
+                  - paragraph [ref=e300]: "12 E Ohio St #100, Chicago, IL"
+                - generic [ref=e304]:
+                  - generic [ref=e307]: "4.7"
+                  - generic [ref=e308]: (150)
+              - generic [ref=e309]:
+                - link "Visit website →" [ref=e310]:
+                  - /url: http://www.ivyroomchicago.com/
+                - link "Claim this listing" [ref=e312]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: The%20Ivy%20Room%20At%20Tree%20Studios"
+          - article [ref=e313] [cursor=pointer]:
+            - generic [ref=e314]:
+              - img "Revel Motor Row" [ref=e315]
+              - button "Compare" [ref=e316]
+              - generic [ref=e317]: Venue
+            - generic [ref=e318]:
+              - generic [ref=e319]:
+                - generic [ref=e320]:
+                  - heading "Revel Motor Row" [level=3] [ref=e321]
+                  - paragraph [ref=e322]: 2,400 S Michigan Ave, Chicago, IL
+                - generic [ref=e326]:
+                  - generic [ref=e329]: "4.6"
+                  - generic [ref=e330]: (121)
+              - generic [ref=e331]:
+                - link "Visit website →" [ref=e332]:
+                  - /url: http://www.revelspace.com/
+                - link "Claim this listing" [ref=e334]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Revel%20Motor%20Row"
+          - article [ref=e335] [cursor=pointer]:
+            - generic [ref=e336]:
+              - img "Skyline Loft" [ref=e337]
+              - button "Compare" [ref=e338]
+              - generic [ref=e339]: Venue
+            - generic [ref=e340]:
+              - generic [ref=e341]:
+                - generic [ref=e342]:
+                  - heading "Skyline Loft" [level=3] [ref=e343]
+                  - paragraph [ref=e344]: 1,200 W 35th St, Chicago, IL
+                - generic [ref=e348]:
+                  - generic [ref=e351]: "4.8"
+                  - generic [ref=e352]: (73)
+              - generic [ref=e353]:
+                - link "Visit website →" [ref=e354]:
+                  - /url: https://www.bridgeportart.com/venues/skyline-loft/
+                - link "Claim this listing" [ref=e356]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Skyline%20Loft"
+          - article [ref=e357] [cursor=pointer]:
+            - generic [ref=e358]:
+              - img "LM Studio Chicago" [ref=e359]
+              - button "Compare" [ref=e360]
+              - generic [ref=e361]: Venue
+            - generic [ref=e362]:
+              - generic [ref=e363]:
+                - generic [ref=e364]:
+                  - heading "LM Studio Chicago" [level=3] [ref=e365]
+                  - paragraph [ref=e366]: 808 S Michigan Ave, Chicago, IL
+                - generic [ref=e370]:
+                  - generic [ref=e373]: "4.9"
+                  - generic [ref=e374]: (35)
+              - generic [ref=e375]:
+                - link "Visit website →" [ref=e376]:
+                  - /url: https://www.lmstudiochicago.com/
+                - link "Claim this listing" [ref=e378]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: LM%20Studio%20Chicago"
+          - article [ref=e379] [cursor=pointer]:
+            - generic [ref=e380]:
+              - img "Charcoal Factory Loft" [ref=e381]
+              - button "Compare" [ref=e382]
+              - generic [ref=e383]: Venue
+            - generic [ref=e384]:
+              - generic [ref=e385]:
+                - generic [ref=e386]:
+                  - heading "Charcoal Factory Loft" [level=3] [ref=e387]
+                  - paragraph [ref=e388]: 1,684 N Ada St, Chicago, IL
+                - generic [ref=e392]:
+                  - generic [ref=e395]: "4.8"
+                  - generic [ref=e396]: (14)
+              - generic [ref=e397]:
+                - link "Visit website →" [ref=e398]:
+                  - /url: http://www.charcoalonada.com/
+                - link "Claim this listing" [ref=e400]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Charcoal%20Factory%20Loft"
+          - article [ref=e401] [cursor=pointer]:
+            - generic [ref=e402]:
+              - img "Sculpture Garden Gallery" [ref=e403]
+              - button "Compare" [ref=e404]
+              - generic [ref=e405]: Venue
+            - generic [ref=e406]:
+              - generic [ref=e407]:
+                - generic [ref=e408]:
+                  - heading "Sculpture Garden Gallery" [level=3] [ref=e409]
+                  - paragraph [ref=e410]: 1,200 W 35th St, Chicago, IL
+                - generic [ref=e414]:
+                  - generic [ref=e417]: "4.3"
+                  - generic [ref=e418]: (9)
+              - generic [ref=e419]:
+                - link "Visit website →" [ref=e420]:
+                  - /url: https://www.venuelogicchicago.com/sculpturegarden
+                - link "Claim this listing" [ref=e422]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Sculpture%20Garden%20Gallery"
+          - article [ref=e423] [cursor=pointer]:
+            - generic [ref=e424]:
+              - img "Amazing Space" [ref=e425]
+              - button "Compare" [ref=e426]
+              - generic [ref=e427]: Venue
+            - generic [ref=e428]:
+              - generic [ref=e429]:
+                - generic [ref=e430]:
+                  - heading "Amazing Space" [level=3] [ref=e431]
+                  - paragraph [ref=e432]: 207 S Desplaines St, Chicago, IL
+                - generic [ref=e436]:
+                  - generic [ref=e439]: "4.3"
+                  - generic [ref=e440]: (3)
+              - generic [ref=e441]:
+                - link "Visit website →" [ref=e442]:
+                  - /url: https://www.venuelogicchicago.com/amazingspace
+                - link "Claim this listing" [ref=e444]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Amazing%20Space"
+          - article [ref=e445] [cursor=pointer]:
+            - generic [ref=e446]:
+              - generic [ref=e447]: ✦
+              - button "Compare" [ref=e449]
+              - generic [ref=e450]: Venue
+            - generic [ref=e451]:
+              - generic [ref=e453]:
+                - heading "@thewellsley" [level=3] [ref=e454]
+                - paragraph [ref=e455]: 504 N Wells St, Chicago, IL 60,654, Chicago, IL
+              - generic [ref=e459]:
+                - link "Visit website →" [ref=e460]:
+                  - /url: https://lnk.bio/thewellsley
+                - link "Claim this listing" [ref=e462]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: %40thewellsley"
+          - article [ref=e463] [cursor=pointer]:
+            - generic [ref=e464]:
+              - generic [ref=e465]: ✦
+              - button "Compare" [ref=e467]
+              - generic [ref=e468]: Venue
+            - generic [ref=e469]:
+              - generic [ref=e471]:
+                - heading "@sarabandechicago" [level=3] [ref=e472]
+                - paragraph [ref=e473]: 2,726 W Roscoe St, Chicago, IL 60,618, Chicago, IL
+              - generic [ref=e477]:
+                - link "Visit website →" [ref=e478]:
+                  - /url: http://www.sarabandechicago.com/
+                - link "Claim this listing" [ref=e480]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: %40sarabandechicago"
+          - article [ref=e481] [cursor=pointer]:
+            - generic [ref=e482]:
+              - generic [ref=e483]: ✦
+              - button "Compare" [ref=e485]
+              - generic [ref=e486]: Venue
+            - generic [ref=e487]:
+              - generic [ref=e489]:
+                - heading "Garfield Park Conservatory" [level=3] [ref=e490]
+                - paragraph [ref=e491]: N Conservatory Dr, Chicago, IL
+              - generic [ref=e495]:
+                - link "Visit website →" [ref=e496]:
+                  - /url: https://garfieldconservatory.org/
+                - link "Claim this listing" [ref=e498]:
+                  - /url: "mailto:hello@dewwey.com?subject=Claim listing: Garfield%20Park%20Conservatory"
+        - generic [ref=e499]:
+          - link "1" [ref=e500] [cursor=pointer]:
+            - /url: /venues?page=1
+          - link "2" [ref=e501] [cursor=pointer]:
+            - /url: /venues?page=2
+          - link "3" [ref=e502] [cursor=pointer]:
+            - /url: /venues?page=3
+          - generic [ref=e503]: …
+          - link "14" [ref=e504] [cursor=pointer]:
+            - /url: /venues?page=14
+          - link "Next →" [ref=e505] [cursor=pointer]:
+            - /url: /venues?page=2
+      - generic [ref=e507]:
+        - generic [ref=e508]:
+          - generic [ref=e509]:
+            - paragraph [ref=e510]: Compare
+            - heading "Your venue shortlist" [level=2] [ref=e511]
+          - paragraph [ref=e512]: Pick up to three venues while browsing. Compare style, rating, budget, and location.
+        - generic [ref=e513]: Tap Compare on any venue card to start a shortlist.
+  - alert [ref=e514]
