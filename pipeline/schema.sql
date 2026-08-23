@@ -252,6 +252,53 @@ create index on venue_enrichment (needs_review) where needs_review;
 create schema if not exists staging;
 
 -- ============================================================
+-- USER: "your team" — a couple's wedding as slots to fill.
+-- The anon key exposes PostgREST, so EVERY public table runs RLS
+-- (no policies = deny; the app's direct pg connection is table owner and
+-- bypasses). These two are the only tables with permissive policies.
+-- ============================================================
+do $$
+declare t record;
+begin
+  for t in select tablename from pg_tables where schemaname = 'public'
+  loop
+    execute format('alter table public.%I enable row level security', t.tablename);
+  end loop;
+end $$;
+
+create table user_teams (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade unique,
+  slots       text[] not null default '{}',
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+alter table user_teams enable row level security;
+create policy "own team" on user_teams
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create table user_team_entries (
+  id          uuid primary key default gen_random_uuid(),
+  team_id     uuid not null references user_teams(id) on delete cascade,
+  slot        text not null,
+  kind        text not null check (kind in ('dewwey','custom')),
+  status      text not null default 'considering'
+              check (status in ('considering','booked')),
+  name        text not null,
+  account_id  bigint references accounts(id),   -- dewwey entries
+  username    text,
+  avatar_url  text,
+  instagram   text,                              -- custom entries
+  website     text,
+  created_at  timestamptz not null default now()
+);
+alter table user_team_entries enable row level security;
+create policy "own entries" on user_team_entries
+  for all using (auth.uid() = (select user_id from user_teams where id = team_id))
+  with check (auth.uid() = (select user_id from user_teams where id = team_id));
+create index on user_team_entries (team_id);
+
+-- ============================================================
 -- In-database documentation (shows in TablePlus table info)
 -- Three layers: RAW (scraped), DERIVED (computed, rebuildable), OPS (crawler)
 -- ============================================================
