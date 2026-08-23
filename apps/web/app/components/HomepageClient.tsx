@@ -1,19 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, ChevronDown, Star, MapPin, Menu, X } from "lucide-react";
+import {
+  MagnifyingGlass,
+  CaretDown,
+  Star,
+  MapPin,
+  List,
+  X,
+  Heart,
+} from "@phosphor-icons/react";
 import { BRAND_NAME } from "@/lib/brand";
 import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS } from "@/lib/site-layout";
 import { displayHeadingClassName, uiHeadingClassName } from "@/lib/typography";
+import { DEFAULT_SLOTS, SLOT_ROLES, type TeamEntry } from "@/lib/team";
+import { SLOT_ICONS, slotHref, vendorsHref, weddingCountLabel, type Slot } from "@/lib/slots";
+import { roleLabel } from "@/lib/roles";
+import { formatCount } from "@/lib/format-address";
+import { formatEventDate } from "@/lib/format-date";
+import type { WeddingStack } from "@/lib/server/graph";
 import { SiteNavLinks, SiteNavMobileLinks } from "./SiteNavLinks";
 import { SiteBrand } from "./SiteBrand";
 import { useNavIconsVisible } from "@/lib/hooks/use-nav-icons-visible";
 import { VenuePlacePhoto } from "./VenuePlacePhoto";
+import { Avatar } from "./Avatar";
 import { AddToTeamButton } from "./team/AddToTeamButton";
 import { AuthButton } from "./team/AuthButton";
+import { useTeam } from "./team/TeamProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,53 +53,108 @@ export type Vendor = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CATEGORIES = ["All Vendors", "Venues", "Catering", "Florals", "Photography", "DJ & Music", "Hair & Makeup"];
-
-/** Where each category actually goes. */
-const CATEGORY_HREFS: Record<string, string> = {
-  "All Vendors": "/vendors",
-  Venues: "/venues",
-  Catering: "/vendors?role=catering",
-  Florals: "/vendors?role=florist",
-  Photography: "/vendors?role=photographer",
-  "DJ & Music": "/vendors?role=dj",
-  "Hair & Makeup": "/vendors?role=hair",
-};
+const SEARCH_CATEGORIES = ["All Vendors", ...DEFAULT_SLOTS];
 
 function searchHref(category: string, q: string): string {
-  const base = CATEGORY_HREFS[category] ?? "/vendors";
-  if (!q.trim()) return base;
-  return `${base}${base.includes("?") ? "&" : "?"}q=${encodeURIComponent(q.trim())}`;
+  const slot = (DEFAULT_SLOTS as readonly string[]).includes(category) ? category : null;
+  return vendorsHref({ slot, q: q.trim() || null });
 }
 
-const VENDOR_CATEGORIES = [
-  { label: "Venues",        src: "/icons/wedding-location-svgrepo-com.svg",        roles: ["venue"] },
-  { label: "Catering",      src: "/icons/tray-plate-svgrepo-com.svg",              roles: ["catering", "cake"] },
-  { label: "Florals",       src: "/icons/bouquet-svgrepo-com.svg",                 roles: ["florist"] },
-  { label: "Photography",   src: "/icons/photo-camera-photograph-svgrepo-com.svg", roles: ["photographer"] },
-  { label: "DJ & Music",    src: "/icons/music-svgrepo-com.svg",                   roles: ["dj", "band", "musician"] },
-  { label: "Hair & Makeup", src: "/icons/make-up-svgrepo-com.svg",                 roles: ["hair", "makeup"] },
-];
-
-const BADGE_COLORS: Record<string, string> = {
-  venue:        "bg-rose-50 text-rose-700",
-  florist:      "bg-emerald-50 text-emerald-700",
-  caterer:      "bg-orange-50 text-orange-700",
-  photographer: "bg-amber-50 text-amber-700",
-  dj_music:     "bg-purple-50 text-purple-700",
-  hair_makeup:  "bg-pink-50 text-pink-700",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  venue:        "Venue",
-  florist:      "Florals",
-  caterer:      "Catering",
-  photographer: "Photography",
-  dj_music:     "DJ & Music",
-  hair_makeup:  "Hair & Makeup",
-};
-
 const PRICE_LABELS: Record<number, string> = { 0: "Free", 1: "$", 2: "$$", 3: "$$$", 4: "$$$$" };
+
+// ── Hero stack ────────────────────────────────────────────────────────────────
+
+function HeroStack({ stack, totalWeddings }: { stack: WeddingStack; totalWeddings: number }) {
+  const shown = stack.vendors.slice(0, 7);
+  const extra = stack.vendors.length - shown.length;
+  return (
+    <div className="rounded-2xl border border-black/[0.08] bg-white shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
+      <div className="flex items-center gap-2 border-b border-black/[0.06] px-5 py-3.5">
+        <h3 className="text-sm font-medium text-gray-900">{formatEventDate(stack.event_date_est)}</h3>
+        {stack.n_posts > 1 && (
+          <span
+            className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
+            title={`${stack.n_posts} vendors independently posted this wedding`}
+          >
+            ✓ {stack.n_posts} posts
+          </span>
+        )}
+      </div>
+      <ul className="divide-y divide-black/[0.04] px-5 py-1">
+        {shown.map((v) => (
+          <li key={`${v.username}-${v.role}`} className="flex items-center gap-2 py-2">
+            <span className="w-20 shrink-0 text-xs font-medium text-gray-600">{roleLabel(v.role)}</span>
+            <Link
+              href={`/vendors/${encodeURIComponent(v.username)}`}
+              className="flex min-w-0 items-center gap-2 text-gray-900 hover:text-gray-600"
+            >
+              <Avatar src={v.avatar_url} name={v.name} size={24} className="text-[10px]" />
+              <span className="truncate text-sm">{v.name}</span>
+            </Link>
+            <span className="ml-auto">
+              <AddToTeamButton
+                accountId={v.accountId}
+                username={v.username}
+                name={v.name}
+                role={v.role}
+                avatarUrl={v.avatar_url}
+              />
+            </span>
+          </li>
+        ))}
+      </ul>
+      <Link
+        href="/weddings"
+        className="block border-t border-black/[0.06] px-5 py-3 text-sm text-gray-600 transition-colors hover:text-gray-900"
+      >
+        {extra > 0 ? `+${extra} more credits · ` : ""}
+        One of {weddingCountLabel(totalWeddings)} →
+      </Link>
+    </div>
+  );
+}
+
+// ── Slot card ─────────────────────────────────────────────────────────────────
+
+function SlotCard({
+  slot,
+  count,
+  entries,
+}: {
+  slot: Slot;
+  count: number;
+  entries: TeamEntry[];
+}) {
+  const pick = entries[0];
+  const SlotIcon = SLOT_ICONS[slot];
+
+  return (
+    <Link
+      href={slotHref(slot)}
+      className="group flex items-center gap-4 rounded-xl border border-black/[0.07] bg-white p-4 transition-colors hover:border-black/[0.18]"
+    >
+      {pick ? (
+        <Avatar src={pick.avatarUrl ?? null} name={pick.name} size={40} className="shrink-0 text-sm" />
+      ) : (
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-black/[0.04] text-gray-700">
+          <SlotIcon size={22} />
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5 text-[15px] font-medium text-gray-900">
+          {slot}
+          {pick && <Heart size={12} weight="fill" className="shrink-0 text-rose-500" />}
+        </span>
+        <span className="block truncate text-sm text-black/[0.55]">
+          {pick
+            ? `${pick.name}${entries.length > 1 ? ` +${entries.length - 1}` : ""}`
+            : `${count.toLocaleString()} credited`}
+        </span>
+      </span>
+      <span className="text-black/[0.30] transition-colors group-hover:text-gray-900">→</span>
+    </Link>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -92,10 +162,12 @@ export default function HomepageClient({
   featuredVendors,
   stats,
   roleCounts,
+  heroStack,
 }: {
   featuredVendors: Vendor[];
   stats: { chicago_weddings: number; credited_vendors: number; collaborations: number };
   roleCounts: Record<string, number>;
+  heroStack: WeddingStack | null;
 }) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -103,7 +175,10 @@ export default function HomepageClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const navIconsVisible = useNavIconsVisible();
+  const { team } = useTeam();
 
+  const slotCount = (slot: string) =>
+    (SLOT_ROLES[slot] ?? []).reduce((n, r) => n + (roleCounts[r] ?? 0), 0);
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -114,24 +189,23 @@ export default function HomepageClient({
           <div className={`flex ${SITE_HEADER_HEIGHT_CLASS} items-stretch justify-between`}>
 
             {/* Logo */}
-            <SiteBrand href="/" className="self-center" />
+            <div className="flex flex-1 items-center justify-start">
+              <SiteBrand href="/" />
+            </div>
 
             <SiteNavLinks showIcons={navIconsVisible} />
 
             {/* Right actions */}
-            <div className="hidden shrink-0 items-center gap-3 self-center md:flex">
-              <a href="mailto:hello@dewwey.com?subject=List%20my%20business%20on%20Dewwey" className="text-sm text-gray-600 hover:text-gray-900 px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
-                List your business
-              </a>
+            <div className="hidden flex-1 shrink-0 items-center justify-end self-center md:flex">
               <AuthButton />
             </div>
 
             {/* Mobile menu toggle */}
             <button
-              className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+              className="md:hidden self-center p-2 rounded-lg text-gray-600 hover:bg-black/[0.05] transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? <X size={20} /> : <List size={20} />}
             </button>
           </div>
         </div>
@@ -142,14 +216,9 @@ export default function HomepageClient({
             <div className={`${siteContainerClass} py-4`}>
               <SiteNavMobileLinks />
               <div className="mt-2 flex flex-col gap-1 border-t border-black/[0.06] pt-2">
-              {[
-                { label: "List your business", href: "#" },
-                { label: "Sign In", href: "#" },
-              ].map((link) => (
-                <a key={link.label} href={link.href} className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                  {link.label}
+                <a href="/login" className="px-3 py-2 text-sm text-gray-700 hover:bg-black/[0.04] rounded-lg transition-colors">
+                  Sign in
                 </a>
-              ))}
               </div>
             </div>
           </div>
@@ -160,140 +229,178 @@ export default function HomepageClient({
       <section className="relative overflow-hidden bg-[#fdf8f5]">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-rose-100/40 blur-[120px] translate-x-1/3 -translate-y-1/3" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-amber-100/30 blur-[100px] -translate-x-1/3 translate-y-1/3" />
         </div>
 
-        <div className={`relative ${siteContainerClass} pt-20 pb-24 text-center`}>
-          <p className="mb-4 text-sm font-medium tracking-widest text-rose-500 uppercase">
-            Chicago&apos;s Wedding Marketplace
-          </p>
-          <h1 className={`mb-5 text-5xl leading-[1.1] tracking-tight text-gray-900 sm:text-6xl lg:text-7xl ${displayHeadingClassName}`}>
-            Plan Your Perfect
-            <br />
-            <span className="italic text-rose-400">Chicago</span> Wedding
-          </h1>
-          <p className="text-gray-500 text-lg max-w-xl mx-auto mb-10" style={{ fontWeight: 400 }}>
-            Real Chicago weddings and the vendor teams behind them — reconstructed from the credits vendors post, not paid listings.
-          </p>
+        <div className={`relative ${siteContainerClass} pt-16 pb-20 lg:pt-20 lg:pb-24`}>
+          <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+            <div>
+              <h1 className={`mb-5 text-4xl leading-[1.1] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl ${displayHeadingClassName}`}>
+                Assemble your Chicago wedding{" "}
+                <span className="italic text-rose-400">dream team</span>
+              </h1>
+              <p className="mb-8 max-w-xl text-lg text-gray-600">
+                Real weddings and the vendor teams behind them, reconstructed from
+                the credits vendors post. Not paid listings.
+              </p>
 
-          {/* Search bar */}
-          <div className="max-w-2xl mx-auto">
-            <form
-              onSubmit={(e) => { e.preventDefault(); router.push(searchHref(selectedCategory, searchQuery)); }}
-              className="flex items-center bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.10)] border border-black/[0.06] overflow-hidden"
-            >
-
-              {/* Category dropdown */}
-              <div className="relative shrink-0">
-                <button
-                  className="flex items-center gap-1.5 px-5 py-4 text-sm text-gray-700 border-r border-black/[0.08] hover:bg-gray-50 transition-colors whitespace-nowrap"
-                  onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+              {/* Search bar */}
+              <div className="max-w-xl">
+                <form
+                  onSubmit={(e) => { e.preventDefault(); router.push(searchHref(selectedCategory, searchQuery)); }}
+                  className="rounded-2xl bg-white shadow-[0_4px_24px_rgba(0,0,0,0.10)] border border-black/[0.06]"
                 >
-                  {selectedCategory}
-                  <ChevronDown size={15} className="text-gray-400" />
-                </button>
-                {categoryDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-52 bg-white border border-black/[0.08] rounded-xl shadow-lg z-20 py-1.5">
-                    {CATEGORIES.map((cat) => (
-                      <button
-                        key={cat}
-                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        onClick={() => { setSelectedCategory(cat); setCategoryDropdownOpen(false); }}
-                      >
-                        {cat}
-                      </button>
-                    ))}
+                  <div className="flex flex-col sm:flex-row sm:items-stretch">
+                    <div className="flex min-w-0 flex-1 items-stretch border-b border-black/[0.08] sm:border-b-0">
+                      {/* Category dropdown */}
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          className="flex h-full items-center gap-1.5 rounded-tl-2xl px-4 py-4 text-sm text-gray-700 border-r border-black/[0.08] hover:bg-black/[0.04] transition-colors whitespace-nowrap sm:rounded-l-2xl"
+                          onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+                        >
+                          {selectedCategory}
+                          <CaretDown size={13} className="text-black/[0.45]" />
+                        </button>
+                        {categoryDropdownOpen && (
+                          <div className="absolute top-full left-0 mt-2 w-52 bg-white border border-black/[0.08] rounded-xl shadow-lg z-20 py-1.5">
+                            {SEARCH_CATEGORIES.map((cat) => (
+                              <button
+                                type="button"
+                                key={cat}
+                                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-black/[0.04] transition-colors"
+                                onClick={() => { setSelectedCategory(cat); setCategoryDropdownOpen(false); }}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Text input */}
+                      <input
+                        type="text"
+                        placeholder="Vendor name or neighborhood…"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="min-w-0 flex-1 px-4 py-4 text-sm text-gray-800 placeholder:text-black/[0.40] outline-none bg-transparent"
+                      />
+                    </div>
+
+                    {/* Search button */}
+                    <button type="submit" className="m-2 shrink-0 px-6 py-3 bg-rose-400 hover:bg-rose-500 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                      <MagnifyingGlass size={15} />
+                      Search
+                    </button>
                   </div>
-                )}
+                </form>
+
+                <p className="text-xs text-black/[0.45] mt-3">
+                  Popular:{" "}
+                  <Link href={vendorsHref({ slot: "Venue", q: "River North" })} className="text-gray-600 hover:text-gray-900 transition-colors">River North Venues</Link>
+                  {" · "}
+                  <Link href={slotHref("Photography")} className="text-gray-600 hover:text-gray-900 transition-colors">Wedding Photographers</Link>
+                  {" · "}
+                  <Link href={slotHref("Florals")} className="text-gray-600 hover:text-gray-900 transition-colors">Floral Design</Link>
+                </p>
               </div>
+            </div>
 
-              {/* Text input */}
-              <input
-                type="text"
-                placeholder="Search by vendor name or neighborhood…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-4 text-sm text-gray-800 placeholder-gray-400 outline-none bg-transparent"
-              />
 
-              {/* Search button */}
-              <button type="submit" className="shrink-0 m-2 px-6 py-3 bg-rose-400 hover:bg-rose-500 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
-                <Search size={15} />
-                Search
-              </button>
-            </form>
-
-            <p className="text-xs text-gray-400 mt-3">
-              Popular:{" "}
-              <Link href="/venues?q=River%20North" className="text-gray-500 hover:text-gray-700 transition-colors">River North Venues</Link>
-              {" · "}
-              <Link href="/vendors?role=photographer" className="text-gray-500 hover:text-gray-700 transition-colors">Wedding Photographers</Link>
-              {" · "}
-              <Link href="/vendors?role=florist" className="text-gray-500 hover:text-gray-700 transition-colors">Floral Design</Link>
-            </p>
+            {heroStack && (
+              <div className="hidden lg:block">
+                <HeroStack stack={heroStack} totalWeddings={stats.chicago_weddings} />
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* ── CATEGORY CARDS ── */}
+      {/* ── TEAM SLOTS ── */}
       <section className={`${siteContainerClass} py-20`}>
         <div className="mb-10">
           <h2 className={`mb-2 text-3xl text-gray-900 ${displayHeadingClassName}`}>
-            Browse by Category
+            Your team, slot by slot
           </h2>
-          <p className="text-gray-500 text-sm">Everything you need for your Chicago wedding, all in one place.</p>
+          <p className="text-gray-600 text-[15px]">
+            Nine slots every wedding fills. Tap one to browse vendors ranked by documented work.
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {VENDOR_CATEGORIES.map(({ label, src, roles }) => (
-            <a
-              key={label}
-              href={CATEGORY_HREFS[label] ?? "/vendors"}
-              className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-black/[0.07] bg-white hover:border-rose-200 hover:shadow-[0_4px_20px_rgba(244,63,94,0.08)] transition-all duration-200 text-center"
-            >
-              <div className="w-12 h-12 rounded-xl bg-[#fdf8f5] group-hover:bg-rose-50 transition-colors flex items-center justify-center">
-                <Image src={src} alt={label} width={28} height={28} className="object-contain" />
-              </div>
-              <div>
-                <div className="text-sm font-medium text-gray-800 group-hover:text-gray-900 transition-colors">{label}</div>
-                <div className="text-xs text-gray-400 mt-0.5">
-                  {roles.reduce((n, r) => n + (roleCounts[r] ?? 0), 0).toLocaleString()} credited
-                </div>
-              </div>
-            </a>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {DEFAULT_SLOTS.map((slot) => (
+            <SlotCard
+              key={slot}
+              slot={slot}
+              count={slotCount(slot)}
+              entries={team.entries.filter((e) => e.slot === slot)}
+            />
           ))}
         </div>
       </section>
 
+      {/* ── HOW IT WORKS ── */}
+      <section className="border-y border-black/[0.06] bg-black/[0.02] py-20">
+        <div className={siteContainerClass}>
+          <h2 className={`mb-12 text-3xl text-gray-900 ${displayHeadingClassName}`}>
+            How {BRAND_NAME} works
+          </h2>
+          <div className="grid grid-cols-1 gap-10 sm:grid-cols-3">
+            {[
+              {
+                stat: stats.credited_vendors.toLocaleString(),
+                title: "Vendors credit their team",
+                body: "After every wedding, vendors tag who they worked with. Each one here is credited on real work.",
+              },
+              {
+                stat: stats.chicago_weddings.toLocaleString(),
+                title: "We reconstruct the wedding",
+                body: "Those credits become a documented Chicago wedding: the venue, the date, and the full team.",
+              },
+              {
+                stat: stats.collaborations.toLocaleString(),
+                title: "You see who works together",
+                body: "Collaborations mapped across the city, so you can book a team that already clicks.",
+              },
+            ].map(({ stat, title, body }) => (
+              <div key={title}>
+                <div className={`text-4xl text-gray-900 ${displayHeadingClassName}`}>{stat}</div>
+                <div className="mt-2 text-[15px] font-medium text-gray-900">{title}</div>
+                <p className="mt-1.5 text-sm leading-relaxed text-gray-600">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── FEATURED VENDORS ── */}
-      <section className="bg-[#fdf8f5] py-20">
+      <section className="py-20">
         <div className={siteContainerClass}>
           <div className="flex items-end justify-between mb-10">
             <div>
               <h2 className={`mb-2 text-3xl text-gray-900 ${displayHeadingClassName}`}>
-                Featured Vendors
+                Featured vendors
               </h2>
-              <p className="text-gray-500 text-sm">Highly-rated vendors loved by Chicago couples.</p>
+              <p className="text-gray-600 text-[15px]">Highly rated vendors loved by Chicago couples.</p>
             </div>
-            <Link href="/vendors" className="hidden sm:block text-sm text-rose-500 hover:text-rose-600 font-medium transition-colors">
+            <Link href="/vendors" className="hidden sm:block text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
               View all →
             </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredVendors.map((vendor) => {
-              const badgeColor = BADGE_COLORS[vendor.category] ?? "bg-gray-50 text-gray-700";
-              const badgeLabel = CATEGORY_LABELS[vendor.category] ?? vendor.category;
+              const badgeLabel = roleLabel(vendor.category);
               const priceLabel = vendor.price_level != null ? PRICE_LABELS[vendor.price_level] : null;
               const location = vendor.short_address ?? vendor.address ?? "Chicago";
 
               return (
                 <div
                   key={vendor.username}
-                  className="bg-white rounded-2xl overflow-hidden border border-black/[0.06] hover:shadow-[0_8px_32px_rgba(0,0,0,0.10)] transition-all duration-300 group"
+                  className="bg-white rounded-2xl overflow-hidden border border-black/[0.07] hover:border-black/[0.18] transition-colors group"
                 >
                   {/* Photo */}
-                  <div className="relative overflow-hidden h-56 bg-gray-100">
+                  <div className="relative overflow-hidden h-56 bg-black/[0.04]">
                     <Link href={`/vendors/${encodeURIComponent(vendor.username)}`} className="block h-full w-full">
                       <VenuePlacePhoto
                         placeId={vendor.place_id ?? undefined}
@@ -315,7 +422,7 @@ export default function HomepageClient({
                     </span>
 
                     {/* Category badge */}
-                    <span className={`absolute top-3 left-3 text-xs font-medium px-2.5 py-1 rounded-full ${badgeColor}`}>
+                    <span className="absolute top-3 left-3 text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">
                       {badgeLabel}
                     </span>
                   </div>
@@ -323,19 +430,19 @@ export default function HomepageClient({
                   {/* Info */}
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <Link href={`/vendors/${encodeURIComponent(vendor.username)}`} className="text-[15px] font-medium text-gray-900 leading-snug hover:text-rose-600">{vendor.name}</Link>
+                      <Link href={`/vendors/${encodeURIComponent(vendor.username)}`} className="text-[15px] font-medium text-gray-900 leading-snug hover:text-gray-600">{vendor.name}</Link>
                       {vendor.rating != null && (
                         <div className="flex items-center gap-1 shrink-0">
-                          <Star size={13} className="fill-amber-400 text-amber-400" />
+                          <Star size={13} weight="fill" className="text-amber-400" />
                           <span className="text-sm font-medium text-gray-800">{vendor.rating}</span>
                           {vendor.review_count != null && (
-                            <span className="text-xs text-gray-400">({vendor.review_count})</span>
+                            <span className="text-xs text-black/[0.55]">({formatCount(vendor.review_count)})</span>
                           )}
                         </div>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1 text-xs text-gray-400 mb-3">
+                    <div className="flex items-center gap-1 text-xs text-black/[0.55] mb-3">
                       <MapPin size={12} />
                       {location}
                     </div>
@@ -346,7 +453,7 @@ export default function HomepageClient({
                           href={vendor.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-rose-500 hover:text-rose-600 transition-colors"
+                          className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
                         >
                           Visit website →
                         </a>
@@ -354,7 +461,7 @@ export default function HomepageClient({
                         <span />
                       )}
                       {priceLabel && (
-                        <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
+                        <span className="text-xs font-medium text-gray-600 bg-black/[0.04] px-2 py-1 rounded-md">
                           {priceLabel}
                         </span>
                       )}
@@ -366,64 +473,41 @@ export default function HomepageClient({
           </div>
 
           <div className="mt-8 text-center sm:hidden">
-            <Link href="/vendors" className="text-sm text-rose-500 font-medium">View all vendors →</Link>
+            <Link href="/vendors" className="text-sm font-medium text-gray-600 hover:text-gray-900">View all vendors →</Link>
           </div>
         </div>
       </section>
 
-      {/* ── TRUST BAR ── */}
-      <section className="border-y border-black/[0.06] py-12">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
-          {[
-            { stat: stats.credited_vendors.toLocaleString(), label: "Vendors credited on real Chicago weddings" },
-            { stat: stats.chicago_weddings.toLocaleString(), label: "Chicago weddings documented" },
-            { stat: stats.collaborations.toLocaleString(), label: "Vendor collaborations mapped" },
-          ].map(({ stat, label }) => (
-            <div key={stat}>
-              <div className={`mb-1 text-3xl text-gray-900 ${displayHeadingClassName}`}>{stat}</div>
-              <div className="text-sm text-gray-500">{label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* ── FOOTER ── */}
-      <footer className="bg-gray-900 text-gray-400 py-16">
+      <footer className="border-t border-black/[0.08] bg-white py-16 text-gray-600">
         <div className={siteContainerClass}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2">
                 <span className="text-rose-400 text-xl">✦</span>
-                <span className={`text-[16px] text-white ${uiHeadingClassName}`}>{BRAND_NAME}</span>
+                <span className={`text-[16px] text-gray-900 ${uiHeadingClassName}`}>{BRAND_NAME}</span>
               </div>
-              <p className="text-sm leading-relaxed text-gray-500">
-                Chicago&apos;s most trusted wedding vendor marketplace. Find, compare, and book with confidence.
-              </p>
             </div>
 
             {[
               { heading: "Explore", links: [
                 { label: "Weddings", href: "/weddings" },
-                { label: "Venues", href: "/venues" },
+                { label: "Venues", href: slotHref("Venue") },
                 { label: "Vendors", href: "/vendors" },
               ] },
-              { heading: "Vendors", links: [
-                { label: "Catering", href: "/vendors?role=catering" },
-                { label: "Florals", href: "/vendors?role=florist" },
-                { label: "Photography", href: "/vendors?role=photographer" },
-                { label: "DJ & Music", href: "/vendors?role=dj" },
-                { label: "Hair & Makeup", href: "/vendors?role=hair" },
-              ] },
+              { heading: "Vendors", links: DEFAULT_SLOTS.filter((s) => s !== "Venue").map(
+                (s) => ({ label: s as string, href: slotHref(s) }),
+              ) },
               { heading: "Company", links: [
                 { label: "Contact", href: "mailto:hello@dewwey.com" },
               ] },
             ].map(({ heading, links }) => (
               <div key={heading}>
-                <h4 className="text-white text-sm font-medium mb-4">{heading}</h4>
+                <h4 className="text-gray-900 text-sm font-medium mb-4">{heading}</h4>
                 <ul className="space-y-2">
                   {links.map((link) => (
                     <li key={link.label}>
-                      <a href={link.href} className="text-sm text-gray-500 hover:text-gray-300 transition-colors">{link.label}</a>
+                      <a href={link.href} className="text-sm transition-colors hover:text-gray-900">{link.label}</a>
                     </li>
                   ))}
                 </ul>
@@ -431,7 +515,7 @@ export default function HomepageClient({
             ))}
           </div>
 
-          <div className="pt-8 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-600">
+          <div className="pt-8 border-t border-black/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-black/[0.45]">
             <span>© 2026 {BRAND_NAME}. All rights reserved.</span>
             <span>Made with ♥ in Chicago, IL</span>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpDown, Map as MapIcon, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowsDownUp as ArrowUpDown, MapTrifold as MapIcon, MagnifyingGlass as Search, SlidersHorizontal } from "@phosphor-icons/react";
 import { SITE_HEADER_HEIGHT_CLASS, SITE_PADDING_X_CLASS } from "@/lib/site-layout";
 import { SITE_NAV_ITEMS_MAP } from "@/lib/site-nav";
 import { SiteNavLinks } from "./SiteNavLinks";
@@ -79,7 +79,7 @@ export default function MapBrowseToolbar({
           </div>
           <a
             href="#compare"
-            className="hidden rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 sm:inline-block"
+            className="hidden rounded-full border border-black/[0.10] px-4 py-2 text-sm font-medium text-gray-700 sm:inline-block"
           >
             Compare {compareCount > 0 ? compareCount : ""}
           </a>
@@ -87,7 +87,7 @@ export default function MapBrowseToolbar({
       </div>
 
       <div className={`border-t border-black/[0.06] py-3 ${SITE_PADDING_X_CLASS}`}>
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="scrollbar-none flex items-center gap-2 overflow-x-auto pb-1">
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
@@ -128,7 +128,7 @@ export default function MapBrowseToolbar({
             </label>
           </div>
 
-          <span aria-hidden className="mx-0.5 shrink-0 text-sm text-gray-300">
+          <span aria-hidden className="mx-0.5 shrink-0 text-sm text-black/[0.25]">
             |
           </span>
 

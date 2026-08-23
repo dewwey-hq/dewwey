@@ -10,7 +10,7 @@ export function VenuePlacePhoto({
   maxWidth = 900,
   index = 0,
   loadingClassName,
-  fallbackClassName = "flex h-full w-full items-center justify-center bg-gradient-to-br from-rose-100 to-pink-200",
+  fallbackClassName = "flex h-full w-full items-center justify-center bg-black/[0.04]",
 }: {
   placeId?: string;
   photoNames?: string[] | null;
@@ -30,13 +30,13 @@ export function VenuePlacePhoto({
 
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt} className={className} />;
+    return <img src={src} alt={alt} loading="lazy" decoding="async" className={className} />;
   }
 
   return (
     <div className={loadingClassName ?? fallbackClassName}>
       {loading ? (
-        <span className="text-sm text-rose-300/80">Loading…</span>
+        <span className="text-sm text-black/[0.35]">Loading…</span>
       ) : (
         <span className="text-4xl text-rose-300">✦</span>
       )}

@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: `${BRAND_NAME} — Chicago's Wedding Vendor Marketplace`,
+  title: `${BRAND_NAME} - Chicago's Wedding Vendor Marketplace`,
   description:
     "Find trusted Chicago wedding vendors: venues, catering, florals, photography, and more.",
 };

@@ -20,7 +20,7 @@ const SELECTED_CHROME = {
     accent: "bg-rose-400",
   },
   gray: {
-    ring: "ring-2 ring-gray-300",
+    ring: "ring-2 ring-black/[0.20]",
     shadow: "shadow-[0_10px_32px_rgba(15,23,42,0.10)]",
     accent: "bg-gray-400",
   },

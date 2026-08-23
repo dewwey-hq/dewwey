@@ -1,4 +1,5 @@
 import { getPool } from "./db";
+import { avatarUrl } from "./graph";
 
 // Serves the merged schema (pipeline/schema.sql): the IG-observed graph
 // (accounts / weddings / edges) is the source of truth; the Places-seeded
@@ -33,14 +34,6 @@ export const VALID_CATEGORIES = new Set([
   "other",
 ]);
 
-// DB stores R2 keys (avatars/<username>.jpg); URL is composed at read time so
-// the bucket domain can change without touching rows.
-function avatarUrl(avatarPath: string | null): string | null {
-  const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
-  if (!avatarPath || !base) return null;
-  return `${base}/${avatarPath}`;
-}
-
 // One vendor/venue card, shaped for the existing UI: graph columns first,
 // Places columns (place_id, rating, photos…) null until the vendors layer has data.
 const CARD_SELECT = `
@@ -72,7 +65,9 @@ const CARD_JOINS = `
   FROM accounts a
   JOIN v_account_role var ON var.account_id = a.id
   LEFT JOIN account_locations al ON al.account_id = a.id
-  LEFT JOIN vendors v ON v.account_id = a.id
+  LEFT JOIN LATERAL (
+    SELECT * FROM vendors WHERE account_id = a.id ORDER BY id LIMIT 1
+  ) v ON true
   LEFT JOIN (
     SELECT venue_id, COUNT(*) AS n_weddings
     FROM weddings GROUP BY venue_id
@@ -202,7 +197,9 @@ export async function getVendorDetail(id: number) {
      JOIN accounts partner
        ON partner.id = CASE WHEN e.account_a = $1 THEN e.account_b ELSE e.account_a END
      LEFT JOIN v_account_role pvar ON pvar.account_id = partner.id
-     LEFT JOIN vendors pv ON pv.account_id = partner.id
+     LEFT JOIN LATERAL (
+       SELECT name FROM vendors WHERE account_id = partner.id ORDER BY id LIMIT 1
+     ) pv ON true
      WHERE $1 IN (e.account_a, e.account_b)
      ORDER BY e.n_weddings DESC, e.last_worked_together DESC NULLS LAST
      LIMIT 6`,

@@ -8,3 +8,6 @@ export const siteContainerClass = `mx-auto w-full ${SITE_MAX_WIDTH_CLASS} ${SITE
 
 /** Shared primary nav bar height. */
 export const SITE_HEADER_HEIGHT_CLASS = "h-[4.75rem]";
+
+/** Sticky offset for bars pinned under the header (height + its 1px border). */
+export const SITE_SUBHEADER_TOP_CLASS = "top-[calc(4.75rem+1px)]";

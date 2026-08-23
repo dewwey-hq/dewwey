@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, ChevronDown } from "lucide-react";
+import { CalendarBlank as Calendar, CaretDown as ChevronDown } from "@phosphor-icons/react";
 
 function formatWeddingDate(isoDate: string): string {
   return new Date(`${isoDate}T12:00:00`).toLocaleDateString("en-US", {
@@ -37,13 +37,13 @@ export default function MapDateFilterPill({
       <span
         className={`pointer-events-none inline-flex items-center gap-1 rounded-full border px-3.5 py-1.5 text-xs font-medium ${
           hasDate
-            ? "border-rose-200 bg-rose-50 text-rose-700"
+            ? "border-gray-900 bg-gray-900 text-white"
             : "border-black/[0.1] bg-white text-gray-700"
         }`}
       >
-        <Calendar size={14} className={hasDate ? "text-rose-500" : "text-gray-500"} />
+        <Calendar size={14} className={hasDate ? "text-white" : "text-gray-500"} />
         {displayValue}
-        <ChevronDown size={14} className={hasDate ? "text-rose-400" : "text-gray-500"} />
+        <ChevronDown size={14} className={hasDate ? "text-white" : "text-gray-500"} />
       </span>
       <input
         type="date"

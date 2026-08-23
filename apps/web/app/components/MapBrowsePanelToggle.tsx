@@ -1,6 +1,6 @@
 "use client";
 
-import { List, Map as MapIcon } from "lucide-react";
+import { List, MapTrifold as MapIcon } from "@phosphor-icons/react";
 
 export type MapBrowseMobilePanel = "list" | "map";
 
@@ -22,12 +22,12 @@ export default function MapBrowsePanelToggle({
       >
         {showingMap ? (
           <>
-            <List size={18} strokeWidth={2.25} />
+            <List size={18} />
             Show list
           </>
         ) : (
           <>
-            <MapIcon size={18} strokeWidth={2.25} />
+            <MapIcon size={18} />
             Show map
           </>
         )}

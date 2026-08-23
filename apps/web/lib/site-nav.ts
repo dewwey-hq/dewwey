@@ -1,13 +1,17 @@
+import { Confetti, Buildings, Storefront } from "@phosphor-icons/react/dist/ssr";
+import type { Icon } from "@phosphor-icons/react";
+import { slotHref } from "./slots";
+
 export type SiteNavItem = {
   label: string;
   href: string;
-  iconSrc: string;
+  icon: Icon;
 };
 
 export const SITE_NAV_ITEMS: SiteNavItem[] = [
-  { label: "Weddings", href: "/weddings", iconSrc: "/icons/newlyweds-wedding-svgrepo-com.svg" },
-  { label: "Venues", href: "/venues", iconSrc: "/icons/wedding-location-svgrepo-com.svg" },
-  { label: "Vendors", href: "/vendors", iconSrc: "/icons/bouquet-svgrepo-com.svg" },
+  { label: "Weddings", href: "/weddings", icon: Confetti },
+  { label: "Venues", href: slotHref("Venue"), icon: Buildings },
+  { label: "Vendors", href: "/vendors", icon: Storefront },
 ];
 
 /** Map browse keeps Venues highlighted but links to map view. */

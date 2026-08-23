@@ -128,6 +128,15 @@
   }
 }
 
+/* Scrollable rows that hide their scrollbar (slot rail, pill rows) */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 .instagram-embed-iframe {
   display: block;
   margin: 0 auto;

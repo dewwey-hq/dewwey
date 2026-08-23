@@ -12,7 +12,7 @@ const PAGE_SIZE = 20;
 export const metadata: Metadata = {
   title: `Real Chicago Wedding Teams | ${BRAND_NAME}`,
   description:
-    "Real weddings, real vendor teams — credit stacks from Chicago weddings, straight from the vendors who worked them.",
+    "Real weddings, real vendor teams: credit stacks from Chicago weddings, straight from the vendors who worked them.",
 };
 
 export default async function WeddingsPage({
@@ -29,16 +29,16 @@ export default async function WeddingsPage({
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div className="min-h-screen bg-white">
       <SiteHeader activeLabel="Weddings" />
       <main className={`${siteContainerClass} py-10`}>
         <div className="mx-auto max-w-4xl">
           <h1 className={`${displayHeadingClassName} text-3xl text-gray-900 sm:text-4xl`}>
             Real wedding teams
           </h1>
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-gray-600">
             {total.toLocaleString()} Chicago weddings, reconstructed from the credit
-            stacks vendors post — every team is who actually worked the day.
+            stacks vendors post. Every team is who actually worked the day.
           </p>
 
           <div className="mt-8 space-y-6">
@@ -51,20 +51,20 @@ export default async function WeddingsPage({
             {page > 1 ? (
               <Link
                 href={`/weddings?page=${page - 1}`}
-                className="rounded-full border border-gray-300 px-4 py-2 text-gray-700 hover:border-rose-300 hover:text-rose-600"
+                className="rounded-full border border-black/[0.10] px-4 py-2 text-gray-700 hover:border-black/[0.25]"
               >
                 ← Newer
               </Link>
             ) : (
               <span />
             )}
-            <span className="text-gray-400">
+            <span className="text-black/[0.56]">
               Page {page} of {totalPages}
             </span>
             {page < totalPages ? (
               <Link
                 href={`/weddings?page=${page + 1}`}
-                className="rounded-full border border-gray-300 px-4 py-2 text-gray-700 hover:border-rose-300 hover:text-rose-600"
+                className="rounded-full border border-black/[0.10] px-4 py-2 text-gray-700 hover:border-black/[0.25]"
               >
                 Older →
               </Link>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Star } from "lucide-react";
+import { Star } from "@phosphor-icons/react";
 import { formatCount } from "@/lib/format-address";
 import { uiHeadingClassName } from "@/lib/typography";
 import VenuePhotoCarousel from "./VenuePhotoCarousel";
@@ -51,7 +51,7 @@ export default function MapVenuePopupCard({
           </h3>
           {venue.displayRating > 0 ? (
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-1 gap-y-0.5 text-sm font-medium text-gray-800">
-              <Star size={14} className="fill-rose-400 text-rose-400" />
+              <Star size={14} weight="fill" className="text-amber-400" />
               <span>{venue.displayRating.toFixed(1)}</span>
               {venue.displayReviews > 0 ? (
                 <span className="text-xs font-normal text-gray-400">

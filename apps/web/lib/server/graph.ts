@@ -3,7 +3,7 @@ import { getPool } from "./db";
 // The graph-native surfaces: vendor profiles and wedding stacks. Chicago
 // membership is venue-anchored (weddings.is_chicago), not location-text.
 
-function avatarUrl(avatarPath: string | null): string | null {
+export function avatarUrl(avatarPath: string | null): string | null {
   const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
   if (!avatarPath || !base) return null;
   return `${base}/${avatarPath}`;
@@ -125,44 +125,50 @@ export async function getVendorProfile(username: string) {
      FROM accounts a
      LEFT JOIN v_account_role var ON var.account_id = a.id
      LEFT JOIN account_locations al ON al.account_id = a.id
-     LEFT JOIN vendors v ON v.account_id = a.id
+     LEFT JOIN LATERAL (
+       SELECT name, address, city, place_id, rating, review_count, website
+       FROM vendors WHERE account_id = a.id ORDER BY id LIMIT 1
+     ) v ON true
      WHERE a.username = $1::citext`,
     [username]
   );
   if (rows.length === 0) return null;
   const a = rows[0];
 
-  const { rows: partnerRows } = await pool.query(
-    `SELECT
-       partner.id::int,
-       partner.username::text,
-       CASE WHEN pv.name IS NULL OR pv.name IN (partner.username::text, '@' || partner.username::text)
-            THEN COALESCE(partner.full_name, partner.username::text) ELSE pv.name END AS name,
-       pvar.role::text AS role,
-       partner.avatar_path AS avatar,
-       e.n_weddings::int, e.last_worked_together
-     FROM edges e
-     JOIN accounts partner
-       ON partner.id = CASE WHEN e.account_a = $1 THEN e.account_b ELSE e.account_a END
-     LEFT JOIN v_account_role pvar ON pvar.account_id = partner.id
-     LEFT JOIN vendors pv ON pv.account_id = partner.id
-     WHERE $1 IN (e.account_a, e.account_b)
-     ORDER BY e.n_weddings DESC, e.last_worked_together DESC NULLS LAST
-     LIMIT 24`,
-    [a.id]
-  );
-
-  const { stacks } = await listWeddingStacks({ accountId: a.id, limit: 50 });
-
-  const { rows: enrichmentRows } = await pool.query(
-    `SELECT ve.capacity_min, ve.capacity_max, ve.capacity_as_stated,
-            ve.catering, ve.event_insurance, ve.pricing_model, ve.price_display,
-            ve.website, ve.extracted_at
-     FROM venue_enrichment ve
-     JOIN vendors v ON v.id = ve.vendor_id
-     WHERE v.account_id = $1`,
-    [a.id]
-  );
+  // The remaining queries only need a.id; run them together.
+  const [{ rows: partnerRows }, { stacks }, { rows: enrichmentRows }] = await Promise.all([
+    pool.query(
+      `SELECT
+         partner.id::int,
+         partner.username::text,
+         CASE WHEN pv.name IS NULL OR pv.name IN (partner.username::text, '@' || partner.username::text)
+              THEN COALESCE(partner.full_name, partner.username::text) ELSE pv.name END AS name,
+         pvar.role::text AS role,
+         partner.avatar_path AS avatar,
+         e.n_weddings::int, e.last_worked_together
+       FROM edges e
+       JOIN accounts partner
+         ON partner.id = CASE WHEN e.account_a = $1 THEN e.account_b ELSE e.account_a END
+       LEFT JOIN v_account_role pvar ON pvar.account_id = partner.id
+       LEFT JOIN LATERAL (
+         SELECT name FROM vendors WHERE account_id = partner.id ORDER BY id LIMIT 1
+       ) pv ON true
+       WHERE $1 IN (e.account_a, e.account_b)
+       ORDER BY e.n_weddings DESC, e.last_worked_together DESC NULLS LAST
+       LIMIT 24`,
+      [a.id]
+    ),
+    listWeddingStacks({ accountId: a.id, limit: 50 }),
+    pool.query(
+      `SELECT ve.capacity_min, ve.capacity_max, ve.capacity_as_stated,
+              ve.catering, ve.event_insurance, ve.pricing_model, ve.price_display,
+              ve.website, ve.extracted_at
+       FROM venue_enrichment ve
+       JOIN vendors v ON v.id = ve.vendor_id
+       WHERE v.account_id = $1`,
+      [a.id]
+    ),
+  ]);
 
   return {
     enrichment: enrichmentRows[0] ?? null,
@@ -196,19 +202,28 @@ export async function getVendorProfile(username: string) {
 }
 
 export async function listVendors(opts: {
-  role?: string | null;
+  /** vendor_role values to include; null/empty = all roles. */
+  roles?: string[] | null;
   q?: string | null;
+  /** Only vendors with at least this many documented Chicago weddings. */
+  minWeddings?: number;
+  /** Only vendors who share an edge with one of these account ids ("works with your team"). */
+  teamIds?: number[] | null;
   limit?: number;
   offset?: number;
 } = {}) {
   const limit = Math.min(opts.limit ?? 24, 100);
   const offset = opts.offset ?? 0;
+  const roles = opts.roles?.length ? opts.roles : null;
+  const teamIds = opts.teamIds?.length ? opts.teamIds.slice(0, 50) : null;
   // A "Chicago vendor" = worked at least one venue-verified Chicago wedding.
   const { rows } = await getPool().query(
     `SELECT
-       a.username::text, CASE WHEN v.name IS NULL OR v.name IN (a.username::text, '@' || a.username::text)
+       a.id::int, a.username::text, CASE WHEN v.name IS NULL OR v.name IN (a.username::text, '@' || a.username::text)
             THEN COALESCE(a.full_name, a.username::text) ELSE v.name END AS name,
        var.role::text AS role, a.avatar_path AS avatar, a.followers,
+       v.place_id, v.rating, v.review_count, v.neighborhood,
+       v.photo_keys AS photos,
        cnt.n_chicago::int AS n_weddings,
        COUNT(*) OVER() AS total_count
      FROM accounts a
@@ -219,26 +234,41 @@ export async function listVendors(opts: {
        FROM wedding_vendors wv JOIN weddings w ON w.id = wv.wedding_id
        GROUP BY wv.account_id
      ) cnt ON cnt.account_id = a.id
-     LEFT JOIN vendors v ON v.account_id = a.id
-     WHERE cnt.n_chicago > 0
-       AND ($1::text IS NULL OR var.role = $1::vendor_role)
+     LEFT JOIN LATERAL (
+       SELECT name, place_id, rating, review_count, neighborhood, photo_keys
+       FROM vendors WHERE account_id = a.id ORDER BY id LIMIT 1
+     ) v ON true
+     WHERE cnt.n_chicago >= GREATEST($5::int, 1)
+       AND ($1::text[] IS NULL OR var.role = ANY($1::vendor_role[]))
        AND ($4::text IS NULL
             OR a.username::text ILIKE $4 ESCAPE '\\'
             OR COALESCE(a.full_name, '') ILIKE $4 ESCAPE '\\'
             OR COALESCE(v.name, '') ILIKE $4 ESCAPE '\\')
+       AND ($6::int[] IS NULL
+            OR EXISTS (SELECT 1 FROM edges e
+                       WHERE e.account_a = a.id AND e.account_b = ANY($6::int[]))
+            OR EXISTS (SELECT 1 FROM edges e
+                       WHERE e.account_b = a.id AND e.account_a = ANY($6::int[])))
      ORDER BY cnt.n_chicago DESC, a.followers DESC NULLS LAST, a.username
      LIMIT $2 OFFSET $3`,
-    [opts.role ?? null, limit, offset,
-     opts.q?.trim() ? `%${opts.q.trim().replace(/[%_\\]/g, "\\$&")}%` : null]
+    [roles, limit, offset,
+     opts.q?.trim() ? `%${opts.q.trim().replace(/[%_\\]/g, "\\$&")}%` : null,
+     opts.minWeddings ?? 1, teamIds]
   );
   const total = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
   return {
     vendors: rows.map((r) => ({
+      id: r.id,
       username: r.username,
       name: r.name,
       role: r.role,
       avatar_url: avatarUrl(r.avatar),
       followers: r.followers,
+      place_id: r.place_id,
+      rating: r.rating,
+      review_count: r.review_count,
+      neighborhood: r.neighborhood,
+      photos: r.photos,
       n_weddings: r.n_weddings,
     })),
     total,

@@ -62,7 +62,7 @@ export function TeamPicksSection({
       <p className="mt-0.5 text-sm text-gray-500">
         Ranked by real weddings worked alongside people you&apos;ve picked.
       </p>
-      <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+      <div className="scrollbar-none mt-4 flex gap-3 overflow-x-auto pb-2">
         {picks.map((p) => {
           const top = p.receipts[0];
           return (
@@ -99,7 +99,7 @@ export function TeamPicksSection({
                 {top && (
                   <>
                     {" "}
-                    — incl. {top.n} with{" "}
+                    · incl. {top.n} with{" "}
                     <span className="font-medium">{top.name}</span>
                   </>
                 )}

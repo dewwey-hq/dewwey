@@ -75,6 +75,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const parsed = JSON.parse(raw) as TeamState;
         if (Array.isArray(parsed.slots) && Array.isArray(parsed.entries)) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage hydration must run post-mount
           setTeam(parsed);
         }
       }

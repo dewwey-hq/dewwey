@@ -24,7 +24,7 @@ export function VendorTabs({
   const tabClass = (active: boolean) =>
     `inline-flex items-center gap-2 border-b-2 px-1 pb-3 text-[15px] font-medium transition-colors ${
       active
-        ? "border-rose-400 text-rose-600"
+        ? "border-rose-400 text-gray-900"
         : "border-transparent text-gray-500 hover:text-gray-800"
     }`;
 

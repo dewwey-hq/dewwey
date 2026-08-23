@@ -35,7 +35,7 @@ export default function LoginPage() {
           Keep your team
         </h1>
         <p className="mt-2 text-gray-500">
-          Sign in with a magic link — your team saves to your account and follows
+          Sign in with a magic link. Your team saves to your account and follows
           you across devices.
         </p>
 
@@ -47,7 +47,7 @@ export default function LoginPage() {
               options: { redirectTo: `${window.location.origin}/auth/callback` },
             });
           }}
-          className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-black/[0.10] bg-white px-4 py-3 font-medium text-gray-700 transition-colors hover:bg-black/[0.04]"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/>
@@ -59,12 +59,12 @@ export default function LoginPage() {
         </button>
 
         <div className="my-5 flex items-center gap-3 text-xs text-gray-400">
-          <span className="h-px flex-1 bg-gray-200" /> or <span className="h-px flex-1 bg-gray-200" />
+          <span className="h-px flex-1 bg-black/[0.10]" /> or <span className="h-px flex-1 bg-black/[0.10]" />
         </div>
 
         {state === "sent" ? (
           <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
-            Check your email — the sign-in link is on its way to{" "}
+            Check your email. The sign-in link is on its way to{" "}
             <span className="font-medium">{email}</span>.
           </div>
         ) : (
@@ -75,7 +75,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:border-rose-300"
+              className="w-full rounded-xl border border-black/[0.10] bg-white px-4 py-3 outline-none focus:border-gray-900"
             />
             <button
               type="submit"

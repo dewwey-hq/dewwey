@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import InstagramEmbed, {
   computeLightboxEmbedLayout,
 } from "./InstagramEmbed";
@@ -16,7 +15,7 @@ import VenuesMapPanel from "./VenuesMapPanel";
 import MapBrowseToolbar from "./MapBrowseToolbar";
 import MapBrowsePanelToggle, { type MapBrowseMobilePanel } from "./MapBrowsePanelToggle";
 import VenueMapBrowseCard from "./VenueMapBrowseCard";
-import CategoryIcon, { resolveCategoryIcon } from "./CategoryIcon";
+import CategoryIcon, { categoryGlyph } from "./CategoryIcon";
 import { SiteNavLinks } from "./SiteNavLinks";
 import { SiteBrand } from "./SiteBrand";
 import { useNavIconsVisible } from "@/lib/hooks/use-nav-icons-visible";
@@ -24,27 +23,27 @@ import VenueRating from "./VenueRating";
 import { VenuePlacePhoto } from "./VenuePlacePhoto";
 import { usePlacePhotos } from "@/lib/hooks/use-place-photos";
 import {
-  ArrowUpDown,
+  ArrowsDownUp as ArrowUpDown,
   Check,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
+  CaretLeft as ChevronLeft,
+  CaretRight as ChevronRight,
+  ArrowSquareOut as ExternalLink,
   Heart,
   Leaf,
-  Map as MapIcon,
+  MapTrifold as MapIcon,
   MapPin,
-  ParkingCircle,
-  Search,
-  Share2,
+  CarSimple as ParkingCircle,
+  MagnifyingGlass as Search,
+  ShareNetwork as Share2,
   SlidersHorizontal,
   Star,
-  UtensilsCrossed,
+  ForkKnife as UtensilsCrossed,
   Users,
   Wine,
   X,
   Clock,
   Shield,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 
 import { placesPhotoUrl } from "@/lib/places-photo";
 import { getVendorApiBaseUrl } from "@/lib/api";
@@ -272,9 +271,6 @@ function locationFor(v: VenueVendor): string {
   return v.neighborhood ?? v.short_address ?? v.address ?? "Chicago";
 }
 
-function categoryIcon(category: string | null, primaryType?: string | null): string {
-  return resolveCategoryIcon(category, primaryType);
-}
 
 function categoryLabel(category: string | null, primaryType?: string | null): string {
   if (category && CATEGORY_LABELS[category]) return CATEGORY_LABELS[category];
@@ -363,7 +359,7 @@ function formatFeeRow(
         ? `$${fee.amount.toLocaleString()}/guest`
         : `$${fee.amount.toLocaleString()}`
       : null;
-  return [when, amount, fee.includes].filter(Boolean).join(" — ");
+  return [when, amount, fee.includes].filter(Boolean).join(" · ");
 }
 
 function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment }) {
@@ -413,13 +409,13 @@ function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment })
         <div>
           <VenueSectionHeading
             title="From the venue website"
-            subtitle="Pulled from their site — always confirm details directly."
+            subtitle="Pulled from their site. Always confirm details directly."
           />
           <div className="space-y-4 text-sm text-gray-700">
             {enrichment.capacity_max != null && (
               <p>
                 <span className="font-medium text-gray-900">Capacity</span>
-                {" — "}
+                {": "}
                 up to {enrichment.capacity_max.toLocaleString()} guests
                 {spaces.length > 1 ? (
                   <span className="text-gray-500"> · {spaces.length} spaces</span>
@@ -431,12 +427,12 @@ function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment })
             {enrichment.capacity_max == null && enrichment.capacity_as_stated && (
               <p>
                 <span className="font-medium text-gray-900">Capacity</span>
-                {" — "}
+                {": "}
                 {enrichment.capacity_as_stated}
               </p>
             )}
             {spaces.length > 0 ? (
-              <ul className="space-y-3 border-l-2 border-rose-100 pl-3 text-gray-600">
+              <ul className="space-y-3 border-l-2 border-black/[0.08] pl-3 text-gray-600">
                 {spaces.slice(0, 6).map((space) => {
                   const capLine = formatSpaceCapacity(space);
                   const feeLines = (space.fees || [])
@@ -462,7 +458,7 @@ function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment })
                 })}
               </ul>
             ) : configs.length > 1 ? (
-              <ul className="space-y-1.5 border-l-2 border-rose-100 pl-3 text-gray-600">
+              <ul className="space-y-1.5 border-l-2 border-black/[0.08] pl-3 text-gray-600">
                 {configs.slice(0, 8).map((c, i) => (
                   <li key={`${c.space}-${c.style}-${c.guests}-${i}`}>{formatConfigRow(c)}</li>
                 ))}
@@ -471,7 +467,7 @@ function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment })
             {pricing && (
               <p>
                 <span className="font-medium text-gray-900">Pricing</span>
-                {" — "}
+                {": "}
                 {pricing}
                 {enrichment.pricing_model && enrichment.pricing_model !== "unknown" ? (
                   <span className="text-gray-500"> · {enrichment.pricing_model.replace(/_/g, " ")}</span>
@@ -483,9 +479,9 @@ function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment })
                 {policyChips.map(({ Icon, label }) => (
                   <span
                     key={label}
-                    className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-[#fdf8f5] px-3.5 py-2 text-sm text-gray-700"
+                    className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-black/[0.03] px-3.5 py-2 text-sm text-gray-700"
                   >
-                    <Icon size={14} className="shrink-0 text-rose-400" />
+                    <Icon size={14} className="shrink-0 text-gray-500" />
                     {label}
                   </span>
                 ))}
@@ -496,7 +492,7 @@ function VenueWebsiteEnrichment({ enrichment }: { enrichment: VenueEnrichment })
                 href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm font-medium text-rose-500 hover:text-rose-600"
+                className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900"
               >
                 View source
                 <ExternalLink size={12} />
@@ -702,7 +698,7 @@ function PhotoGrid({
 
   if (photos.length === 0) {
     return (
-      <div className="flex h-56 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-100 to-pink-200 sm:h-72">
+      <div className="flex h-56 items-center justify-center rounded-2xl bg-black/[0.04] sm:h-72">
         <span className="text-5xl text-rose-300">✦</span>
       </div>
     );
@@ -774,7 +770,7 @@ function PhotoGrid({
           <button
             type="button"
             onClick={() => open(0)}
-            className="absolute bottom-3 right-3 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 shadow-sm hover:bg-gray-50 transition-colors"
+            className="absolute bottom-3 right-3 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 shadow-sm hover:bg-black/[0.04] transition-colors"
           >
             Show all photos
           </button>
@@ -961,7 +957,7 @@ function WeddingPostLightbox({
             className="flex items-center gap-2 rounded-lg px-1 py-2 text-white transition-colors hover:bg-white/10"
             aria-label="Close"
           >
-            <X size={22} strokeWidth={2} />
+            <X size={22} />
             <span className="text-sm font-medium">Close</span>
           </button>
         </div>
@@ -975,7 +971,7 @@ function WeddingPostLightbox({
             className="rounded-full p-2.5 text-white transition-colors hover:bg-white/10"
             aria-label={liked ? "Unsave" : "Save"}
           >
-            <Heart size={20} className={liked ? "fill-white text-white" : ""} />
+            <Heart size={20} weight={liked ? "fill" : "regular"} />
           </button>
         </div>
       </div>
@@ -988,7 +984,7 @@ function WeddingPostLightbox({
           className="absolute left-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white bg-black/50 text-white backdrop-blur-[2px] transition-all hover:bg-black/65 disabled:pointer-events-none disabled:opacity-0 sm:left-6 md:left-10"
           aria-label="Previous wedding"
         >
-          <ChevronLeft size={24} strokeWidth={2} />
+          <ChevronLeft size={24} />
         </button>
 
         <div className="flex h-full items-center justify-center overflow-y-auto px-14 py-4 sm:px-20 md:px-24">
@@ -1023,7 +1019,7 @@ function WeddingPostLightbox({
           className="absolute right-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white bg-black/50 text-white backdrop-blur-[2px] transition-all hover:bg-black/65 disabled:pointer-events-none disabled:opacity-0 sm:right-6 md:right-10"
           aria-label="Next wedding"
         >
-          <ChevronRight size={24} strokeWidth={2} />
+          <ChevronRight size={24} />
         </button>
       </div>
     </div>
@@ -1121,7 +1117,7 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
                 type="button"
                 onClick={goPrev}
                 disabled={!canGoPrev}
-                className="rounded-full border border-black/[0.08] bg-white p-2 text-gray-600 transition-colors hover:border-gray-300 hover:bg-white disabled:pointer-events-none disabled:opacity-25"
+                className="rounded-full border border-black/[0.08] bg-white p-2 text-gray-600 transition-colors hover:border-black/[0.25] hover:bg-white disabled:pointer-events-none disabled:opacity-25"
                 aria-label="Previous weddings"
               >
                 <ChevronLeft size={18} />
@@ -1131,7 +1127,7 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
                 type="button"
                 onClick={goNext}
                 disabled={!canGoNext}
-                className="rounded-full border border-black/[0.08] bg-white p-2 text-gray-600 transition-colors hover:border-gray-300 hover:bg-white disabled:pointer-events-none disabled:opacity-25"
+                className="rounded-full border border-black/[0.08] bg-white p-2 text-gray-600 transition-colors hover:border-black/[0.25] hover:bg-white disabled:pointer-events-none disabled:opacity-25"
                 aria-label="Next weddings"
               >
                 <ChevronRight size={18} />
@@ -1142,7 +1138,7 @@ function RealWeddingsSection({ posts }: { posts: RealWeddingPost[] }) {
             type="button"
             onClick={() => setLightboxIndex(0)}
             aria-label={viewAllAriaLabel}
-            className="inline-flex items-center justify-center rounded-lg border border-rose-200/70 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-rose-300 hover:bg-rose-50/40"
+            className="inline-flex items-center justify-center rounded-lg border border-black/[0.10] bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-black/[0.25]"
           >
             {posts.length === 1 ? "View wedding" : `View weddings${galleryCountLabel}`}
           </button>
@@ -1190,7 +1186,7 @@ function VenueMap({ vendor }: { vendor: VenueVendor }) {
           href={googleMapsUrl(vendor)}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 text-sm font-medium text-rose-500 hover:text-rose-600 transition-colors"
+          className="shrink-0 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
         >
           Open in Google Maps →
         </a>
@@ -1216,13 +1212,13 @@ function FrequentlyWorksWith({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {partners.map((p) => {
           const label = categoryLabel(p.category, null);
-          const icon = categoryIcon(p.category, null);
+          const Glyph = categoryGlyph(p.category, null);
           const tile = (
             <>
-              <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm">
-                <Image src={icon} alt="" width={26} height={26} className="object-contain" />
+              <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-white text-gray-600 shadow-sm">
+                <Glyph size={24} />
               </div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
+              <p className="text-[11px] font-medium text-black/[0.55]">{label}</p>
               <p className="mt-1 text-sm font-medium leading-snug text-gray-900">{p.name}</p>
               {p.times_mentioned > 1 && (
                 <p className="mt-1 text-[11px] text-gray-400">Tagged {p.times_mentioned}×</p>
@@ -1235,7 +1231,7 @@ function FrequentlyWorksWith({
                 key={p.id}
                 type="button"
                 onClick={() => onNavigateToVendor(p.id)}
-                className="flex flex-col items-center rounded-2xl border border-black/[0.06] bg-[#fdf8f5] p-4 text-center transition-colors hover:border-rose-200 hover:bg-rose-50/40"
+                className="flex flex-col items-center rounded-2xl border border-black/[0.06] bg-black/[0.03] p-4 text-center transition-colors hover:border-black/[0.18]"
               >
                 {tile}
               </button>
@@ -1244,7 +1240,7 @@ function FrequentlyWorksWith({
           return (
             <div
               key={p.id}
-              className="flex flex-col items-center rounded-2xl border border-black/[0.06] bg-[#fdf8f5] p-4 text-center"
+              className="flex flex-col items-center rounded-2xl border border-black/[0.06] bg-black/[0.03] p-4 text-center"
             >
               {tile}
             </div>
@@ -1307,14 +1303,14 @@ function InquireForm({
         placeholder="Your name"
         value={form.name}
         onChange={set("name")}
-        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-rose-300"
+        className="w-full rounded-xl border border-black/[0.10] bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-gray-900"
       />
       <input
         type="email"
         placeholder="Email address"
         value={form.email}
         onChange={set("email")}
-        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-rose-300"
+        className="w-full rounded-xl border border-black/[0.10] bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-gray-900"
       />
       {isTour && (
         <div className="grid grid-cols-2 gap-3">
@@ -1322,14 +1318,14 @@ function InquireForm({
             type="date"
             value={form.date}
             onChange={set("date")}
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 outline-none transition-colors focus:border-rose-300"
+            className="w-full rounded-xl border border-black/[0.10] bg-white px-4 py-3 text-sm text-gray-500 outline-none transition-colors focus:border-gray-900"
           />
           <input
             type="number"
             placeholder="Guests"
             value={form.guests}
             onChange={set("guests")}
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-rose-300"
+            className="w-full rounded-xl border border-black/[0.10] bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-gray-900"
           />
         </div>
       )}
@@ -1338,7 +1334,7 @@ function InquireForm({
         value={form.message}
         onChange={set("message")}
         rows={3}
-        className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-rose-300"
+        className="w-full resize-none rounded-xl border border-black/[0.10] bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-gray-900"
       />
       <button className="w-full rounded-xl bg-rose-400 py-3.5 text-sm font-medium text-white transition-colors hover:bg-rose-500">
         {isTour ? "Request tour" : "Send"}
@@ -1377,7 +1373,7 @@ function VenuePhotoThumb({
   }
   return (
     <div
-      className={`flex ${dim} shrink-0 items-center justify-center rounded-full bg-rose-300/40 ${className}`}
+      className={`flex ${dim} shrink-0 items-center justify-center rounded-full bg-black/[0.06] ${className}`}
     >
       <span className={size === "sm" ? "text-xs text-white/80" : "text-sm text-white/80"}>✦</span>
     </div>
@@ -1397,7 +1393,7 @@ function VenueInquiryPanel({
   const tourWhen = earliestTourLabel();
 
   return (
-    <div id={id} className="scroll-mt-24 rounded-2xl border border-black/[0.08] bg-[#fdf8f5] p-4">
+    <div id={id} className="scroll-mt-24 rounded-2xl border border-black/[0.08] bg-black/[0.03] p-4">
       {mode ? (
         <InquireForm mode={mode} onBack={() => setMode(null)} />
       ) : (
@@ -1417,7 +1413,7 @@ function VenueInquiryPanel({
           <button
             type="button"
             onClick={() => setMode("question")}
-            className="flex w-full items-center justify-center rounded-xl border border-rose-200 bg-white px-3 py-3.5 text-sm font-medium text-gray-900 transition-colors hover:border-rose-300 hover:bg-rose-50"
+            className="flex w-full items-center justify-center rounded-xl border border-black/[0.12] bg-white px-3 py-3.5 text-sm font-medium text-gray-900 transition-colors hover:border-black/[0.25]"
           >
             Ask a question
           </button>
@@ -1546,7 +1542,7 @@ function VenueDetailModal({
                 className="rounded-full p-2.5 text-gray-600 hover:bg-gray-100 transition-colors"
                 aria-label="Save venue"
               >
-                <Heart size={18} className={saved ? "fill-rose-500 text-rose-500" : ""} />
+                <Heart size={18} weight={saved ? "fill" : "regular"} className={saved ? "text-rose-500" : ""} />
               </button>
               <button
                 type="button"
@@ -1580,7 +1576,7 @@ function VenueDetailModal({
                 <div className="flex items-stretch gap-4">
                   <CategoryIcon category={v.category} primaryType={v.primary_type} large />
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-rose-500">
+                    <p className="mb-1 text-xs font-medium text-gray-600">
                       {typeLabel}
                     </p>
                     <h2 className={`text-2xl leading-tight text-gray-900 sm:text-3xl ${displayHeadingClassName}`}>
@@ -1589,7 +1585,7 @@ function VenueDetailModal({
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                       {rating > 0 && (
                         <div className="flex items-center gap-1">
-                          <Star size={14} className="fill-rose-400 text-rose-400" />
+                          <Star size={14} weight="fill" className="text-amber-400" />
                           <span className="text-sm font-medium text-gray-800">{rating.toFixed(1)}</span>
                           {v.review_count ? (
                             <span className="text-sm text-gray-400">
@@ -1633,7 +1629,7 @@ function VenueDetailModal({
                         <button
                           type="button"
                           onClick={() => setReadMore(!readMore)}
-                          className="mt-2 text-sm font-medium text-rose-500 transition-colors hover:text-rose-600"
+                          className="mt-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
                         >
                           {readMore ? "Show less" : "Read more"}
                         </button>
@@ -1650,9 +1646,9 @@ function VenueDetailModal({
                         {facts.map(({ Icon, label }) => (
                           <span
                             key={label}
-                            className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-[#fdf8f5] px-3.5 py-2 text-sm text-gray-700"
+                            className="inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-black/[0.03] px-3.5 py-2 text-sm text-gray-700"
                           >
-                            <Icon size={14} className="shrink-0 text-rose-400" />
+                            <Icon size={14} className="shrink-0 text-gray-500" />
                             {label}
                           </span>
                         ))}
@@ -1781,7 +1777,7 @@ function MapBrowsePagination({
         <button
           type="button"
           onClick={() => onPageChange(currentPage - 1)}
-          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
+          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-black/[0.25] hover:bg-black/[0.04]"
         >
           ← Prev
         </button>
@@ -1799,8 +1795,8 @@ function MapBrowsePagination({
             onClick={() => onPageChange(p)}
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
               p === currentPage
-                ? "bg-rose-400 text-white"
-                : "border border-black/[0.08] text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                ? "bg-gray-900 text-white"
+                : "border border-black/[0.08] text-gray-600 hover:border-black/[0.25] hover:bg-black/[0.04]"
             }`}
           >
             {p}
@@ -1812,7 +1808,7 @@ function MapBrowsePagination({
         <button
           type="button"
           onClick={() => onPageChange(currentPage + 1)}
-          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
+          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-black/[0.25] hover:bg-black/[0.04]"
         >
           Next →
         </button>
@@ -1856,7 +1852,7 @@ function Pagination({
       {currentPage > 1 && (
         <a
           href={`/venues?page=${currentPage - 1}`}
-          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
+          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-black/[0.25] hover:bg-black/[0.04]"
         >
           ← Prev
         </a>
@@ -1873,8 +1869,8 @@ function Pagination({
             href={`/venues?page=${p}`}
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
               p === currentPage
-                ? "bg-rose-400 text-white"
-                : "border border-black/[0.08] text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                ? "bg-gray-900 text-white"
+                : "border border-black/[0.08] text-gray-600 hover:border-black/[0.25] hover:bg-black/[0.04]"
             }`}
           >
             {p}
@@ -1885,7 +1881,7 @@ function Pagination({
       {currentPage < totalPages && (
         <a
           href={`/venues?page=${currentPage + 1}`}
-          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
+          className="rounded-full border border-black/[0.08] px-4 py-2 text-sm text-gray-600 transition-colors hover:border-black/[0.25] hover:bg-black/[0.04]"
         >
           Next →
         </a>
@@ -2081,6 +2077,7 @@ export default function VenuesClient({
   }, [filteredVenues, query, viewMode]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clamp when the filtered list shrinks
     if (mapListPage > mapListTotalPages) setMapListPage(mapListTotalPages);
   }, [mapListPage, mapListTotalPages]);
 
@@ -2259,38 +2256,34 @@ export default function VenuesClient({
     <div className="min-h-screen bg-white font-sans text-gray-900">
       <header className="sticky top-0 z-50 border-b border-black/[0.08] bg-white/95 backdrop-blur">
         <div className={`flex ${SITE_HEADER_HEIGHT_CLASS} items-stretch justify-between ${siteContainerClass}`}>
-          <SiteBrand href="/" className="self-center" />
+          <div className="flex flex-1 items-center justify-start">
+            <SiteBrand href="/" />
+          </div>
 
           <SiteNavLinks activeLabel="Venues" showIcons={navIconsVisible} />
 
-          <a
-            href="#compare"
-            className="self-center rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50"
-          >
-            Compare {compareIds.size > 0 ? compareIds.size : ""}
-          </a>
+          <div className="flex flex-1 items-center justify-end">
+            <a
+              href="#compare"
+              className="rounded-full border border-black/[0.10] px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-black/[0.30] hover:bg-black/[0.04]"
+            >
+              Compare {compareIds.size > 0 ? compareIds.size : ""}
+            </a>
+          </div>
         </div>
       </header>
 
       <main>
         {/* ── Hero / search bar ── */}
-        <section className="relative overflow-hidden bg-[#fdf8f5]">
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute right-0 top-0 h-[540px] w-[540px] translate-x-1/3 -translate-y-1/3 rounded-full bg-rose-100/50 blur-[110px]" />
-            <div className="absolute bottom-0 left-0 h-[360px] w-[360px] -translate-x-1/3 translate-y-1/3 rounded-full bg-amber-100/40 blur-[100px]" />
-          </div>
-
+        <section className="relative overflow-hidden bg-white">
           <div className={`relative ${siteContainerClass} pb-12 pt-16 lg:pb-16 lg:pt-20`}>
             <div className="max-w-3xl">
-              <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-rose-500">
-                Chicago venues
-              </p>
               <h1 className={`text-5xl leading-[1.05] tracking-tight text-gray-900 sm:text-6xl ${displayHeadingClassName}`}>
                 Find the room that feels like your wedding.
               </h1>
             </div>
 
-            <div className="mt-10 rounded-[2rem] border border-black/[0.06] bg-white p-3 shadow-[0_16px_50px_rgba(15,23,42,0.10)]">
+            <div className="mt-10 rounded-[2rem] border border-black/[0.08] bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
               <div className="grid gap-3 lg:grid-cols-[1.3fr_0.8fr_0.8fr_auto]">
                 <label className="flex items-center gap-3 rounded-3xl bg-gray-50 px-5 py-4">
                   <Search size={18} className="text-gray-400" />
@@ -2304,7 +2297,7 @@ export default function VenuesClient({
                 </label>
 
                 <label className="rounded-3xl bg-gray-50 px-5 py-3">
-                  <span className="block text-[11px] font-medium uppercase tracking-widest text-gray-400">
+                  <span className="block text-[11px] font-medium text-black/[0.55]">
                     Guests
                   </span>
                   <input
@@ -2321,7 +2314,7 @@ export default function VenuesClient({
                 </label>
 
                 <label className="rounded-3xl bg-gray-50 px-5 py-3">
-                  <span className="block text-[11px] font-medium uppercase tracking-widest text-gray-400">
+                  <span className="block text-[11px] font-medium text-black/[0.55]">
                     Sort
                   </span>
                   <select
@@ -2353,15 +2346,15 @@ export default function VenuesClient({
               <ViewModeToggle viewMode="list" />
             </div>
 
-            <div className="flex gap-3 overflow-x-auto pb-1">
+            <div className="scrollbar-none flex gap-3 overflow-x-auto pb-1">
               {styleOptions.map((item) => (
                 <button
                   key={item}
                   onClick={() => setStyle(item)}
                   className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${
                     style === item
-                      ? "border-rose-200 bg-rose-50 text-rose-600"
-                      : "border-black/[0.08] bg-white text-gray-600 hover:border-gray-300"
+                      ? "border-gray-900 bg-gray-900 text-white"
+                      : "border-black/[0.08] bg-white text-gray-600 hover:border-black/[0.25]"
                   }`}
                 >
                   {item}
@@ -2377,7 +2370,7 @@ export default function VenuesClient({
                   className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${
                     budget === item
                       ? "border-gray-900 bg-gray-900 text-white"
-                      : "border-black/[0.08] bg-white text-gray-600 hover:border-gray-300"
+                      : "border-black/[0.08] bg-white text-gray-600 hover:border-black/[0.25]"
                   }`}
                 >
                   {item}
@@ -2433,8 +2426,8 @@ export default function VenuesClient({
                         disabled={disabled}
                         className={`absolute right-3 top-3 rounded-full px-3 py-2 text-xs font-medium shadow-sm backdrop-blur transition-colors ${
                           isComparing
-                            ? "bg-rose-500 text-white"
-                            : "bg-white/90 text-gray-700 hover:bg-white disabled:cursor-not-allowed disabled:text-gray-300"
+                            ? "bg-gray-900 text-white"
+                            : "bg-white/90 text-gray-700 hover:bg-white disabled:cursor-not-allowed disabled:text-black/[0.25]"
                         }`}
                       >
                         {isComparing ? "Comparing" : "Compare"}
@@ -2469,7 +2462,7 @@ export default function VenuesClient({
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-sm text-rose-500 hover:text-rose-600 transition-colors"
+                            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
                           >
                             Visit website →
                           </a>
@@ -2502,36 +2495,35 @@ export default function VenuesClient({
         </section>
 
         {/* ── Compare section ── */}
-        <section id="compare" className={`border-t border-black/[0.06] bg-gray-950 py-12 text-white ${SITE_PADDING_X_CLASS}`}>
+        <section id="compare" className={`border-t border-black/[0.06] bg-black/[0.02] py-12 text-gray-900 ${SITE_PADDING_X_CLASS}`}>
           <div className={`mx-auto w-full ${SITE_MAX_WIDTH_CLASS}`}>
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
-                <p className="text-sm uppercase tracking-[0.22em] text-rose-300">Compare</p>
-                <h2 className={`mt-2 text-3xl ${displayHeadingClassName}`}>
+                <h2 className={`text-3xl ${displayHeadingClassName}`}>
                   Your venue shortlist
                 </h2>
               </div>
-              <p className="max-w-lg text-sm leading-6 text-gray-400">
+              <p className="max-w-lg text-sm leading-6 text-gray-600">
                 Pick up to three venues while browsing. Compare style, rating, budget, and location.
               </p>
             </div>
 
             {comparedVenues.length === 0 ? (
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-6 text-sm text-gray-400">
+              <div className="rounded-[1.5rem] border border-black/[0.08] bg-white p-6 text-sm text-gray-600">
                 Tap Compare on any venue card to start a shortlist.
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-3">
                 {comparedVenues.map((venue) => (
-                  <div key={venue.id} className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
+                  <div key={venue.id} className="rounded-[1.5rem] border border-black/[0.08] bg-white p-5">
                     <div className="mb-4 flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="font-medium text-white">{venue.name}</h3>
-                        <p className="mt-1 text-sm text-gray-400">{venue.location}</p>
+                        <h3 className="font-medium text-gray-900">{venue.name}</h3>
+                        <p className="mt-1 text-sm text-gray-600">{venue.location}</p>
                       </div>
                       <button
                         onClick={() => toggleCompare(String(venue.id))}
-                        className="rounded-full bg-white/10 p-1 text-gray-300 transition-colors hover:bg-white/15 hover:text-white"
+                        className="rounded-full bg-black/[0.05] p-1 text-gray-600 transition-colors hover:bg-black/[0.09] hover:text-gray-900"
                       >
                         <X size={15} />
                       </button>
@@ -2539,24 +2531,24 @@ export default function VenuesClient({
                     <dl className="space-y-3 text-sm">
                       {[
                         ["Style", venue.styleLabel],
-                        ["Rating", venue.displayRating > 0 ? `${venue.displayRating.toFixed(1)}${venue.displayReviews > 0 ? ` (${formatCount(venue.displayReviews)})` : ""}` : "—"],
-                        ["Budget", budgetLabel(venue.price_level) || "—"],
+                        ["Rating", venue.displayRating > 0 ? `${venue.displayRating.toFixed(1)}${venue.displayReviews > 0 ? ` (${formatCount(venue.displayReviews)})` : ""}` : "-"],
+                        ["Budget", budgetLabel(venue.price_level) || "-"],
                       ].map(([label, value]) => (
-                        <div key={label} className="flex justify-between gap-4 border-t border-white/10 pt-3">
-                          <dt className="text-gray-500">{label}</dt>
-                          <dd className="text-right text-gray-200">{value}</dd>
+                        <div key={label} className="flex justify-between gap-4 border-t border-black/[0.08] pt-3">
+                          <dt className="text-gray-600">{label}</dt>
+                          <dd className="text-right text-gray-900">{value}</dd>
                         </div>
                       ))}
                     </dl>
                     {venue.website && (
-                      <div className="mt-4 border-t border-white/10 pt-4">
+                      <div className="mt-4 border-t border-black/[0.08] pt-4">
                         <a
                           href={venue.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-rose-300 hover:text-rose-200 transition-colors"
+                          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
                         >
-                          <Check size={14} />
+                          <ExternalLink size={14} />
                           Visit website
                         </a>
                       </div>

@@ -9,7 +9,7 @@ export const ROLE_LABELS: Record<string, string> = {
   makeup: "Makeup",
   dj: "DJ",
   band: "Band",
-  musician: "Music",
+  musician: "Musician",
   attire: "Attire",
   stationery: "Stationery",
   cake: "Cake",

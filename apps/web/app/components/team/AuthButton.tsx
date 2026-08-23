@@ -9,7 +9,7 @@ export function AuthButton() {
     return (
       <div className="flex items-center gap-2">
         <span
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-sm font-medium text-rose-600"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.06] text-sm font-medium text-gray-700"
           title={user.email ?? undefined}
         >
           {(user.email ?? "?").charAt(0).toUpperCase()}
@@ -26,7 +26,7 @@ export function AuthButton() {
   return (
     <Link
       href="/login"
-      className="rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50"
+      className="rounded-full border border-black/[0.10] px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-black/[0.25] hover:bg-black/[0.04]"
     >
       Sign in
     </Link>

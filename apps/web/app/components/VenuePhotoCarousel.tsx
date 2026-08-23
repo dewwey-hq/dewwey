@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
+import { CaretLeft as ChevronLeft, CaretRight as ChevronRight, Heart, X } from "@phosphor-icons/react";
 import { usePlacePhotos } from "@/lib/hooks/use-place-photos";
 
 export default function VenuePhotoCarousel({
@@ -64,9 +64,9 @@ export default function VenuePhotoCarousel({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={current} alt={alt} className="h-full w-full object-cover" />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-rose-100 to-pink-200">
+        <div className="flex h-full w-full items-center justify-center bg-black/[0.04]">
           {loading ? (
-            <span className="text-sm text-rose-300/80">Loading…</span>
+            <span className="text-sm text-black/[0.35]">Loading…</span>
           ) : (
             <span className="text-4xl text-rose-300">✦</span>
           )}
@@ -117,7 +117,8 @@ export default function VenuePhotoCarousel({
             >
               <Heart
                 size={largeSaveAction ? 20 : 16}
-                className={saved ? "fill-rose-500 text-rose-500" : "text-gray-700"}
+                weight={saved ? "fill" : "regular"}
+                className={saved ? "text-rose-500" : "text-gray-700"}
               />
             </button>
           ) : null}

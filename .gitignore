@@ -17,3 +17,6 @@ secrets/
 .claude/settings.local.json
 .claude/worktrees/
 .cursor/
+
+# playwright-mcp session artifacts
+.playwright-mcp/

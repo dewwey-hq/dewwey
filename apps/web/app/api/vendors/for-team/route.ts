@@ -1,11 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getPool } from "@/lib/server/db";
-
-function avatarUrl(avatarPath: string | null): string | null {
-  const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
-  if (!avatarPath || !base) return null;
-  return `${base}/${avatarPath}`;
-}
+import { avatarUrl } from "@/lib/server/graph";
 
 /**
  * The payoff query: vendors (optionally of given roles) ranked by real
@@ -47,7 +42,9 @@ export async function GET(request: NextRequest) {
      JOIN accounts cand
        ON cand.id = CASE WHEN e.account_a = t.id THEN e.account_b ELSE e.account_a END
      JOIN v_account_role var ON var.account_id = cand.id
-     LEFT JOIN vendors v ON v.account_id = cand.id
+     LEFT JOIN LATERAL (
+       SELECT name FROM vendors WHERE account_id = cand.id ORDER BY id LIMIT 1
+     ) v ON true
      WHERE cand.id != ALL($1::bigint[])
        AND (cardinality($2::text[]) = 0 OR var.role::text = ANY($2::text[]))
      GROUP BY cand.id, cand.username, v.name, cand.full_name, var.role, cand.avatar_path

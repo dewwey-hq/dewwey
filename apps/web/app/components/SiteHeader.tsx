@@ -9,9 +9,11 @@ export function SiteHeader({ activeLabel }: { activeLabel?: string }) {
     <header className="sticky top-0 z-50 bg-white border-b border-black/[0.08]">
       <div className={siteContainerClass}>
         <div className={`flex ${SITE_HEADER_HEIGHT_CLASS} items-stretch justify-between`}>
-          <SiteBrand href="/" className="self-center" />
+          <div className="flex flex-1 items-center justify-start">
+            <SiteBrand href="/" />
+          </div>
           <SiteNavLinks activeLabel={activeLabel} />
-          <div className="hidden items-center self-center md:flex">
+          <div className="hidden flex-1 items-center justify-end md:flex">
             <AuthButton />
           </div>
         </div>

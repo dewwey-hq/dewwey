@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { InstagramLogo } from "@phosphor-icons/react/dist/ssr";
 import { BRAND_NAME } from "@/lib/brand";
 import { getVendorProfile } from "@/lib/server/graph";
 import { roleLabel } from "@/lib/roles";
@@ -23,8 +24,8 @@ export async function generateMetadata({
   if (!data) return { title: `Vendor not found | ${BRAND_NAME}` };
   const p = data.profile;
   return {
-    title: `${p.name} — ${roleLabel(p.role)} | ${BRAND_NAME}`,
-    description: `${p.name} (@${p.username}) on Dewwey — see the real weddings they've worked and who they work with.`,
+    title: `${p.name} - ${roleLabel(p.role)} | ${BRAND_NAME}`,
+    description: `${p.name} (@${p.username}) on Dewwey. See the real weddings they've worked and who they work with.`,
   };
 }
 
@@ -89,7 +90,7 @@ export default async function VendorPage({
                 {" "}
                 (
                 <a
-                  className="underline hover:text-rose-600"
+                  className="underline hover:text-gray-900"
                   href={enrichment.website}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -112,7 +113,7 @@ export default async function VendorPage({
       )}
       {partners.map((partner) => (
         <li key={partner.username}>
-          <span className="flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-white px-3 py-2.5 transition-colors hover:border-rose-200">
+          <span className="flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-white px-3 py-2.5 transition-colors hover:border-black/[0.18]">
             <Link
               href={`/vendors/${encodeURIComponent(partner.username)}`}
               className="flex min-w-0 flex-1 items-center gap-3"
@@ -145,7 +146,7 @@ export default async function VendorPage({
   const feed = (
     <div className="space-y-6">
       {stacks.length === 0 && (
-        <p className="rounded-2xl border border-dashed border-gray-200 p-6 text-sm text-gray-500">
+        <p className="rounded-2xl border border-dashed border-black/[0.12] p-6 text-sm text-gray-500">
           No credited weddings in the graph yet.
         </p>
       )}
@@ -156,7 +157,7 @@ export default async function VendorPage({
   );
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div className="min-h-screen bg-white">
       <SiteHeader activeLabel="Vendors" />
       <main className={`${siteContainerClass} py-10`}>
         <div className="mx-auto max-w-5xl">
@@ -167,7 +168,7 @@ export default async function VendorPage({
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className={`${displayHeadingClassName} text-3xl text-gray-900`}>{p.name}</h1>
                 {p.role && (
-                  <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-medium text-rose-600 ring-1 ring-inset ring-rose-200">
+                  <span className="rounded-full bg-black/[0.05] px-3 py-1 text-sm font-medium text-gray-700">
                     {roleLabel(p.role)}
                   </span>
                 )}
@@ -177,9 +178,10 @@ export default async function VendorPage({
                   href={`https://www.instagram.com/${p.username}/`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-rose-600"
+                  className="inline-flex items-center gap-1 hover:text-gray-900"
                 >
-                  @{p.username} ↗
+                  <InstagramLogo size={14} />
+                  @{p.username}
                 </a>
                 {typeof p.followers === "number" && (
                   <span>{p.followers.toLocaleString()} followers</span>
@@ -189,7 +191,7 @@ export default async function VendorPage({
                     href={p.website.startsWith("http") ? p.website : `https://${p.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-rose-600"
+                    className="hover:text-gray-900"
                   >
                     Website ↗
                   </a>

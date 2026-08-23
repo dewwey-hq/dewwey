@@ -29,14 +29,14 @@ export interface TeamState {
 /** Default slot checklist — every wedding has these to fill. */
 export const DEFAULT_SLOTS = [
   "Venue",
+  "Planning",
   "Photography",
   "Video",
-  "Planning",
-  "Florals",
   "Music",
+  "Florals",
+  "Cake & Catering",
   "Attire",
   "Hair & Makeup",
-  "Cake & Catering",
 ] as const;
 
 /** Which vendor_role enum values satisfy each slot (for graph queries). */

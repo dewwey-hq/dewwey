@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { Star } from "@phosphor-icons/react/dist/ssr";
 import { formatCount } from "@/lib/format-address";
 
 export default function VenueRating({
@@ -14,7 +14,7 @@ export default function VenueRating({
 
   return (
     <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-1 gap-y-0.5 text-sm font-medium text-gray-800">
-      <Star size={14} className="fill-rose-400 text-rose-400" />
+      <Star size={14} weight="fill" className="text-amber-400" />
       <span>{rating.toFixed(1)}</span>
       {reviews > 0 ? (
         <span className="text-xs font-normal text-gray-400">

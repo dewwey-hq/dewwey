@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Heart, Plus, X } from "lucide-react";
+import { Heart, Plus, X } from "@phosphor-icons/react";
 import { useTeam } from "./TeamProvider";
 import { Avatar } from "../Avatar";
 import type { TeamEntry } from "@/lib/team";
@@ -52,7 +52,7 @@ function EntryRow({ entry }: { entry: TeamEntry }) {
         className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset transition-colors ${
           booked
             ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-            : "bg-white text-gray-400 ring-gray-200 hover:text-emerald-600 hover:ring-emerald-200"
+            : "bg-white text-gray-400 ring-black/[0.10] hover:text-emerald-600 hover:ring-emerald-200"
         }`}
         title={booked ? "Marked booked" : "Mark booked"}
       >
@@ -60,7 +60,7 @@ function EntryRow({ entry }: { entry: TeamEntry }) {
       </button>
       <button
         onClick={() => removeEntry(entry.id)}
-        className="shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition-opacity hover:text-rose-500 group-hover:opacity-100"
+        className="shrink-0 rounded p-0.5 text-black/[0.30] opacity-0 transition-opacity hover:text-rose-500 group-hover:opacity-100"
         aria-label={`Remove ${entry.name}`}
       >
         <X size={14} />
@@ -95,13 +95,13 @@ function AddCustomForm({ slot, onDone }: { slot: string; onDone: () => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Name (e.g. my friend Sam)"
-        className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm outline-none focus:border-rose-300"
+        className="w-full rounded-lg border border-black/[0.10] px-2.5 py-1.5 text-sm outline-none focus:border-gray-900"
       />
       <input
         value={instagram}
         onChange={(e) => setInstagram(e.target.value)}
         placeholder="Instagram or website (optional)"
-        className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm outline-none focus:border-rose-300"
+        className="w-full rounded-lg border border-black/[0.10] px-2.5 py-1.5 text-sm outline-none focus:border-gray-900"
       />
       <div className="flex gap-2">
         <button
@@ -135,10 +135,10 @@ export function TeamTray() {
       {/* Floating toggle */}
       <button
         onClick={() => setOpen(!isOpen)}
-        className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-full bg-rose-500 px-4 py-3 text-sm font-medium text-white shadow-[0_10px_30px_rgba(244,63,94,0.4)] transition-transform hover:scale-105"
+        className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-full bg-rose-500 px-4 py-3 text-sm font-medium text-white shadow-[0_10px_30px_rgba(0,0,0,0.20)] transition-transform hover:scale-105"
         aria-label="Your team"
       >
-        <Heart size={16} fill="currentColor" />
+        <Heart size={16} weight="fill" />
         Your team
         {team.entries.length > 0 && (
           <span className="rounded-full bg-white/25 px-1.5 text-xs">{team.entries.length}</span>
@@ -188,7 +188,7 @@ export function TeamTray() {
                     </ul>
                   )}
                   {entries.length === 0 && addingTo !== slot && (
-                    <div className="mt-1 text-xs text-gray-300">Nothing yet</div>
+                    <div className="mt-1 text-xs text-black/[0.30]">Nothing yet</div>
                   )}
                   {addingTo === slot && (
                     <AddCustomForm slot={slot} onDone={() => setAddingTo(null)} />
@@ -209,11 +209,11 @@ export function TeamTray() {
                 value={newSlot}
                 onChange={(e) => setNewSlot(e.target.value)}
                 placeholder="Add a slot (e.g. Photobooth)"
-                className="min-w-0 flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm outline-none focus:border-rose-300"
+                className="min-w-0 flex-1 rounded-lg border border-black/[0.10] px-2.5 py-1.5 text-sm outline-none focus:border-gray-900"
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:border-rose-300 hover:text-rose-600"
+                className="shrink-0 rounded-lg border border-black/[0.10] px-2.5 py-1.5 text-xs text-gray-600 hover:border-rose-300 hover:text-rose-600"
               >
                 Add slot
               </button>

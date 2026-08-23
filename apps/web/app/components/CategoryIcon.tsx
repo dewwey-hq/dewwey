@@ -1,47 +1,62 @@
-import Image from "next/image";
+import {
+  Buildings,
+  ForkKnife,
+  Flower,
+  Camera,
+  MusicNotes,
+  HairDryer,
+} from "@phosphor-icons/react/dist/ssr";
+import type { Icon } from "@phosphor-icons/react";
 
-const CATEGORY_ICONS: Record<string, string> = {
-  venue: "/icons/wedding-location-svgrepo-com.svg",
-  wedding_venue: "/icons/wedding-location-svgrepo-com.svg",
-  event_venue: "/icons/wedding-location-svgrepo-com.svg",
-  banquet_hall: "/icons/wedding-location-svgrepo-com.svg",
-  historical_landmark: "/icons/wedding-location-svgrepo-com.svg",
-  hotel: "/icons/wedding-location-svgrepo-com.svg",
-  caterer: "/icons/tray-plate-svgrepo-com.svg",
-  florist: "/icons/bouquet-svgrepo-com.svg",
-  photographer: "/icons/photo-camera-photograph-svgrepo-com.svg",
-  dj_music: "/icons/music-svgrepo-com.svg",
-  hair_makeup: "/icons/make-up-svgrepo-com.svg",
+const CATEGORY_GLYPHS: Record<string, Icon> = {
+  // vendor_role values
+  venue: Buildings,
+  hotel: Buildings,
+  florist: Flower,
+  photographer: Camera,
+  dj: MusicNotes,
+  band: MusicNotes,
+  musician: MusicNotes,
+  hair: HairDryer,
+  makeup: HairDryer,
+  catering: ForkKnife,
+  cake: ForkKnife,
+  // Places primary types
+  wedding_venue: Buildings,
+  event_venue: Buildings,
+  banquet_hall: Buildings,
+  historical_landmark: Buildings,
+  caterer: ForkKnife,
 };
 
-export function resolveCategoryIcon(
+/** Phosphor glyph for a vendor category; falls back to the venue glyph. */
+export function categoryGlyph(
   category: string | null,
   primaryType?: string | null,
-): string {
-  if (category && CATEGORY_ICONS[category]) return CATEGORY_ICONS[category];
-  if (primaryType && CATEGORY_ICONS[primaryType]) return CATEGORY_ICONS[primaryType];
-  return "/icons/wedding-location-svgrepo-com.svg";
+): Icon {
+  if (category && CATEGORY_GLYPHS[category]) return CATEGORY_GLYPHS[category];
+  if (primaryType && CATEGORY_GLYPHS[primaryType]) return CATEGORY_GLYPHS[primaryType];
+  return Buildings;
 }
 
 export default function CategoryIcon({
   category,
   primaryType,
-  size = 36,
   large = false,
   compact = false,
 }: {
   category?: string | null;
   primaryType?: string | null;
-  size?: number;
   large?: boolean;
   compact?: boolean;
 }) {
-  const src = resolveCategoryIcon(category ?? null, primaryType);
-  const imgSize = large ? 48 : compact ? 18 : size;
+  const Glyph =
+    CATEGORY_GLYPHS[category ?? ""] ?? CATEGORY_GLYPHS[primaryType ?? ""] ?? Buildings;
+  const glyphSize = large ? 28 : compact ? 15 : 24;
 
   return (
     <div
-      className={`flex shrink-0 items-center justify-center border border-black/[0.08] bg-[#fdf8f5] ${
+      className={`flex shrink-0 items-center justify-center border border-black/[0.08] bg-black/[0.03] text-gray-600 ${
         large
           ? "w-[4.5rem] self-stretch rounded-2xl"
           : compact
@@ -49,7 +64,7 @@ export default function CategoryIcon({
             : "h-14 w-14 rounded-2xl"
       }`}
     >
-      <Image src={src} alt="" width={imgSize} height={imgSize} className="object-contain" />
+      <Glyph size={glyphSize} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-/** IG avatar from R2, falling back to an initial on a rose gradient. */
+/** IG avatar from R2, falling back to the name's initial. */
 export function Avatar({
   src,
   name,
@@ -19,14 +19,14 @@ export function Avatar({
         alt={name}
         style={style}
         loading="lazy"
-        className={`shrink-0 rounded-full object-cover bg-rose-50 ${className}`}
+        className={`shrink-0 rounded-full object-cover bg-black/[0.05] ${className}`}
       />
     );
   }
   return (
     <div
       style={style}
-      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-100 to-pink-200 font-medium text-rose-400 ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-black/[0.04] font-medium text-gray-600 ${className}`}
       aria-hidden
     >
       {(name || "?").charAt(0).toUpperCase()}

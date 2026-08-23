@@ -1,8 +1,0 @@
-- generic [ref=e3]:
-  - link "Instagram" [ref=e5] [cursor=pointer]:
-    - /url: https://www.instagram.com/p/DcP7q1SDpiS/?utm_source=ig_embed&utm_campaign=invalid&ig_rid=AGL1YkWVv2_jakZXOB1O73J
-  - link "Instagram" [ref=e9] [cursor=pointer]:
-    - /url: https://www.instagram.com/p/DcP7q1SDpiS/?utm_source=ig_embed&utm_campaign=invalid&ig_rid=AGL1YkWVv2_jakZXOB1O73J
-  - generic [ref=e12]: The link to this photo or video may be broken, or the post may have been removed.
-  - link "Visit Instagram" [ref=e13] [cursor=pointer]:
-    - /url: https://www.instagram.com/p/DcP7q1SDpiS/?utm_source=ig_embed&utm_campaign=invalid&ig_rid=AGL1YkWVv2_jakZXOB1O73J

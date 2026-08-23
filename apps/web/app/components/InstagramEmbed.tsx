@@ -7,7 +7,7 @@ export function proxiedInstagramImageUrl(cdnUrl: string | null | undefined): str
   return `/api/instagram-image?url=${encodeURIComponent(cdnUrl)}`;
 }
 
-function embedUrl(postUrl: string, captioned: boolean): string | null {
+export function embedUrl(postUrl: string, captioned: boolean): string | null {
   try {
     const url = new URL(postUrl);
     const match = url.pathname.match(/\/(p|reel|tv)\/([A-Za-z0-9_-]+)/);
@@ -383,7 +383,7 @@ function InstagramCaption({ text, postUrl }: { text: string; postUrl: string }) 
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="mt-1 text-[11px] font-medium text-rose-500 hover:text-rose-600"
+          className="mt-1 text-[11px] font-medium text-gray-600 hover:text-gray-900"
         >
           {expanded ? "Show less" : "Show more"}
         </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart } from "lucide-react";
+import { Heart } from "@phosphor-icons/react";
 import { useTeam } from "./TeamProvider";
 import { slotForRole } from "@/lib/team";
 
@@ -40,15 +40,15 @@ export function AddToTeamButton({
           avatarUrl,
         });
       }}
-      title={added ? "In your team — open tray" : "Add to your team"}
+      title={added ? "In your team" : "Add to your team"}
       aria-label={added ? `${name} is in your team` : `Add ${name} to your team`}
       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ring-1 ring-inset transition-colors ${
         added
           ? "bg-white text-rose-500 ring-rose-200"
-          : "bg-white text-gray-400 ring-gray-200 hover:text-rose-500 hover:ring-rose-300"
+          : "bg-white text-black/[0.40] ring-black/[0.10] hover:text-rose-500 hover:ring-rose-300"
       }`}
     >
-      <Heart size={13} className={added ? "fill-current" : ""} />
+      <Heart size={13} weight={added ? "fill" : "regular"} />
     </button>
   );
 }

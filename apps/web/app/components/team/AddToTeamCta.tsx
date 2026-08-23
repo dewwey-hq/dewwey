@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart } from "lucide-react";
+import { Heart } from "@phosphor-icons/react";
 import { useTeam } from "./TeamProvider";
 import { slotForRole } from "@/lib/team";
 
@@ -27,7 +27,7 @@ export function AddToTeamCta({
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-medium text-rose-600 ring-1 ring-inset ring-rose-200 transition-colors hover:bg-rose-100"
       >
-        <Heart size={15} className="fill-current" /> In your team
+        <Heart size={15} weight="fill" /> In your team
       </button>
     );
   }
