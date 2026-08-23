@@ -6,34 +6,56 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
 
 ## Layout
 
-- `apps/web` — Next.js 16 app (was Jeremy's repo, subtree'd with history).
-  Vendor search/detail live in `lib/server/vendors.ts`; client components hit
-  `/api/vendors` route handlers. The old Lambda/API Gateway is deleted.
+- `apps/web` — Next.js 16 app (was Jeremy's repo, subtree'd with history),
+  **Bun** for packages/scripts (`bun install`, `bun run dev`). Queries the
+  merged schema: browse/detail in `lib/server/vendors.ts` read the graph
+  (accounts/edges/weddings) with the Places `vendors` layer as a LEFT JOIN
+  that lights up when Jeremy's data lands. The old Lambda/API Gateway, beta
+  password gate, his data-acquisition `scripts/`, and the CI workflow are
+  deleted (2026-08-22). Layout: `app/` is routes+components only; everything
+  else is `lib/` (`lib/server/` = server-only).
 - `pipeline/` — Ben's crawler/parser (Python; TypeScript port planned).
   `schema.sql` is the graph schema. Local rehearsal DB: `docker compose up -d`
   in `pipeline/` (Postgres 16 on localhost:5442, user/pass/db all `dewwey`).
-- `docs/` — merge evaluation, pipeline plan.
+- `docs/` — ONE documentation universe (Jeremy's docs merged in 2026-08-22):
+  `docs/decisions.md` is the append-only decision log (D001–D008…),
+  `docs/README.md` the index, `docs/history/` the retired pre-merge
+  architecture. Root `ROADMAP.md` has the "Now" section — check it before
+  starting a thread.
 
 ## Infrastructure (state as of 2026-08-22)
 
 - **Supabase**: project `dewwey`, ref `ljcbslfdlfehgjrdnfco`, **Dewwey org**,
-  us-east-1, free tier. Graph schema applied; **all tables empty** — data
-  import is deliberately paused until the merged schema is designed with Ben.
-  Connection string in `.env.local` (gitignored; password also in dashboard).
-  Note: the claude.ai Supabase connector only sees the FirstMover org — use
-  the `supabase` CLI (logged in, sees Dewwey org) or direct psql instead.
+  us-east-1, free tier. **Merged schema applied and Ben's graph data loaded**
+  (2026-08-22): 1,384 weddings, 11,043 accounts, 6,370 posts, 54,271 edges,
+  3,786 frontier rows — counts verified identical to the local DB. Jeremy's
+  data is ALSO loaded (same day, on Ben's explicit authorization — "Jeremy
+  trusts me"): his 5 tables verbatim in `staging`, transformed into
+  `public.vendors` (5,029, full original rows in `raw`), bridge = 1,896
+  handle-exact matches to `accounts`, enrichment (163) + runs (572) re-keyed.
+  Still pending: re-parse of his 47k staged captions through the stack
+  parser (drop `staging` after). Connection string in `.env.local`
+  (gitignored; password also in dashboard). Note: the claude.ai Supabase
+  connector only sees the FirstMover org — use the `supabase` CLI (logged in,
+  sees Dewwey org) or direct psql instead.
 - **GitHub**: `dewwey-hq/dewwey` (private). The `dewwey` GitHub username is
   squatted by a dormant account; the org is `dewwey-hq`.
 - **Vercel**: not linked yet. Plan: this repo, root directory `apps/web`,
   previews replace any "beta" environment. Ben's account, not Jeremy's hobby team.
-- **Cloudflare R2**: decided but not provisioned (needs Ben's credentials).
-  Destination for `avatars/` (60 MB, in old pipeline folder) + venue photos.
+- **Cloudflare R2**: live (2026-08-22). Bucket `dewwey` on Ben's account
+  (`bewal416@gmail.com`), ENAM region. All 1,361 avatars uploaded under
+  `avatars/` — keys match `accounts.avatar_path` verbatim. Public dev URL
+  (`NEXT_PUBLIC_R2_PUBLIC_URL`) is r2.dev — rate-limited, swap for a custom
+  domain when the dewwey.com domain story is settled. Manage buckets with the
+  `cf` CLI (installed, OAuth'd); objects go via S3 API (`aws` CLI / SDKs)
+  with the R2 keys in `.env.local`. Venue photos not migrated yet.
 - **LLM**: OpenRouter (one key, swappable models) — replaces Anthropic-direct
   in `pipeline/normalize.py` and the Gemini/Vertex paths in
   `apps/web/scripts/venue-enrichment/` (not yet ported).
-- Old assets not yet migrated: Ben's populated local DB (1,384 weddings,
-  54k edges — still source of truth), Jeremy's beta RDS (5,029 vendors,
-  47,623 posts; schema-only DDL dumped, nothing imported).
+- Ben's local Docker DB is migrated to Supabase (2026-08-22) — keep the
+  local container as the migration-rehearsal copy, but **Supabase is now the
+  source of truth**. Jeremy's beta RDS (5,029 vendors, 47,623 posts) is NOT
+  imported; his DDL is captured in `docs/jeremy-ddl.sql`.
 
 ## Design decisions (carry over; don't relitigate without reason)
 
@@ -49,6 +71,15 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   superseded, but steal its `wedding_score` idea.
 - Env contract is `.env.example`, ~7 variables total. A new env var is a
   design smell first.
+- Merged schema (designed with Ben, 2026-08-22): `vendors` is a **slim**
+  typed core + full Places payload in `raw` jsonb — don't resurrect Jeremy's
+  50 columns. Bridge is `vendors.account_id` FK (+ `account_matched_by`),
+  not a mapping table. Jeremy's `instagram_post_appearances` is never
+  imported — superseded outright. `posts` carries `source`
+  (`venue_tagged`/`own_profile`) and `wedding_score` (his idea, our filter).
+- The DB stores R2 **keys** (e.g. `avatars/<username>.jpg`), never full
+  URLs — the app composes `NEXT_PUBLIC_R2_PUBLIC_URL` + key at render time,
+  so the bucket domain can change without touching rows.
 
 ## Working agreements
 
@@ -62,8 +93,14 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
 
 ## Open threads (priority order)
 
-1. Merged-schema design session with Ben → then data loads into Supabase.
-2. Link Vercel; then dewwey.com/beta domain story.
-3. R2 bucket + port `avatars.py` paths from local files to R2 keys.
-4. Ben ↔ Jeremy conversation about the merge (docs/merge-eval.md is the case).
-5. TS port of pipeline (926 lines); fold in OpenRouter at the same time.
+1. Link Vercel (this repo, root `apps/web`, Ben's account); then the
+   dewwey.com domain story.
+2. Ben ↔ Jeremy conversation about the merge (docs/merge-eval.md is the
+   case). Blocks: his data dump into `staging` and anything publicly visible.
+   (Beta code + his scripts/CI are already removed on Ben's instruction —
+   another reason to have the conversation soon.)
+3. TS port of pipeline (926 lines); fold in OpenRouter + `avatars.py`→R2
+   upload at the same time.
+4. After the Jeremy conversation: dump his posts/vendors/enrichment into
+   `staging`, handle-match the bridge (~1,896 rows), re-parse his 47k
+   captions through the stack parser, refresh `edges`.

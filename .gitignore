@@ -12,3 +12,8 @@ backups/
 state.json
 .vercel
 secrets/
+
+# agent tooling — local state only; .claude/skills/ is committed
+.claude/settings.local.json
+.claude/worktrees/
+.cursor/
