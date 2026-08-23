@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
 import { GoogleMapsProvider } from "./components/GoogleMapsProvider";
+import { TeamProvider } from "./components/team/TeamProvider";
+import { TeamTray } from "./components/team/TeamTray";
 import { BRAND_NAME } from "@/lib/brand";
 import "./globals.css";
 
@@ -35,7 +37,10 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://www.instagram.com" />
       </head>
       <body className={`${dmSans.className} min-h-full flex flex-col`}>
-        <GoogleMapsProvider>{children}</GoogleMapsProvider>
+        <TeamProvider>
+          <GoogleMapsProvider>{children}</GoogleMapsProvider>
+          <TeamTray />
+        </TeamProvider>
       </body>
     </html>
   );
