@@ -31,7 +31,7 @@ create table accounts (
   is_private    boolean,
   profile_scraped_at timestamptz,                      -- null = never enriched
   first_seen_at timestamptz not null default now(),
-  avatar_path   text,                                  -- local file: avatars/<username>.jpg
+  avatar_path   text,                                  -- R2 key: avatars/<username>.jpg
   raw           jsonb                                  -- full profile-scraper payload
 );
 create index on accounts (profile_scraped_at nulls first);
@@ -64,6 +64,8 @@ create table posts (
   scraped_at    timestamptz not null default now(),
   has_stack     boolean,                               -- set by the parser
   parse_method  tag_source,                            -- stack_regex | stack_llm
+  source        text not null default 'venue_tagged',  -- venue_tagged (the loop) | own_profile (enrichment only)
+  wedding_score real,                                  -- confidence this is a real wedding; ingest filter for own_profile
   raw           jsonb not null                         -- full actor item, reprocessable
 );
 create index on posts (posted_at desc);
@@ -169,12 +171,98 @@ from account_tags
 order by account_id, evidence_count desc, confidence desc;
 
 -- ============================================================
+-- IDENTITY: Google Places-seeded business layer (Jeremy's, slimmed).
+-- Typed core + full Places payload in raw. Bridged to the IG-observed
+-- world via account_id — one canonical IG account per business.
+-- ============================================================
+create table vendors (
+  id            bigint generated always as identity primary key,
+  place_id      text unique,                 -- Places canonical identity
+  name          text not null,
+  category      text,
+  website       text,
+  phone         text,
+  address       text,
+  neighborhood  text,
+  city          text default 'Chicago',
+  state         text default 'IL',
+  zip           text,
+  lat           double precision,
+  lng           double precision,
+  rating        numeric(2,1),
+  review_count  integer,
+  price_level   integer,
+  instagram_handle citext,
+  account_id    bigint references accounts(id),
+  account_matched_by text,                   -- 'handle_exact' | 'manual'
+  photo_keys    jsonb,                       -- R2 keys; Places CDN URLs expire
+  discovery_source text not null default 'google_places',
+  raw           jsonb,                       -- full Places payload, reprocessable
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index on vendors (account_id);
+create index on vendors (lower(instagram_handle::text)) where instagram_handle is not null;
+
+-- ============================================================
+-- ENRICHMENT: venue-website facts w/ provenance (Jeremy's design,
+-- adopted wholesale; ids re-keyed to bigint, varchars relaxed to text).
+-- ============================================================
+create table venue_extraction_runs (
+  id            bigint generated always as identity primary key,
+  vendor_id     bigint not null references vendors(id) on delete cascade,
+  method        text not null,
+  schema_version integer not null default 1,
+  status        text not null default 'success',
+  payload       jsonb not null,
+  meta          jsonb,
+  crawled_at    timestamptz,
+  extracted_at  timestamptz not null default now(),
+  created_at    timestamptz not null default now()
+);
+create index on venue_extraction_runs (vendor_id);
+create index on venue_extraction_runs (extracted_at desc);
+
+create table venue_enrichment (
+  vendor_id     bigint primary key references vendors(id) on delete cascade,
+  website       text,
+  status        text not null default 'partial',
+  needs_review  boolean not null default false,
+  schema_version integer not null default 1,
+  capacity_max  integer,
+  capacity_min  integer,
+  capacity_as_stated text,
+  catering      text,
+  event_insurance text,
+  pricing_model text,
+  price_display text,
+  facts         jsonb not null default '{}',
+  latest_rules_run_id bigint references venue_extraction_runs(id) on delete set null,
+  latest_llm_run_id   bigint references venue_extraction_runs(id) on delete set null,
+  crawled_at    timestamptz,
+  extracted_at  timestamptz,
+  enriched_at   timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index on venue_enrichment (capacity_max);
+create index on venue_enrichment (needs_review) where needs_review;
+
+-- Staging: Jeremy's raw tables land here verbatim for re-parse; never public.
+-- (instagram_post_appearances is NOT imported — superseded by the stack parser.)
+create schema if not exists staging;
+
+-- ============================================================
 -- In-database documentation (shows in TablePlus table info)
 -- Three layers: RAW (scraped), DERIVED (computed, rebuildable), OPS (crawler)
 -- ============================================================
 comment on table posts is 'RAW: every Instagram post scraped — url, date, poster, caption, full payload in raw';
 comment on table post_mentions is 'RAW: every @mention per post; in_stack=true means it was a vendor credit, role_raw is the caption''s own label';
-comment on table accounts is 'RAW: every IG handle ever seen. Enriched rows have bio/website/followers; avatar_path points to avatars/<username>.jpg';
+comment on table accounts is 'RAW: every IG handle ever seen. Enriched rows have bio/website/followers; avatar_path is the R2 key avatars/<username>.jpg';
+comment on table vendors is 'IDENTITY: Google Places-seeded business layer (Jeremy''s, slimmed). account_id bridges to the IG-observed accounts table; full Places payload in raw';
+comment on table venue_extraction_runs is 'ENRICHMENT: versioned venue-website extraction runs (rules + LLM), payload = full extracted doc with provenance quotes';
+comment on table venue_enrichment is 'ENRICHMENT: serving row per venue — capacity/catering/insurance/pricing distilled from latest extraction runs';
+comment on column posts.source is 'How acquired: venue_tagged (the crawl loop) | own_profile (profile scrapes, enrichment only)';
+comment on column posts.wedding_score is 'Confidence this post depicts a real wedding (Jeremy''s idea) — ingest filter for own_profile posts';
 comment on table weddings is 'DERIVED: unique weddings after merging duplicate posts; is_chicago true/false/null by venue geo';
 comment on table wedding_posts is 'DERIVED: which posts describe which wedding (2+ posts = independently confirmed)';
 comment on table wedding_vendors is 'DERIVED: who worked each wedding, in what role';
