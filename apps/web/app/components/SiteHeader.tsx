@@ -1,5 +1,6 @@
 import { SiteBrand } from "./SiteBrand";
 import { SiteNavLinks } from "./SiteNavLinks";
+import { AuthButton } from "./team/AuthButton";
 import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS } from "@/lib/site-layout";
 
 /** Sticky site header for server-rendered pages (vendors, weddings). */
@@ -10,7 +11,9 @@ export function SiteHeader({ activeLabel }: { activeLabel?: string }) {
         <div className={`flex ${SITE_HEADER_HEIGHT_CLASS} items-stretch justify-between`}>
           <SiteBrand href="/" className="self-center" />
           <SiteNavLinks activeLabel={activeLabel} />
-          <div className="hidden w-24 md:block" />
+          <div className="hidden items-center self-center md:flex">
+            <AuthButton />
+          </div>
         </div>
       </div>
     </header>

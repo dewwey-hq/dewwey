@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BRAND_NAME } from "@/lib/brand";
 import { listWeddingStacks } from "@/lib/server/graph";
 import { SiteHeader } from "@/app/components/SiteHeader";
-import { StackCard } from "@/app/components/StackCard";
+import { WeddingFeedCard } from "@/app/components/WeddingFeedCard";
 import { siteContainerClass } from "@/lib/site-layout";
 import { displayHeadingClassName } from "@/lib/typography";
 
@@ -32,7 +32,7 @@ export default async function WeddingsPage({
     <div className="min-h-screen bg-[#faf9f7]">
       <SiteHeader activeLabel="Weddings" />
       <main className={`${siteContainerClass} py-10`}>
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-4xl">
           <h1 className={`${displayHeadingClassName} text-3xl text-gray-900 sm:text-4xl`}>
             Real wedding teams
           </h1>
@@ -41,9 +41,9 @@ export default async function WeddingsPage({
             stacks vendors post — every team is who actually worked the day.
           </p>
 
-          <div className="mt-8 space-y-5">
+          <div className="mt-8 space-y-6">
             {stacks.map((s) => (
-              <StackCard key={s.id} stack={s} />
+              <WeddingFeedCard key={s.id} stack={s} />
             ))}
           </div>
 

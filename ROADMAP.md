@@ -15,6 +15,10 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
 
 ## Next
 
+- Google sign-in: create the OAuth client in Google Cloud Console (redirect URI
+  `https://ljcbslfdlfehgjrdnfco.supabase.co/auth/v1/callback`), paste ID/secret
+  into Supabase Auth → Providers → Google. The button already ships.
+
 - TS port of the pipeline (926 lines of Python) with OpenRouter swapped in for
   Anthropic-direct and `avatars.py` writing to R2.
 - Re-parse Jeremy's 47k staged captions through the stack parser
@@ -23,6 +27,8 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
 
 ## Later
 
+- Post media → R2: scrape each wedding post's images once, render our own
+  carousel — removes IG embed chrome ("Add a comment") entirely.
 - Graph explorer UI — the differentiator on top of the venue browse.
 - Monthly recency crawl (Vercel cron or GitHub Actions).
 - Venue photos → R2 at seed time (`vendors.photo_keys`). Needs a server-side

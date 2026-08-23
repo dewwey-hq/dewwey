@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Search, ChevronDown, Star, MapPin, Heart, Menu, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Search, ChevronDown, Star, MapPin, Menu, X } from "lucide-react";
 import { BRAND_NAME } from "@/lib/brand";
 import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS } from "@/lib/site-layout";
 import { displayHeadingClassName, uiHeadingClassName } from "@/lib/typography";
@@ -10,11 +12,17 @@ import { SiteNavLinks, SiteNavMobileLinks } from "./SiteNavLinks";
 import { SiteBrand } from "./SiteBrand";
 import { useNavIconsVisible } from "@/lib/hooks/use-nav-icons-visible";
 import { VenuePlacePhoto } from "./VenuePlacePhoto";
+import { AddToTeamButton } from "./team/AddToTeamButton";
+import { AuthButton } from "./team/AuthButton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type Vendor = {
-  place_id: string;
+  id: number;
+  username: string;
+  avatar_url?: string | null;
+  n_weddings?: number;
+  place_id: string | null;
   name: string;
   category: string;
   rating: number | null;
@@ -32,13 +40,30 @@ export type Vendor = {
 
 const CATEGORIES = ["All Vendors", "Venues", "Catering", "Florals", "Photography", "DJ & Music", "Hair & Makeup"];
 
+/** Where each category actually goes. */
+const CATEGORY_HREFS: Record<string, string> = {
+  "All Vendors": "/vendors",
+  Venues: "/venues",
+  Catering: "/vendors?role=catering",
+  Florals: "/vendors?role=florist",
+  Photography: "/vendors?role=photographer",
+  "DJ & Music": "/vendors?role=dj",
+  "Hair & Makeup": "/vendors?role=hair",
+};
+
+function searchHref(category: string, q: string): string {
+  const base = CATEGORY_HREFS[category] ?? "/vendors";
+  if (!q.trim()) return base;
+  return `${base}${base.includes("?") ? "&" : "?"}q=${encodeURIComponent(q.trim())}`;
+}
+
 const VENDOR_CATEGORIES = [
-  { label: "Venues",        src: "/icons/wedding-location-svgrepo-com.svg", count: "240+ venues" },
-  { label: "Catering",      src: "/icons/tray-plate-svgrepo-com.svg",        count: "180+ caterers" },
-  { label: "Florals",       src: "/icons/bouquet-svgrepo-com.svg",           count: "120+ florists" },
-  { label: "Photography",   src: "/icons/photo-camera-photograph-svgrepo-com.svg", count: "310+ photographers" },
-  { label: "DJ & Music",    src: "/icons/music-svgrepo-com.svg",             count: "95+ artists" },
-  { label: "Hair & Makeup", src: "/icons/make-up-svgrepo-com.svg",           count: "200+ stylists" },
+  { label: "Venues",        src: "/icons/wedding-location-svgrepo-com.svg",        roles: ["venue"] },
+  { label: "Catering",      src: "/icons/tray-plate-svgrepo-com.svg",              roles: ["catering", "cake"] },
+  { label: "Florals",       src: "/icons/bouquet-svgrepo-com.svg",                 roles: ["florist"] },
+  { label: "Photography",   src: "/icons/photo-camera-photograph-svgrepo-com.svg", roles: ["photographer"] },
+  { label: "DJ & Music",    src: "/icons/music-svgrepo-com.svg",                   roles: ["dj", "band", "musician"] },
+  { label: "Hair & Makeup", src: "/icons/make-up-svgrepo-com.svg",                 roles: ["hair", "makeup"] },
 ];
 
 const BADGE_COLORS: Record<string, string> = {
@@ -63,25 +88,22 @@ const PRICE_LABELS: Record<number, string> = { 0: "Free", 1: "$", 2: "$$", 3: "$
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function HomepageClient({ featuredVendors }: { featuredVendors: Vendor[] }) {
+export default function HomepageClient({
+  featuredVendors,
+  stats,
+  roleCounts,
+}: {
+  featuredVendors: Vendor[];
+  stats: { chicago_weddings: number; credited_vendors: number; collaborations: number };
+  roleCounts: Record<string, number>;
+}) {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All Vendors");
   const [searchQuery, setSearchQuery] = useState("");
-  const [savedVendors, setSavedVendors] = useState<Set<string>>(new Set());
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const navIconsVisible = useNavIconsVisible();
 
-  const toggleSave = (placeId: string) => {
-    setSavedVendors((prev) => {
-      const next = new Set(prev);
-      if (next.has(placeId)) {
-        next.delete(placeId);
-      } else {
-        next.add(placeId);
-      }
-      return next;
-    });
-  };
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -98,12 +120,10 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
 
             {/* Right actions */}
             <div className="hidden shrink-0 items-center gap-3 self-center md:flex">
-              <a href="#" className="text-sm text-gray-600 hover:text-gray-900 px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
+              <a href="mailto:hello@dewwey.com?subject=List%20my%20business%20on%20Dewwey" className="text-sm text-gray-600 hover:text-gray-900 px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
                 List your business
               </a>
-              <button className="text-sm font-medium px-4 py-2 border border-gray-300 rounded-full text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-colors">
-                Sign In
-              </button>
+              <AuthButton />
             </div>
 
             {/* Mobile menu toggle */}
@@ -153,12 +173,15 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
             <span className="italic text-rose-400">Chicago</span> Wedding
           </h1>
           <p className="text-gray-500 text-lg max-w-xl mx-auto mb-10" style={{ fontWeight: 400 }}>
-            Browse thousands of trusted vendors across the city — from intimate venues to world-class caterers.
+            Real Chicago weddings and the vendor teams behind them — reconstructed from the credits vendors post, not paid listings.
           </p>
 
           {/* Search bar */}
           <div className="max-w-2xl mx-auto">
-            <div className="flex items-center bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.10)] border border-black/[0.06] overflow-hidden">
+            <form
+              onSubmit={(e) => { e.preventDefault(); router.push(searchHref(selectedCategory, searchQuery)); }}
+              className="flex items-center bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.10)] border border-black/[0.06] overflow-hidden"
+            >
 
               {/* Category dropdown */}
               <div className="relative shrink-0">
@@ -194,19 +217,19 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
               />
 
               {/* Search button */}
-              <button className="shrink-0 m-2 px-6 py-3 bg-rose-400 hover:bg-rose-500 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+              <button type="submit" className="shrink-0 m-2 px-6 py-3 bg-rose-400 hover:bg-rose-500 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
                 <Search size={15} />
                 Search
               </button>
-            </div>
+            </form>
 
             <p className="text-xs text-gray-400 mt-3">
               Popular:{" "}
-              <span className="text-gray-500 hover:text-gray-700 cursor-pointer transition-colors">River North Venues</span>
+              <Link href="/venues?q=River%20North" className="text-gray-500 hover:text-gray-700 transition-colors">River North Venues</Link>
               {" · "}
-              <span className="text-gray-500 hover:text-gray-700 cursor-pointer transition-colors">Wedding Photographers</span>
+              <Link href="/vendors?role=photographer" className="text-gray-500 hover:text-gray-700 transition-colors">Wedding Photographers</Link>
               {" · "}
-              <span className="text-gray-500 hover:text-gray-700 cursor-pointer transition-colors">Floral Design</span>
+              <Link href="/vendors?role=florist" className="text-gray-500 hover:text-gray-700 transition-colors">Floral Design</Link>
             </p>
           </div>
         </div>
@@ -222,10 +245,10 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {VENDOR_CATEGORIES.map(({ label, src, count }) => (
+          {VENDOR_CATEGORIES.map(({ label, src, roles }) => (
             <a
               key={label}
-              href={label === "Venues" ? "/venues" : "#"}
+              href={CATEGORY_HREFS[label] ?? "/vendors"}
               className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-black/[0.07] bg-white hover:border-rose-200 hover:shadow-[0_4px_20px_rgba(244,63,94,0.08)] transition-all duration-200 text-center"
             >
               <div className="w-12 h-12 rounded-xl bg-[#fdf8f5] group-hover:bg-rose-50 transition-colors flex items-center justify-center">
@@ -233,7 +256,9 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-800 group-hover:text-gray-900 transition-colors">{label}</div>
-                <div className="text-xs text-gray-400 mt-0.5">{count}</div>
+                <div className="text-xs text-gray-400 mt-0.5">
+                  {roles.reduce((n, r) => n + (roleCounts[r] ?? 0), 0).toLocaleString()} credited
+                </div>
               </div>
             </a>
           ))}
@@ -250,9 +275,9 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
               </h2>
               <p className="text-gray-500 text-sm">Highly-rated vendors loved by Chicago couples.</p>
             </div>
-            <a href="#" className="hidden sm:block text-sm text-rose-500 hover:text-rose-600 font-medium transition-colors">
+            <Link href="/vendors" className="hidden sm:block text-sm text-rose-500 hover:text-rose-600 font-medium transition-colors">
               View all →
-            </a>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -264,28 +289,30 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
 
               return (
                 <div
-                  key={vendor.place_id}
+                  key={vendor.username}
                   className="bg-white rounded-2xl overflow-hidden border border-black/[0.06] hover:shadow-[0_8px_32px_rgba(0,0,0,0.10)] transition-all duration-300 group"
                 >
                   {/* Photo */}
                   <div className="relative overflow-hidden h-56 bg-gray-100">
-                    <VenuePlacePhoto
-                      placeId={vendor.place_id}
-                      photoNames={vendor.photos}
-                      alt={vendor.name ?? "Vendor photo"}
-                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-
-                    {/* Save button */}
-                    <button
-                      className="absolute top-3 right-3 p-2 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white transition-colors shadow-sm"
-                      onClick={() => toggleSave(vendor.place_id)}
-                    >
-                      <Heart
-                        size={16}
-                        className={savedVendors.has(vendor.place_id) ? "fill-rose-500 text-rose-500" : "text-gray-600"}
+                    <Link href={`/vendors/${encodeURIComponent(vendor.username)}`} className="block h-full w-full">
+                      <VenuePlacePhoto
+                        placeId={vendor.place_id ?? undefined}
+                        photoNames={vendor.photos}
+                        alt={vendor.name ?? "Vendor photo"}
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                    </button>
+                    </Link>
+
+                    {/* Add to team */}
+                    <span className="absolute top-3 right-3 rounded-full bg-white/90 p-1.5 shadow-sm backdrop-blur-sm">
+                      <AddToTeamButton
+                        accountId={vendor.id}
+                        username={vendor.username}
+                        name={vendor.name}
+                        role={vendor.category}
+                        avatarUrl={vendor.avatar_url ?? null}
+                      />
+                    </span>
 
                     {/* Category badge */}
                     <span className={`absolute top-3 left-3 text-xs font-medium px-2.5 py-1 rounded-full ${badgeColor}`}>
@@ -296,7 +323,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
                   {/* Info */}
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="text-[15px] font-medium text-gray-900 leading-snug">{vendor.name}</h3>
+                      <Link href={`/vendors/${encodeURIComponent(vendor.username)}`} className="text-[15px] font-medium text-gray-900 leading-snug hover:text-rose-600">{vendor.name}</Link>
                       {vendor.rating != null && (
                         <div className="flex items-center gap-1 shrink-0">
                           <Star size={13} className="fill-amber-400 text-amber-400" />
@@ -339,7 +366,7 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
           </div>
 
           <div className="mt-8 text-center sm:hidden">
-            <a href="#" className="text-sm text-rose-500 font-medium">View all vendors →</a>
+            <Link href="/vendors" className="text-sm text-rose-500 font-medium">View all vendors →</Link>
           </div>
         </div>
       </section>
@@ -348,9 +375,9 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
       <section className="border-y border-black/[0.06] py-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
           {[
-            { stat: "2,400+", label: "Verified Chicago vendors" },
-            { stat: "18,000+", label: "Weddings planned since 2018" },
-            { stat: "4.9 / 5", label: "Average vendor rating" },
+            { stat: stats.credited_vendors.toLocaleString(), label: "Vendors credited on real Chicago weddings" },
+            { stat: stats.chicago_weddings.toLocaleString(), label: "Chicago weddings documented" },
+            { stat: stats.collaborations.toLocaleString(), label: "Vendor collaborations mapped" },
           ].map(({ stat, label }) => (
             <div key={stat}>
               <div className={`mb-1 text-3xl text-gray-900 ${displayHeadingClassName}`}>{stat}</div>
@@ -375,16 +402,28 @@ export default function HomepageClient({ featuredVendors }: { featuredVendors: V
             </div>
 
             {[
-              { heading: "Vendors", links: ["Venues", "Catering", "Florals", "Photography", "DJ & Music", "Hair & Makeup"] },
-              { heading: "Company", links: ["About", "Blog", "Press", "Careers", "Contact"] },
-              { heading: "Support",  links: ["Help Center", "Privacy Policy", "Terms of Service", "Cookie Policy"] },
+              { heading: "Explore", links: [
+                { label: "Weddings", href: "/weddings" },
+                { label: "Venues", href: "/venues" },
+                { label: "Vendors", href: "/vendors" },
+              ] },
+              { heading: "Vendors", links: [
+                { label: "Catering", href: "/vendors?role=catering" },
+                { label: "Florals", href: "/vendors?role=florist" },
+                { label: "Photography", href: "/vendors?role=photographer" },
+                { label: "DJ & Music", href: "/vendors?role=dj" },
+                { label: "Hair & Makeup", href: "/vendors?role=hair" },
+              ] },
+              { heading: "Company", links: [
+                { label: "Contact", href: "mailto:hello@dewwey.com" },
+              ] },
             ].map(({ heading, links }) => (
               <div key={heading}>
                 <h4 className="text-white text-sm font-medium mb-4">{heading}</h4>
                 <ul className="space-y-2">
                   {links.map((link) => (
-                    <li key={link}>
-                      <a href="#" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">{link}</a>
+                    <li key={link.label}>
+                      <a href={link.href} className="text-sm text-gray-500 hover:text-gray-300 transition-colors">{link.label}</a>
                     </li>
                   ))}
                 </ul>

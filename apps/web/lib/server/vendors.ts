@@ -47,7 +47,8 @@ const CARD_SELECT = `
   a.id::int,
   a.username,
   v.place_id,
-  COALESCE(v.name, a.full_name, a.username::text) AS name,
+  CASE WHEN v.name IS NULL OR v.name IN (a.username::text, '@' || a.username::text)
+       THEN COALESCE(a.full_name, a.username::text) ELSE v.name END AS name,
   var.role::text AS category,
   v.category AS primary_type,
   v.rating, v.review_count, v.price_level,
@@ -191,7 +192,8 @@ export async function getVendorDetail(id: number) {
   const { rows: partnerRows } = await pool.query(
     `SELECT
        partner.id::int,
-       COALESCE(pv.name, partner.full_name, partner.username::text) AS name,
+       CASE WHEN pv.name IS NULL OR pv.name IN (partner.username::text, '@' || partner.username::text)
+       THEN COALESCE(partner.full_name, partner.username::text) ELSE pv.name END AS name,
        pvar.role::text AS category,
        partner.avatar_path,
        e.n_weddings,

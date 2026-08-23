@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND_NAME } from "@/lib/brand";
 import { listVendors } from "@/lib/server/graph";
+import { TeamPicksSection } from "@/app/components/team/TeamPicksSection";
+import { SLOT_ROLES, slotForRole } from "@/lib/team";
 import { ROLE_LABELS, roleLabel } from "@/lib/roles";
 import { SiteHeader } from "@/app/components/SiteHeader";
 import { Avatar } from "@/app/components/Avatar";
@@ -23,14 +25,19 @@ export default async function VendorsPage({
 }) {
   const params = await searchParams;
   const role = typeof params.role === "string" && ROLE_LABELS[params.role] ? params.role : null;
+  const q = typeof params.q === "string" ? params.q : null;
   const page = Math.max(1, parseInt((params.page as string) ?? "1", 10));
   const { vendors, total } = await listVendors({
     role,
+    q,
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
   });
+  const picksRoles = role ? SLOT_ROLES[slotForRole(role)] ?? [role] : [];
+  const picksNoun = role ? `${ROLE_LABELS[role]} vendors` : "Vendors";
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const pageQuery = (n: number) => `/vendors?${role ? `role=${role}&` : ""}page=${n}`;
+  const pageQuery = (n: number) =>
+    `/vendors?${role ? `role=${role}&` : ""}${q ? `q=${encodeURIComponent(q)}&` : ""}page=${n}`;
 
   return (
     <div className="min-h-screen bg-[#faf9f7]">

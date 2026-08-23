@@ -10,6 +10,7 @@ function avatarUrl(avatarPath: string | null): string | null {
 }
 
 export interface StackVendor {
+  accountId: number;
   username: string;
   name: string;
   role: string;
@@ -32,6 +33,7 @@ export interface WeddingStack {
 function toStack(row: any): WeddingStack {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const vendors = ((row.vendors ?? []) as any[]).map((v) => ({
+    accountId: v.id,
     username: v.username,
     name: v.name,
     role: v.role,
@@ -62,7 +64,7 @@ const STACK_SELECT = `
        FROM wedding_posts wp JOIN posts p ON p.id = wp.post_id
       WHERE wp.wedding_id = w.id) AS post_urls,
     (SELECT jsonb_agg(jsonb_build_object(
-        'username', a.username, 'name', COALESCE(a.full_name, a.username::text),
+        'id', a.id, 'username', a.username, 'name', COALESCE(a.full_name, a.username::text),
         'role', wv.role, 'avatar', a.avatar_path, 'confirmations', wv.n_confirmations
       ) ORDER BY array_position(enum_range(NULL::vendor_role), wv.role), a.username)
        FROM wedding_vendors wv JOIN accounts a ON a.id = wv.account_id
@@ -96,7 +98,8 @@ export async function getVendorProfile(username: string) {
   const pool = getPool();
   const { rows } = await pool.query(
     `SELECT
-       a.id::int, a.username::text, COALESCE(v.name, a.full_name, a.username::text) AS name,
+       a.id::int, a.username::text, CASE WHEN v.name IS NULL OR v.name IN (a.username::text, '@' || a.username::text)
+            THEN COALESCE(a.full_name, a.username::text) ELSE v.name END AS name,
        a.full_name, a.biography, a.followers, a.external_url, a.avatar_path,
        var.role::text AS role,
        COALESCE(al.address, v.address) AS address,
@@ -118,8 +121,10 @@ export async function getVendorProfile(username: string) {
 
   const { rows: partnerRows } = await pool.query(
     `SELECT
+       partner.id::int,
        partner.username::text,
-       COALESCE(pv.name, partner.full_name, partner.username::text) AS name,
+       CASE WHEN pv.name IS NULL OR pv.name IN (partner.username::text, '@' || partner.username::text)
+            THEN COALESCE(partner.full_name, partner.username::text) ELSE pv.name END AS name,
        pvar.role::text AS role,
        partner.avatar_path AS avatar,
        e.n_weddings::int, e.last_worked_together
@@ -136,7 +141,18 @@ export async function getVendorProfile(username: string) {
 
   const { stacks } = await listWeddingStacks({ accountId: a.id, limit: 50 });
 
+  const { rows: enrichmentRows } = await pool.query(
+    `SELECT ve.capacity_min, ve.capacity_max, ve.capacity_as_stated,
+            ve.catering, ve.event_insurance, ve.pricing_model, ve.price_display,
+            ve.website, ve.extracted_at
+     FROM venue_enrichment ve
+     JOIN vendors v ON v.id = ve.vendor_id
+     WHERE v.account_id = $1`,
+    [a.id]
+  );
+
   return {
+    enrichment: enrichmentRows[0] ?? null,
     profile: {
       id: a.id,
       username: a.username,
@@ -154,6 +170,7 @@ export async function getVendorProfile(username: string) {
       n_chicago_weddings: a.n_chicago_weddings,
     },
     partners: partnerRows.map((p) => ({
+      id: p.id,
       username: p.username,
       name: p.name,
       role: p.role,
@@ -167,6 +184,7 @@ export async function getVendorProfile(username: string) {
 
 export async function listVendors(opts: {
   role?: string | null;
+  q?: string | null;
   limit?: number;
   offset?: number;
 } = {}) {
@@ -175,7 +193,8 @@ export async function listVendors(opts: {
   // A "Chicago vendor" = worked at least one venue-verified Chicago wedding.
   const { rows } = await getPool().query(
     `SELECT
-       a.username::text, COALESCE(v.name, a.full_name, a.username::text) AS name,
+       a.username::text, CASE WHEN v.name IS NULL OR v.name IN (a.username::text, '@' || a.username::text)
+            THEN COALESCE(a.full_name, a.username::text) ELSE v.name END AS name,
        var.role::text AS role, a.avatar_path AS avatar, a.followers,
        cnt.n_chicago::int AS n_weddings,
        COUNT(*) OVER() AS total_count
@@ -190,9 +209,14 @@ export async function listVendors(opts: {
      LEFT JOIN vendors v ON v.account_id = a.id
      WHERE cnt.n_chicago > 0
        AND ($1::text IS NULL OR var.role = $1::vendor_role)
+       AND ($4::text IS NULL
+            OR a.username::text ILIKE $4 ESCAPE '\\'
+            OR COALESCE(a.full_name, '') ILIKE $4 ESCAPE '\\'
+            OR COALESCE(v.name, '') ILIKE $4 ESCAPE '\\')
      ORDER BY cnt.n_chicago DESC, a.followers DESC NULLS LAST, a.username
      LIMIT $2 OFFSET $3`,
-    [opts.role ?? null, limit, offset]
+    [opts.role ?? null, limit, offset,
+     opts.q?.trim() ? `%${opts.q.trim().replace(/[%_\\]/g, "\\$&")}%` : null]
   );
   const total = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
   return {
@@ -208,4 +232,31 @@ export async function listVendors(opts: {
     limit,
     offset,
   };
+}
+
+/** Real numbers for the homepage — no fabricated marketing stats. */
+export async function homeStats() {
+  const { rows } = await getPool().query(`
+    SELECT
+      (SELECT COUNT(*) FROM weddings WHERE is_chicago)::int AS chicago_weddings,
+      (SELECT COUNT(DISTINCT wv.account_id)
+         FROM wedding_vendors wv JOIN weddings w ON w.id = wv.wedding_id
+        WHERE w.is_chicago)::int AS credited_vendors,
+      (SELECT COUNT(*) FROM edges)::int AS collaborations`);
+  return rows[0] as {
+    chicago_weddings: number;
+    credited_vendors: number;
+    collaborations: number;
+  };
+}
+
+/** Chicago-credited vendor count per role, for homepage category cards. */
+export async function categoryCounts(): Promise<Record<string, number>> {
+  const { rows } = await getPool().query(`
+    SELECT var.role::text AS role, COUNT(DISTINCT wv.account_id)::int AS n
+    FROM wedding_vendors wv
+    JOIN weddings w ON w.id = wv.wedding_id AND w.is_chicago
+    JOIN v_account_role var ON var.account_id = wv.account_id
+    GROUP BY var.role`);
+  return Object.fromEntries(rows.map((r) => [r.role, r.n]));
 }

@@ -6,9 +6,12 @@ import { getVendorProfile } from "@/lib/server/graph";
 import { roleLabel } from "@/lib/roles";
 import { SiteHeader } from "@/app/components/SiteHeader";
 import { Avatar } from "@/app/components/Avatar";
-import { StackCard } from "@/app/components/StackCard";
+import { AddToTeamCta } from "@/app/components/team/AddToTeamCta";
+import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
+import { VendorTabs } from "@/app/components/VendorTabs";
+import { WeddingFeedCard } from "@/app/components/WeddingFeedCard";
 import { siteContainerClass } from "@/lib/site-layout";
-import { displayHeadingClassName, uiHeadingClassName } from "@/lib/typography";
+import { displayHeadingClassName } from "@/lib/typography";
 
 export async function generateMetadata({
   params,
@@ -21,8 +24,17 @@ export async function generateMetadata({
   const p = data.profile;
   return {
     title: `${p.name} — ${roleLabel(p.role)} | ${BRAND_NAME}`,
-    description: `${p.name} (@${p.username}) has ${p.n_weddings} documented weddings. See who they work with and the real wedding teams they've been part of.`,
+    description: `${p.name} (@${p.username}) on Dewwey — see the real weddings they've worked and who they work with.`,
   };
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-black/[0.06] bg-white p-4">
+      <div className="text-xs font-medium text-gray-500">{label}</div>
+      <div className="mt-1 text-[15px] text-gray-900">{value}</div>
+    </div>
+  );
 }
 
 export default async function VendorPage({
@@ -33,7 +45,115 @@ export default async function VendorPage({
   const { username } = await params;
   const data = await getVendorProfile(decodeURIComponent(username));
   if (!data) notFound();
-  const { profile: p, partners, stacks } = data;
+  const { profile: p, partners, stacks, enrichment } = data;
+
+  const detailRows: { label: string; value: string }[] = [];
+  if (enrichment?.capacity_as_stated || enrichment?.capacity_max) {
+    detailRows.push({
+      label: "Guest capacity",
+      value:
+        enrichment.capacity_as_stated ??
+        (enrichment.capacity_min
+          ? `${enrichment.capacity_min}–${enrichment.capacity_max}`
+          : `Up to ${enrichment.capacity_max}`),
+    });
+  }
+  if (enrichment?.catering) detailRows.push({ label: "Catering", value: enrichment.catering });
+  if (enrichment?.event_insurance)
+    detailRows.push({ label: "Event insurance", value: enrichment.event_insurance });
+  if (enrichment?.pricing_model || enrichment?.price_display)
+    detailRows.push({
+      label: "Pricing",
+      value: enrichment.price_display ?? enrichment.pricing_model,
+    });
+  if (p.address) detailRows.push({ label: "Address", value: p.address });
+  if (p.rating)
+    detailRows.push({
+      label: "Google rating",
+      value: `★ ${p.rating} (${p.review_count} reviews)`,
+    });
+
+  const details =
+    detailRows.length > 0 ? (
+      <div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {detailRows.map((r) => (
+            <DetailRow key={r.label} label={r.label} value={r.value} />
+          ))}
+        </div>
+        {enrichment && (
+          <p className="mt-4 text-xs text-gray-400">
+            Venue facts extracted from the venue&apos;s own website
+            {enrichment.website ? (
+              <>
+                {" "}
+                (
+                <a
+                  className="underline hover:text-rose-600"
+                  href={enrichment.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  source
+                </a>
+                )
+              </>
+            ) : null}
+            .
+          </p>
+        )}
+      </div>
+    ) : undefined;
+
+  const worksWith = (
+    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {partners.length === 0 && (
+        <li className="text-sm text-gray-500">No co-credited vendors yet.</li>
+      )}
+      {partners.map((partner) => (
+        <li key={partner.username}>
+          <span className="flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-white px-3 py-2.5 transition-colors hover:border-rose-200">
+            <Link
+              href={`/vendors/${encodeURIComponent(partner.username)}`}
+              className="flex min-w-0 flex-1 items-center gap-3"
+            >
+              <Avatar src={partner.avatar_url} name={partner.name} size={38} />
+              <span className="min-w-0">
+                <span className="block truncate text-[15px] text-gray-900">{partner.name}</span>
+                <span className="block text-xs text-gray-500">{roleLabel(partner.role)}</span>
+              </span>
+            </Link>
+            <span
+              className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
+              title={`${partner.n_weddings} weddings together`}
+            >
+              ×{partner.n_weddings}
+            </span>
+            <AddToTeamButton
+              accountId={partner.id}
+              username={partner.username}
+              name={partner.name}
+              role={partner.role}
+              avatarUrl={partner.avatar_url}
+            />
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+
+  const feed = (
+    <div className="space-y-6">
+      {stacks.length === 0 && (
+        <p className="rounded-2xl border border-dashed border-gray-200 p-6 text-sm text-gray-500">
+          No credited weddings in the graph yet.
+        </p>
+      )}
+      {stacks.map((s) => (
+        <WeddingFeedCard key={s.id} stack={s} />
+      ))}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#faf9f7]">
@@ -74,11 +194,6 @@ export default async function VendorPage({
                     Website ↗
                   </a>
                 )}
-                {p.rating && (
-                  <span>
-                    ★ {p.rating} ({p.review_count})
-                  </span>
-                )}
               </div>
               {p.biography && (
                 <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-gray-600">
@@ -86,71 +201,24 @@ export default async function VendorPage({
                 </p>
               )}
             </div>
-            <div className="sm:ml-auto sm:text-right">
-              <div className={`${displayHeadingClassName} text-4xl text-rose-500`}>
-                {p.n_weddings}
-              </div>
-              <div className="text-sm text-gray-500">
-                documented wedding{p.n_weddings === 1 ? "" : "s"}
-                {p.n_chicago_weddings > 0 && p.n_chicago_weddings !== p.n_weddings && (
-                  <> · {p.n_chicago_weddings} Chicago</>
-                )}
-              </div>
+            <div className="sm:ml-auto sm:self-start">
+              <AddToTeamCta
+                accountId={p.id}
+                username={p.username}
+                name={p.name}
+                role={p.role}
+                avatarUrl={p.avatar_url}
+              />
             </div>
           </div>
 
-          <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_20rem]">
-            {/* Stacks */}
-            <section>
-              <h2 className={`${uiHeadingClassName} text-lg text-gray-900`}>
-                Weddings they&apos;ve worked
-              </h2>
-              <div className="mt-4 space-y-5">
-                {stacks.length === 0 && (
-                  <p className="rounded-2xl border border-dashed border-gray-200 p-6 text-sm text-gray-500">
-                    No credited weddings in the graph yet.
-                  </p>
-                )}
-                {stacks.map((s) => (
-                  <StackCard key={s.id} stack={s} highlightUsername={p.username} />
-                ))}
-              </div>
-            </section>
-
-            {/* Partners */}
-            <aside>
-              <h2 className={`${uiHeadingClassName} text-lg text-gray-900`}>Works with</h2>
-              <ul className="mt-4 space-y-1">
-                {partners.length === 0 && (
-                  <li className="text-sm text-gray-500">No co-credited vendors yet.</li>
-                )}
-                {partners.map((partner) => (
-                  <li key={partner.username}>
-                    <Link
-                      href={`/vendors/${encodeURIComponent(partner.username)}`}
-                      className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-rose-50/60"
-                    >
-                      <Avatar src={partner.avatar_url} name={partner.name} size={36} />
-                      <span className="min-w-0">
-                        <span className="block truncate text-[15px] text-gray-800">
-                          {partner.name}
-                        </span>
-                        <span className="block text-xs text-gray-400">
-                          {roleLabel(partner.role)}
-                        </span>
-                      </span>
-                      <span
-                        className="ml-auto shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
-                        title={`${partner.n_weddings} weddings together`}
-                      >
-                        ×{partner.n_weddings}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </aside>
-          </div>
+          <VendorTabs
+            feed={feed}
+            worksWith={worksWith}
+            details={details}
+            feedCount={stacks.length}
+            worksWithCount={partners.length}
+          />
         </div>
       </main>
     </div>
