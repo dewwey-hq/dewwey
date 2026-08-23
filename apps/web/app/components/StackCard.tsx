@@ -79,7 +79,7 @@ export function StackCard({
         })}
       </ul>
 
-      <StackPostEmbed postUrls={stack.post_urls} />
+      <StackPostEmbed postUrls={stack.embed_urls} />
     </article>
   );
 }

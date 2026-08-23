@@ -32,6 +32,7 @@ create table accounts (
   profile_scraped_at timestamptz,                      -- null = never enriched
   first_seen_at timestamptz not null default now(),
   avatar_path   text,                                  -- R2 key: avatars/<username>.jpg
+  embeds_disabled boolean,                             -- IG account-level embed opt-out; null = unscanned
   raw           jsonb                                  -- full profile-scraper payload
 );
 create index on accounts (profile_scraped_at nulls first);

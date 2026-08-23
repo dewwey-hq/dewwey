@@ -26,6 +26,9 @@ export interface WeddingStack {
   venue_avatar_url: string | null;
   n_posts: number;
   post_urls: string[];
+  /** Only posts whose owners allow embedding (61/816 accounts opt out). */
+  embed_urls: string[];
+  caption: string | null;
   vendors: StackVendor[];
 }
 
@@ -40,6 +43,8 @@ function toStack(row: any): WeddingStack {
     avatar_url: avatarUrl(v.avatar),
     confirmations: v.confirmations,
   }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const infos = (row.post_infos ?? []) as { url: string; ok: boolean }[];
   return {
     id: row.id,
     event_date_est: row.event_date_est,
@@ -47,7 +52,9 @@ function toStack(row: any): WeddingStack {
     venue_name: row.venue_name,
     venue_avatar_url: avatarUrl(row.venue_avatar),
     n_posts: row.n_posts,
-    post_urls: row.post_urls ?? [],
+    post_urls: infos.map((i) => i.url),
+    embed_urls: infos.filter((i) => i.ok).map((i) => i.url),
+    caption: row.caption ?? null,
     vendors,
   };
 }
@@ -60,9 +67,15 @@ const STACK_SELECT = `
     COALESCE(venue.full_name, venue.username::text) AS venue_name,
     venue.avatar_path AS venue_avatar,
     (SELECT COUNT(*) FROM wedding_posts wp WHERE wp.wedding_id = w.id)::int AS n_posts,
-    (SELECT jsonb_agg(p.url ORDER BY p.posted_at)
+    (SELECT jsonb_agg(jsonb_build_object(
+        'url', p.url, 'ok', (ao.embeds_disabled IS DISTINCT FROM true)
+      ) ORDER BY (ao.embeds_disabled IS TRUE), p.posted_at)
        FROM wedding_posts wp JOIN posts p ON p.id = wp.post_id
-      WHERE wp.wedding_id = w.id) AS post_urls,
+       JOIN accounts ao ON ao.id = p.owner_id
+      WHERE wp.wedding_id = w.id) AS post_infos,
+    (SELECT p.caption FROM wedding_posts wp JOIN posts p ON p.id = wp.post_id
+      WHERE wp.wedding_id = w.id AND p.caption IS NOT NULL
+      ORDER BY p.posted_at LIMIT 1) AS caption,
     (SELECT jsonb_agg(jsonb_build_object(
         'id', a.id, 'username', a.username, 'name', COALESCE(a.full_name, a.username::text),
         'role', wv.role, 'avatar', a.avatar_path, 'confirmations', wv.n_confirmations

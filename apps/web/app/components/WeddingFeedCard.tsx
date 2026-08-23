@@ -34,7 +34,7 @@ function formatDate(d: string | null): string {
  */
 export function WeddingFeedCard({ stack }: { stack: WeddingStack }) {
   const [idx, setIdx] = useState(0);
-  const embeds = stack.post_urls
+  const embeds = stack.embed_urls
     .map((u) => ({ url: u, src: mediaEmbedUrl(u) }))
     .filter((e): e is { url: string; src: string } => Boolean(e.src));
   const confirmed = stack.n_posts > 1;
@@ -72,7 +72,24 @@ export function WeddingFeedCard({ stack }: { stack: WeddingStack }) {
             )}
           </>
         ) : (
-          <div className="flex h-[480px] flex-1 items-center justify-center text-4xl text-rose-200 md:h-auto">✦</div>
+          /* The vendor opted their account out of embeds — show the credit
+             stack's original caption as the artifact instead. */
+          <div className="flex h-[480px] flex-1 flex-col overflow-hidden bg-gradient-to-br from-rose-50 to-[#fdf8f5] md:h-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6">
+              <div className="text-3xl leading-none text-rose-300">“</div>
+              <p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-700">
+                {stack.caption ?? "This vendor keeps their posts on Instagram."}
+              </p>
+            </div>
+            <a
+              href={stack.post_urls[0]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border-t border-rose-100 px-7 py-3 text-center text-xs font-medium text-rose-500 hover:text-rose-600"
+            >
+              See the photos on Instagram ↗
+            </a>
+          </div>
         )}
       </div>
 
