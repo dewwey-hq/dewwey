@@ -5,8 +5,10 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
 
 ## Now
 
-- Link Vercel: this repo, root directory `apps/web`, Ben's account. Then the
-  dewwey.com domain story (and a custom domain to replace the r2.dev URL).
+- The dewwey.com domain story: point it at the Vercel project (linked
+  2026-08-22), add a custom domain for R2 to replace the r2.dev URL, and
+  check the Google Maps browser key's referrer allowlist covers the new
+  domains (it may be restricted to Jeremy's old ones).
 - Ben ↔ Jeremy merge conversation (`docs/merge-eval.md` is the case). Data
   import already done on Ben's authorization (2026-08-22); the conversation
   is now about the merge itself and rotating his RDS/API credentials.

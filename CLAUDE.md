@@ -40,8 +40,14 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   sees Dewwey org) or direct psql instead.
 - **GitHub**: `dewwey-hq/dewwey` (private). The `dewwey` GitHub username is
   squatted by a dormant account; the org is `dewwey-hq`.
-- **Vercel**: not linked yet. Plan: this repo, root directory `apps/web`,
-  previews replace any "beta" environment. Ben's account, not Jeremy's hobby team.
+- **Vercel**: live (2026-08-22). Project `dewwey` on Ben's hobby team
+  (`ben-wallaces-projects`), linked to `dewwey-hq/dewwey`, root `apps/web`,
+  production = `main`, previews per branch. The repo was made **public**
+  (Ben's call — hobby plan can't deploy private org repos; full-history
+  secrets scan came back clean first). Production:
+  dewwey-ben-wallaces-projects.vercel.app. Env vars set for
+  production+preview via CLI/API. The `vercel` CLI is installed globally
+  (bun) and logged in as benfwalla.
 - **Cloudflare R2**: live (2026-08-22). Bucket `dewwey` on Ben's account
   (`bewal416@gmail.com`), ENAM region. All 1,361 avatars uploaded under
   `avatars/` — keys match `accounts.avatar_path` verbatim. Public dev URL
