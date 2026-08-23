@@ -25,4 +25,6 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
 
 - Graph explorer UI — the differentiator on top of the venue browse.
 - Monthly recency crawl (Vercel cron or GitHub Actions).
-- Venue photos → R2 at seed time (`vendors.photo_keys`).
+- Venue photos → R2 at seed time (`vendors.photo_keys`). Needs a server-side
+  Places key (removed from the env contract 2026-08-22 when its last reader
+  died — re-add on rebuild; ~$7/1k photo fetches, est. $100–175 one-time).
