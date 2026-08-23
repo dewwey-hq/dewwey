@@ -6,12 +6,12 @@ import Image from "next/image";
 import InstagramEmbed, {
   computeLightboxEmbedLayout,
 } from "./InstagramEmbed";
-import { displayAddressFor, formatCount } from "@/app/lib/format-address";
-import { venueMatchesSearch } from "@/app/lib/venue-search";
-import { BRAND_EMAIL, BRAND_NAME } from "@/app/lib/brand";
-import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS, SITE_MAX_WIDTH_CLASS, SITE_PADDING_X_CLASS } from "@/app/lib/site-layout";
-import { displayHeadingClassName, uiHeadingClassName } from "@/app/lib/typography";
-import { type MapBounds, venuesInMapBounds } from "@/app/lib/map-bounds";
+import { displayAddressFor, formatCount } from "@/lib/format-address";
+import { venueMatchesSearch } from "@/lib/venue-search";
+import { BRAND_EMAIL, BRAND_NAME } from "@/lib/brand";
+import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS, SITE_MAX_WIDTH_CLASS, SITE_PADDING_X_CLASS } from "@/lib/site-layout";
+import { displayHeadingClassName, uiHeadingClassName } from "@/lib/typography";
+import { type MapBounds, venuesInMapBounds } from "@/lib/map-bounds";
 import VenuesMapPanel from "./VenuesMapPanel";
 import MapBrowseToolbar from "./MapBrowseToolbar";
 import MapBrowsePanelToggle, { type MapBrowseMobilePanel } from "./MapBrowsePanelToggle";
@@ -19,10 +19,10 @@ import VenueMapBrowseCard from "./VenueMapBrowseCard";
 import CategoryIcon, { resolveCategoryIcon } from "./CategoryIcon";
 import { SiteNavLinks } from "./SiteNavLinks";
 import { SiteBrand } from "./SiteBrand";
-import { useNavIconsVisible } from "@/app/hooks/use-nav-icons-visible";
+import { useNavIconsVisible } from "@/lib/hooks/use-nav-icons-visible";
 import VenueRating from "./VenueRating";
 import { VenuePlacePhoto } from "./VenuePlacePhoto";
-import { usePlacePhotos } from "@/app/hooks/use-place-photos";
+import { usePlacePhotos } from "@/lib/hooks/use-place-photos";
 import {
   ArrowUpDown,
   Check,
@@ -46,15 +46,19 @@ import {
   Shield,
 } from "lucide-react";
 
-import { placesPhotoUrl } from "@/app/lib/places-photo";
-import { getVendorApiBaseUrl } from "@/app/lib/api";
+import { placesPhotoUrl } from "@/lib/places-photo";
+import { getVendorApiBaseUrl } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type VenueVendor = {
   id: number;
-  place_id: string;
+  place_id: string | null;
   name: string;
+  username?: string | null;
+  avatar_url?: string | null;
+  followers?: number | null;
+  n_weddings?: number;
   category: string;
   primary_type: string | null;
   rating: number | string | null;
@@ -685,7 +689,7 @@ function PhotoGrid({
   photoNames,
   alt,
 }: {
-  placeId: string;
+  placeId?: string;
   photoNames?: string[] | null;
   alt: string;
 }) {
@@ -1614,7 +1618,7 @@ function VenueDetailModal({
               </div>
 
               <div className="py-5 sm:py-6">
-                <PhotoGrid placeId={v.place_id} photoNames={v.photos} alt={v.name} />
+                <PhotoGrid placeId={v.place_id ?? undefined} photoNames={v.photos} alt={v.name} />
               </div>
             </div>
 
@@ -1657,13 +1661,13 @@ function VenueDetailModal({
                   )}
 
                   <div className="lg:hidden">
-                    <VenueInquiryPanel id="venue-inquiry-form" placeId={v.place_id} photoNames={v.photos} />
+                    <VenueInquiryPanel id="venue-inquiry-form" placeId={v.place_id ?? undefined} photoNames={v.photos} />
                   </div>
                 </div>
 
                 <aside className="hidden lg:block">
                   <div className="sticky top-20">
-                    <VenueInquiryPanel id="venue-inquiry-form-desktop" placeId={v.place_id} photoNames={v.photos} />
+                    <VenueInquiryPanel id="venue-inquiry-form-desktop" placeId={v.place_id ?? undefined} photoNames={v.photos} />
                   </div>
                 </aside>
               </div>
@@ -2011,7 +2015,7 @@ export default function VenuesClient({
     return mapAreaVenues.slice(start, start + MAP_LIST_PAGE_SIZE);
   }, [mapAreaVenues, mapListPage]);
 
-  const comparedVenues = venueCards.filter((v) => compareIds.has(v.place_id));
+  const comparedVenues = venueCards.filter((v) => compareIds.has(String(v.id)));
 
   const focusMapList = () => {
     mapListScrollRef.current?.focus({ preventScroll: true });
@@ -2404,19 +2408,19 @@ export default function VenuesClient({
             <div className="grid gap-6 sm:grid-cols-2">
               {filteredVenues.map((venue) => {
 
-                const isComparing = compareIds.has(venue.place_id);
+                const isComparing = compareIds.has(String(venue.id));
                 const disabled = !isComparing && compareIds.size >= 3;
 
                 return (
                   <article
-                    key={venue.place_id}
+                    key={venue.id}
                     onClick={() => setSelectedVenueId(venue.id)}
                     className="group cursor-pointer overflow-hidden rounded-[1.7rem] border border-black/[0.07] bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(15,23,42,0.10)]"
                   >
                     {/* Photo */}
                     <div className="relative h-64 overflow-hidden bg-gray-100">
                       <VenuePlacePhoto
-                        placeId={venue.place_id}
+                        placeId={venue.place_id ?? undefined}
                         photoNames={venue.photos}
                         alt={venue.name}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -2424,7 +2428,7 @@ export default function VenuesClient({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleCompare(venue.place_id);
+                          toggleCompare(String(venue.id));
                         }}
                         disabled={disabled}
                         className={`absolute right-3 top-3 rounded-full px-3 py-2 text-xs font-medium shadow-sm backdrop-blur transition-colors ${
@@ -2519,14 +2523,14 @@ export default function VenuesClient({
             ) : (
               <div className="grid gap-4 md:grid-cols-3">
                 {comparedVenues.map((venue) => (
-                  <div key={venue.place_id} className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
+                  <div key={venue.id} className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
                     <div className="mb-4 flex items-start justify-between gap-3">
                       <div>
                         <h3 className="font-medium text-white">{venue.name}</h3>
                         <p className="mt-1 text-sm text-gray-400">{venue.location}</p>
                       </div>
                       <button
-                        onClick={() => toggleCompare(venue.place_id)}
+                        onClick={() => toggleCompare(String(venue.id))}
                         className="rounded-full bg-white/10 p-1 text-gray-300 transition-colors hover:bg-white/15 hover:text-white"
                       >
                         <X size={15} />

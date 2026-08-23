@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
 import { GoogleMapsProvider } from "./components/GoogleMapsProvider";
-import { BRAND_NAME } from "./lib/brand";
+import { BRAND_NAME } from "@/lib/brand";
 import "./globals.css";
 
 const dmSans = DM_Sans({

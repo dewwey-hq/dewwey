@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
-import { usePlacePhotos } from "@/app/hooks/use-place-photos";
+import { usePlacePhotos } from "@/lib/hooks/use-place-photos";
 
 export default function VenuePhotoCarousel({
   placeId,

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useMap } from "@vis.gl/react-google-maps";
-import type { MapBounds } from "@/app/lib/map-bounds";
+import type { MapBounds } from "@/lib/map-bounds";
 
 const BOUNDS_DEBOUNCE_MS = 300;
 

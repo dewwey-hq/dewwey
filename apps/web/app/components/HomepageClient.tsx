@@ -3,12 +3,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Search, ChevronDown, Star, MapPin, Heart, Menu, X } from "lucide-react";
-import { BRAND_NAME } from "@/app/lib/brand";
-import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS } from "@/app/lib/site-layout";
-import { displayHeadingClassName, uiHeadingClassName } from "@/app/lib/typography";
+import { BRAND_NAME } from "@/lib/brand";
+import { siteContainerClass, SITE_HEADER_HEIGHT_CLASS } from "@/lib/site-layout";
+import { displayHeadingClassName, uiHeadingClassName } from "@/lib/typography";
 import { SiteNavLinks, SiteNavMobileLinks } from "./SiteNavLinks";
 import { SiteBrand } from "./SiteBrand";
-import { useNavIconsVisible } from "@/app/hooks/use-nav-icons-visible";
+import { useNavIconsVisible } from "@/lib/hooks/use-nav-icons-visible";
 import { VenuePlacePhoto } from "./VenuePlacePhoto";
 
 // ── Types ─────────────────────────────────────────────────────────────────────

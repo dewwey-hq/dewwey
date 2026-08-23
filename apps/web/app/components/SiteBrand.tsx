@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { BRAND_NAME } from "@/app/lib/brand";
-import { uiHeadingClassName } from "@/app/lib/typography";
+import { BRAND_NAME } from "@/lib/brand";
+import { uiHeadingClassName } from "@/lib/typography";
 
 export function SiteBrand({
   hideNameOnMobile = false,

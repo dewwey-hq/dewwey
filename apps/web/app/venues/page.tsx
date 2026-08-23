@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BRAND_NAME } from "../lib/brand";
+import { BRAND_NAME } from "@/lib/brand";
 import { searchVendors } from "@/lib/server/vendors";
 import VenuesClient, { type VenueVendor } from "../components/VenuesClient";
 const PAGE_SIZE = 20;

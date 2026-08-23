@@ -1,7 +1,7 @@
 "use client";
 
 import VenueRating from "./VenueRating";
-import { uiHeadingClassName } from "@/app/lib/typography";
+import { uiHeadingClassName } from "@/lib/typography";
 import VenuePhotoCarousel from "./VenuePhotoCarousel";
 import type { MapVenueCard } from "./venues-browse-types";
 
@@ -67,7 +67,7 @@ export default function VenueMapBrowseCard({
     >
       <div className="relative">
         <VenuePhotoCarousel
-          placeId={venue.place_id}
+          placeId={venue.place_id ?? undefined}
           photoNames={venue.photos}
           alt={venue.name}
           aspectClass="aspect-[3/2]"

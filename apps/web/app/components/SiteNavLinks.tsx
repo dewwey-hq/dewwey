@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { SITE_NAV_ITEMS, type SiteNavItem } from "@/app/lib/site-nav";
+import { SITE_NAV_ITEMS, type SiteNavItem } from "@/lib/site-nav";
 
 const NAV_ICON_SIZE = 28;
 const NAV_ICON_SIZE_MOBILE = 26;

@@ -1,5 +1,5 @@
 import { Star } from "lucide-react";
-import { formatCount } from "@/app/lib/format-address";
+import { formatCount } from "@/lib/format-address";
 
 export default function VenueRating({
   rating,

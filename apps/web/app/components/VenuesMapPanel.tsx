@@ -5,7 +5,7 @@ import { AdvancedMarker, AdvancedMarkerAnchorPoint, Map, useMap } from "@vis.gl/
 import MapCustomControls from "./MapCustomControls";
 import MapVenueFloatingPopup from "./MapVenueFloatingPopup";
 import { MapBoundsReporter } from "./MapSyncHandlers";
-import type { MapBounds } from "@/app/lib/map-bounds";
+import type { MapBounds } from "@/lib/map-bounds";
 import type { MapVenueCard } from "./venues-browse-types";
 import type { VenueVendor } from "./VenuesClient";
 

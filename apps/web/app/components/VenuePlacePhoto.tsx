@@ -1,6 +1,6 @@
 "use client";
 
-import { usePlacePhotos } from "@/app/hooks/use-place-photos";
+import { usePlacePhotos } from "@/lib/hooks/use-place-photos";
 
 export function VenuePlacePhoto({
   placeId,

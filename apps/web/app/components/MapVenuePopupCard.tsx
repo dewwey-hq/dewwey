@@ -1,8 +1,8 @@
 "use client";
 
 import { Star } from "lucide-react";
-import { formatCount } from "@/app/lib/format-address";
-import { uiHeadingClassName } from "@/app/lib/typography";
+import { formatCount } from "@/lib/format-address";
+import { uiHeadingClassName } from "@/lib/typography";
 import VenuePhotoCarousel from "./VenuePhotoCarousel";
 import type { MapVenueCard } from "./venues-browse-types";
 
@@ -33,7 +33,7 @@ export default function MapVenuePopupCard({
       className="w-[min(300px,calc(100vw-2rem))] cursor-pointer overflow-hidden rounded-2xl bg-white shadow-[0_8px_28px_rgba(0,0,0,0.18)] transition-colors hover:bg-gray-50/80"
     >
       <VenuePhotoCarousel
-        placeId={venue.place_id}
+        placeId={venue.place_id ?? undefined}
         photoNames={venue.photos}
         alt={venue.name}
         aspectClass="aspect-[4/3]"

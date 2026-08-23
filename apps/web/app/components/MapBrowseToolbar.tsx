@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { ArrowUpDown, Map as MapIcon, Search, SlidersHorizontal } from "lucide-react";
-import { SITE_HEADER_HEIGHT_CLASS, SITE_PADDING_X_CLASS } from "@/app/lib/site-layout";
-import { SITE_NAV_ITEMS_MAP } from "@/app/lib/site-nav";
+import { SITE_HEADER_HEIGHT_CLASS, SITE_PADDING_X_CLASS } from "@/lib/site-layout";
+import { SITE_NAV_ITEMS_MAP } from "@/lib/site-nav";
 import { SiteNavLinks } from "./SiteNavLinks";
 import { SiteBrand } from "./SiteBrand";
 import MapFilterDropdown from "./MapFilterDropdown";

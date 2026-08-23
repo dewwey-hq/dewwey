@@ -1,14 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { placesPhotoUrl } from "@/app/lib/places-photo";
+import { placesPhotoUrl } from "@/lib/places-photo";
 
 /**
  * Resolve venue photos for the UI.
  *
- * Prefer stored Places photo *names* → direct Google media URLs (browser key).
- * Avoids `/api/venue-photo` Place Details / skipHttpRedirect on every card render.
- * Each <img> load still bills Place Details Photos — keep `count` low on browse surfaces.
+ * Stored Places photo *names* → direct Google media URLs (browser key).
+ * Each <img> load bills Place Details Photos — keep `count` low on browse surfaces.
  */
 export function usePlacePhotos(
   placeId: string | undefined,
