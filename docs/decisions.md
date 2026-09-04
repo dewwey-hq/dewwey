@@ -4,6 +4,54 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D021 — 2026-09-04 — Reconciliation evidence floor: below-ambiguous "best available" matches no longer get a matched_wedding_id
+
+Status: Accepted
+Context: D020 closed the reconciliation audit but left two known issues open. This addresses only
+issue A (no evidence floor) — issue B (clustering order dependence, wedding 468) is untouched, a
+separate future experiment.
+**What the investigation found**: `runJeremyWeddingReconciliation.ts`'s own documented design
+(`ingestion-design.md`, "Reconciliation algorithm") already specifies three buckets — high,
+ambiguous, "no match (`matched_wedding_id` null, candidate stays fully standalone)". The
+*implementation* diverged from its own design: candidates that matched neither the high nor
+ambiguous threshold still got `matched_wedding_id = best.weddingId` (just the closest venue-mate,
+however weak) at confidence 0.1. This was previously identified as the "magnet effect" driver
+(sparse Ben-venue coverage causing many unrelated Jeremy candidates to weakly "match" the same
+single logged wedding) and the reason the "no-match" bucket previously reported as one number
+(2,092) was actually two very different populations (445 genuinely venue-less + 1,647 weak-but-
+recorded matches). Because `HIGH_CONFIDENCE_*`/`AMBIGUOUS_*` were already reasoned, calibrated
+thresholds (not arbitrary), the smallest defensible floor is exactly the existing ambiguous
+boundary — no new constant introduced: **is-high OR is-ambiguous → keep `matched_wedding_id`;
+otherwise null.** This is a bug fix aligning code with the pre-existing documented contract, not a
+new design.
+Decision: implemented as `reconcile-v2` (bumped `RECONCILIATION_VERSION`, not an overwrite) —
+`reconcile-v1`'s 2,503 rows are untouched and still queryable (PK is `(candidate_id,
+reconciliation_version)`, exactly the versioning mechanism `ingestion-design.md` already
+specified for this). Only the write in the below-ambiguous branch changed: `matched_wedding_id`
+is now `null` instead of `best.weddingId`; `match_confidence` stays `0.1` and
+`date_delta_days`/`vendor_jaccard` stay populated (the rejected best-candidate's evidence remains
+inspectable, distinguishing it from the true no-venue case where both are `null` and
+`venue_match=false`). No change to `HIGH_CONFIDENCE_DATE_DAYS`/`HIGH_CONFIDENCE_JACCARD`/
+`AMBIGUOUS_DATE_DAYS`/`AMBIGUOUS_JACCARD`, clustering, candidate generation, or any Ben graph
+table.
+Verified before applying: high=143/ambiguous=268 identical byte-for-byte between `reconcile-v1`
+and `reconcile-v2` (checked every column, not just counts). `insufficient` (formerly
+"weak, matched") went from 1,647→0 matched, `no-venue` unchanged at 445. Distinct Ben weddings
+matched dropped 494→283; many-to-one collisions (a Ben wedding claimed by >1 candidate) dropped
+322→79 — all now backed only by high/ambiguous evidence. The previously-flagged 58-way collision
+(wedding 1290) is now 7 (1 high + 6 ambiguous, its 51 weak claims floored out); a similar 8-way
+case (wedding 733) is now 8 (1 high + 7 ambiguous — coincidentally the new largest, but entirely
+legitimate-tier). Confirmed idempotent: reran `reconcile-v2` a second time, identical row-content
+hash, 2,503 rows both times, `reconcile-v1`'s 2,503 rows still present unchanged. Ben's graph
+(`weddings`/`wedding_posts`/`wedding_vendors`/`edges`: 1,384/1,668/12,310/54,271) and Jeremy's
+candidate/candidate_posts counts (2,872/3,273) unchanged. Added 10 new regression tests
+(`graphStrengthening.test.ts`, now 30 total, all passing) covering the new semantic contract and
+the v1/v2 byte-identical invariant for high+ambiguous.
+Not done, explicitly out of scope: fixing clustering order dependence (issue B, wedding 468 case)
+— separate future experiment.
+
+---
+
 ## D020 — 2026-09-04 — Reconciliation audit: 143 high-confidence matches trusted on automated evidence, no redesign, no human audit performed
 
 Status: Accepted

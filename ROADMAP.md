@@ -39,12 +39,17 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
   — 131/143 (91.6%) have an exact shared Instagram post URL between the Jeremy candidate and the
   Ben wedding (deterministic-strength evidence), the remaining 12 were reviewed and came back
   11 GREEN / 1 YELLOW / 0 RED with zero false-merge patterns. **Decision: trusted on automated
-  evidence, no reconciliation redesign justified.** Two known, still-unimplemented follow-ups:
-  (A) reconciliation has no evidence floor — its weakest (0.1) confidence bucket still records a
-  `matched_wedding_id`, the "magnet effect" driver identified earlier; (B) order-dependent greedy
-  clustering can under-merge same-wedding posts into separate candidates (concrete case: wedding
-  468, candidates 2105/2116) — confirmed this does not cause reconciliation false merges, just
-  redundant candidates, but is still worth fixing.
+  evidence, no reconciliation redesign justified.**
+  **Follow-up A shipped (D021, `reconcile-v2`)**: reconciliation now has an evidence floor —
+  candidates matching neither the high nor ambiguous threshold get `matched_wedding_id = null`
+  instead of the closest-available (however weak) venue-mate. High (143) and ambiguous (268)
+  tiers verified byte-identical to `reconcile-v1`; distinct Ben weddings matched dropped 494→283,
+  many-to-one collisions 322→79, the previously-flagged 58-way collision (wedding 1290) is now 7
+  (all high/ambiguous). `reconcile-v1` preserved untouched (versioned, not overwritten).
+  **Follow-up B still open**: order-dependent greedy clustering can under-merge same-wedding
+  posts into separate candidates (concrete case: wedding 468, candidates 2105/2116) — confirmed
+  this does not cause reconciliation false merges, just redundant candidates, but is still worth
+  fixing. Separate future experiment, not attempted yet.
   **Known gap, not yet fixed**: posts with 1-2 (not 3+) vendor roles contribute evidence but
   aren't currently attached to any candidate even when they'd match one that already exists —
   fast, well-scoped next addition. **Not yet done, deliberately deferred**: merging

@@ -13,7 +13,7 @@
  */
 import { getPool, closePool } from "../classify/db";
 
-export const RECONCILIATION_VERSION = "reconcile-v1";
+export const RECONCILIATION_VERSION = "reconcile-v2";
 const HIGH_CONFIDENCE_DATE_DAYS = 14;
 const HIGH_CONFIDENCE_JACCARD = 0.5;
 const AMBIGUOUS_DATE_DAYS = 30;
@@ -72,7 +72,8 @@ async function main() {
 
   let high = 0;
   let ambiguous = 0;
-  let none = 0;
+  let insufficient = 0; // best venue-mate existed but fell below the ambiguous floor — no matched_wedding_id (evidence floor)
+  let noVenue = 0; // no Ben wedding at that venue at all
 
   for (const c of candidates) {
     if (c.venue_account_id == null) continue;
@@ -90,7 +91,7 @@ async function main() {
     }
 
     if (!best) {
-      none++;
+      noVenue++;
       await pool.query(
         `insert into jeremy_wedding_candidate_reconciliation
            (candidate_id, matched_wedding_id, match_confidence, venue_match, date_delta_days, vendor_jaccard, reconciliation_version)
@@ -106,9 +107,16 @@ async function main() {
     const isAmbiguous =
       !isHigh && ((best.dateDelta !== null && best.dateDelta <= AMBIGUOUS_DATE_DAYS) || best.jac > AMBIGUOUS_JACCARD);
     const confidence = isHigh ? 0.8 : isAmbiguous ? 0.4 : 0.1;
+    // Evidence floor: below the ambiguous threshold, "best venue-mate" is just the least-bad
+    // option among candidates at that venue, not evidence of a real match — this is the gap
+    // between the documented 3-bucket design (ingestion-design.md) and what v1 actually wrote.
+    // Below the floor, matched_wedding_id stays null (insufficient evidence -> no match), but
+    // date_delta_days/vendor_jaccard are still recorded so the rejected best-candidate signal
+    // stays inspectable — distinct from the true no-venue-at-all case (venue_match=false, both null).
+    const matchedWeddingId = isHigh || isAmbiguous ? best.weddingId : null;
     if (isHigh) high++;
     else if (isAmbiguous) ambiguous++;
-    else none++;
+    else insufficient++;
 
     await pool.query(
       `insert into jeremy_wedding_candidate_reconciliation
@@ -117,11 +125,13 @@ async function main() {
        on conflict (candidate_id, reconciliation_version) do update set
          matched_wedding_id=excluded.matched_wedding_id, match_confidence=excluded.match_confidence,
          venue_match=true, date_delta_days=excluded.date_delta_days, vendor_jaccard=excluded.vendor_jaccard, reconciled_at=now()`,
-      [c.id, best.weddingId, confidence, best.dateDelta != null ? Math.round(best.dateDelta) : null, best.jac, RECONCILIATION_VERSION]
+      [c.id, matchedWeddingId, confidence, best.dateDelta != null ? Math.round(best.dateDelta) : null, best.jac, RECONCILIATION_VERSION]
     );
   }
 
-  console.log(`[jeremy-reconcile] DONE — high=${high} ambiguous=${ambiguous} none=${none} (of ${candidates.length} total candidates)`);
+  console.log(
+    `[jeremy-reconcile] DONE — high=${high} ambiguous=${ambiguous} insufficient=${insufficient} no-venue=${noVenue} (of ${candidates.length} total candidates)`
+  );
   await closePool();
 }
 

@@ -168,9 +168,17 @@ is Chicago iff its venue is" principle): search Ben's *current* `weddings` for t
 `venue_id`, compute `date_delta_days` and `vendor_jaccard` against `wedding_vendors`, and bucket:
 **high** (date within 14 days AND Jaccard > 0.5), **ambiguous** (one strong signal, not both —
 recorded, never auto-committed to anything), or **no match** (`matched_wedding_id` null,
-candidate stays fully standalone). Written into `jeremy_wedding_candidate_reconciliation` under
-`reconciliation_version = 'reconcile-v1'` — thresholds are starting heuristics, calibrated
-against real dry-run distributions, not asserted with false precision.
+candidate stays fully standalone). Thresholds are starting heuristics, calibrated against real
+dry-run distributions, not asserted with false precision.
+
+**`reconcile-v1` (2026-09-04) did not actually implement the "no match" bucket above** — a
+below-ambiguous candidate still got `matched_wedding_id = best.weddingId` (whatever venue-mate was
+least-bad) at confidence 0.1, silently representing "best available" as an actual match. Found
+during the D020/D021 audit and fixed in `reconcile-v2` (D021): below the ambiguous threshold,
+`matched_wedding_id` is now `null`, matching this doc's original intent (`date_delta_days`/
+`vendor_jaccard` still recorded, so the rejected candidate's evidence stays inspectable —
+distinct from the true no-venue case, where both are null and `venue_match=false`). Written under
+a new `reconciliation_version` (versioned, not an overwrite) — `reconcile-v1` remains queryable.
 
 ## Existing graph — unchanged, still true
 
