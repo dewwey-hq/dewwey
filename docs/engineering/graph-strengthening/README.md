@@ -1,12 +1,22 @@
 # Graph strengthening — using the V1 corpus to enrich the wedding/vendor graph
 
-**Status (2026-09-04):** baseline + eval set built, two iterations shipped and regression-tested
-(`stack-parser-ts-v2`: role-accuracy `ROLE_MAP` fixes; `stack-parser-ts-v3`: the no-colon recall
-fix). Current: 96.8% precision, 92.4% recall, 83.2% role accuracy against real ground truth.
-**Nothing written to production graph tables yet** — everything below is measurement and a
-read-only extraction instrument. Ingesting extracted relationships into
-`accounts`/`post_mentions`/`weddings`/`wedding_vendors`/`edges` is a separate, later decision.
-Ingestion population is decided: **INCLUDE only** for now (see "Open questions").
+**Status (2026-09-04, superseded — see below): this file documents the parser-iteration phase
+only (D016–D017).** The workstream has since gone much further: a durable evidence/candidate/
+reconciliation layer (D019, `docs/engineering/graph-strengthening/ingestion-design.md`), a
+reconciliation audit (D020, `reconciliation-audit-143.md`), a reconciliation evidence floor
+(D021), a clustering order-dependence investigation (D022,
+`clustering-boundary-investigation.md`), and — as of D023 — **the first production write**: the
+143 high-confidence reconciliation matches are now ingested into Ben's `wedding_vendors` (100
+genuinely new rows, additive-only, fully provenance-logged). Merged to `main` via
+`dewwey-hq/dewwey#1` (D024/D025). Current state, remaining open decisions, and next missions:
+`ROADMAP.md` "Shipped"/"Next" sections and `docs/decisions.md` D016–D025. The parser-iteration
+detail below (D016/D017) is still accurate as history, just no longer the current frontier.
+
+**Original status note (2026-09-03), kept for context:** baseline + eval set built, two
+iterations shipped and regression-tested (`stack-parser-ts-v2`: role-accuracy `ROLE_MAP` fixes;
+`stack-parser-ts-v3`: the no-colon recall fix). 96.8% precision, 92.4% recall, 83.2% role accuracy
+against real ground truth. Ingestion population decided: **INCLUDE only** for now (see "Open
+questions").
 
 **Goal, restated (not "improve the parser"):** use the 4,033 V3-validated INCLUDE posts (see
 `docs/engineering/post-classification/`) to add real, high-quality vendor relationships to the
@@ -171,5 +181,6 @@ every change here is deterministic and was measured against real ground truth, n
   wedding with a separate ceremony church and reception hall needs an ingestion-time decision
   (which wins, or store both as separate `wedding_vendors` role='venue' rows), not a parser-level
   one.
-- Whether/how to ingest extracted relationships into production graph tables at all — not
-  decided. This doc's scope stops at "is the extraction good enough," not "should we write it."
+- Whether/how to ingest extracted relationships into production graph tables at all —
+  **answered for the 143 high-confidence tier (D023): yes, ingested.** Still open for the
+  ambiguous (268) tier — see `ROADMAP.md` "Next".
