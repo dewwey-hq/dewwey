@@ -312,18 +312,14 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     expect(Number(rows[0].n)).toBe(1647);
   });
 
-  it("Ben's graph tables are unaffected by the reconciliation rerun (row counts match the pre-existing verified baseline)", async () => {
+  it("weddings/wedding_posts are unaffected by the reconciliation rerun — reconciliation never writes to Ben's graph (wedding_vendors/edges are D023's separate, deliberate ingestion, asserted in its own describe block)", async () => {
     const { rows } = await pool.query(`
       select
         (select count(*) from weddings) as weddings,
-        (select count(*) from wedding_posts) as wedding_posts,
-        (select count(*) from wedding_vendors) as wedding_vendors,
-        (select count(*) from edges) as edges
+        (select count(*) from wedding_posts) as wedding_posts
     `);
     expect(Number(rows[0].weddings)).toBe(1384);
     expect(Number(rows[0].wedding_posts)).toBe(1668);
-    expect(Number(rows[0].wedding_vendors)).toBe(12310);
-    expect(Number(rows[0].edges)).toBe(54271);
   });
 });
 
@@ -333,9 +329,7 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
 // docs/engineering/graph-strengthening/clustering-boundary-investigation.md. ---
 describe("clustering boundary-tie investigation — current (unfixed) state (DB)", () => {
   const pool = getPool();
-  afterAll(async () => {
-    await closePool();
-  });
+  // pool is closed in the last describe block below, not here (shared pool singleton).
 
   it("wedding-468 case: candidates 2105 and 2116 remain separate under jeremy-cluster-v1 (documented, not fixed)", async () => {
     const { rows } = await pool.query(`
@@ -369,5 +363,97 @@ describe("clustering boundary-tie investigation — current (unfixed) state (DB)
     `);
     expect(Number(rows[0].candidates)).toBe(2872);
     expect(Number(rows[0].candidate_posts)).toBe(3273);
+  });
+});
+
+// --- D023: the first write into Ben's serving graph (wedding_vendors). Scoped strictly to the
+// audited 143 high-confidence reconcile-v2 matches. Read-only assertions against the live result. ---
+describe("graph ingestion — D023 (DB)", () => {
+  const pool = getPool();
+  afterAll(async () => {
+    await closePool();
+  });
+
+  it("exactly 100 rows were newly ingested (the rest of the 143's evidence already matched Ben's own data)", async () => {
+    const { rows } = await pool.query(`select count(*) as n from jeremy_wedding_vendors_ingested`);
+    expect(Number(rows[0].n)).toBe(100);
+  });
+
+  it("every ingested row exists in wedding_vendors with the exact n_confirmations that was logged", async () => {
+    const { rows } = await pool.query(`
+      select count(*) as n from jeremy_wedding_vendors_ingested log
+      join wedding_vendors wv
+        on wv.wedding_id = log.wedding_id and wv.account_id = log.account_id and wv.role = log.role
+      where wv.n_confirmations != log.n_confirmations
+    `);
+    expect(Number(rows[0].n)).toBe(0);
+  });
+
+  it("every ingested row traces back to a candidate that is actually in the 143 high-confidence tier", async () => {
+    const { rows } = await pool.query(`
+      select count(*) as n from jeremy_wedding_vendors_ingested log
+      where not exists (
+        select 1 from jeremy_wedding_candidate_reconciliation r
+        where r.candidate_id = log.candidate_id and r.reconciliation_version = log.reconciliation_version
+          and r.match_confidence between 0.75 and 0.85
+      )
+    `);
+    expect(Number(rows[0].n)).toBe(0);
+  });
+
+  it("wedding_vendors grew by exactly the ingested count (12,310 pre-existing + 100 ingested = 12,410) — no pre-existing row was touched", async () => {
+    const { rows } = await pool.query(`
+      select
+        count(*) filter (where not exists (
+          select 1 from jeremy_wedding_vendors_ingested log
+          where log.wedding_id = wv.wedding_id and log.account_id = wv.account_id and log.role = wv.role
+        )) as untouched,
+        count(*) as total
+      from wedding_vendors wv
+    `);
+    expect(Number(rows[0].untouched)).toBe(12310);
+    expect(Number(rows[0].total)).toBe(12410);
+  });
+
+  it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before ingestion (1384/1668/14330) — only wedding_vendors gained rows", async () => {
+    const { rows } = await pool.query(`
+      select
+        (select count(*) from weddings) as weddings,
+        (select count(*) from wedding_posts) as wedding_posts,
+        (select count(*) from accounts) as accounts
+    `);
+    expect(Number(rows[0].weddings)).toBe(1384);
+    expect(Number(rows[0].wedding_posts)).toBe(1668);
+    expect(Number(rows[0].accounts)).toBe(14330);
+  });
+
+  it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {
+    const { rows } = await pool.query(`
+      select count(*) as n from wedding_vendors a
+      join wedding_vendors b on a.wedding_id = b.wedding_id and a.account_id < b.account_id
+      group by a.wedding_id
+    `);
+    const expectedEdgePairs = await pool.query(`
+      select count(*) as n from (
+        select least(a.account_id,b.account_id) aa, greatest(a.account_id,b.account_id) bb
+        from wedding_vendors a join wedding_vendors b on a.wedding_id = b.wedding_id and a.account_id < b.account_id
+        group by 1,2
+      ) x
+    `);
+    const { rows: edgesRows } = await pool.query(`select count(*) as n from edges`);
+    expect(Number(edgesRows[0].n)).toBe(Number(expectedEdgePairs.rows[0].n));
+  });
+
+  it("jeremy_wedding_vendors_ingested.wedding_id is NOT a foreign key (deliberate — same reasoning as reconciliation's matched_wedding_id, since phase_dedup can reassign weddings.id)", async () => {
+    const { rows } = await pool.query(`
+      select kcu.column_name
+      from information_schema.table_constraints tc
+      join information_schema.key_column_usage kcu on kcu.constraint_name = tc.constraint_name
+      where tc.table_name = 'jeremy_wedding_vendors_ingested' and tc.constraint_type = 'FOREIGN KEY'
+    `);
+    const fkColumns = rows.map((r) => r.column_name);
+    expect(fkColumns).not.toContain("wedding_id");
+    expect(fkColumns).toContain("account_id");
+    expect(fkColumns).toContain("candidate_id");
   });
 });

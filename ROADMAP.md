@@ -27,13 +27,11 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
   `jeremy_post_vendor_evidence` (a view — 32,633 rows, 4,982 unique vendors), `jeremy_wedding_candidates`
   (2,872 candidates from 3,273 clustering-eligible posts), `jeremy_wedding_candidate_reconciliation`
   (143 high-confidence / 268 ambiguous / 2,092 no-match vs. Ben's current weddings). Idempotency
-  verified live (reran both scripts, zero new/changed rows). 20 regression tests passing
-  (`apps/web/scripts/graph/graphStrengthening.test.ts`). **`weddings`/`wedding_posts`/
-  `wedding_vendors`/`edges`/`phase_dedup()` remain completely untouched** — verified live, exact
-  same counts as before this work; `accounts` grew by exactly 3,287 (new vendor handles, the only
-  sanctioned change). A pre-implementation architectural review (D019) found and fixed real
-  problems in the first design (evidence identity was wrong, an unnecessary table, a durability
-  risk from depending on `staging.instagram_posts` — see D019 for detail).
+  verified live (reran both scripts, zero new/changed rows). A pre-implementation architectural
+  review (D019) found and fixed real problems in the first design (evidence identity was wrong,
+  an unnecessary table, a durability risk from depending on `staging.instagram_posts` — see D019
+  for detail). **`weddings`/`wedding_posts`/`edges`/`phase_dedup()` remain untouched;
+  `wedding_vendors` now has 100 ingested rows — see D023 below.**
   **Reconciliation audit closed (D020)**: the 143 high-confidence matches were analyzed (not
   manually audited — see `docs/engineering/graph-strengthening/reconciliation-audit-143.md`)
   — 131/143 (91.6%) have an exact shared Instagram post URL between the Jeremy candidate and the
@@ -56,15 +54,24 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
   (`jeremy_wedding_candidates.superseded_by_candidate_id` — `jeremy_wedding_candidate_posts` has
   no per-version PK the way reconciliation does) that this investigation didn't have
   authorization to make (a direct DDL attempt was blocked by the session's own safety guardrail).
-  No production data or schema changed. **Recommendation: proceed to the vendor graph update,
-  don't gate on this** — the affected population is small and already covered by the D021
-  evidence floor.
+  No production data or schema changed.
+  **Graph ingestion shipped (D023)**: the 143 high-confidence tier is now written into Ben's
+  `wedding_vendors` — additive only (`on conflict do nothing`, no pre-existing row touched),
+  fully provenance-logged (`jeremy_wedding_vendors_ingested`, since `wedding_vendors` itself has
+  no source column). Of 1,360 candidate-vendor rows across the 143, 1,260 already matched Ben's
+  own data (independent confirmation) and **100 were genuinely new** across 63 of the 142
+  distinct matched weddings. `wedding_vendors` 12,310→12,410, `edges` (materialized view)
+  refreshed 54,271→54,526. Idempotency verified live (reran the apply script, `inserted=0`,
+  identical content hash). **Durability caveat, not solved**: `phase_dedup()`'s truncate-rebuild
+  would wipe this if it ever runs again — recovery is rerun reconciliation then rerun the apply
+  script (both idempotent); the durable source of truth stays the evidence/candidate/
+  reconciliation layer, never `wedding_vendors` itself. 41/41 regression tests passing
+  (`apps/web/scripts/graph/graphStrengthening.test.ts`).
   **Known gap, not yet fixed**: posts with 1-2 (not 3+) vendor roles contribute evidence but
   aren't currently attached to any candidate even when they'd match one that already exists —
-  fast, well-scoped next addition. **Not yet done, deliberately deferred**: merging
-  confidently-reconciled candidates into Ben's live serving graph (needs a decision on whether to
-  invest in making `weddings.id` stable first, informed by this real data rather than a
-  prerequisite guess).
+  fast, well-scoped next addition. **Not yet done, deliberately deferred**: ingesting the
+  ambiguous (268) tier, or fixing clustering order-dependence (D022) before its yield justifies
+  the schema change it needs.
 - The dewwey.com domain story: point it at the Vercel project (linked
   2026-08-22), add a custom domain for R2 to replace the r2.dev URL, and
   check the Google Maps browser key's referrer allowlist covers the new
@@ -81,9 +88,9 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
 
 - TS port of the pipeline (926 lines of Python) with OpenRouter swapped in for
   Anthropic-direct and `avatars.py` writing to R2.
-- Ingest graph-strengthening's extracted vendor relationships into
-  `weddings`/`wedding_vendors`/`edges` (see "Now" above — extraction is built and evaluated,
-  ingestion is not), then drop the `staging` schema.
+- Graph-strengthening's high-confidence tier (143) is now ingested into `wedding_vendors`
+  (D023, see "Now" above). Remaining: decide whether/how to ingest the ambiguous (268) tier,
+  then drop the `staging` schema.
 
 ## Later
 

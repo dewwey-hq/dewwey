@@ -180,12 +180,19 @@ during the D020/D021 audit and fixed in `reconcile-v2` (D021): below the ambiguo
 distinct from the true no-venue case, where both are null and `venue_match=false`). Written under
 a new `reconciliation_version` (versioned, not an overwrite) — `reconcile-v1` remains queryable.
 
-## Existing graph — unchanged, still true
+## Existing graph — the write path (implemented 2026-09-04, D023)
 
-`weddings`/`wedding_posts`/`wedding_vendors`/`edges`/`phase_dedup()` receive zero writes and zero
-behavior changes. The eventual write path for a confidently-matched candidate (upsert into
-`wedding_vendors`, tagged evidence pointing at "`wedding_id` as it existed at write time") is
-still designed, not implemented — same as the prior draft.
+`weddings`/`wedding_posts`/`edges`/`phase_dedup()` remain untouched (edges is a derived
+materialized view, refreshed after the write, never hand-written to). `wedding_vendors` DOES now
+receive writes: `applyJeremyEvidenceToGraph.ts` inserts the 143 high-confidence tier's vendor
+evidence, `insert ... on conflict (wedding_id, account_id, role) do nothing` — additive only, no
+pre-existing row is ever modified. Every inserted row is logged in
+`jeremy_wedding_vendors_ingested` for provenance, since `wedding_vendors` itself carries none.
+Full reasoning, safety verification, and before/after numbers: D023 in `docs/decisions.md`.
+**Durability caveat**: `phase_dedup()`'s `TRUNCATE ... RESTART IDENTITY CASCADE` would wipe this
+write along with `weddings.id` itself if it ever runs again — recovery is rerun reconciliation
+then rerun the apply script, both idempotent. The durable source of truth stays the evidence/
+candidate/reconciliation layer, never `wedding_vendors`.
 
 ## Invariants (implemented and verified — see report)
 
@@ -209,6 +216,10 @@ still designed, not implemented — same as the prior draft.
     algorithm is an explicit new version, not a silent behavior change.
 12. **(added)** No component of this design depends on `staging.instagram_posts` remaining
     queryable.
+13. **(added, D023)** Writes into `wedding_vendors` are additive-only (`on conflict do nothing`)
+    and fully provenance-logged (`jeremy_wedding_vendors_ingested`) — no pre-existing row from
+    Ben's own crawler is ever modified, and every row this workstream contributed is traceable to
+    its source candidate and reconciliation run.
 
 ## Known limitations, named rather than silently accepted
 

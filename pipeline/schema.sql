@@ -569,6 +569,29 @@ create table jeremy_wedding_candidate_reconciliation (
   primary key (candidate_id, reconciliation_version)
 );
 
+-- D023: the durable provenance log for graph ingestion — the first (and only)
+-- write path from this workstream into Ben's wedding_vendors. wedding_vendors
+-- itself has no provenance column, so this table is the record of what got
+-- written, from which candidate, under which reconciliation_version, and
+-- when. wedding_id is deliberately NOT a foreign key (same reasoning as
+-- matched_wedding_id above): a future phase_dedup() truncate-rebuild
+-- (RESTART IDENTITY CASCADE on weddings/wedding_posts/wedding_vendors) can
+-- both wipe the wedding_vendors rows this logged AND reassign weddings.id
+-- out from under this table's rows. Recovery is not automatic — the durable
+-- source of truth stays the Jeremy evidence/candidate/reconciliation layer;
+-- re-apply by rerunning reconciliation (re-matches against Ben's new
+-- weddings) then applyJeremyEvidenceToGraph.ts again (both idempotent).
+create table jeremy_wedding_vendors_ingested (
+  wedding_id             bigint not null,
+  account_id             bigint not null references accounts(id),
+  role                   vendor_role not null,
+  n_confirmations        integer not null,
+  candidate_id           bigint not null references jeremy_wedding_candidates(id),
+  reconciliation_version text not null,
+  ingested_at            timestamptz not null default now(),
+  primary key (wedding_id, account_id, role, reconciliation_version)
+);
+
 -- Golden set: hand-labeled regression set. NEVER written by any classifier —
 -- only a human/labeling script touches this table. This is what every
 -- classifier version gets scored against before it ships.

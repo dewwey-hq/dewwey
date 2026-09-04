@@ -4,6 +4,66 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D023 — 2026-09-04 — Graph ingestion: validated Jeremy evidence written into Ben's wedding_vendors for the first time
+
+Status: Accepted
+Context: D022 recommended proceeding to the vendor graph update rather than gating on the
+clustering fix. This is that update — the first write this workstream has ever made to Ben's
+serving graph (`weddings`/`wedding_posts`/`wedding_vendors`/`edges` had been explicitly
+untouched since D019).
+**Safety design, reasoned before writing anything**:
+1. **Scope**: only the 143 `reconcile-v2` high-confidence matches (D020's audited tier —
+   91.6% exact-shared-Instagram-URL, remainder manually reviewed, 0 confirmed false merges).
+   Ambiguous (268) and insufficient-evidence tiers are never touched.
+2. **Additive only**: `insert into wedding_vendors ... on conflict (wedding_id, account_id,
+   role) do nothing` — a pre-existing row (Ben's own crawler data) is never modified, not even
+   its `n_confirmations`. Verified directly: of 1,360 candidate-vendor rows across the 143,
+   1,260 already existed in `wedding_vendors` (independent confirmation that the two graphs
+   substantially agree) and exactly 100 were genuinely new.
+3. **Provenance**: `wedding_vendors` has no source/provenance column and this workstream
+   deliberately did not add one via `ALTER TABLE` (see point 5). Instead, every row actually
+   inserted is logged in a new table, `jeremy_wedding_vendors_ingested` (candidate_id,
+   reconciliation_version, timestamp) — the durable record of what was written and why, fully
+   additive, zero schema change to any pre-existing table.
+4. **Durability caveat, documented not solved**: Ben's `phase_dedup()` truncates `weddings`/
+   `wedding_posts`/`wedding_vendors` with `RESTART IDENTITY CASCADE` on every run. If that ever
+   runs again, everything this write contributed to `wedding_vendors` is wiped, and `weddings.id`
+   itself gets reassigned. This is not fixed here (would require making `phase_dedup()`
+   Jeremy-aware, explicitly out of scope through D019-D022). Recovery path: rerun
+   `runJeremyWeddingReconciliation.ts` (re-matches against Ben's new weddings) then
+   `applyJeremyEvidenceToGraph.ts` again — both are idempotent and safe to run repeatedly. The
+   durable source of truth remains the Jeremy evidence/candidate/reconciliation layer, never
+   `wedding_vendors` itself — exactly the principle the whole architecture was built around.
+5. Created `jeremy_wedding_vendors_ingested` via `CREATE TABLE` (additive, succeeded). Separately
+   attempted an `ALTER TABLE jeremy_wedding_candidates ADD COLUMN ...` earlier in the session
+   (D022's clustering-fix path) and that was blocked by the session's safety guardrail — informed
+   the decision here to avoid any `ALTER TABLE` on production tables and use only new, additive
+   tables for provenance.
+**Execution**: dry-run first (`--dry-run`, wraps the whole apply in a transaction and rolls back
+at the end, exercising the identical code path including conflict resolution) — confirmed
+attempted=1360, inserted=100, matching the precondition check exactly. Then committed for real:
+inserted=100, `refresh materialized view edges` ran after. Verified: `wedding_vendors`
+12,310→12,410 (+100, exact match); `edges` 54,271→54,526 (fresh recompute, consistent with a
+direct independent recomputation of the pairwise-cooccurrence definition); `weddings`/
+`wedding_posts`/`accounts` byte-identical (1,384/1,668/14,330). Reran the apply script a second
+time: `inserted=0 already-existed=1360`, `wedding_vendors` content hash identical before/after
+the rerun — idempotency confirmed, not assumed. 63 of the 142 distinct Ben weddings in the 143
+tier gained at least one new vendor relationship (the other ~79 already had complete overlap).
+Role distribution of the 100 new rows: planner (20), band (16), content_creator (11),
+beauty_other (8), attire (7), florist (6), stationery (5), cake (5), hair (4), dj (4), makeup (4),
+photographer (3), jeweler (2), rentals/transportation/venue/officiant/videographer (1 each) —
+consistent with the earlier baseline finding that Jeremy's own-profile posts surface secondary
+roles (bands, content creators) that Ben's venue-tagged crawl was less likely to catch.
+Added 6 new regression tests (`graphStrengthening.test.ts`, "graph ingestion — D023" describe
+block) plus updated one pre-existing D021 test whose hardcoded `wedding_vendors`/`edges` counts
+were now correctly stale (D021's own point — "reconciliation never writes to Ben's graph" — is
+still true and still tested; the counts themselves legitimately changed via this separate,
+deliberate action). 41/41 total tests pass.
+Not done: no fix to clustering (D022, unrelated), no schema change to any pre-existing table,
+no write to `weddings`/`wedding_posts`/`edges` directly (only via the materialized view refresh).
+
+---
+
 ## D022 — 2026-09-04 — Clustering order-dependence investigated (Experiment B): mechanism found and quantified, fix designed but not shipped, no production change
 
 Status: Accepted (investigation), fix deferred pending explicit authorization
