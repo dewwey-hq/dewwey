@@ -1,0 +1,3 @@
+select setseed(0.42);
+
+\copy (with strata as ( select sp.post_url, case when pc.decision is not null then 'deterministic_excluded' else 'deferred_to_llm' end as stratum from staging.instagram_posts sp left join post_classification_runs pc on pc.post_url = sp.post_url and pc.classifier_version = 'det-only-v3' ), ranked as ( select post_url, stratum, row_number() over (partition by stratum order by random()) as rn from strata ) select post_url, stratum from ranked where (stratum = 'deterministic_excluded' and rn <= 1002) or (stratum = 'deferred_to_llm' and rn <= 1998) order by random()) to '/tmp/claude-1000/-home-jhoffen-dewwey/306cdcdd-3fad-4db3-a77f-94c2f33818ff/scratchpad/canary_urls.csv' with csv header

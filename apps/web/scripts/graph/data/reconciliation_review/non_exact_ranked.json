@@ -1,0 +1,577 @@
+[
+  {
+    "score": 7,
+    "candidate_id": 2803,
+    "matched_wedding_id": 1357,
+    "venue_handle": "thecanvasvenue",
+    "candidate_date": "2026-08-11",
+    "ben_wedding_date": "2026-08-19",
+    "date_delta_days": 8,
+    "vendor_jaccard": 0.55,
+    "candidate_post_count": 1,
+    "ben_wedding_post_count": 1,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/Db6EK4ZFPfs/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/DcO7DFhFBUa/"
+    ],
+    "candidate_vendors": [
+      "attire: @republicbyomarfarooq",
+      "attire: @sazzcreations",
+      "attire: @tenadurrani",
+      "beauty_other: @makeupbyrabia",
+      "cake: @thechocotacoo",
+      "catering: @usmaniafinedining",
+      "dj: @djraheel217",
+      "photographer: @filmylove.co",
+      "photographer: @frz.photography_",
+      "photographer: @rimshanasir",
+      "photographer: @saiirakphotography",
+      "planner: @opulenteventschi",
+      "rentals: @yannidesignstudio",
+      "venue: @thecanvasvenue",
+      "videographer: @juanalvaradophotography"
+    ],
+    "ben_vendors": [
+      "venue: @thecanvasvenue",
+      "planner: @opulenteventschi",
+      "photographer: @filmylove.co",
+      "photographer: @rimshanasir",
+      "videographer: @juanalvaradophotography",
+      "dj: @djraheel217",
+      "attire: @saazcreations",
+      "attire: @tenadurrani",
+      "cake: @thechocotacoo",
+      "catering: @usmaniafinedining",
+      "rentals: @yannidesignstudio",
+      "beauty_other: @makeupbyrabia",
+      "other: @arpitpathak0694",
+      "other: @hennabyparvin_",
+      "other: @republicbyomarfarooq",
+      "other: @zerobuzzbarr"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 7,
+    "candidate_id": 2818,
+    "matched_wedding_id": 1309,
+    "venue_handle": "harristheaterchicago",
+    "candidate_date": "2026-08-13",
+    "ben_wedding_date": "2026-08-17",
+    "date_delta_days": 4,
+    "vendor_jaccard": 0.588235,
+    "candidate_post_count": 1,
+    "ben_wedding_post_count": 1,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/Db9TJH_iBv0/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/DcJQiB9EVz_/"
+    ],
+    "candidate_vendors": [
+      "attire: @bridalreflectionsny",
+      "attire: @galialahav",
+      "attire: @theweddingdresser",
+      "band: @elis.band",
+      "cake: @ecbg_studio",
+      "catering: @limelightcatering",
+      "content_creator: @socialbridescollective",
+      "dj: @djmetro16",
+      "dj: @johnvincentlive",
+      "hair: @cutsbyamanda",
+      "makeup: @rarebirdbeauties",
+      "photobooth: @bugbooth",
+      "photographer: @kylejohnphoto",
+      "planner: @lolaeventpros",
+      "planner: @lolamichellev",
+      "rentals: @bbjlatavola",
+      "rentals: @brittanieahrens",
+      "rentals: @hmrdesigns",
+      "rentals: @nuagedesignsinc",
+      "rentals: @thefestivefrog",
+      "stationery: @impress_designstudio",
+      "transportation: @ridestg",
+      "transportation: @waytogolimousine",
+      "transportation: @windycitylimousine",
+      "venue: @harristheaterchicago",
+      "videographer: @highway61films"
+    ],
+    "ben_vendors": [
+      "venue: @harristheaterchicago",
+      "planner: @lolaeventpros",
+      "planner: @lolamichellev",
+      "photographer: @kylejohnphoto",
+      "videographer: @highway61films",
+      "videographer: @socialbridescollective",
+      "hair: @hairbyamandakosiek",
+      "makeup: @rarebirdbeauties",
+      "dj: @johnvincentlive",
+      "dj: @successful_twan",
+      "musician: @elis.band",
+      "attire: @bridalreflectionsny",
+      "attire: @galialahav",
+      "attire: @theweddingdresser",
+      "cake: @ecbg_studio",
+      "catering: @binnysbev",
+      "catering: @limelightcatering",
+      "rentals: @bbjlatavola",
+      "rentals: @hmrdesigns",
+      "rentals: @nuagedesignsinc",
+      "rentals: @thefestivefrog",
+      "transportation: @ridestg",
+      "transportation: @waytogolimousine",
+      "transportation: @windycitylimousine",
+      "photobooth: @bugbooth",
+      "other: @frostchicago",
+      "other: @impress_designstudio",
+      "other: @vipvaletservice"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 6,
+    "candidate_id": 2105,
+    "matched_wedding_id": 468,
+    "venue_handle": "riverroomchicago",
+    "candidate_date": "2026-04-24",
+    "ben_wedding_date": "2026-04-26",
+    "date_delta_days": 2,
+    "vendor_jaccard": 0.588235,
+    "candidate_post_count": 2,
+    "ben_wedding_post_count": 1,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/DXrkdSDju9Y/",
+      "https://www.instagram.com/p/DZVIim0FvcA/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/DXmojvKEWIo/"
+    ],
+    "candidate_vendors": [
+      "attire: @ettetailor",
+      "attire: @indochino",
+      "beauty_other: @pinmeupchicago",
+      "cake: @sweetmandybs",
+      "catering: @bigstarchicago",
+      "catering: @oneoffhospitality",
+      "dj: @toastandjamdjs",
+      "florist: @f4dweddings",
+      "florist: @flowersfordreams",
+      "jeweler: @catbirdnyc",
+      "photographer: @emullinsphoto",
+      "planner: @shh.events",
+      "venue: @riverroomchicago"
+    ],
+    "ben_vendors": [
+      "venue: @riverroomchicago",
+      "planner: @shh.events",
+      "photographer: @emullinsphoto",
+      "florist: @f4dweddings",
+      "florist: @flowersfordreams",
+      "hair: @pinmeupchicago",
+      "dj: @toastandjamdjs",
+      "attire: @ettetailor",
+      "attire: @indochinoweddings",
+      "attire: @lovelybridechicago",
+      "attire: @vagabond_bridal",
+      "cake: @sweetmandybs",
+      "catering: @bigstarchicago",
+      "catering: @oneoffhospitality"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 6,
+    "candidate_id": 2737,
+    "matched_wedding_id": 1222,
+    "venue_handle": "thelibraryat190",
+    "candidate_date": "2026-07-31",
+    "ben_wedding_date": "2026-08-12",
+    "date_delta_days": 12,
+    "vendor_jaccard": 0.526316,
+    "candidate_post_count": 2,
+    "ben_wedding_post_count": 1,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/Dbdu9BHDg7w/",
+      "https://www.instagram.com/p/DcGxVWFDpD0/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/Db9FRD1mlqD/"
+    ],
+    "candidate_vendors": [
+      "cake: @flourishcakedesign",
+      "catering: @entertaining_co",
+      "content_creator: @lanoviacreations",
+      "dj: @beatmixchicago",
+      "florist: @lifeinbloom",
+      "hair: @bridalartistryteam",
+      "officiant: @the.urban.union",
+      "photographer: @kentdrakephoto",
+      "planner: @eventsbyshaunrajah",
+      "rentals: @tailoredelements3520",
+      "stationery: @bydamistudiosnyc",
+      "transportation: @midwesttransportation",
+      "venue: @thelibraryat190",
+      "videographer: @lvi_films"
+    ],
+    "ben_vendors": [
+      "venue: @thelibraryat190",
+      "planner: @eventsbyshaunrajah",
+      "photographer: @kentdrakephoto",
+      "videographer: @lanoviacreations",
+      "videographer: @lvi_films",
+      "florist: @lifeinbloom",
+      "hair: @bridalartistryteam",
+      "dj: @beatmixchicago",
+      "cake: @flourishcakedesign",
+      "catering: @entertaining_co",
+      "rentals: @tailoredelements3520",
+      "other: @eleganteventlighting",
+      "other: @kyjsteiner",
+      "other: @thefestivefrog",
+      "other: @theweddingdresser"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 4,
+    "candidate_id": 2313,
+    "matched_wedding_id": 587,
+    "venue_handle": "ulcchicago",
+    "candidate_date": "2026-06-03",
+    "ben_wedding_date": "2026-05-26",
+    "date_delta_days": 8,
+    "vendor_jaccard": 0.8,
+    "candidate_post_count": 1,
+    "ben_wedding_post_count": 1,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/DZIh9iygH7u/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/DY0cLmdjpw5/"
+    ],
+    "candidate_vendors": [
+      "attire: @mariegabrielcouturebridal",
+      "attire: @mira_couture",
+      "attire: @verawanggang",
+      "cake: @bittersweetpastryshop",
+      "dj: @sparkentgroup",
+      "florist: @cjeflowers",
+      "hair: @ranniamaria",
+      "makeup: @nia.dynasty",
+      "photographer: @berlez",
+      "planner: @cjjanda",
+      "stationery: @chitownlbrown",
+      "venue: @ulcchicago",
+      "videographer: @aspenavenuestudios"
+    ],
+    "ben_vendors": [
+      "venue: @ulcchicago",
+      "planner: @cjjanda",
+      "photographer: @berlez",
+      "videographer: @aspenavenuestudios",
+      "florist: @cjeflowers",
+      "hair: @ranniamaria",
+      "makeup: @nia.dynasty",
+      "band: @sparkentgroup",
+      "attire: @mariegabrielcouturebridal",
+      "attire: @mira_couture",
+      "attire: @verawanggang",
+      "stationery: @chitownlbrown",
+      "cake: @bittersweetpastryshop",
+      "content_creator: @robertnoiastyle"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 4,
+    "candidate_id": 2768,
+    "matched_wedding_id": 1290,
+    "venue_handle": "chicagoilluminatingcompany",
+    "candidate_date": "2026-08-06",
+    "ben_wedding_date": "2026-08-17",
+    "date_delta_days": 11,
+    "vendor_jaccard": 0.8,
+    "candidate_post_count": 1,
+    "ben_wedding_post_count": 1,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/DbrdHb-jYgv/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/DcJIQsRj4YU/"
+    ],
+    "candidate_vendors": [
+      "catering: @entertaining_co",
+      "florist: @lifeinbloom",
+      "hair: @eringrahamhair",
+      "makeup: @shannonobrienweddings",
+      "photographer: @goldenhoursweddings",
+      "planner: @clementinechicago",
+      "venue: @chicagoilluminatingcompany",
+      "videographer: @socialbridescollective"
+    ],
+    "ben_vendors": [
+      "venue: @chicagoilluminatingcompany",
+      "planner: @clementinechicago",
+      "photographer: @goldenhoursweddings",
+      "videographer: @socialbridescollective",
+      "florist: @lifeinbloom",
+      "hair: @eringrahamhair",
+      "makeup: @shannonobrienweddings",
+      "catering: @entertaining_co",
+      "other: @tablescapeseventrentals",
+      "other: @thefestivefrog"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 3,
+    "candidate_id": 1367,
+    "matched_wedding_id": 249,
+    "venue_handle": "igniteeventschi",
+    "candidate_date": "2025-10-21",
+    "ben_wedding_date": "2025-10-22",
+    "date_delta_days": 1,
+    "vendor_jaccard": 0.6,
+    "candidate_post_count": 1,
+    "ben_wedding_post_count": 1,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/DQFFn1cDebD/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/DQIWpJvjKyk/"
+    ],
+    "candidate_vendors": [
+      "attire: @lbrbridal",
+      "catering: @amazingediblescatering",
+      "dj: @djliveentertainment",
+      "florist: @flowersfordreams",
+      "hair: @prettycommittee_beauty",
+      "planner: @eminencemks",
+      "venue: @igniteeventschi"
+    ],
+    "ben_vendors": [
+      "venue: @igniteeventschi",
+      "planner: @eminencemks",
+      "hair: @prettycommittee_beauty",
+      "dj: @djliveentertainment",
+      "attire: @lbrbridal",
+      "catering: @amazingediblescatering",
+      "other: @flowersfordreams",
+      "other: @hannah_mrozowicz",
+      "other: @nottoobradofalife"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 3,
+    "candidate_id": 2798,
+    "matched_wedding_id": 1232,
+    "venue_handle": "ivyroomchicago",
+    "candidate_date": "2026-08-11",
+    "ben_wedding_date": "2026-08-13",
+    "date_delta_days": 2,
+    "vendor_jaccard": 0.666667,
+    "candidate_post_count": 1,
+    "ben_wedding_post_count": 1,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/Db4TO_7IO3T/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/Db--PL3jpge/"
+    ],
+    "candidate_vendors": [
+      "content_creator: @lanoviacreations",
+      "dj: @funktasticproductions",
+      "florist: @xodesign_co",
+      "hair: @anomaliebeautyagency",
+      "musician: @thatsaxguyevents",
+      "photographer: @alyeskarphotography",
+      "venue: @ivyroomchicago"
+    ],
+    "ben_vendors": [
+      "venue: @ivyroomchicago",
+      "photographer: @alyeskarphotography",
+      "videographer: @lanoviacreations",
+      "florist: @xodesign_co",
+      "hair: @anomaliebeautyagency",
+      "dj: @funktasticproductions",
+      "musician: @thatsaxguyevents",
+      "other: @luxedognanny"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 2,
+    "candidate_id": 2603,
+    "matched_wedding_id": 896,
+    "venue_handle": "loftlucia",
+    "candidate_date": "2026-07-15",
+    "ben_wedding_date": "2026-07-18",
+    "date_delta_days": 3,
+    "vendor_jaccard": 0.727273,
+    "candidate_post_count": 2,
+    "ben_wedding_post_count": 4,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/Da0LTtKjn6c/",
+      "https://www.instagram.com/p/Da1dtUXlJQr/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/Da-qbvtRGVU/",
+      "https://www.instagram.com/p/Da8G0Fbg_hH/",
+      "https://www.instagram.com/p/DbiupoxRu92/",
+      "https://www.instagram.com/p/DbOObm0Rd3T/"
+    ],
+    "candidate_vendors": [
+      "beauty_other: @makeupby.karishma",
+      "dj: @brahma.beatz",
+      "hair: @bridalbeautyteam",
+      "photographer: @sapanahuja",
+      "planner: @pritisweetweddings",
+      "planner: @pritisweetweddings_bijal",
+      "rentals: @elegancedecor_chicago",
+      "venue: @loftlucia",
+      "videographer: @aria_films"
+    ],
+    "ben_vendors": [
+      "venue: @loftlucia",
+      "planner: @pritisweetweddings",
+      "planner: @pritisweetweddings_bijal",
+      "photographer: @sapanahuja",
+      "videographer: @aria_films",
+      "hair: @bridalbeautyteam",
+      "dj: @brahma.beatz",
+      "dj: @djsunnychicago",
+      "rentals: @elegancedecor_chicago",
+      "other: @desibts.co"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 2,
+    "candidate_id": 2721,
+    "matched_wedding_id": 1009,
+    "venue_handle": "lshiremarriott",
+    "candidate_date": "2026-07-28",
+    "ben_wedding_date": "2026-07-29",
+    "date_delta_days": 1,
+    "vendor_jaccard": 0.733333,
+    "candidate_post_count": 1,
+    "ben_wedding_post_count": 2,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/DbV0KG-uaMb/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/Dba8GFtEagc/",
+      "https://www.instagram.com/p/DbYhS9WkUF7/"
+    ],
+    "candidate_vendors": [
+      "beauty_other: @hairs2thebride",
+      "catering: @ashyanacatering",
+      "dj: @djeetchicago",
+      "dj: @shaadientertainment",
+      "dj: @the.donnybrooks",
+      "florist: @f4dweddings",
+      "officiant: @forever.incredible",
+      "photographer: @devaephotography",
+      "planner: @_eleganteweddingsandevents",
+      "planner: @misspaigeelizabeth",
+      "venue: @lshiremarriott",
+      "videographer: @goodweddingfilms"
+    ],
+    "ben_vendors": [
+      "venue: @lshiremarriott",
+      "planner: @_eleganteweddingsandevents",
+      "planner: @misspaigeelizabeth",
+      "photographer: @devaephotography",
+      "photographer: @kaileereiphotography",
+      "photographer: @roostandharborphoto",
+      "videographer: @goodweddingfilms",
+      "florist: @f4dweddings",
+      "dj: @djjeetchicago",
+      "dj: @shaadientertainment",
+      "dj: @the.donnybrooks",
+      "catering: @ashyanacatering",
+      "officiant: @forever.incredible",
+      "beauty_other: @hairs2thebride"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 2,
+    "candidate_id": 2855,
+    "matched_wedding_id": 1322,
+    "venue_handle": "chicagobotanic",
+    "candidate_date": "2026-08-18",
+    "ben_wedding_date": "2026-08-18",
+    "date_delta_days": 0,
+    "vendor_jaccard": 0.625,
+    "candidate_post_count": 1,
+    "ben_wedding_post_count": 1,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/DcKvXddFe0Z/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/DcMGvn0lNO3/"
+    ],
+    "candidate_vendors": [
+      "cake: @ecbg_studio",
+      "dj: @okynegroup",
+      "florist: @yannidesignstudio",
+      "hair: @rarebirdbeauties",
+      "makeup: @suz_sabat_mua",
+      "photographer: @cristinagphoto",
+      "planner: @afterglowweddingsandevents",
+      "venue: @chicagobotanic"
+    ],
+    "ben_vendors": [
+      "venue: @chicagobotanic",
+      "planner: @afterglowweddingsandevents",
+      "photographer: @cristinagphoto",
+      "florist: @yannidesignstudio",
+      "dj: @okynegroup"
+    ],
+    "exact_match": false
+  },
+  {
+    "score": 1,
+    "candidate_id": 2820,
+    "matched_wedding_id": 1224,
+    "venue_handle": "galleriamarchetti",
+    "candidate_date": "2026-08-13",
+    "ben_wedding_date": "2026-08-13",
+    "date_delta_days": 0,
+    "vendor_jaccard": 0.888889,
+    "candidate_post_count": 1,
+    "ben_wedding_post_count": 1,
+    "jeremy_urls": [
+      "https://www.instagram.com/p/Db_B1tAFlFD/"
+    ],
+    "ben_urls": [
+      "https://www.instagram.com/p/Db_OtO0lDSa/"
+    ],
+    "candidate_vendors": [
+      "dj: @dj_john_marcopulos",
+      "florist: @stevesflowermarket",
+      "hair: @tamaraholdenhair",
+      "makeup: @torieconnmua",
+      "musician: @dgsax_",
+      "photographer: @annamantini.photo",
+      "planner: @hampton__events",
+      "venue: @galleriamarchetti"
+    ],
+    "ben_vendors": [
+      "venue: @galleriamarchetti",
+      "planner: @hampton__events",
+      "planner: @joinmostest",
+      "photographer: @annamantini.photo",
+      "florist: @stevesflowermarket",
+      "hair: @tamaraholdenhair",
+      "makeup: @torieconnmua",
+      "dj: @dj_john_marcopulos",
+      "musician: @dgsax_"
+    ],
+    "exact_match": false
+  }
+]

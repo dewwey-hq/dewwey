@@ -1,0 +1,1514 @@
+[
+  {
+    "post_url": "https://www.instagram.com/p/DRH_yCRDYms/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Holiday buffet catering promo, no wedding content.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DN6fC0wDnID/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Nobu Houston restaurant-week promo, no wedding, and Houston not Chicago.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DOY2ZK9DQ-l/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Inquire now and bring your vision to life' \u2014 generic pitch, no specific real couple/event.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DGYjsBUvu5d/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "DJ demo-reel content about a hip-hop mix; wedding hashtags present but no specific event described.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZ2swCuimRA/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "styled_or_editorial",
+    "notes": "Product description for a wedding gown (Ansley Mini Dress) \u2014 product listing, not a real wedding.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C6fMOPyrQHc/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Photo by Milan' plus hashtag spam; location_tag names a real venue (The Langham, Chicago) but no couple or real-event narrative.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C9yGJa9vNGi/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Rooftop bar giveaway/contest promo, not wedding content.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DWSYHB9DRsw/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "destination_wedding",
+    "notes": "'Lucia + Alex' real wedding but explicitly in San Jos\u00e9 del Cabo, Mexico; owner is a known-graph Chicago photographer.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DWkE1g3EU_k/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Announcement for a wedding vendor trade show/expo at The Joinery \u2014 not a couple's wedding itself.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DIMTKQ8uOHE/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Multi-city Easter brunch promo, no wedding content.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C_9UTGrRqQp/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Sarah & JD' engagement session that explicitly references their real upcoming wedding (9.13.25) at the Art Institute of Chicago, a confirmed Chicago venue.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/CuyLFAmA7Gm/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Empty caption, no hashtags, no content of any kind.",
+    "bucket": "A_random"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DBwp4mDxGe3/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Max + Acadia' real wedding, explicit Bluemont, Virginia location.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DCeWY5RtYuS/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'A sweet ending to the beginning of forever' dessert photo \u2014 no couple named, no confirmed real event.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DIJ8khTyDON/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Job fair hiring announcement, no wedding content.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DExk6UUve7q/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Cheese curds food post, no wedding content.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DH6SVOvsOp1/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Scott Joplin history/tribute post, no wedding content.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DRBHcfyjlbE/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'A night out with my bestie' at a launch party, no wedding content.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DYaTpE8iXPv/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Zoo rhino fundraiser wish-list post, no wedding content.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DN3zcQIXJXC/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Corporate 'Meetings and Events' hotel-space ad, explicitly not wedding-focused.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DU0v8BxjfJC/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Musician demo clip of a cellist; no wedding referenced.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C8VZU_0Pzkb/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Graduation-celebration catering post, no wedding content.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DAb1iq4JWhG/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Generic hotel-travel skyline post, no wedding content.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZDEpEkDNsF/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Rooftop bar cocktail-hours promo, no wedding content.",
+    "bucket": "B_det_excluded_not_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DW1oEBhjLSy/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'Brigid & Ryan' Los Angeles ENGAGEMENT session, no reference to a specific wedding \u2014 and LA regardless.",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DNy_ubg0kvO/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "Boudoir-styled content, explicit Tampa, Florida location.",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DMQpLk8RArd/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "Full real vendor stack but explicit San Clemente, California venue and Orange County/LA hashtags.",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DOjD46NjclB/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Madison & Ryan' real wedding day, explicit Saint Augustine, Florida location_tag.",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DKU2gtYxlm8/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Cassidy & Griffin' real wedding day, explicit Saint Augustine, Florida location_tag.",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DGjMlWKvFX-/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "destination_wedding",
+    "notes": "Explicit 'destinationwedding' hashtag, El Dorado Royale Riviera Maya/Cancun location_tag.",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Da8hhF9mJTV/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "destination_wedding",
+    "notes": "'Rose & Brian' Bahamas wedding weekend, full vendor stack, explicit Bahamas location_tag.",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DGctTQ_A0v4/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "destination_wedding",
+    "notes": "'Veronica & J.P.' Riviera Maya, Mexico wedding, explicit destination hashtags and location_tag.",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DBb7MIaJAz2/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "destination_wedding",
+    "notes": "'Chloe and Nick' wedding at The Fox House, explicit Porto, Portugal location_tag.",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C8HCDHDIYDN/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "destination_wedding",
+    "notes": "Full vendor stack wedding at Lake Como, Italy, explicit location_tag.",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DVRNn6FFuVU/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Chicago Symphony Orchestra tour post about musicians' free time in NYC \u2014 not a wedding at all (deterministic tier mislabeled this destination_wedding; ground truth is not_wedding_related).",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DU8_GCMiXd5/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Bridal Fashion Week recap/industry-event content, not a real wedding (deterministic tier mislabeled this destination_wedding; ground truth is not_wedding_related).",
+    "bucket": "C_det_excluded_destination"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C9cno2utzt9/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Photographed a pretty wedding in Chicago at the Adler Planetarium', full vendor stack, real described event.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DKcuH-pxWK-/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Poll question about beauty-research platforms, no specific event.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C8fMsdjPTq5/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Generic seasonal marketing copy despite a venue tag; no specific couple or dated event.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZ0UAkVoH67/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "Real named couple, explicit Chicago location_tag, but caption never confirms this is a wedding (reads as a general couple/love-story session).",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DGwYywivs95/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Customer-vase anecdote, not wedding-specific.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DXFFlbriH4f/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Just got engaged?' generic planning-tips post, multi-market hashtags, no specific event.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C48j4DXuLFu/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Generic PSA about taking breaks during wedding planning, no specific event.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C6eibKsRiEz/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "Explicit Tampa/Clearwater hashtags and Opal Sands Resort location_tag.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C8z7TDtvZE3/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Madison and Adam's romantic city wedding', full vendor stack, Adler Planetarium (confirmed Chicago venue), explicit Chicago hashtags.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZKfwqWJ6pB/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Hannah' bridal makeup credit with Chicago hashtags, but no confirmation this is tied to an actual wedding day vs a trial/portrait.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DT_gF_miTJz/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Dated real event ('w + t \\ 10.4.24'), full DJ/photo/planner vendor stack, The Joinery Chicago venue.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DN3znmW3usl/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Michelle and Jake' wedding day, full vendor stack, Ivy Room Chicago (River North) venue, explicit Chicago hashtags.",
+    "bucket": "D_det_passed_to_llm"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/CtuvJV8MTpW/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'Colleen + Kevin' \u2014 hashtags are all engagement-session specific (lincolnparkengagementphotos, barengagementsession, engaged, bridetobe), no wedding reference.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/CTLiATdj0fV/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Photo By Milan' only; hashtags contradict (mix engagement-session tags with 'realwedding'), real park location_tag but no confirmable real event.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C3tQEzlPLpJ/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'JAMIE' one word; Four Seasons Hotel Chicago location_tag (real venue) but nothing confirms a wedding vs any makeup client.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C2u_p5OuhS3/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'touch up' only; #dalcywedding hashtag names a real Chicago venue but no couple or real-event narrative.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/CnkLe1-JTK4/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'Patio Views\u2026' generic venue photo, no wedding content.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Cvnck0pPL6R/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'New Year's Eve 2022' only; real venue (The Joinery) and vendor mentions but no couple name or confirmation of a wedding vs NYE party.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DIaWqWLxKO7/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "Emoji-only caption; Salvage One location_tag (real Chicago venue) and wedding hashtag but zero real content.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Cu7HpSpu9T9/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Haroula & Oliver' real named couple, Cafe Brauer (real Chicago venue) location_tag, wedding-branded hashtag.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Cx6s-7YNZ-4/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Empty caption but location_tag names a specific real Chicago venue (Adler Planetarium) and hashtags are strongly wedding-day specific (idos, weddingceremony, bigday).",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/CwLejruv4RE/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Kate + Josh / 11.5.22' real named couple and date, full vendor stack, The Joinery Chicago venue.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C9x_-lLuGlX/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "Empty caption; The Arbory location_tag (real Chicago venue) and generic wedding hashtags but no couple or real narrative.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C9Vqt8ZvUtV/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "Empty caption; generic Chicago+wedding hashtags only, no specific venue or couple.",
+    "bucket": "E_hashtag_only_ambiguous"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZyFZJDCZQ0/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Iyanna McNeely... wedding weekend to Alexander Lewis' at Union League Club of Chicago (confirmed real venue), huge real vendor stack, well-documented real wedding.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DRuk6BZjcnY/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Generic venue-partnership marketing copy ('Let Blue Plate bring it to life') despite a long mentions list; reads as an inquiry pitch, not a documented specific wedding.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C9vrKIqvivh/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Just married... Thank you Tim & Jenn' real named couple, Chicago location_tag.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DFLIdEeviWP/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'GINA' one name; hashtags contradict (both 'chicago' and 'destinationwedding'), no confirmable real event.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C-FvnuLIGC4/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Dreaming of a wedding that's unapologetically YOU?' \u2014 generic venue pitch inviting inquiries, not describing one specific wedding.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DUtRvgqEaol/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Valentine's Day generic brand statement about 'every Fairlie wedding', no specific couple or date.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZUzmXjkVw3/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'At BWEDDINGS we love designing multicultural weddings' \u2014 brand/portfolio voice, no couple named or dated event.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DSyotRiEbm-/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Retrospective portfolio recap of 'some of our earliest weddings back in 2017 and 2018', not one specific wedding.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcBc-K3Fdi-/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Huge real vendor stack explicitly names 'Couple: @mel.agunloye @folabio12', Chicago Illuminating Company (confirmed real Chicago venue).",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DVJRgLDiftx/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Generic brand-philosophy post about setting the vibe, no specific event.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DPhY5N5jzVZ/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Malak & Nizar's Wedding Day' real wedding, full vendor stack, explicit Dearborn, Michigan location_tag.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZbookVFLXW/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Cocktail hour moments' at Waldorf Astoria Chicago (real venue) but nothing confirms this is a wedding vs another event type.",
+    "bucket": "F_high_relevance_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DXzp6eYkees/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Chicago History Museum post about 'A Day Without An Immigrant' history, no wedding content",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbEqfzfkQan/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Mr. & Mrs. Heller / Meadow Brook Hall' \u2014 real wedding but Meadow Brook Hall is in Rochester, Michigan, not Chicago",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DaDocKxEa-uJ9qofGebyCbnU59wM1peoF0_yp80/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "real photographer credit (@foxandivory, a confirmed real Chicago vendor) but content is pre-wedding bridal-shower prep ('next up: bridal shower'), no wedding day evidence yet",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbNddlSkQ_0/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'wedding day is here' but location_tag='Hobart, Indiana' \u2014 just outside our own metro bbox definition (lng -87.25 vs cutoff -87.30), a genuine boundary case",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DY3WSMUgaMt/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Love is in the air' generic caption with photo credit, no specific couple or event named",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DQaWvBAAdsN/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Halloween 'Coraline coded' post, wedding hashtags appended irrelevantly",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DYNg2yjliBM/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Chris & Emily aka The Greeks' real named couple, on-site ceremony & reception at The Crawford in Naperville (Chicago metro) 8/9/24",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcRKEXJFZWS/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic photographer philosophy statement tagged to a real venue (Heritage Prairie Farm) but no specific couple/event named",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DaVjmh5Dg0y/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Fioretta Steak reservation ad for July 4th weekend, not a wedding",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Da8dJ-hgAmI/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "wedding gown product description (Sherlyn Maxi Dress), no real event; also explicitly Miami, Florida",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C-YfobXPJHT/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "real described catering menu for 'this couple' but no couple name, no location_tag, no Chicago confirmation for this specific event",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbTfGRrFfQ5/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'This type of love' one-line caption, multi-market hashtags (IL/IA/Milwaukee/Midwest), no couple or location",
+    "bucket": "G_low_ambiguous_account"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DYzZ-jbOlte/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic praise for weddings at University Club of Chicago venue, 'Inquire now' CTA, no specific couple",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DXMk9v_DcfK/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic venue philosophy copy ('not every couple wants a ballroom'), no specific event",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DFvqIuCSktj/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic 'La Hora Loca' service description ad, 'Now booking for 2026', no specific event",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db8oOTTEZiV/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'the most beautiful session' \u2014 an engagement/couples photo session, not a wedding; CTA for 2027 wedding inquiries",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C1LJbPcrEQv/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic venue marketing ('color is always a good idea'), 'Inquire via link in bio', no specific couple",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DFxkBO_JStP/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "networking-event hosting tips post, not a wedding",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DUpXpF2jd0r/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic photo booth service description, no specific event",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DV8_5OdmgE0/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Real Weddings | Kayla's Effortlessly Glamorous Bridal Look' \u2014 real named bride, full vendor stack, Butterfield Country Club venue (Chicago-area)",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbCEg2ljbeZ/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Ellen, 2026 bride at The Journeyman' \u2014 real couple (Ellen & Ben) but venue is Journeyman Distillery in Three Oaks, Michigan (hashtag 'michiganweddingplanner' confirms)",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcNbZOFAJy-/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic testimonial-style philosophy post, 'DM me your date + venue to inquire', no specific bride named",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbBbTLUoGm_/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "winery tasting-experience ad, not wedding-specific",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/CyUWMHfLwiF/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic venue marketing with a vendor stack but no couple named, 'Inquire about weddings, rehearsals, showers' CTA framing",
+    "bucket": "H_wedding_tag_nonwedding_content"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/CrOkmoHp3Aq/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Michelle + Ryan keeping the Joinery sexy' \u2014 real named couple at The Joinery, a confirmed real Chicago venue",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DIFEnz-vwUw/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "jewelry product hashtag-only post, no specific event",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/CvWff28uoUw/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "hashtag-only caption (same recurring account pattern as golden_set_v0), no real prose, no couple named",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DPKst28lDnm/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "hashtag-stuffed caption naming a real specific Chicago venue (The Hoxton, Chicago) but no couple named or event described",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DCZlQ2Wtsa2/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "makeup class advertisement, not a wedding",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DCFb9SBvz4m/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "styled_or_editorial",
+    "notes": "explicit flatlay of wedding stationery ('Flat lay magic'), no real couple/event",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C5G08h1LCJQ/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic weekend-vibes meme post, wedding hashtags only, no real content",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DXZ2Sw6Dxc3/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Truly the most joyful day' \u2014 full 8-category real vendor stack at Bridgeport Art Center, a confirmed real Chicago venue",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbGd8DmoP9g/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "references a real wedding from 'almost 15 years' ago but no couple name, no location, no Chicago confirmation for that event",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DYQHwjjRUsw/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "massive real 14-category vendor stack, location_tag='Revel Motor Row', a real known Chicago venue",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DSLIMSrESs0/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic seasonal marketing hashtag post ('Chicago winter is cold but the love stories are unreal'), no specific couple",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DGayKvxxR67/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'BBM's fitness shoot' \u2014 explicitly a fitness shoot, not a wedding",
+    "bucket": "I_chicago_signal_present"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DMnKS3lxYNt/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "salon giveaway/festival promo, not wedding-specific",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DarQPwnJo4l/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'she got married today' \u2014 real specific transaction described but no couple name, no location, no Chicago confirmation",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZncn3CjiTO/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic magazine-feature/Pride-month statement, no specific couple's wedding",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DY8MA7Jkf0O/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Morgan & Robert' real named couple but no location_tag and no Chicago signal anywhere in caption/hashtags",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Dbcq0oqIOpE/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Lauren & Ben post ceremony' real named couple but zero location signal, no Chicago hint",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DboUZKnGsbY/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "full vendor stack for a real wedding at Greystone Mansion \u2014 a well-known Beverly Hills, California venue",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DGlZblkTCl1/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "real vendor stack (bride, planner, cakes named) but no location_tag, no Chicago signal in caption",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DUWmAROjqf9/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "full vendor stack naming @wildmanbt as venue \u2014 Wildman BT is a confirmed real Chicago venue (218 independent geotags in this dataset)",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbeCXX7FEcR/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'POV: best weekend of your life' but Venue: Honey Horn \u2014 a well-known Hilton Head Island, South Carolina venue",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DH4wp0PtZeb/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Alina and Marit's wedding' real named couple, mentions a recurring real Chicago-market florist (f4dweddings) but no direct Chicago claim for this specific event \u2014 vendor-market association isn't proof of event location",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DanshWKGTzq/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Pre-wedding goals' mentions @galleriamarchetti, a confirmed real Chicago venue, but phrasing is ambiguous between an engagement shoot and the actual wedding",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DJaQUo1SlRV/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Samone and Abdul's elegant Freehold wedding day' \u2014 Freehold is a known New Jersey wedding-venue term/location, not Chicago",
+    "bucket": "J_chicago_ambiguous_absent"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DPzbVDLAWgt/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "styled_or_editorial",
+    "notes": "explicitly labeled 'this styled shoot' by the venue's own caption",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DIjtIMcvY0L/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "industry conference recap (@engagesummits, a wedding-industry conference brand) at Castelfalfi, Italy \u2014 not a real couple's wedding",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DIJOR_Xx0XG/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "styled_or_editorial",
+    "notes": "explicitly 'a full week of editorial shoots' in Lake Como/France, not a real wedding",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbgfAdzFgcx/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "explicit multi-wedding portfolio recap ('little round ups... from various weddings'), not one specific wedding",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DOkPeoejbBU/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "real named bride (@jenakylenixon, 'Happiest wedding day to you'), Chicago, Illinois location_tag, bridal hair/makeup vendor describing real work done",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DCh98o_gDj_/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic educational post about photo editing process, no specific couple or event named",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DHb2i6Xh7lI/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "styled_or_editorial",
+    "notes": "explicitly 'pre-wedding season styled shoot'",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DRC9qYLEU61/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "styled_or_editorial",
+    "notes": "explicitly 'Styled Shoot June 2025' with a credited Model, not a real couple",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DAoUnH_v2YJ/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "styled_or_editorial",
+    "notes": "explicitly 'CSW Designer's Challenge styled shoot' competition entry",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZ_a3G0mZUD/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "styled_or_editorial",
+    "notes": "explicitly hosted by @styledshootsacrossamerica, a styled-shoot brand",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DVPf7bXCFV-/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Selena and Ben's day' real named couple, massive 9-category real vendor stack, Chicago-area hashtags with no contradicting location",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DXjlSthlm6X/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "styled_or_editorial",
+    "notes": "explicitly 'this wonderful styled shoot', located at Keswick Vineyards, Virginia",
+    "bucket": "K_styled_editorial"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DU9Ga3riRQE/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "generic engagement-session marketing philosophy, no specific couple, not a wedding",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DQFR3PaEW4k/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'Demeri and Travis... engagement photos' \u2014 explicitly an engagement session, no wedding referenced",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Dak78wVhS6U/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "career-retrospective post ('12 years, 500+ weddings'), not one specific wedding",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbuSqTko_86/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "describes a proposal/ring purchase, not a wedding day",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Daf89fuGVJC/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "pure engagement/proposal hashtag list, no wedding content",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DavJjeOlfqA/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'Emily is a fiancee!!!!' \u2014 explicitly a proposal post, not a wedding",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C8nWXoOvfIE/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "explicitly 'A proposal is definitely one of the better surprises' \u2014 a proposal, not a wedding",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DRpTKaQAF66/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "generic engagement-ring product/proposal marketing copy, no specific couple's wedding",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DYzpPoqRlMK/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'can't wait for this beauties wedding in just a few short weeks' \u2014 real upcoming wedding + Chicago location_tag, but no name to confirm identifiability",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DOHMuragdE4/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Javeria & Isaac's Nikkah' (a real wedding ceremony) with real named couple, but caption focuses on a Michigan proposal story and the actual ceremony location isn't stated",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db6pSO_lBWB/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'HOW have I not shared these engagement photos yet' \u2014 explicitly engagement photos, no wedding",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DNqxE_rP8Yb/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'Summer engagement sessions... Jordan & Brad' \u2014 explicitly an engagement session, no wedding referenced",
+    "bucket": "L_engagement_proposal"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DYau9hWuKuc/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "named bride 'Lauren' with real reaction described ('Bridal reactions like this!'), Chicago location_tag, own-profile hair/makeup vendor \u2014 weak but real evidence",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Da54ZpOCRLO/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic consultation-call marketing, no specific bride named",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DanXDCICBmN/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic 'smallest details' pitch, no specific event, only state-level location_tag",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Dbdzkdmk4Xz/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Natalie & Patrick's wedding day', full vendor stack, Cantigny Park (Wheaton IL, Chicago metro)",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DUjNkwBEnJs/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Caitlyn & Acy' real wedding but location_tag explicitly 'Whittier, North Carolina'",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DKaI25BPewE/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Fired Up Friday glassblowing class promo, not a wedding",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C22ymzvseba/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic 'set the right mood' DJ ad, no specific event",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbJ5l9gsKXC/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Now booking 2026 brides' henna ad, no specific event",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DSFwx0UAIzN/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic cocktail-hour catering pitch, no specific event",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DSVNNJzkpP7/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic dermaplaning educational post",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DS23KStEpg-/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic makeup-myths educational post",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C31KHtkLaQr/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "personal bio/intro post, no specific event",
+    "bucket": "M_generic_vendor_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcJpTAKyAFJ/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'a snippet of Ford & Taylor's wedding', full vendor stack, Columbia Yacht Club (real Chicago venue)",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DOUE5mojwR0/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Black Bride magazine feature, huge real vendor stack, Chicago Museum venue, Juneteenth wedding",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DCjw0a-xVsT/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Much much love T+M!' full vendor stack, Chicago Gaelic Park (Oak Forest IL, Chicago metro)",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DMGdjo8PoMu/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Gianna and Joe', full vendor stack, Chicago location_tag, private lakefront residence",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DLYZDZNsDDO/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Erika and Nathan', 15-category vendor stack, Wildman BT (confirmed real Chicago venue)",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DRVdM3gkgK4/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Baroque Ball industry gala for WIPA chapter, explicitly 'beyond weddings', not a couple's wedding",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DF0fakivu5H/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'C + K' real wedding but Skirball Cultural Center is in Los Angeles (@skirball_la)",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/CzY_Fc8rXUU/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "real vendor design/floral/lighting stack at a known Chicago venue (The Geraghty) but zero couple identification, reads as a design showcase not a confirmed specific wedding",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Da0yuW3idyH/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Soumaya & Winslow', full vendor stack, Lake Forest, Illinois (Chicago North Shore)",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DOY_Ha0CaqT/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "full vendor stack including The Drake Chicago venue, despite 'now booking' marketing framing at top",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DQUOaJeACCz/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Louisa and Scott forever!', 15-category vendor stack incl. named church, Theater on the Lake (Chicago lakefront venue)",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DXXGNBTFbBQ/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "2-year anniversary post but named couple + Chicago Cultural Center (explicit real Chicago venue) + full 8-category vendor stack \u2014 enough specific detail to include despite being retrospective",
+    "bucket": "N_real_wedding_portfolio"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DaBE6RxGmtz/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "describes a real ceremony at Stan Mansion's Crystal Ballroom with a photo credit, but no couple named \u2014 marketing tone, can't confirm vs venue self-promotion",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DJShg-ePpml/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "cello/music performance event, not a wedding",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZKt5zzlV_s/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Pride Month museum statement",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DWRAAC_DnTN/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Congratulations to Nicholle & Michael', specific real ceremony detail (memorial seating), venue is the account itself",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DMGRBLzvKY2/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "gallery Open Studios event, not a wedding",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DWFGiZ6FXgD/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Still obsessing over this fall wedding!' Galleria Marchetti (extensively confirmed real Chicago venue), photographer credit, specific singular real-event reference",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DRfrHjej5Gy/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Al Capone venue-history marketing, not a specific wedding",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DVHX3FalJke/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Emily and Brad forever!', 15-category vendor stack, The Dalcy (real Chicago venue)",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZpgR1qjZrq/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "generic 'room full of love' caption with one photo credit, no couple named; Chicago Loop hashtag signal present but thin",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DCVWiSGIR5z/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'bring your stylish sneakers' generic wedding tip, not a specific event",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C3d6aobL0LJ/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'All you need is love!' generic caption, one photo credit, no couple named",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DKrzPpfR3yq/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Celebrating love with a view!' fully generic, no specific event",
+    "bucket": "O_venue_marketing"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcPGLdNowKO/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "about fundraising galas, not weddings, despite matching a 'planning tips' regex bucket \u2014 confirms the deterministic tier's independent EXCLUDE was correct",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbYPnpPEaPr/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic first-dance philosophy post, no specific couple",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DXaMWwqgehU/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Wedding tip! Adding live music...' pure generic tip",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DPVMq6-kuXs/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'top 5 planning tips' pure educational content",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DN7SvYFjlhW/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "real specific event detail ('Bad Bunny... sharks on the dance floor'), named venue Meridian Banquets, despite generic tip framing \u2014 weak Chicago confirmation",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DTTEYw-kR59/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Planning a Mexican or bilingual wedding in Chicago?' pure educational tip, no specific couple (same business as prior post, different post)",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C3jUCott7h0/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Passover Seder catering promo",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcL9gfbJEpN/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic bridal spray-tan booking reminder",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DVL5zwPgG0p/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Would you rather' poll about wedding timelines, no specific couple",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZFccMQAnYT/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Wedding Tip Tuesday' one-liner",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DT0n8D7jA8R/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'Questions to ask when interviewing an officiant' educational content",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcOdq-3HItR/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "blog-teaser about family photos, no single specific couple's wedding described",
+    "bucket": "P_wedding_education_tips"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZsBKcGBpBy/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Emily & Aaron coming soon', real vendor stack, Knollwood Country Club (likely Lake Forest, IL North Shore club) \u2014 moderate confidence on Chicago",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C7xGNUxvv09/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "destination_wedding",
+    "notes": "elopement explicitly in Patagonia (Mount Fitz Roy)",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DRLVHE4EU5Y/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'@anniekoza and @ben_gnage', 14-category vendor stack, Wildman BT (confirmed real Chicago venue)",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DFf92GMPwf7/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Brittany + James' real wedding but explicit 'Miami FL' location_tag and hashtags",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C_vmC5BxxXF/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Jenna and Andy's wedding', full vendor stack, The Armour House (Lake Bluff, IL \u2014 Chicago North Shore)",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DOeyJgqDDem/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Natalie & Zach' but explicit 'Downtown Grand Rapids'/Michigan location",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DYQXvpuFoi9/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "poetic real wedding narrative but explicit 'Fairfield, Connecticut' location_tag",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DUYqjZ5EWou/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Sara & Alan's wedding' but explicit 'ohiowedding' hashtag",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DSV_LYWDHqu/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "floral-trend poll/engagement-bait, no specific event",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DYUnHsRumOK/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Red Bull corporate brand event, explicitly not a wedding",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DHJvRURv1eE/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "same photographer as an earlier post in this chunk, explicit 'Grand Rapids Michigan' bracket text",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DOR4hmqkY5X/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'ready to get this wedding celebration started' but no couple named; Blumen Gardens location_tag is geographically ambiguous (Sycamore IL, outer Chicago exurbs)",
+    "bucket": "Q_nonchicago_location_not_caught"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DaytrW-Mg38/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "generic decor-rental marketing, no specific event",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DCpLO0bsxAn/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Kristle & Ted' named anniversary couple but zero venue/location detail",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C6HHo3AAH7x/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Shayna and Naethan' named couple but hashtags mix 'chicagoengagement' and 'chicagomicrowedding' \u2014 can't tell if this is engagement or wedding content",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbqWK0BERcM/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Megan & Sir Marcus Wedding... capturing your I do in the heart of Chicago' \u2014 explicit real wedding + explicit Chicago event location",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C7jQPIlO3e2/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Tommy & Kayla' vivid specific real-wedding weather narrative but zero Chicago signal anywhere",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DGtHG4qxiaI/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_chicago",
+    "notes": "'Erica & Jeff's wedding' but 'ocean/beachwedding' hashtags imply a coastal (non-Chicago) wedding",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DaGqWSmFncf/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "explicitly an engagement session ('engagement evening', caption bracket confirms 'Chicago engagement session'), not a wedding",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DCPtHEDzbLJ/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "'music genies' generic DJ ad, no specific event",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DYFIs49jso_/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Nicole & Patrick trusted us', real specific narrative, heavy Chicago-market hashtags, no location_tag",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C1-sqv4LCx6/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "'Shaina & Joshua' explicit Oak Park, IL (Chicago suburb) + personal real narrative",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DawJ9VCGqhA/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "named bride 'Zarina' with real narrative, Chicago hashtags \u2014 weak but real evidence (consistent with bootstrap precedent)",
+    "bucket": "R_weak_evidence_real_wedding"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZ3edzvOVRh/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "'Adele & Micheal' named couple but hashtags contradict \u2014 'chicagoengagment' vs 'chicagoweddingphotographer', can't tell wedding vs engagement",
+    "bucket": "R_weak_evidence_real_wedding"
+  }
+]
