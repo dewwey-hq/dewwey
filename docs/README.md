@@ -15,6 +15,9 @@ at the repo root with a "Now" section.
 - [product/](product/) — feature docs (venue enrichment, lightbox, embeds)
 - [engineering/venue-enrichment/](engineering/venue-enrichment/) — the
   venue-website extraction data plane (adopted wholesale in the merged schema)
+- [engineering/post-classification/](engineering/post-classification/) — the
+  AI-native pipeline deciding which of the ~45k staged Instagram posts are
+  credible real Chicago weddings (D009)
 - [engineering/places-photos.md](engineering/places-photos.md) — Places photo
   billing mechanics (still applies to the browse UI)
 - [engineering/ai-constitution.md](engineering/ai-constitution.md) — standing
