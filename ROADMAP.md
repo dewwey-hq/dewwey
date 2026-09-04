@@ -14,10 +14,13 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
   now live in Supabase as the `v1_content_corpus` view and reachable in the app at `/feed`.
   Remaining ~42k posts (score <12) are NOT classified — deliberately deferred pending real
   product/user feedback, not a blocker. The 240-post manual audit from D013 is deprioritized,
-  not run. **All of this is on branch `post-classification-v1-corpus`, PR open against
-  `main`, not yet merged** — check PR status before starting related work. This is also most
-  of the work for the "re-parse 47k staged captions" item below — its output (which
-  own-profile posts are credible) is the ingest filter that item needs.
+  not run. **All of this is on local branch `post-classification-v1-corpus` (2 commits on top
+  of main@d35dfd2) — NOT pushed, no PR yet.** Push failed: the `jhoffen` GitHub account has
+  READ-only access to `dewwey-hq/dewwey` (see D015). Needs write access granted (or someone
+  else to push) before this can go up as a PR — check that before starting related work, and
+  don't assume this landed on `main` without checking. This is also most of the work for the
+  "re-parse 47k staged captions" item below — its output (which own-profile posts are
+  credible) is the ingest filter that item needs.
 - The dewwey.com domain story: point it at the Vercel project (linked
   2026-08-22), add a custom domain for R2 to replace the r2.dev URL, and
   check the Google Maps browser key's referrer allowlist covers the new

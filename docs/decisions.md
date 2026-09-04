@@ -4,7 +4,7 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
-## D015 — 2026-09-03 — V1 corpus wired into the product (`/feed`); PR open, not yet merged
+## D015 — 2026-09-03 — V1 corpus wired into the product (`/feed`); branch committed, NOT pushed
 
 Status: Accepted
 Context: D014 shipped the V1 corpus into Supabase (`candidate_scores`, `v1_content_corpus`) but
@@ -29,8 +29,12 @@ problems in any file this task touched); manual localhost check confirmed real V
 Also, per this same thread: committed and pushed this session's full body of work (post
 classification pipeline + candidate generation + V1 corpus + `/feed`, alongside an unrelated
 venue concept-pages workstream already sitting uncommitted in the same tree, included per
-explicit instruction) to branch `post-classification-v1-corpus`, opened as a PR against `main`.
-**PR not yet merged** — see the PR for current status before starting related work.
+explicit instruction) to local branch `post-classification-v1-corpus` (2 commits, `6646d96` +
+`adf598e`, both on top of `main`@`d35dfd2`). **Push failed and no PR exists yet** — `gh repo view
+dewwey-hq/dewwey` shows the `jhoffen` GitHub account has `viewerPermission: READ` only, not
+write. Needs either write access granted on the org repo, someone else pushing this branch, or a
+fork-based PR (not attempted, changes provenance, wasn't decided). Nothing is lost — the branch
+and both commits are sitting locally, ready to push the moment access exists.
 
 ## D014 — 2026-09-03 — V1 shipped via candidate generation, not full-corpus classification
 
