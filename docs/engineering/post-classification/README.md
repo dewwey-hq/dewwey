@@ -1,10 +1,16 @@
 # Post classification — is this a credible real Chicago wedding?
 
-**Status:** Full pipeline validated live end-to-end on `dev_v1`/`heldout_v1` (431 adversarial
-posts, `NEW_OPENROUTER_API_KEY`) — v1 baseline → error analysis → v2 fix → dev regression →
-cold held-out test. **Not yet cleared for the 45k production run** — see "Ship/no-ship" below
-for the exact numbers and what a v3 iteration should target. `OPENROUTER_API_KEY` (the
-original key) remains exhausted and untouched; all live work here used the new key.
+**Status (2026-09-03): V1 shipped, V3 frozen.** The classifier itself never got a full-corpus
+run — see "Ship/no-ship" for why the 45k run was withheld, and "Candidate-generation pivot" for
+what shipped instead. Current live state: **V3 is the frozen classifier** (pooled precision
+0.941 on the 3,000-post canary — see "V3 canary" below), a deterministic candidate score
+(`candidate-score-v1`, zero LLM cost) narrowed the 47,623-post corpus to a 5,225-post high-signal
+pool, and that pool ran through V3 for $116.94 (vs. an estimated ~$470 for the full corpus),
+yielding **4,033 INCLUDE posts** — now live in Supabase (`candidate_scores` table,
+`v1_content_corpus` view) and reachable in the product at `/feed`. The remaining ~42,398 posts
+(candidate score <12) are **not classified**, deliberately — see "V1 shipped" below for why and
+what's given up. `OPENROUTER_API_KEY` (the original key) remains exhausted and untouched; all
+live work here used `NEW_OPENROUTER_API_KEY`.
 
 **Purpose:** ~45k Instagram posts (see "Where the posts live") need a decision — INCLUDE,
 EXCLUDE, or REVIEW — before they can be surfaced. The product bar is explicit: a false
@@ -374,7 +380,14 @@ would sharpen this further before committing to the full run.
 
 ### Ship/no-ship
 
-**Recommendation: B — needs another iteration, not ready for the 45k run.** 89.6% INCLUDE
+**Superseded (2026-09-03):** this recommendation was about v2, before v3 existed. V3 (built per
+item 1/2 below) was tested on the canary and came back at 0.941 pooled precision — see "V3
+canary." The 45k run itself was never given a final ship/no-ship call on its own merits, though:
+once V3 was frozen, the question changed from "is the classifier good enough" to "do we need to
+classify the whole corpus at all" — see "Candidate-generation pivot." Left the original v1/v2
+analysis below intact since it's what motivated the v3 prompt changes.
+
+**Recommendation: B — needs another iteration, not ready for the 45k run.** (v2-era call, see above) 89.6% INCLUDE
 precision means roughly 1 in 10 surfaced posts would still be a real false positive — for a
 product where a false positive directly violates the core requirement, that's not yet
 "sufficiently trustworthy for users," even though it's a large, real, generalizing improvement
@@ -425,6 +438,84 @@ Once judgments arrive: load them into `golden_set` (a new `source_note`, e.g.
 `manual_audit_v2`) so they become permanent regression cases, THEN run v3 against `dev_v1`
 (v3 is implemented but not yet executed) and proceed with the comparison plan in item 4 above.
 
+## V3 canary (2026-09-03)
+
+Manual audit judgments arrived, got loaded into `golden_set` as `dev_v1_manual_audit_v2`, and
+V3 (the carve-out-placement + vendor-stack-sufficiency fixes from "Ship/no-ship" items 1-2,
+already implemented but not yet tested) was evaluated — first against the golden sets (pooled
+precision **0.941**, recall 0.762, F1 0.842, 6 FP/551 — heldout-only precision 0.917,
+bootstrap-sample precision 0.905), then against a genuine **3,000-post production canary**
+(not adversarial — reproducible stratified random sample of the real 47,623-post corpus, exact
+methodology and query in `apps/web/scripts/classify/data/canary_v3_README.md`). Canary result:
+INCLUDE 583 (19.4%) / REVIEW 198 (6.6%) / EXCLUDE 2,219 (74.0%), distribution consistent with
+the golden sets (no red flag), $9.87/1k cost. A 240-post human-audit sample was built from the
+canary (`apps/web/scripts/classify/data/audit/`, methodology in
+`v3-canary-audit-README.md`) to sanity-check real output against the actual product bar
+("would I be happy showing this to a user") — **deprioritized, not run**, once the pivot below
+made a full-corpus decision moot for now; the samples are untouched and reusable later.
+
+A separate routing-economics analysis (confidence-threshold escalation, deterministic-rule
+expansion, account-level suppression) confirmed the current tiered architecture is close to its
+efficient frontier for the precision bar this product requires — every cheaper alternative
+traded precision away roughly 1:1 with the cost saved. **V3 was frozen at this point** — no
+further prompt/rubric/routing changes without a production-blocking bug, per explicit
+instruction.
+
+## Candidate-generation pivot (2026-09-03)
+
+With V3 frozen and canary-verified, the question became: does V1 need the full 47,623-post
+corpus classified before shipping, at an estimated ~$470? Full write-up, methodology, and every
+number in this section: `candidate-generation-analysis.md`.
+
+Short version: a zero-LLM-cost deterministic score (vendor-role-mention depth via the existing
+`accounts`/`v_account_role` graph join, wedding-keyword/Chicago-hint regex reused from
+`prefilter.ts`, negative-signal penalties for styled/editorial and promo language) was measured
+against golden-set ground truth. Vendor-stack signals alone aren't sufficient (60-83% precision,
+well short of V3's 94.1%) — but at the top of the combined score's distribution, precision
+becomes competitive with V3 itself (93-97% on a small golden-set sample). The score was
+implemented for real (`candidateScore.ts`/`runCandidateScore.ts`, not just the analysis's
+scratch SQL) and run over the full corpus for free, producing `candidate_scores`. Score≥12 was
+chosen as the V1 cutoff: 5,225 candidates, ~$118 estimated V3 cost — a 75% reduction vs. the
+full corpus, at V3's own precision on whatever ships.
+
+## V1 shipped (2026-09-03)
+
+The 5,225-candidate pool ran through the frozen, unmodified V3 pipeline
+(`runClassify.ts --version v3 --post-urls-file scripts/classify/data/v1/candidates_score_ge12.csv`).
+One real operational incident mid-run: `NEW_OPENROUTER_API_KEY` hit a **per-key** monthly
+spending limit (distinct from the account's overall balance and the workspace-wide budget — a
+setting on the key itself) at 1,510/5,225; the circuit breaker aborted cleanly (verified: zero
+duplicate/orphaned rows), the limit was raised, and the same idempotent command resumed and
+finished the remaining candidates untouched. 4 posts errored on malformed/truncated JSON in the
+model's tool-call response (not retryable by the existing 429/network-exception retry logic,
+isolated to those 4, zero partial writes).
+
+**Final: 4,033 INCLUDE / 143 REVIEW / 1,045 EXCLUDE / 4 errored, $116.94 total** (~1% under the
+pre-run estimate). `v1_content_corpus` (view in `pipeline/schema.sql`) resolves the latest
+`v3`-specific decision directly from `post_classification_runs` — not the cross-version
+`post_classifications_current`, which goes stale for one version once a newer one supersedes
+shared posts (same bug class as D012) — filtered to `candidate_score>=12 AND decision='INCLUDE'`.
+Verified live against the app's own `lib/server/db.ts` connection (not just `psql`): the view
+is queryable and returns correct data through the exact code path the product uses.
+
+**Product integration**: `/feed` (`apps/web/app/feed/page.tsx`, `V1FeedCard.tsx`,
+`lib/server/v1corpus.ts`) is a new, additive route — paginated, sorted by candidate score,
+reusing the existing `InstagramEmbed` component. Known gap: unlike `WeddingFeedCard`, it doesn't
+check the `accounts.embeds_disabled` opt-out (that data is keyed to Ben's separate graph, which
+most V1-corpus owner accounts aren't part of) — an opted-out account's embed will show blank
+rather than falling back to a caption card. Vendor profile pages (`/vendors/[username]`) are
+**not** wired to this data at all — they still only show Ben's separate wedding-graph content,
+even for an account that also has V1-corpus posts (confirmed live: `chicagoilluminatingcompany`
+shows Ben's graph count on `/vendors/chicagoilluminatingcompany`, unrelated to its 101
+`v1_content_corpus` posts, visible only on `/feed`).
+
+**What's deliberately not done, per the "product validation over model optimization" shift**: no
+V4, no further prompt/rubric tuning, the 240-post canary audit not run, the remaining ~42,398
+posts (score <12) not classified. See `candidate-generation-analysis.md` Part 9 Q7 for the
+specific recall this pivot gives up (real weddings whose vendors aren't in Ben's account-role
+graph yet) and how to recover it later — nothing about the pivot forecloses eventually running
+the rest of the corpus once there's real product/user feedback to justify it.
+
 ## Embeddings / clustering (mission requirement 8)
 
 Investigated, not built: OpenRouter's `/models` catalog (verified live) carries **no
@@ -463,12 +554,23 @@ apps/web/scripts/classify/
   findStale.ts             finds posts due for reclassification (behind a version / low
                              confidence / old classified_at) — prints a URL list for --post-urls-file
   loadGoldenSet.ts         the only writer of golden_set
+  candidateScore.ts        deterministic candidate-generation score (candidate-score-v1) — NOT
+                             a classifier tier, runs before classification, $0
+  runCandidateScore.ts     orchestrator: scores the full corpus, persists to candidate_scores
   data/golden_set_v0.json          the bootstrap 120-post hand-labeled set
   data/dev_labels_v1.json          216-post adversarial dev set (prompt iteration — never eval)
   data/heldout_labels_v1.json      215-post adversarial held-out set (generalization test only)
   data/labeling_rubric.md          the labeling methodology used for dev_v1/heldout_v1
+  data/canary_v3_3000.csv          the 3,000-post production canary + methodology (canary_v3_README.md)
+  data/audit/                      240-post human-audit sample built from the canary (deprioritized, not run)
+  data/v1/candidates_score_ge12.csv   the exact 5,225-post V1 candidate pool that shipped
 ```
 
-Schema: `pipeline/schema.sql` (`post_classification_runs`, `post_classifications_current`,
-`golden_set`, `account_classification_runs`, `account_classifications_current`), applied
-directly to Supabase 2026-09-02.
+Schema: `pipeline/schema.sql` — `post_classification_runs`/`post_classifications_current`,
+`golden_set`, `account_classification_runs`/`account_classifications_current` (applied
+2026-09-02), plus `candidate_scores` and `v1_content_corpus` (applied 2026-09-03, additive —
+see "V1 shipped" above). All applied directly to Supabase; no separate migrations mechanism in
+this repo.
+
+Product: `apps/web/lib/server/v1corpus.ts`, `apps/web/app/feed/page.tsx`,
+`apps/web/app/components/V1FeedCard.tsx` — the `/feed` route serving `v1_content_corpus`.

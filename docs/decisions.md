@@ -4,6 +4,34 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D015 — 2026-09-03 — V1 corpus wired into the product (`/feed`); PR open, not yet merged
+
+Status: Accepted
+Context: D014 shipped the V1 corpus into Supabase (`candidate_scores`, `v1_content_corpus`) but
+left it invisible in the product — nothing in `apps/web` queried the classification pipeline.
+Confirmed the app's own DB access (`lib/server/db.ts`) uses the identical `DATABASE_URL` as the
+classification scripts (same Supabase project, same connection) — there was never a local/remote
+sync gap to bridge, just missing application code.
+Decision: added a new, additive `/feed` route (`lib/server/v1corpus.ts`, `app/feed/page.tsx`,
+`app/components/V1FeedCard.tsx`) reusing the existing `InstagramEmbed` component, paginated,
+sorted by candidate score. Added "Feed" to the main nav (`lib/site-nav.ts`). Deliberately did
+NOT wire `v1_content_corpus` into `/vendors/[username]` (which reads only Ben's separate graph)
+— verified live that a vendor's profile page and `/feed` show different, unrelated post counts
+for the same account (`chicagoilluminatingcompany`: 101 V1-corpus posts on `/feed`, unrelated to
+whatever Ben's graph shows on their profile page) — merging those is a real follow-up, not done
+here. Known gap: no `embeds_disabled` opt-out check on `/feed` (that data is keyed to Ben's
+graph, most V1-corpus owners aren't in it) — an opted-out account's embed shows blank rather than
+a caption-card fallback.
+Verified: build/typecheck/tests pass; `bun run lint` fails only on pre-existing issues in
+`apps/web/app/concept/` (a separate, unrelated workstream, predates this session — 0 lint
+problems in any file this task touched); manual localhost check confirmed real V1 posts render
+(verified via the app's actual `getPool()` module, not just direct `psql`).
+Also, per this same thread: committed and pushed this session's full body of work (post
+classification pipeline + candidate generation + V1 corpus + `/feed`, alongside an unrelated
+venue concept-pages workstream already sitting uncommitted in the same tree, included per
+explicit instruction) to branch `post-classification-v1-corpus`, opened as a PR against `main`.
+**PR not yet merged** — see the PR for current status before starting related work.
+
 ## D014 — 2026-09-03 — V1 shipped via candidate generation, not full-corpus classification
 
 Status: Accepted
