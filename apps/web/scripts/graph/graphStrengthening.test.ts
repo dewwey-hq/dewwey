@@ -69,6 +69,44 @@ describe("jaccard (unit)", () => {
     // intersection 1, union 3
     expect(jaccard(new Set(["a", "b"]), new Set(["a", "c"]))).toBeCloseTo(1 / 3);
   });
+
+  it(
+    "characterizes the wedding-468 under-merge mechanism (Experiment B, D022): an exact " +
+      "jaccard=0.5 tie fails the clustering script's strict `> 0.5` threshold — real vendor " +
+      "sets from candidates 2105/2116 (7 shared keys / 14-key union), left as a documented, " +
+      "not-yet-fixed limitation (see docs/engineering/graph-strengthening/clustering-boundary-investigation.md)",
+    () => {
+      const dzvIim0FvcA = new Set([
+        "118:cake",
+        "4738:catering",
+        "832:dj",
+        "326:florist",
+        "233:photographer",
+        "283:planner",
+        "591:venue",
+      ]);
+      const dXmojvKEWIo = new Set([
+        "4903:attire",
+        "1360:attire",
+        "4611:attire",
+        "4902:attire",
+        "118:cake",
+        "4738:catering",
+        "2837:catering",
+        "832:dj",
+        "326:florist",
+        "29:florist",
+        "974:hair",
+        "233:photographer",
+        "283:planner",
+        "591:venue",
+      ]);
+      const jac = jaccard(dzvIim0FvcA, dXmojvKEWIo);
+      expect(jac).toBeCloseTo(0.5, 10);
+      expect(jac > 0.5).toBe(false); // the live script's actual condition — this pair does NOT merge
+      expect(jac >= 0.5).toBe(true); // an inclusive boundary would merge them (evaluated, not shipped)
+    }
+  );
 });
 
 describe("daysBetween (unit)", () => {
@@ -167,9 +205,7 @@ describe("graph-strengthening invariants (DB)", () => {
 // evidence no longer does. Read-only assertions against the already-run reconcile-v2 rows. ---
 describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
   const pool = getPool();
-  afterAll(async () => {
-    await closePool();
-  });
+  // pool is closed in the last describe block below, not here (shared pool singleton).
 
   it("strong evidence (confidence 0.8) always has a matched_wedding_id", async () => {
     const { rows } = await pool.query(`
@@ -288,5 +324,50 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     expect(Number(rows[0].wedding_posts)).toBe(1668);
     expect(Number(rows[0].wedding_vendors)).toBe(12310);
     expect(Number(rows[0].edges)).toBe(54271);
+  });
+});
+
+// --- Experiment B (D022): clustering order-dependence investigation. No clustering change was
+// shipped — these characterize the CURRENT, unfixed state so a future fix has a clear before/after
+// baseline and so this specific known case doesn't silently drift. See
+// docs/engineering/graph-strengthening/clustering-boundary-investigation.md. ---
+describe("clustering boundary-tie investigation — current (unfixed) state (DB)", () => {
+  const pool = getPool();
+  afterAll(async () => {
+    await closePool();
+  });
+
+  it("wedding-468 case: candidates 2105 and 2116 remain separate under jeremy-cluster-v1 (documented, not fixed)", async () => {
+    const { rows } = await pool.query(`
+      select cp.candidate_id, cp.source_post_url from jeremy_wedding_candidate_posts cp
+      where cp.source_post_url in (
+        'https://www.instagram.com/p/DZVIim0FvcA/',
+        'https://www.instagram.com/p/DXmojvKEWIo/',
+        'https://www.instagram.com/p/DXrkdSDju9Y/'
+      )
+      order by cp.source_post_url
+    `);
+    const distinctCandidates = new Set(rows.map((r) => r.candidate_id));
+    // Documents the CURRENT bug, not the desired end state — this should become 1 if/when the
+    // boundary-inclusive fix (evaluated but not shipped, see D022) is actually implemented.
+    expect(distinctCandidates.size).toBe(2);
+  });
+
+  it("no clustering or candidate schema change was made by Experiment B: jeremy_wedding_candidates has no superseded_by_candidate_id column", async () => {
+    const { rows } = await pool.query(`
+      select count(*) as n from information_schema.columns
+      where table_name = 'jeremy_wedding_candidates' and column_name = 'superseded_by_candidate_id'
+    `);
+    expect(Number(rows[0].n)).toBe(0);
+  });
+
+  it("candidate/candidate_posts counts are unchanged from D019/D021 (2,872 / 3,273) — Experiment B made zero production writes", async () => {
+    const { rows } = await pool.query(`
+      select
+        (select count(*) from jeremy_wedding_candidates) as candidates,
+        (select count(*) from jeremy_wedding_candidate_posts) as candidate_posts
+    `);
+    expect(Number(rows[0].candidates)).toBe(2872);
+    expect(Number(rows[0].candidate_posts)).toBe(3273);
   });
 });

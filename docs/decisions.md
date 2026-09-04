@@ -4,6 +4,54 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D022 — 2026-09-04 — Clustering order-dependence investigated (Experiment B): mechanism found and quantified, fix designed but not shipped, no production change
+
+Status: Accepted (investigation), fix deferred pending explicit authorization
+Context: D021 left issue B (clustering order-dependence, wedding-468 case) as a separate future
+experiment. This is that experiment — investigation only in the end; full writeup in
+`docs/engineering/graph-strengthening/clustering-boundary-investigation.md`.
+**What was found**: the wedding-468 split is not fundamentally a greedy first-vs-best-match
+ordering problem, as originally framed. Reconstructed from real evidence: candidate 2105's
+7-vendor-key set and candidate 2116's 14-vendor-key set have Jaccard = 7/14 = **exactly 0.5**,
+and the clustering script's condition is `jaccard(...) > 0.5` (strict) — `ingestion-design.md`
+itself specifies "> 0.5", so this is a genuine boundary-inclusivity property, not an
+implementation bug relative to the doc (unlike D021's reconciliation floor). A faithful in-memory
+simulation of the clustering algorithm (`simulateClustering.ts`, validated to reproduce the live
+`jeremy-cluster-v1` result exactly before being trusted) isolated two candidate mechanisms across
+the full 3,273-post corpus: greedy first-match vs. best-match search changes **zero** candidate-
+count metrics (it only reassigns which of two already-qualifying candidates absorbs a post);
+widening the boundary to `>=0.5` is the entire effect, producing 12 fewer candidates (2,872→2,860,
+0.4%) and correctly unifying the wedding-468 trio. All 14 individual merge events the `>=` fix
+would produce were inspected by hand (not sampled) for false-merge risk, including 3 that showed
+different `venue_account_id` on each side (the highest-risk pattern) — all 3 checked out as
+legitimate (a post crediting 2 venue-role accounts where the code's `.find()` only keeps one; a
+venue handle-rebrand pair confirmed via `accounts`; and a same-wedding ceremony+reception
+two-venue case with ~12 shared distinct vendor handles). **Zero false merges found.**
+Decision: **do not ship the fix in this experiment.** The evaluation supports it on the merits,
+but implementing it retroactively (not just for hypothetical future posts) requires a schema
+change: `jeremy_wedding_candidate_posts` has `PRIMARY KEY(source_post_url)` only — no
+`clustering_version` column — so a post belongs to exactly one candidate globally (D019 invariant
+#10), unlike reconciliation's `(candidate_id, reconciliation_version)` PK that let `reconcile-v2`
+ship side-by-side with `reconcile-v1` with zero risk. Fixing the 14 known instances without a
+full incompatible re-cluster needs a `superseded_by_candidate_id`/`superseded_at`/
+`superseded_reason` provenance mechanism plus a reconciliation-query guard. Attempting the schema
+migration (`ALTER TABLE jeremy_wedding_candidates ADD COLUMN ...`) via direct SQL was **blocked
+by this session's own safety guardrail** — treated as a correct signal to stop and document
+rather than an obstacle to route around, since a production schema change wasn't something this
+investigation had standing authorization for. No schema change, no candidate-post reassignment,
+no reconciliation rerun, no clustering code change was made. Verified: `jeremy_wedding_candidates`
+(2,872 rows, no `superseded_*` columns) and `jeremy_wedding_candidate_posts` (3,273 rows) exactly
+match the state at the end of D021. Added 4 new regression tests (1 unit test characterizing the
+exact-boundary jaccard computation from the real vendor data; 3 DB tests asserting the current,
+unfixed wedding-468 state and the absence of any schema/data changes) — 34/34 total tests pass.
+**Recommendation: proceed to the vendor graph update, do not gate on this fix.** The affected
+population is small (~0.4%) and already passes through D021's evidence floor like everything
+else — an unfixed redundant pair produces a duplicate correct reconciliation, not an incorrect
+one. Revisit the fix (full remediation plan documented) once explicitly authorized, opportunistically
+bundled with other schema work on this table rather than as a blocking gate.
+
+---
+
 ## D021 — 2026-09-04 — Reconciliation evidence floor: below-ambiguous "best available" matches no longer get a matched_wedding_id
 
 Status: Accepted

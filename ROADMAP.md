@@ -46,10 +46,19 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
   tiers verified byte-identical to `reconcile-v1`; distinct Ben weddings matched dropped 494→283,
   many-to-one collisions 322→79, the previously-flagged 58-way collision (wedding 1290) is now 7
   (all high/ambiguous). `reconcile-v1` preserved untouched (versioned, not overwritten).
-  **Follow-up B still open**: order-dependent greedy clustering can under-merge same-wedding
-  posts into separate candidates (concrete case: wedding 468, candidates 2105/2116) — confirmed
-  this does not cause reconciliation false merges, just redundant candidates, but is still worth
-  fixing. Separate future experiment, not attempted yet.
+  **Follow-up B investigated, not shipped (D022)**: the wedding-468 case is actually an exact
+  Jaccard boundary tie (7/14 = 0.5000, clustering's condition is strict `> 0.5`), not a
+  first-vs-best-match greedy-order problem (isolated via simulation — best-match alone changes
+  zero candidate-count metrics). A `>=0.5` fix would yield 12 fewer candidates (2,872→2,860,
+  0.4%) with zero false merges found across all 14 inspected merge events — see
+  `docs/engineering/graph-strengthening/clustering-boundary-investigation.md`. **Not
+  implemented**: retroactively applying it needs a schema change
+  (`jeremy_wedding_candidates.superseded_by_candidate_id` — `jeremy_wedding_candidate_posts` has
+  no per-version PK the way reconciliation does) that this investigation didn't have
+  authorization to make (a direct DDL attempt was blocked by the session's own safety guardrail).
+  No production data or schema changed. **Recommendation: proceed to the vendor graph update,
+  don't gate on this** — the affected population is small and already covered by the D021
+  evidence floor.
   **Known gap, not yet fixed**: posts with 1-2 (not 3+) vendor roles contribute evidence but
   aren't currently attached to any candidate even when they'd match one that already exists —
   fast, well-scoped next addition. **Not yet done, deliberately deferred**: merging
