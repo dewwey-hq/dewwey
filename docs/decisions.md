@@ -4,6 +4,24 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D025 — 2026-09-04 — `dewwey-hq/dewwey#1` merged to `main`; local `main` fast-forwarded
+
+Status: Accepted
+Context: D024 opened the PR after GitHub access was fixed. User approved merging after reviewing
+the merge-readiness tradeoffs (mergeable clean, CI/Vercel preview green, 41/41 tests, but zero
+human code review on a 158-file/+61,987-line diff, and `main` = production Vercel deploy).
+Decision: merged. `origin/main` moved `d35dfd2` → `a5d8454` (merge commit of PR #1). Local `main`
+fast-forwarded to match (`git checkout main && git pull --ff-only`, clean, no conflicts). Confirms
+D009–D024's entire body of work (post classification V1 + graph strengthening) is now live on
+`main`, including the D023 `wedding_vendors` write — though that data was already live in
+Supabase before the merge (the merge changes which *code* is deployed, not the database state,
+which was already shared across preview and production).
+Not verified in this session: nobody has visually confirmed the live production deploy actually
+serves `/feed` and the newly-ingested vendor data correctly post-merge. Flagged in `ROADMAP.md`
+"Now" as a quick outstanding check, not assumed done.
+
+---
+
 ## D024 — 2026-09-04 — `jhoffen` GitHub write access resolved; D009–D023 pushed and PR opened
 
 Status: Accepted
