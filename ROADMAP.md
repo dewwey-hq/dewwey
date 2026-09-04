@@ -14,14 +14,11 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
   now live in Supabase as the `v1_content_corpus` view and reachable in the app at `/feed`.
   Remaining ~42k posts (score <12) are NOT classified — deliberately deferred pending real
   product/user feedback, not a blocker. The 240-post manual audit from D013 is deprioritized,
-  not run. **All of this is on local branch `post-classification-v1-corpus` (2 commits on top
-  of main@d35dfd2) — NOT pushed, no PR yet.** Push failed: the `jhoffen` GitHub account has
-  READ-only access to `dewwey-hq/dewwey` (see D015). Needs write access granted (or someone
-  else to push) before this can go up as a PR — check that before starting related work, and
-  don't assume this landed on `main` without checking. This is also most of the work for the
-  "re-parse 47k staged captions" item below — its output (which own-profile posts are
-  credible) is the ingest filter that item needs.
-- Graph strengthening (`docs/engineering/graph-strengthening/`, D016–D019): stack parser ported
+  not run. This is also most of the work for the "re-parse 47k staged captions" item below —
+  its output (which own-profile posts are credible) is the ingest filter that item needs.
+  **2026-09-04: `jhoffen` GitHub write access resolved — branch `post-classification-v1-corpus`
+  pushed, PR open at `dewwey-hq/dewwey#1`** (was blocked, see D015; superseded, not re-litigated).
+- Graph strengthening (`docs/engineering/graph-strengthening/`, D016–D023): stack parser ported
   to TS, two iterations eval-tested (96.8% precision / 92.4% recall / 83.2% role accuracy against
   real ground truth). **Evidence + candidate layer is now implemented and live**:
   `jeremy_post_vendor_evidence` (a view — 32,633 rows, 4,982 unique vendors), `jeremy_wedding_candidates`

@@ -4,7 +4,24 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
-## D023 — 2026-09-04 — Graph ingestion: validated Jeremy evidence written into Ben's wedding_vendors for the first time
+## D024 — 2026-09-04 — `jhoffen` GitHub write access resolved; D009–D023 pushed and PR opened
+
+Status: Accepted
+Context: D015 recorded that the `jhoffen` GitHub account had read-only access to
+`dewwey-hq/dewwey`, blocking `post-classification-v1-corpus` from being pushed. User confirmed
+access is now fixed.
+Decision: pushed the branch (fast-forward, `origin/main` unchanged since D015 — 0 behind, 7
+ahead) and opened `dewwey-hq/dewwey#1` covering everything on this branch: post classification V1
+(D009–D015) and the full graph-strengthening arc (D016–D023, including the D023 write into
+`wedding_vendors`). Not merged — PR is open for review, `main` is unchanged.
+**Separate and NOT resolved by this**: the D022 clustering-fix schema change
+(`jeremy_wedding_candidates.superseded_by_candidate_id`) was blocked by a direct `ALTER TABLE`
+attempt being denied by *this session's own Claude Code safety guardrail* — an unrelated gate
+from Supabase/database permissions, which were never the problem (this session's Postgres
+connection already has full read/write DDL rights, same connection used to `CREATE TABLE` twice
+successfully this session). GitHub write access does not touch that guardrail. If the user wants
+the D022 fix implemented now, that is a separate go/no-go decision, not something this access fix
+unblocks automatically.
 
 Status: Accepted
 Context: D022 recommended proceeding to the vendor graph update rather than gating on the
