@@ -1,0 +1,3506 @@
+[
+  {
+    "post_url": "https://www.instagram.com/p/C_0qI7rPmcw/",
+    "stratum": "I_many_credits",
+    "split": "eval",
+    "post_level_notes": "Clean single-wedding vendor stack, no non-vendor labels, straightforward. 'Band: @timechicago' mapped by parser to role 'musician' rather than canonical 'band' - parser appears to never emit 'band' as a role value.",
+    "judgments": [
+      {
+        "handle": "bigcitybride",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "chicagoculturalcenter",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "studiothisisphotography",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "chadhusar",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "second photographer/individual credited alongside studio handle"
+      },
+      {
+        "handle": "wearewholehearted",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "timechicago",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "parser maps 'Band' label to role 'musician' instead of canonical 'band' - taxonomy gap, seen repeatedly across dataset"
+      },
+      {
+        "handle": "bridalartistryteam",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "blueplatechicago",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "revel_decor",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "generic 'Decor' label - ambiguous between rentals/florist/other, rentals chosen as best fit"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/C62pOT8saRL/",
+    "stratum": "G_unusual_category",
+    "split": "eval",
+    "post_level_notes": "Clean single wedding. 'Church: @saintclementparish' and 'Reception: @thedrakechicago' are both real venues (ceremony + reception) but parser bucketed both as role 'other' rather than 'venue' - parser's venue detection misses non-'Venue'-labeled venue lines. Combined 'Hair & Makeup: @dorimaemakeup' mapped to 'hair' only; 'beauty_other' arguably more accurate for a single combined credit.",
+    "judgments": [
+      {
+        "handle": "lkeventschicago",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "natalieprobst",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "wearewholehearted",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "saintclementparish",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "ceremony venue (church); parser bucketed as 'other' instead of 'venue' - venue-keyword miss for 'Church' label"
+      },
+      {
+        "handle": "thedrakechicago",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "reception venue; parser bucketed as 'other' instead of 'venue' - venue-keyword miss for 'Reception' label"
+      },
+      {
+        "handle": "ev.designcollective",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "evolutionorchestra",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "an orchestra/ensemble under 'Music' label - parser mapped to musician, canonical 'band' more accurate for a group act"
+      },
+      {
+        "handle": "deflouredbakery",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "dorimaemakeup",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Hair & Makeup' single credit; parser assigned 'hair' only"
+      },
+      {
+        "handle": "riverandrose_design",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Styling' role is ambiguous (event stylist/decor-adjacent); 'other' is a reasonable bucket here"
+      },
+      {
+        "handle": "mag.milestones",
+        "is_vendor": true,
+        "expected_role": "stationery",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "vipvaletservices",
+        "is_vendor": true,
+        "expected_role": "transportation",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "boweryandbash",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/CjlGdW4LkYH/",
+    "stratum": "K_random_control",
+    "split": "eval",
+    "post_level_notes": "Real single wedding, clean stack. Notable case: 'Bridesmaids: @bhldn' looks like a wedding-party label (would trigger the non-vendor-label failure mode) but BHLDN is actually a bridal/bridesmaid apparel brand - a genuine attire vendor credit, not wedding-party noise. Generalizable: 'Bridesmaids:'-labeled lines need context (person vs brand) before being auto-classified as non-vendor.",
+    "judgments": [
+      {
+        "handle": "chgoweddings",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "ordinary_seed",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "hotellincoln",
+        "is_vendor": true,
+        "expected_role": "hotel",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "salvatoreschicago",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "windycityglam",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Hair and Makeup' single credit; parser assigned 'hair' only"
+      },
+      {
+        "handle": "cake_chicago",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "stylemattersdjs",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "bhldn",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "BHLDN is a bridal/bridesmaid apparel brand, not a wedding-party person - genuine attire vendor mislabeled 'other' by parser; important because 'Bridesmaids:' looks like it should be non-vendor but here tags a brand"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DaB3ZtKDZTN/",
+    "stratum": "H_sparse",
+    "split": "eval",
+    "post_level_notes": "MAJOR PARSER RECALL FAILURE: caption uses 'Role @handle' (space, no colon) for most lines; parser missed 9 of 10 genuine vendor credits, catching only the one line that also lacked a colon (Draping/Disco Ball) - the miss isn't simply about colon-vs-no-colon, something else in line matching is at play here, but regardless this is a high-value recall gap.",
+    "judgments": [
+      {
+        "handle": "chicagoilluminatingcompany",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "owner account, credited as Venue; missed entirely by parser"
+      },
+      {
+        "handle": "ohanaeventsinc",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "missed"
+      },
+      {
+        "handle": "jenna_rainey",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "individual planner credited alongside company handle; missed"
+      },
+      {
+        "handle": "graphsbygretch",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "missed"
+      },
+      {
+        "handle": "fleurinc",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "missed"
+      },
+      {
+        "handle": "rarebirdbeauties",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "combined 'Hair Stylist & Makeup Artist' single credit; missed entirely"
+      },
+      {
+        "handle": "frostchicago",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Draping/Disco Ball' - no clean canonical fit for lighting/draping services; this was the one line the parser did catch"
+      },
+      {
+        "handle": "Entertaining_co",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "missed"
+      },
+      {
+        "handle": "flowerandoakfilms",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "missed"
+      },
+      {
+        "handle": "sweetmandybs",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "missed"
+      },
+      {
+        "handle": "djbryenhall",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "missed"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DaVqrx7lp8h/",
+    "stratum": "F_roundup_shaped",
+    "split": "eval",
+    "post_level_notes": "Reads like a planner's own single-wedding recap (rich narrative body describing one specific event's details) despite F_roundup_shaped stratum label - judged is_part_of_wedding=true throughout, couple not named but details are event-specific not generic marketing. Two failure modes: (1) parser missed 'Photo Booth @magicmomentphotobooth' entirely (no colon after label); (2) 'Entertainment: @newmoonchicago' mapped to role 'dj', but body text clarifies the vendor provided a costumed 'champagne skirt' hostess/greeter service, not DJ music - an Entertainment-label keyword collision.",
+    "judgments": [
+      {
+        "handle": "paulettewolfevents",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "frostchicago",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Production' - lighting/production, no clean canonical fit"
+      },
+      {
+        "handle": "rpmprivateevents",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "sheriwhitko",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "newmoonchicago",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "parser mapped 'Entertainment' label to dj, but body text says this vendor provided a champagne-skirt hostess/greeter, not DJ services - keyword collision"
+      },
+      {
+        "handle": "oliverdogwood",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "mauricejoshua",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "lettuceparties",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "flourishcakedesign",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "mindysbakery",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Special Treats' bakery desserts; ambiguous cake vs other"
+      },
+      {
+        "handle": "blackdoggelato",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "gelato dessert vendor, not a cake business - no clean canonical fit"
+      },
+      {
+        "handle": "marthanippert",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "live fashion illustrator/sketch artist - genuinely no canonical category fits, 'other' correct"
+      },
+      {
+        "handle": "tablescapeseventrentals",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "nuagedesignsinc",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "boweryandbash",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "tailoredelements3520",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Linens"
+      },
+      {
+        "handle": "magicmomentphotobooth",
+        "is_vendor": true,
+        "expected_role": "photobooth",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "missed entirely - 'Photo Booth @magicmomentphotobooth' has no colon after label"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbbeOd9iZFl/",
+    "stratum": "D_multirole_handle",
+    "split": "heldout",
+    "post_level_notes": "Genuine single wedding with unusually large, well-organized 24-line credit stack. Three handles are legitimately dual-credited under different roles: okynegroup (band+dj), stevesflowermarket (florist+decor/rentals), paramountevents (caterer+rentals) - matches the D_multirole_handle stratum exactly; these are correct multi-service business credits, NOT parser duplication errors. 'Hair + Makeup: @threeonetwobridal' combined label forces an artificial hair-vs-makeup split; beauty_other more accurate for the combined credit.",
+    "judgments": [
+      {
+        "handle": "clementinechicago",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "co-planned with 'Bride' per caption; bride herself has no handle so nothing to flag there"
+      },
+      {
+        "handle": "colinlyonsphoto",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "same handle also credited for Video - real dual photo+video service"
+      },
+      {
+        "handle": "colinlyonsphoto",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "same handle also credited for Photographer - real dual photo+video service"
+      },
+      {
+        "handle": "artinstitutechi",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "artinstitutespecialevents",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "event-services arm of the Art Institute, same venue ecosystem"
+      },
+      {
+        "handle": "chicagoathletichotel",
+        "is_vendor": true,
+        "expected_role": "hotel",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "threeonetwobridal",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Hair + Makeup' single credit; owner account; parser assigned 'hair' only, missing the makeup half"
+      },
+      {
+        "handle": "pallascoutureprivee",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "pallascouture",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "likely same brand/parent as pallascoutureprivee, dual-tagged"
+      },
+      {
+        "handle": "nettabenshabu.official",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "reception dress designer"
+      },
+      {
+        "handle": "christianlouboutin",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "shoe brand; no dedicated canonical 'shoes' role so attire used; parser bucketed as other"
+      },
+      {
+        "handle": "balanicustom",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "tux"
+      },
+      {
+        "handle": "azazieofficial",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "bridesmaid dresses brand"
+      },
+      {
+        "handle": "dimitrasbridalcouture",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "bridal boutique"
+      },
+      {
+        "handle": "tiffanyandco",
+        "is_vendor": true,
+        "expected_role": "jeweler",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "rings"
+      },
+      {
+        "handle": "stevequickjeweler",
+        "is_vendor": true,
+        "expected_role": "jeweler",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "westtownchicago",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "bakewithtex",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "second cake vendor, co-credited"
+      },
+      {
+        "handle": "paramountevents",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "also credited under Rentals - real combined catering+rental company"
+      },
+      {
+        "handle": "paramountevents",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "also credited under Caterer - real combined catering+rental company"
+      },
+      {
+        "handle": "jennertomaska",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "specialty caviar/hors d'oeuvre vendor, not full-service caterer but a real food vendor for the wedding"
+      },
+      {
+        "handle": "stevesflowermarket",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "same handle also credited under Decor - real multi-role florist/decor business, not a duplication error"
+      },
+      {
+        "handle": "stevesflowermarket",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "credited as 'Decor'; same florist business doing decor too"
+      },
+      {
+        "handle": "mintedweddings",
+        "is_vendor": true,
+        "expected_role": "stationery",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Minted invitations brand"
+      },
+      {
+        "handle": "okynegroup",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "same handle also credited as DJ - real multi-service entertainment company offering both live band and DJ"
+      },
+      {
+        "handle": "okynegroup",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "same handle also credited as Band - real multi-service entertainment company"
+      },
+      {
+        "handle": "pixsterphotobooth",
+        "is_vendor": true,
+        "expected_role": "photobooth",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbgYTOcHRnY/",
+    "stratum": "H_sparse",
+    "split": "heldout",
+    "post_level_notes": "MAJOR PARSER RECALL FAILURE: post is a planner's monthly recap but embeds a full genuine single-wedding credit stack using emoji icons (bride/groom, camera, home, plate, etc.) instead of text role labels; parser extracted only 1 of 15 real vendor credits (the one line using a literal text label 'Officiant:'). Emoji-icon credit format is a large, generalizable blind spot. Bride/groom emoji-tagged couple correctly excluded from vendor judgments (not flagged by parser, correctly).",
+    "judgments": [
+      {
+        "handle": "allisonfrancois_",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (camera icon), missed"
+      },
+      {
+        "handle": "ziinoweddingfilms",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "revelspace",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (house icon), missed"
+      },
+      {
+        "handle": "limelightcatering",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "olivefineweddings",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "owner account, emoji-labeled with 'Kirsten' named, missed"
+      },
+      {
+        "handle": "revel_decor",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (flower icon), missed"
+      },
+      {
+        "handle": "alliancebakery",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "steraclepress",
+        "is_vendor": true,
+        "expected_role": "stationery",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "rushstreetrhythm",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (music note), missed"
+      },
+      {
+        "handle": "premiertrolley",
+        "is_vendor": true,
+        "expected_role": "transportation",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "ridestg",
+        "is_vendor": true,
+        "expected_role": "transportation",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "co-credited transportation, missed"
+      },
+      {
+        "handle": "vipvaletservices",
+        "is_vendor": true,
+        "expected_role": "transportation",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "co-credited transportation, missed"
+      },
+      {
+        "handle": "rarebirdbeauties",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "combined hair+makeup emoji, missed"
+      },
+      {
+        "handle": "dimitrasbridalcouture",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (dress icon), missed"
+      },
+      {
+        "handle": "dessygroup",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "Dessy Group bridesmaid dress brand, co-credited, missed"
+      },
+      {
+        "handle": "somethingprofoundweddings",
+        "is_vendor": true,
+        "expected_role": "officiant",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "only credit caught, because it used a literal text 'Officiant:' label"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbxOdGmx29A/",
+    "stratum": "F_roundup_shaped",
+    "split": "heldout",
+    "post_level_notes": "Genuine single wedding (photographer congratulating a specific named couple), not actually a roundup despite F_roundup_shaped stratum tag. Two role-mapping misses: 'MUA' (makeup artist abbreviation) mapped to 'other' instead of 'makeup'; 'Stationary' (common misspelling of Stationery) mapped to 'other' instead of 'stationery' - both are keyword-recognition gaps (abbreviations and misspellings of role labels).",
+    "judgments": [
+      {
+        "handle": "rockwellontheriver",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "venuelogic",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "venue management company for Rockwell"
+      },
+      {
+        "handle": "nakaiphotography",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "thegildedaisleweddings",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "chelseagildedaisleweddings",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "individual planner within the Gilded Aisle team"
+      },
+      {
+        "handle": "fftchicago",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "cjjanda",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "oldnorthfilmco",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "goldcoastevents",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "parser mapped to musician - taxonomy gap"
+      },
+      {
+        "handle": "thechicagoplayers",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "known Chicago wedding band; parser mapped to musician"
+      },
+      {
+        "handle": "bellabiancabridalcouture",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "gown"
+      },
+      {
+        "handle": "toshiszpyra",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'MUA' abbreviation not recognized as makeup keyword by parser, bucketed 'other'"
+      },
+      {
+        "handle": "leftylucyillustrations",
+        "is_vendor": true,
+        "expected_role": "stationery",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Stationary' (misspelling of Stationery) not recognized, bucketed 'other'"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcCHw9ggcQO/",
+    "stratum": "F_roundup_shaped",
+    "split": "eval",
+    "post_level_notes": "Genuine single wedding with clean well-labeled stack (double-slash '//' separators). Parser correctly captures most credits but: (1) includes Bride/Groom handles as 'other' role noise (classic non-vendor-label failure mode), (2) 'DJ & Band' combined label for lrt_events only assigned dj role, missing that the business also provides a band.",
+    "judgments": [
+      {
+        "handle": "_lilia_99",
+        "is_vendor": false,
+        "expected_role": "other",
+        "is_part_of_wedding": false,
+        "in_parser_extraction": true,
+        "notes": "wedding-party label (Bride), non-vendor - parser bucketed as 'other' role, a genuine false-positive vendor extraction"
+      },
+      {
+        "handle": "sangeend",
+        "is_vendor": false,
+        "expected_role": "other",
+        "is_part_of_wedding": false,
+        "in_parser_extraction": true,
+        "notes": "wedding-party label (Groom), non-vendor"
+      },
+      {
+        "handle": "aestheticaffairsco",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "post433events",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "post433chicago",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "makeupbyemana",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "itshairbynina",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "mihacouture",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "thekodakcollective",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "mair.films",
+        "is_vendor": true,
+        "expected_role": "content_creator",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Creative Content' label mapped to videographer by parser; canonical content_creator role would be more accurate, though ambiguous with videographer"
+      },
+      {
+        "handle": "eivans_inc",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "kashkreationsandevents",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Decor"
+      },
+      {
+        "handle": "mmeventrental_",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "lrt_events",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'DJ & Band' combined single line - business offers both; parser assigned dj role"
+      },
+      {
+        "handle": "lrt_events",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "same handle also offers band per 'DJ & Band' combined label - parser only captured the dj half"
+      },
+      {
+        "handle": "albawadigrill",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "fruitzina",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Dessert Table' vendor - ambiguous cake vs catering vs other"
+      },
+      {
+        "handle": "kallynsconfections",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "noodcoffee",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "coffee cart vendor, no canonical beverage category, correctly 'other'"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DEJbWU8J8it/",
+    "stratum": "I_many_credits",
+    "split": "heldout",
+    "post_level_notes": "Recall gap: when a role label applies to multiple handles across MULTIPLE separate lines (one handle per line, no repeated label), parser catches only the first handle immediately following the label line and misses subsequent handles on their own lines below it (missed silenceoftheglam under Makeup Artists, and djsyeyoung/adiasound/patrickjasper_music under DJ). This is a generalizable 'multi-line same-role' miss pattern, distinct from same-line multi-handle which the parser does handle. Also 'Venue/catering: @thedalcy' combined label only captured as venue role.",
+    "judgments": [
+      {
+        "handle": "christytylerphotography",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "stevesflowermarket",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "thedalcy",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Venue/catering' label; The Dalcy is both venue and in-house caterer"
+      },
+      {
+        "handle": "thedalcy",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "in-house catering half of combined 'Venue/catering' label; parser only assigned venue role, missed the catering role assignment"
+      },
+      {
+        "handle": "samanthahelmig",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "mklightingdesign",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Draping/lighting - no canonical fit"
+      },
+      {
+        "handle": "megmichelbrides",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "glamatelierchicago",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "bridal_by_ashley181",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "silenceoftheglam",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "second makeup handle on its own line beneath 'Makeup Artists:' label - missed, multi-line same-role pattern"
+      },
+      {
+        "handle": "thedjfirm",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "djsyeyoung",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "additional DJ handle on its own line beneath the DJ label - missed"
+      },
+      {
+        "handle": "adiasound",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "additional DJ/sound handle on its own line - missed"
+      },
+      {
+        "handle": "patrickjasper_music",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "grouped under DJ header on own line, could also be a musician/emcee - missed"
+      },
+      {
+        "handle": "ridestg",
+        "is_vendor": true,
+        "expected_role": "transportation",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DF8kx3xysAm/",
+    "stratum": "G_unusual_category",
+    "split": "heldout",
+    "post_level_notes": "Genuine single wedding by photographer alishatova; unusual multi-brand 'Outfit' line groups several attire brands together (dress designer + boutique + accessory brands) under one raw label - all four are legitimate attire-category credits despite being lumped on one line.",
+    "judgments": [
+      {
+        "handle": "battiestphoto",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "credited as 'Photo assistant' (second shooter) rather than primary; real service, still photographer category"
+      },
+      {
+        "handle": "everlieco",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "gibsonssteakhouse",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "viceroychicago",
+        "is_vendor": true,
+        "expected_role": "hotel",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "fleurinc",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "eringrahamhair",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "joeysoluvly",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "oldnorthfilmco",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "rushstreetrhythm",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Music' label; parser mapped to musician"
+      },
+      {
+        "handle": "allisonwebbnyc",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "dress designer brand under grouped 'Outfit' line"
+      },
+      {
+        "handle": "mira_couture",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "bridal boutique carrying the dress"
+      },
+      {
+        "handle": "gucci",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "luxury brand credit under generic 'Outfit' - borderline promotional brand tag but counts as attire vendor"
+      },
+      {
+        "handle": "suitsupply",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "groom's suit brand"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DFnfy6IxyCm/",
+    "stratum": "K_random_control",
+    "split": "eval",
+    "post_level_notes": "Clean single-wedding stack (venue's own recap of a couple's wedding). Notable role error: 'Entertainment: @bluewaterkingsband' mapped to dj role by parser, but the handle name itself confirms it's a live band, not a DJ - textbook Entertainment-label ambiguity / band-DJ collision, exactly the failure mode called out in the task brief.",
+    "judgments": [
+      {
+        "handle": "rockwellontheriver",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "venuelogic",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "ev_photography",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "simply_azure",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "butterandvine",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "art_imagination",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Design' label - decor/drapery company, no dedicated canonical 'decor' role"
+      },
+      {
+        "handle": "ebloomingflowers",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "bluewaterkingsband",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "role-mapping error: 'Entertainment' label mapped to dj, but handle name itself confirms this is a live band - band/DJ keyword collision"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DFxm8GlRcYg/",
+    "stratum": "G_unusual_category",
+    "split": "eval",
+    "post_level_notes": "Genuine single wedding; classic non-vendor-label failure mode present: 'Bride: @_abbie_newman_' correctly needs is_vendor=false but IS in parser_extraction as role 'other' - a clean textbook example of bride/groom leakage into extraction.",
+    "judgments": [
+      {
+        "handle": "happilyeverafterbyamy",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "yannidesignstudio",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "thedrakechicago",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "_abbie_newman_",
+        "is_vendor": false,
+        "expected_role": "other",
+        "is_part_of_wedding": false,
+        "in_parser_extraction": true,
+        "notes": "wedding-party label (Bride), non-vendor - parser bucketed as 'other', a genuine false-positive vendor extraction"
+      },
+      {
+        "handle": "bellabiancabridalcouture",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "martinalianabridal",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "tvkmusic",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "parser mapped Band label to musician; handle name itself ('TVK Music') suggests a band act"
+      },
+      {
+        "handle": "cake_chicago",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "gqtuxedo",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "kellyreifss",
+        "is_vendor": true,
+        "expected_role": "stationery",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "bellabridesmaids",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "rarebirdbeauties",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Hair and makeup' credit; parser assigned hair only"
+      },
+      {
+        "handle": "toastweddings",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DHt8qevsrLz/",
+    "stratum": "E_other_heavy",
+    "split": "heldout",
+    "post_level_notes": "Genuine single wedding (stratum E_other_heavy matches - many other-bucketed labels: Coordination, Live Painter, Alcohol, Dance Lessons). Two consistent failure modes: (1) 'Coordination' as a planner-role synonym not recognized, mapped to 'other' instead of 'planner'; (2) Bride/Groom handles present, correctly excluded by human judgment but captured by parser as 'other' - non-vendor leakage again.",
+    "judgments": [
+      {
+        "handle": "lmstudiochi",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "foxandivory",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "firmlyrootedevents",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Coordination' label not mapped to planner role, parser used 'other' - role-keyword gap; also owner account"
+      },
+      {
+        "handle": "blushandbraidsbeautybar",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Hair/Makeup' credit; parser assigned hair only"
+      },
+      {
+        "handle": "flowersfordreams",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "f4dweddings",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "same florist's alt handle, both real, co-credited"
+      },
+      {
+        "handle": "elegantsoundandlighting",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "johnkatesart",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Live Painter' - no canonical fit"
+      },
+      {
+        "handle": "lmcateringchi",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "garfieldsbeverage",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Alcohol' beverage/bar service vendor, no clean canonical fit"
+      },
+      {
+        "handle": "hilton_chicago_hotel",
+        "is_vendor": true,
+        "expected_role": "hotel",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "windycityweddingdance",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": "unsure",
+        "in_parser_extraction": true,
+        "notes": "'Dance Lessons' - first-dance choreography; a preparation service rather than a day-of vendor, judgment call on whether it counts as 'part of' the wedding day itself"
+      },
+      {
+        "handle": "m_fishback_roll",
+        "is_vendor": false,
+        "expected_role": "other",
+        "is_part_of_wedding": false,
+        "in_parser_extraction": true,
+        "notes": "wedding-party label (Bride), non-vendor"
+      },
+      {
+        "handle": "c_roll7",
+        "is_vendor": false,
+        "expected_role": "other",
+        "is_part_of_wedding": false,
+        "in_parser_extraction": true,
+        "notes": "wedding-party label (Groom), non-vendor"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DJ7MtKkx44D/",
+    "stratum": "D_multirole_handle",
+    "split": "eval",
+    "post_level_notes": "Genuine single wedding (Onwentsia Club, named explicitly in body text and in the photographer credit at the end). Notable failure: role labels with parenthetical qualifiers - 'Music (Reception):' and 'DJ (Afterparty):' - were both missed entirely by the parser, likely because the parenthetical breaks the expected 'Role:' pattern; a generalizable failure mode. Venue mentioned only via hashtag (#onwentsiaclubwedding) with no @handle, so unextractable regardless of parser quality - a data-availability gap, not a parser bug. kkmdesigngroup dual-credited planner+florist correctly reflects a real family-run business (bride's mother) providing two services.",
+    "judgments": [
+      {
+        "handle": "kkmdesigngroup",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "same handle also credited as Florist - real multi-service business, notably run by the bride's mother per body text (family-member-owned, still a genuine commercial vendor)"
+      },
+      {
+        "handle": "kkmdesigngroup",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "same handle also credited as Planner"
+      },
+      {
+        "handle": "thegildedaisleweddings",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "professional day-of coordinator (Lynne Kennedy) alongside family planning"
+      },
+      {
+        "handle": "olivialeigh",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "proemevents",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Tent' label not recognized as rentals keyword, parser bucketed 'other'"
+      },
+      {
+        "handle": "frostchicago",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Lighting'"
+      },
+      {
+        "handle": "eringrahamhair",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "daniellagmakeup",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "shannonobrienbeauty",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "joined via 'via' connector on the Makeup line; parser correctly parsed both handles despite the unusual connector"
+      },
+      {
+        "handle": "bittersweetchicago",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "bbjlatavola",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Linen"
+      },
+      {
+        "handle": "hallsrental",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "tablescapeschgo",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "beatmixchicago",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'Music (Reception): Time Chicago @beatmixchicago' - missed entirely, likely because the parenthetical '(Reception)' after the role word broke the match"
+      },
+      {
+        "handle": "zenfreeman",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'DJ (Afterparty): @zenfreeman' - missed entirely, same parenthetical-qualifier pattern"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DKvI4QgMN5T/",
+    "stratum": "B_nonvendor_labels",
+    "split": "eval",
+    "post_level_notes": "Short, clean stack; exemplifies the B_nonvendor_labels stratum precisely - 'Bride: @mollyjbye' correctly needs is_vendor=false but is present in parser_extraction as role 'other', a clean example of the label-leakage failure mode. Also 'Coordinator' not mapped to planner role.",
+    "judgments": [
+      {
+        "handle": "jessdiazco",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "afterglowweddingsandevents",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Coordinator' label not mapped to planner role, parser used 'other'; owner account"
+      },
+      {
+        "handle": "mollyjbye",
+        "is_vendor": false,
+        "expected_role": "other",
+        "is_part_of_wedding": false,
+        "in_parser_extraction": true,
+        "notes": "wedding-party label (Bride), non-vendor - classic bride/groom leakage, matches B_nonvendor_labels stratum intent exactly"
+      },
+      {
+        "handle": "the.arbory",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "flossyfloral_",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DM-_6Soy_zh/",
+    "stratum": "J_highfreq_vendor",
+    "split": "eval",
+    "post_level_notes": "Content-creation vendor (the account itself, socialbridescollective) tagged via 'Content Creators' label with no colon - missed by parser entirely, a real vendor-category gap since 'content_creator' is a canonical role the parser doesn't seem to catch here. Multiple role-keyword gaps: 'Bakery' -> other (should be cake), 'Tenting' -> other (should be rentals), 'After-Party Karaoke DJ' -> other (should be dj, role_raw shows truncated as 'After', likely truncated at the hyphen). Two vendors given only as plain text without handles (Kimberly Schuler - seamstress, WholeHearted videography team) are real but unextractable without an @handle - a data gap, not a parser bug.",
+    "judgments": [
+      {
+        "handle": "socialbridescollective",
+        "is_vendor": true,
+        "expected_role": "content_creator",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'Content Creators' self-tag label with no colon - missed entirely; owner account"
+      },
+      {
+        "handle": "luxebridesbynicci",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "bigcitybride",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "jenflynnbeauty",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "goldcoastallstars",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "parser mapped to musician"
+      },
+      {
+        "handle": "studiothisisphotography",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "okynemedialab",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'After-Party Karaoke DJ' label; role_raw truncated to 'After' (hyphen likely broke parsing), mis-mapped to 'other' instead of dj"
+      },
+      {
+        "handle": "bluepeaktents",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Tenting' not recognized as rentals keyword, bucketed 'other'"
+      },
+      {
+        "handle": "frostchicago",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Lighting and Draping'"
+      },
+      {
+        "handle": "deerfieldsbakery",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Bakery' label not recognized as cake keyword, bucketed 'other'"
+      },
+      {
+        "handle": "lifeinbloom",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Floral/Decor/Lighting' combined"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DMs7VCqx4PF/",
+    "stratum": "A_clean_stack",
+    "split": "eval",
+    "post_level_notes": "Clean single wedding using pipe '|' separators instead of colons - parser handled this format correctly for 8/9 credits but missed the final line '2nd Photographer | @gabbyrealphotograph' entirely, possibly a last-line/no-trailing-newline parsing edge case worth checking.",
+    "judgments": [
+      {
+        "handle": "holynamecathedral",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "ceremony venue"
+      },
+      {
+        "handle": "chicagowinery",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "reception venue"
+      },
+      {
+        "handle": "connorpoffevents",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "annebarge",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "glamatelierchicago",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'HMUA' combined credit; parser correctly used beauty_other here"
+      },
+      {
+        "handle": "sweetmandybs",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "lightandchapel",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account, primary photographer"
+      },
+      {
+        "handle": "seenbysonny",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "co-credited primary photographer"
+      },
+      {
+        "handle": "gabbyrealphotograph",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'2nd Photographer' - final line of caption, missed entirely"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DNjWW_2PjtO/",
+    "stratum": "J_highfreq_vendor",
+    "split": "heldout",
+    "post_level_notes": "HIGH-VALUE FINDING: combined role/handle line 'Planner/florals: @urbanallureevents / @flowersbycoll' mixes two distinct vendors under one dual-role label; parser assigns 'planner' to BOTH handles instead of splitting per position, mis-classifying the florist (flowersbycoll) as a planner. Generalizable and fairly serious precision bug for any 'RoleA/RoleB: @handleA / @handleB' pattern.",
+    "judgments": [
+      {
+        "handle": "madiellisphoto",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "bridgeportartcenter",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "urbanallureevents",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "first handle of combined 'Planner/florals' label, correctly the planner"
+      },
+      {
+        "handle": "flowersbycoll",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "second handle of combined 'Planner/florals' label; clearly a florist by name, but parser assigned it 'planner' role (same as the first handle) instead of florist - a mis-classification, not a miss"
+      },
+      {
+        "handle": "rarebirdbeauties",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'HMU' combined credit; parser correctly used beauty_other"
+      },
+      {
+        "handle": "aliceinivorybridal",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "theblacktux",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "vp.video.productions",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "butterandvine",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "art_imagination",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Decor' label, parser correctly used rentals"
+      },
+      {
+        "handle": "sweetmandybs",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "djchicagogram",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DOWyyTwkgSs/",
+    "stratum": "K_random_control",
+    "split": "eval",
+    "post_level_notes": "No role labels/text at all in this caption - just a run of bare @handle tags after hashtags. Parser correctly extracted zero credits (nothing to match). I've inferred plausible roles from external knowledge of these handles' typical categories elsewhere in this dataset, but confidence is low and I can't confirm from THIS caption alone whether these are genuine collaborators on one specific wedding or a generic vendor-network/friend-tag list - marked is_part_of_wedding unsure throughout. Good stress-test of parser precision under zero signal; the empty extraction here is arguably correct behavior (recall=0 is not a miss when there's no textual credit stack to extract).",
+    "judgments": [
+      {
+        "handle": "kerricarlquist",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": "unsure",
+        "in_parser_extraction": false,
+        "notes": "no role label present at all - role inferred only from handle-naming convention (personal name format), low confidence"
+      },
+      {
+        "handle": "clementinechicago",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": "unsure",
+        "in_parser_extraction": false,
+        "notes": "no role label; inferred from this handle's role elsewhere in the dataset (recurs as planner), low confidence for this specific post"
+      },
+      {
+        "handle": "chicagoculturalcenter",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": "unsure",
+        "in_parser_extraction": false,
+        "notes": "no role label; inferred from this handle's role elsewhere in the dataset (recurs as venue), low confidence for this specific post"
+      },
+      {
+        "handle": "lifeinbloom",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": "unsure",
+        "in_parser_extraction": false,
+        "notes": "no role label; inferred from this handle's role elsewhere in the dataset (recurs as florist), low confidence for this specific post"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DPwiNPTiS_o/",
+    "stratum": "D_multirole_handle",
+    "split": "eval",
+    "post_level_notes": "Good example of the D_multirole_handle stratum: same handle (pinmeupchicago, the salon) legitimately credited under multiple lines/roles for different individual stylists (Aminah for bridal hair, Aminah&Dana for bridal party hair, Monique for makeup) - not a duplication error, real multi-person single-business credit. One role-keyword gap: 'Flowers: @flowersfordreams' mapped to role 'other' instead of 'florist' - the word 'Flowers' (vs 'Floral'/'Florist') isn't recognized as a florist-category keyword.",
+    "judgments": [
+      {
+        "handle": "pinmeupchicago",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "credited twice for hair under different individual stylists at the same salon (Bridal Hair, Bridal Party Hair) - not a duplication error; owner account"
+      },
+      {
+        "handle": "pinmeupchicago",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Bridal Party Makeup credit, same salon, different stylist (Monique)"
+      },
+      {
+        "handle": "ebbylphotography",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "drapekings",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Draping' - no canonical fit"
+      },
+      {
+        "handle": "okynemedialab",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "flowersfordreams",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Flowers' label not recognized as a florist keyword, parser bucketed 'other'"
+      },
+      {
+        "handle": "thesimplyelegantxo",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "totlspecialevents",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DQAxM90DKTj/",
+    "stratum": "H_sparse",
+    "split": "heldout",
+    "post_level_notes": "Very sparse but clean, correct 2-credit extraction, no issues.",
+    "judgments": [
+      {
+        "handle": "studiothisisphotography",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "bigcitybride",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DR5dRi2id4g/",
+    "stratum": "K_random_control",
+    "split": "eval",
+    "post_level_notes": "Clean stack. Recurring failure modes confirmed again: 'Coordination' -> should be planner (got 'other'); combined 'Hair/Makeup' -> beauty_other more accurate than 'hair'; 'Drapery' -> should be rentals (got 'other').",
+    "judgments": [
+      {
+        "handle": "therookerybuilding",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "joylynphoto",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "blushandbriarfilms",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "firmlyrootedevents",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Coordination' label not mapped to planner, bucketed other"
+      },
+      {
+        "handle": "bsansostiartistry",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Hair/Makeup' credit; parser assigned hair only"
+      },
+      {
+        "handle": "flowersbykh",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "toastandjamdjs",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "jewelleventscatering",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "sweetmandybs",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Dessert'"
+      },
+      {
+        "handle": "art_imagination",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Drapery' label not recognized as rentals keyword, bucketed other"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DS5sY-ej4Sj/",
+    "stratum": "E_other_heavy",
+    "split": "eval",
+    "post_level_notes": "MAJOR PARSER RECALL FAILURE (emoji-icon pattern again, matches posts DbgYTOcHRnY and strongly confirms it's systemic): 13 of 17 real vendor credits use emoji icons instead of text role labels and were entirely missed; only the four credits using literal text labels (Photo Booth, Rehearsal Dinner, Welcome Party, Accommodations) were caught. This post also documents a full wedding weekend beyond just the ceremony/reception (rehearsal dinner, welcome party, brunch, hotel accommodations) - several credits are wedding-weekend-adjacent rather than wedding-day vendors, a judgment-call category worth explicit eval guidance on. 'Welcome Party' label not recognized as a venue-role keyword. Some plain-text vendor names with no @handle (Saint James Chapel, Residence Inn) are real but unextractable. Costco tagged alongside a real bakery under the cake emoji is an unusual, lower-confidence vendor credit.",
+    "judgments": [
+      {
+        "handle": "toddjames",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (camera), missed"
+      },
+      {
+        "handle": "wholeheartvideo",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "chicagowinery",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (fork+house icons, dual venue+catering); also credited as catering, missed"
+      },
+      {
+        "handle": "chicagowinery",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "same handle, in-house catering half of the emoji dual credit; missed"
+      },
+      {
+        "handle": "reutersbakery",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (cake icon), missed"
+      },
+      {
+        "handle": "costco",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": "unsure",
+        "in_parser_extraction": false,
+        "notes": "tagged under the same cake emoji alongside a real bakery - unusual/atypical wedding vendor credit, lower confidence this is a genuine service relationship vs a joke or bulk-supply mention; missed"
+      },
+      {
+        "handle": "olivefineweddings",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "thistleandplume",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "beauty_paigeco",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "elegancebykim",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "premiertrolley",
+        "is_vendor": true,
+        "expected_role": "transportation",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled, missed"
+      },
+      {
+        "handle": "impulsedjs",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (music note); owner account (name confirms DJ); missed"
+      },
+      {
+        "handle": "aliceinivorybridal",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (bride icon, dress), missed"
+      },
+      {
+        "handle": "theblacktux",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "emoji-labeled (groom icon), missed"
+      },
+      {
+        "handle": "pixterphotobooth",
+        "is_vendor": true,
+        "expected_role": "photobooth",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "text-labeled 'Photo Booth:', correctly caught"
+      },
+      {
+        "handle": "orsosrestaurant",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Rehearsal Dinner' venue/restaurant - part of the wedding weekend, not the ceremony/reception day itself; role ambiguous between venue and catering, parser chose catering"
+      },
+      {
+        "handle": "benchmark",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Welcome Party' venue, wedding-weekend-adjacent; label not recognized as venue keyword, bucketed other"
+      },
+      {
+        "handle": "parkhyattchicago",
+        "is_vendor": true,
+        "expected_role": "hotel",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Accommodations"
+      },
+      {
+        "handle": "eurostarsmagmile",
+        "is_vendor": true,
+        "expected_role": "hotel",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Accommodations"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DSXlCd_DpI_/",
+    "stratum": "G_unusual_category",
+    "split": "heldout",
+    "post_level_notes": "Confirms the parenthetical-qualifier failure mode seen in post DJ7MtKkx44D: 'photo (me!): @shotbysydney' - the parenthetical '(me!)' right after the role word broke matching, and the account owner's own photography credit (ironically the primary photographer) was missed entirely, while the parser correctly caught 'second photographer'.",
+    "judgments": [
+      {
+        "handle": "shotbysydney",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'photo (me!): @shotbysydney' - missed, parenthetical after role label likely broke the match; owner account, primary photographer"
+      },
+      {
+        "handle": "greenhouseloft",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "theflowergirlcompany",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "somethingprofoundweddings",
+        "is_vendor": true,
+        "expected_role": "officiant",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "grainy.chris",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "second photographer"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DTv1Oohj3Td/",
+    "stratum": "J_highfreq_vendor",
+    "split": "eval",
+    "post_level_notes": "Clean stack overall. Two vendor mentions given without proper @handles are unextractable regardless of parser quality: 'Venue: Racquet Club of Chicago' (plain venue name, no handle) and 'Videographer: charlie_hilbrant' (a name given without the @ prefix, so not actually taggable/matchable as an IG handle) - both correctly absent from parser_extraction, a data-availability gap not a parser bug.",
+    "judgments": [
+      {
+        "handle": "bigcitybride",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "arinbusch",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "individual planner, likely lead planner at Big City Bride"
+      },
+      {
+        "handle": "amandamegmiller",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "shannicat",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "shannonobrienweddings",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "eringrahamhair",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "lifeinbloom",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Floral + Decor'"
+      },
+      {
+        "handle": "erinkelleykorab",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "individual designer at Life in Bloom"
+      },
+      {
+        "handle": "beatmixchicago",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "parser mapped Band label to musician"
+      },
+      {
+        "handle": "smittenboutiqueshop",
+        "is_vendor": true,
+        "expected_role": "stationery",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Paper Goods"
+      },
+      {
+        "handle": "markingramatelier",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "moniquelhuillier",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "designer brand"
+      },
+      {
+        "handle": "aminamuaddi",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Shoes, luxury brand"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DUv986pEquE/",
+    "stratum": "A_clean_stack",
+    "split": "eval",
+    "post_level_notes": "Clean, correct 5-credit extraction; parenthetical AFTER the handle ('@tigerlilyevents (Cafe Brauer)') does not break matching, unlike parentheticals placed right after the ROLE label (contrast with posts DJ7MtKkx44D and DSXlCd_DpI_) - useful confirmation that placement of the parenthetical relative to the regex anchor matters.",
+    "judgments": [
+      {
+        "handle": "tigerlilyevents",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Cafe Brauer is the physical venue, tigerlilyevents likely the event-management company operating it"
+      },
+      {
+        "handle": "foxandivory",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "plan_and_gather_events",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "flowersfordreams",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "f4dweddings",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DVzDLGlkna6/",
+    "stratum": "G_unusual_category",
+    "split": "eval",
+    "post_level_notes": "Clean, fully correct 13-credit extraction, only nuance is combined 'Hair & Makeup: @joeysoluvly' mapped to 'hair' only (beauty_other arguably more accurate for a combined single credit) - the same recurring pattern as other posts, not a new issue.",
+    "judgments": [
+      {
+        "handle": "emmapetersenphoto",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "bustleandlace",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "fairliechicago",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "joeysoluvly",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Hair & Makeup' credit; parser assigned hair only"
+      },
+      {
+        "handle": "mayfloral",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "toastandjamdjs",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "lulacafeevents",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "aliceinivorybridal",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "alexandragrecco",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "formallymodern_chicago",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Tux"
+      },
+      {
+        "handle": "jennyyoonyc",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Wedding Party Attire brand"
+      },
+      {
+        "handle": "alliancebakery",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "shutterboothchicago",
+        "is_vendor": true,
+        "expected_role": "photobooth",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DWPFCgkjp86/",
+    "stratum": "K_random_control",
+    "split": "heldout",
+    "post_level_notes": "Genuine single wedding with '//' separator format handled well by parser. Bride/Groom leakage present again (rena.you, paulshinmedia correctly need is_vendor=false but are in parser_extraction as 'other'). 'Serving: @maisoncuisinechicago' mapped to 'other' instead of catering - role-keyword gap. Interesting cultural-vendor case: 'Korean Tea Ceremony' vendor has no clean canonical role fit.",
+    "judgments": [
+      {
+        "handle": "rena.you",
+        "is_vendor": false,
+        "expected_role": "other",
+        "is_part_of_wedding": false,
+        "in_parser_extraction": true,
+        "notes": "wedding-party label (Bride), non-vendor"
+      },
+      {
+        "handle": "paulshinmedia",
+        "is_vendor": false,
+        "expected_role": "other",
+        "is_part_of_wedding": false,
+        "in_parser_extraction": true,
+        "notes": "wedding-party label (Groom), non-vendor"
+      },
+      {
+        "handle": "eventsbyrmh",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "thedecordirectory",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Decor & Fresh Florals'"
+      },
+      {
+        "handle": "sarabandechicago",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "thekodakcollective",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "kevincleephoto",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "makeupwithsandyg",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "kass.bridal",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "aisle_and_veil",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "christianlouboutin",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Shoes"
+      },
+      {
+        "handle": "ohhappyday_event",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Korean Tea Ceremony' (pyebaek) specialist - cultural wedding ceremony vendor, no clean canonical fit, 'officiant' a plausible alternative"
+      },
+      {
+        "handle": "bada_bakery",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "stylemattersdjs",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "maisoncuisinechicago",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Serving' label not recognized as catering keyword, bucketed other"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DXrVe1oFv0L/",
+    "stratum": "I_many_credits",
+    "split": "eval",
+    "post_level_notes": "Clean stack, mostly correct. 'Violinist: @rachaelmiller12' mapped to 'other' instead of 'musician' - interesting because this is actually the CORRECT canonical value distinct from 'band' (solo musician vs group act), yet the parser's keyword list apparently doesn't include 'violinist' or generic instrument-based labels, only 'Music'/'Band' text. Cigars specialty vendor has no canonical fit, correctly would be 'other'.",
+    "judgments": [
+      {
+        "handle": "birchdesignstudio",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "jessica_birchdesignstudio",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "individual planner at Birch Design Studio"
+      },
+      {
+        "handle": "revelspace",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "limelightcatering",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "leximiller115",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "individual coordinator/rep at Limelight"
+      },
+      {
+        "handle": "revel_decor",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Decor"
+      },
+      {
+        "handle": "ilanaweisbach",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "individual designer at Revel Decor"
+      },
+      {
+        "handle": "svyat_bogdanov",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "rachaelmiller12",
+        "is_vendor": true,
+        "expected_role": "musician",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Violinist' role-keyword not recognized, mapped to 'other'; canonical 'musician' (solo performer) is actually correct here, distinct from 'band'"
+      },
+      {
+        "handle": "daf_cigars",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "cigar bar/roller specialty vendor, no clean canonical fit"
+      },
+      {
+        "handle": "awtardjs",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DY5IVFLGhL4/",
+    "stratum": "K_random_control",
+    "split": "eval",
+    "post_level_notes": "Confirms 'Venue & Catering' combined single-handle label only gets 'venue' role assigned, missing catering - same pattern seen with 'thedalcy' in post DEJbWU8J8it. bluewaterkingsband correctly labeled 'Live Band' here (unlike post DFnfy6IxyCm where it appeared under ambiguous 'Entertainment') and is still mapped to role 'musician' rather than 'band' - confirms parser systematically never emits the 'band' canonical role value even when the label explicitly says 'Band'.",
+    "judgments": [
+      {
+        "handle": "_brismtz",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "waldenchicago",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Venue & Catering' single-handle label"
+      },
+      {
+        "handle": "waldenchicago",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "in-house catering half of combined 'Venue & Catering' label; parser only assigned venue role, missed catering"
+      },
+      {
+        "handle": "tetheredstories",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "bridalartistryteam",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'HMU' combined credit; parser correctly used beauty_other"
+      },
+      {
+        "handle": "kjohnartistry",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "second HMU artist, correctly beauty_other"
+      },
+      {
+        "handle": "bittersweetpastryshop",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Desserts"
+      },
+      {
+        "handle": "stemline_creative",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "bluewaterkingsband",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Live Band' explicit label; parser still mapped to musician not band - confirms parser never emits 'band' role"
+      },
+      {
+        "handle": "mdmentertainmentchicago",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Lighting & Drapery'"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZic7cHgXf_/",
+    "stratum": "A_clean_stack",
+    "split": "eval",
+    "post_level_notes": "owner_vendor_category is null despite being a real photographer's post (pavliuk.photo) - a data-quality gap unrelated to parser. Confirms systemic role-mapping issue: 'Content Creation: @oncall.creatives' mapped to role 'videographer' rather than the canonical 'content_creator' - same failure as 'Creative Content: @mair.films' in post DcCHw9ggcQO. Parser appears to have no distinct content_creator detection, defaulting content/social-media credits to videographer.",
+    "judgments": [
+      {
+        "handle": "pavliuk.photo",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "nazarethfilmco",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "trablume",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "afterglowweddingsandevents",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "oncall.creatives",
+        "is_vendor": true,
+        "expected_role": "content_creator",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Content Creation' label mapped to videographer by parser rather than the canonical content_creator role - systemic pattern, matches mair.films in post DcCHw9ggcQO"
+      },
+      {
+        "handle": "bridalartistryteam",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Hair & Makeup' credit; parser assigned hair only"
+      },
+      {
+        "handle": "beautyby_kesha",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Bridal Hair & Makeup' credit; parser assigned hair only"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZqpWelEW82/",
+    "stratum": "F_roundup_shaped",
+    "split": "eval",
+    "post_level_notes": "Genuine single wedding (caption names the couple, 'Kaleigh and Kasun's wedding 2 weeks ago') despite the large 17-credit stack and F_roundup_shaped stratum tag - this is real single-wedding documentation, not a portfolio roundup. Reveals THREE distinct role-keyword gaps: (1) 'Make-up' (hyphenated) truncates role_raw to 'Make' and defaults to 'other' instead of makeup - a hyphenation parsing bug; (2) 'Tunes' not recognized as a dj/music keyword, defaults to other; (3) 'Shoes' consistently never mapped to attire across this dataset (confirmed again here with dolcevita, matching christianlouboutin in three earlier posts) - a systematic, high-confidence gap. Also 'Venue & Food' combined label only assigns venue role, missing catering - same combined-label bug pattern as thedalcy/waldenchicago.",
+    "judgments": [
+      {
+        "handle": "megansaulphotography",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account"
+      },
+      {
+        "handle": "weddingsbyjenniferfox",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "parkandfield",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "combined 'Venue & Food' label"
+      },
+      {
+        "handle": "parkandfield",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "in-house catering half of combined 'Venue & Food' label; parser only assigned venue role, missed catering"
+      },
+      {
+        "handle": "windycityglam",
+        "is_vendor": true,
+        "expected_role": "makeup",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Make-up' (hyphenated) - role_raw truncated to 'Make' at the hyphen and defaulted to 'other' instead of makeup, a hyphenation parsing bug"
+      },
+      {
+        "handle": "mel.mountain",
+        "is_vendor": true,
+        "expected_role": "hair",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "primrose_chicago",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "ecbg_studio",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "thedjtess",
+        "is_vendor": true,
+        "expected_role": "dj",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Tunes' not recognized as dj keyword, bucketed other"
+      },
+      {
+        "handle": "weilufresolone_atelier",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "honey_bridal",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Bridal Shop"
+      },
+      {
+        "handle": "sophosco",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Alterations' - attire-adjacent seamstress/tailor service; 'other' also defensible"
+      },
+      {
+        "handle": "dolcevita",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "'Shoes' label never mapped to attire by parser across this dataset - confirmed systematic gap"
+      },
+      {
+        "handle": "lindsaylewis.fine",
+        "is_vendor": true,
+        "expected_role": "jeweler",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Rings"
+      },
+      {
+        "handle": "bonobos",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Groomsmen Suit"
+      },
+      {
+        "handle": "customsuitsyou",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Groom Suit"
+      },
+      {
+        "handle": "rebeccaspectremagic",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Magician, no canonical fit"
+      },
+      {
+        "handle": "the312limo",
+        "is_vendor": true,
+        "expected_role": "transportation",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "zola",
+        "is_vendor": true,
+        "expected_role": "stationery",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Invitation platform"
+      }
+    ]
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZYh7nzgEkr/",
+    "stratum": "A_clean_stack",
+    "split": "heldout",
+    "post_level_notes": "MAJOR PARSER RECALL FAILURE: this caption mixes colon-labeled and no-colon 'Label @handle' formats (often with irregular/multiple spacing and redundant business-name-before-handle text like 'HMU Bianca Sansoti @biancasansotiartistry' or 'Cake ECBG @ECBG_Studio'). Parser caught only the colon-labeled lines (6 credits) and missed all 8 no-colon lines entirely - strong confirmation that the no-colon 'Label @handle' pattern (also seen in posts DaB3ZtKDZTN, DM-_6Soy_zh, DaVqrx7lp8h) is a major, generalizable recall gap, though inconsistently so (frostchicago WAS caught under this same no-colon pattern in two OTHER posts but missed here - spacing/formatting noise likely plays a role in whether the regex matches).",
+    "judgments": [
+      {
+        "handle": "thecreativeplanners",
+        "is_vendor": true,
+        "expected_role": "planner",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'// The Creative Planner @handle' - no colon, missed"
+      },
+      {
+        "handle": "artinstitutespecialevents",
+        "is_vendor": true,
+        "expected_role": "venue",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'AIG @handle' no colon; Art Institute event-services arm, confirmed as venue elsewhere in dataset; missed"
+      },
+      {
+        "handle": "FFTchicago",
+        "is_vendor": true,
+        "expected_role": "catering",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'Food For Thought @handle' no colon; matches fftchicago (catering) from another post; missed"
+      },
+      {
+        "handle": "chicagocatz",
+        "is_vendor": true,
+        "expected_role": "band",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'Chicago Catz Band @handle' no colon, name itself confirms band; missed"
+      },
+      {
+        "handle": "LifeinBloom",
+        "is_vendor": true,
+        "expected_role": "florist",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'Life in Bloom @handle' no colon; case-variant of lifeinbloom (florist elsewhere in dataset); missed, case-sensitivity may also contribute"
+      },
+      {
+        "handle": "frostchicago",
+        "is_vendor": true,
+        "expected_role": "other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'Frost lighting @handle' no colon; missed here despite being caught under the same no-colon pattern in two other posts in this dataset - formatting/spacing noise likely a factor"
+      },
+      {
+        "handle": "lisablumephoto",
+        "is_vendor": true,
+        "expected_role": "photographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "owner account, text-labeled 'Photographer:', correctly caught"
+      },
+      {
+        "handle": "nuagedesignsinc",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Nuage Linens"
+      },
+      {
+        "handle": "hallsrental",
+        "is_vendor": true,
+        "expected_role": "rentals",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "Halls Rentals"
+      },
+      {
+        "handle": "ECBG_Studio",
+        "is_vendor": true,
+        "expected_role": "cake",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'Cake ECBG @handle' no colon plus redundant business-name-before-handle text; missed"
+      },
+      {
+        "handle": "smilingtoadfilms",
+        "is_vendor": true,
+        "expected_role": "videographer",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "text-labeled 'Videographer:', correctly caught"
+      },
+      {
+        "handle": "biancasansotiartistry",
+        "is_vendor": true,
+        "expected_role": "beauty_other",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": false,
+        "notes": "'HMU Bianca Sansoti @handle' no colon plus name repeated before handle; combined hair+makeup credit; missed"
+      },
+      {
+        "handle": "ultimatebridechicago",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": "text-labeled 'Dress:', correctly caught"
+      },
+      {
+        "handle": "markingramatelier",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      },
+      {
+        "handle": "markingramcollection",
+        "is_vendor": true,
+        "expected_role": "attire",
+        "is_part_of_wedding": true,
+        "in_parser_extraction": true,
+        "notes": ""
+      }
+    ]
+  }
+]

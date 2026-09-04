@@ -397,6 +397,177 @@ left join staging.vendors v on v.id = sp.vendor_id
 where cs.candidate_generation_version = 'candidate-score-v1'
   and cs.score >= 12
   and pc.decision = 'INCLUDE';
+-- CAVEAT found 2026-09-04 while designing the graph-strengthening evidence
+-- layer: this view joins staging.instagram_posts directly. ROADMAP.md's
+-- "Next" section plans to eventually drop the staging schema once
+-- re-parsing is done -- the day that happens, this view (and /feed, which
+-- reads it) breaks. Not fixed here (out of scope for that task); flagging
+-- so "drop staging" gets a "materialize what v1_content_corpus/feed still
+-- need first" sub-step rather than silently breaking the product feed.
+-- The graph-strengthening tables below deliberately do NOT depend on this
+-- view or on staging surviving, for exactly this reason.
+
+-- Stack-parser extraction (D016/D017, 2026-09-03/04) — TS port of Ben's
+-- pipeline.py stack parser (LINE/HANDLE/ROLE_MAP/norm), run read-only over
+-- the candidate pool. Append-only per parser version (stack-parser-ts-v1/
+-- v2/v3), never truncated -- a rerun under the same version is an
+-- idempotent refresh of that post's rows, a new version appends alongside
+-- old ones.
+create table stack_extraction_runs (
+  post_url             text not null,
+  stack_parser_version text not null,
+  decision             text not null,  -- V3 decision at extraction time: INCLUDE/REVIEW/EXCLUDE
+  candidate_score      integer,
+  has_stack            boolean not null,
+  distinct_role_count  integer not null,
+  entry_count          integer not null,
+  extracted_at         timestamptz not null default now(),
+  primary key (post_url, stack_parser_version)
+);
+
+create table stack_extraction_entries (
+  post_url             text not null,
+  stack_parser_version text not null,
+  role_raw             text not null,
+  role                 text not null,
+  handle               text not null,
+  line_no              integer not null,
+  extracted_at         timestamptz not null default now()
+);
+create index on stack_extraction_entries (post_url, stack_parser_version);
+create index on stack_extraction_entries (handle);
+
+-- Human-quality ground truth for vendor extraction (D016/D017) -- built by
+-- independent caption review, NOT the parser's own output. 134 posts,
+-- 92 eval / 42 held-out, versioned by source_note (append-only, same as
+-- golden_set below). Only loadVendorGoldenSet.ts writes this.
+create table vendor_extraction_golden_set (
+  post_url             text not null,
+  handle               text not null,
+  expected_role        text,
+  is_vendor            boolean not null,
+  is_part_of_wedding   text,
+  in_parser_extraction boolean not null,
+  notes                text,
+  post_level_notes     text,
+  stratum              text not null,
+  split                text not null,
+  labeled_by           text not null,
+  labeled_at           timestamptz not null default now(),
+  source_note          text not null,
+  primary key (post_url, handle, source_note)
+);
+create index on vendor_extraction_golden_set (split, source_note);
+
+-- ============================================================
+-- Graph strengthening (2026-09-04, D016-D019): using Jeremy's V1 INCLUDE
+-- corpus to add vendor relationships to the wedding/vendor graph, WITHOUT
+-- touching Ben's weddings/wedding_posts/wedding_vendors/edges or
+-- phase_dedup()'s truncate-rebuild semantics (his `wedding_id` is not
+-- stable across reruns -- verified live: phase_dedup truncates and
+-- restarts identity on every run). See
+-- docs/engineering/graph-strengthening/ingestion-design.md for the full
+-- reasoning. Organizing principle: immutable evidence identity != wedding
+-- identity -- the durable fact is (source post, credit-line, vendor,
+-- role); which real-world wedding it belongs to is a revisable belief.
+-- ============================================================
+
+-- Evidence is a VIEW, not a table -- stack_extraction_entries already IS
+-- the append-only, per-parser-version extraction history (proven working
+-- across stack-parser-ts-v1/v2/v3). A separate physical evidence table
+-- would just duplicate that data and re-solve idempotency that's already
+-- solved. Identity here is (source_post_url, line_no, handle) -- the
+-- credit-line instance -- NOT parser_version: resolving "latest by
+-- extracted_at" per credit line means a ROLE_MAP bug fix corrects a row
+-- instead of minting a redundant new one for every parser iteration.
+-- Deliberately joins candidate_scores/post_classification_runs/accounts
+-- directly, never staging.instagram_posts or v1_content_corpus (see the
+-- caveat above) -- this view survives the eventual staging-schema drop.
+create view jeremy_post_vendor_evidence as
+select
+  latest.source_post_url,
+  a.id as account_id,
+  latest.role,
+  latest.role_raw,
+  latest.line_no,
+  latest.parser_version,
+  cs.score as candidate_score,
+  cs.candidate_generation_version,
+  pc.classifier_version,
+  pc.confidence as classifier_confidence
+from (
+  select distinct on (post_url, line_no, handle)
+    post_url as source_post_url, line_no, handle, role, role_raw, stack_parser_version as parser_version
+  from stack_extraction_entries
+  order by post_url, line_no, handle, extracted_at desc
+) latest
+join accounts a on lower(a.username::text) = latest.handle
+join candidate_scores cs on cs.post_url = latest.source_post_url
+  and cs.candidate_generation_version = 'candidate-score-v1' and cs.score >= 12
+join lateral (
+  select pcr.classifier_version, pcr.decision, pcr.confidence
+  from post_classification_runs pcr
+  where pcr.post_url = latest.source_post_url and pcr.classifier_version = 'v3'
+  order by pcr.classified_at desc limit 1
+) pc on pc.decision = 'INCLUDE'
+where latest.role <> 'other';
+
+-- Jeremy-owned wedding-candidate identity, fully independent of Ben's
+-- `weddings.id`. Stable across reruns via match-upsert against THIS table
+-- (never truncated) -- not Ben's truncate-rebuild -- so it requires zero
+-- changes to phase_dedup(). Stable only WITHIN a fixed clustering_version;
+-- changing the clustering algorithm is an explicit new version, not a
+-- silent behavior change (see runJeremyWeddingClustering.ts).
+create table jeremy_wedding_candidates (
+  id                 bigint generated always as identity primary key,
+  clustering_version text not null,
+  venue_account_id   bigint references accounts(id),   -- nullable; recomputed as evidence accrues
+  event_date_est     date,                              -- an ESTIMATE, recomputed on every touch
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
+);
+
+-- PRIMARY KEY on source_post_url (not composite with candidate_id) enforces
+-- "a post belongs to at most one candidate" at the database level -- the
+-- rare 1-post/2-weddings case (confirmed once in the 134-post eval set,
+-- D016/D017) is a named, accepted V1 limitation, not a silent gap.
+create table jeremy_wedding_candidate_posts (
+  source_post_url  text primary key,
+  candidate_id     bigint not null references jeremy_wedding_candidates(id),
+  added_at         timestamptz not null default now()
+);
+create index on jeremy_wedding_candidate_posts (candidate_id);
+
+-- Derived, not maintained -- always consistent, no upsert-with-greatest
+-- bookkeeping needed (unlike Ben's wedding_vendors, which hand-maintains
+-- n_confirmations).
+create view jeremy_wedding_candidate_vendors as
+select
+  cp.candidate_id,
+  e.account_id,
+  e.role,
+  count(distinct e.source_post_url) as n_confirmations,
+  array_agg(distinct e.source_post_url) as source_post_urls
+from jeremy_wedding_candidate_posts cp
+join jeremy_post_vendor_evidence e on e.source_post_url = cp.source_post_url
+group by cp.candidate_id, e.account_id, e.role;
+
+-- A versioned BELIEF about which Ben wedding a Jeremy candidate might
+-- correspond to -- never a merge, never authoritative. matched_wedding_id
+-- is deliberately NOT a foreign key: Ben's weddings.id can be reassigned
+-- by a future phase_dedup rebuild, and re-reconciling afterward (under a
+-- new reconciliation_version) is expected, ordinary maintenance.
+create table jeremy_wedding_candidate_reconciliation (
+  candidate_id           bigint not null references jeremy_wedding_candidates(id),
+  matched_wedding_id     bigint,
+  match_confidence       real,
+  venue_match            boolean not null,
+  date_delta_days        integer,
+  vendor_jaccard         real,
+  reconciliation_version text not null,
+  reconciled_at          timestamptz not null default now(),
+  primary key (candidate_id, reconciliation_version)
+);
 
 -- Golden set: hand-labeled regression set. NEVER written by any classifier —
 -- only a human/labeling script touches this table. This is what every

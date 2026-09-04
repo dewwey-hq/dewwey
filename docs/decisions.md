@@ -4,6 +4,190 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D020 — 2026-09-04 — Reconciliation audit: 143 high-confidence matches trusted on automated evidence, no redesign, no human audit performed
+
+Status: Accepted
+Context: before deciding whether to build further on `reconcile-v1`'s 143 high-confidence matches
+(D019), or redesign reconciliation, audited them — machine analysis only, not a manual review.
+Built an improved both-sides review artifact (`exportHighConfidenceReview.ts` →
+`high_confidence_143.{csv,md}`, Jeremy-side and Ben-side post URLs + vendor handles/roles
+together — the prior version only had the Jeremy side) after verifying the authoritative source
+of Ben-side post URLs (`wedding_posts(wedding_id, post_id) → posts.url`, confirmed complete for
+all 143: 0 missing/malformed URLs across all 1,668 `wedding_posts` rows). Then ran a scored
+risk-ranking pass (`auditHighConfidence.ts`).
+Findings (full writeup: `docs/engineering/graph-strengthening/reconciliation-audit-143.md`):
+1. **131/143 (91.6%) have an exact shared Instagram post URL** between the Jeremy candidate and
+   the matched Ben wedding — the strongest available identity signal, stronger than any
+   Jaccard/date heuristic. Treated as deterministic; not individually reviewed by eye.
+2. The remaining 12 were reviewed by diffing vendor handles (not just the role-labeled strings
+   the Jaccard metric compares, which understates overlap on role relabeling and handle typos)
+   against both-sides evidence: **11 GREEN, 1 YELLOW, 0 RED**. The YELLOW (candidate 2737 →
+   wedding 1222) has strong vendor overlap but a 12-day date delta, near the 14-day high-
+   confidence window edge — flagged for date evidence alone.
+3. **No false-merge pattern found.** Only one Ben wedding (468) is targeted by 2 of the 143
+   candidates; traced to the already-known order-dependent clustering under-merge (2105/2116
+   should have been one candidate), not a reconciliation defect — reconciliation matched both
+   correctly to the same real wedding, producing redundancy, not error.
+Decision: **the 143 high-confidence tier is trusted on current automated evidence.** No
+reconciliation threshold, clustering, or schema change made or currently justified by this audit.
+**Explicitly not claimed**: this is not a human audit — no person independently verified any of
+the 143 against source posts; "trusted" means "sufficiently supported by automated evidence to
+proceed without redesign," not "human-validated ground truth." Two known, separately-tracked
+follow-ups remain on the roadmap, not implemented here: (A) reconciliation has no evidence floor
+— even its weakest (0.1) confidence bucket records a `matched_wedding_id`, previously identified
+as the "magnet effect" driver; target shape is strong→match, ambiguous→reviewable,
+insufficient→no match. (B) the order-dependent greedy-clustering under-merge (wedding 468 case)
+remains a targeted clustering fix. Neither is a redesign.
+
+---
+
+## D019 — 2026-09-04 — Graph-strengthening evidence/candidate layer implemented, after a deliberate architectural review found real problems in D018's design
+
+Status: Accepted
+Context: before implementing D018's design, did a genuine critical review (not a rubber-stamp) of
+the evidence/candidate/reconciliation architecture, per explicit instruction to challenge it.
+Found and fixed several real issues:
+1. **Evidence identity was wrong.** D018 keyed evidence on `(source_post_url, account_id, role,
+   parser_version)` — baking a revisable interpretation (role, parser version) into what should
+   be an immutable fact's identity. Most `ROLE_MAP` fixes don't change what a caption says, only
+   our reading of it; the old key would mint a full new row set on every parser iteration.
+   Corrected identity: `(source_post_url, line_no, handle)` — the actual credit-line instance —
+   with `role`/`parser_version` resolved as "latest by `extracted_at` wins," the same pattern
+   `post_classifications_current` already uses.
+2. **The evidence layer didn't need a new table.** `stack_extraction_entries` (D016/D017)
+   already has exactly this data, already append-only per parser version, already proven working.
+   `jeremy_post_vendor_evidence` is a **view**, not a table.
+3. **A real, pre-existing durability risk**: `v1_content_corpus` joins `staging.instagram_posts`
+   directly, and `ROADMAP.md` plans to eventually drop the staging schema — anything depending on
+   that view would silently break that day. The evidence view instead joins
+   `stack_extraction_entries`/`candidate_scores`/`post_classification_runs`/`accounts` directly —
+   zero dependency on staging or `v1_content_corpus`. Dropped `is_self_credit` from the design for
+   the same reason (needed `owner_username` from staging, for a non-essential V1 feature).
+   Flagged the same risk for `v1_content_corpus`/`/feed` in `schema.sql`, unfixed (out of scope).
+4. Added `clustering_version` to `jeremy_wedding_candidates` — candidate identity is only stable
+   *within* a fixed clustering algorithm; changing the Jaccard threshold or date window would
+   silently re-partition existing candidates unless it's an explicit, visible version bump.
+5. `jeremy_wedding_candidate_posts` gets `PRIMARY KEY(source_post_url)`, enforcing "a post
+   belongs to at most one candidate" at the database level — the confirmed rare 1-post/2-weddings
+   case (`DICbnDDJR8M` in the eval set) is a named limitation, not a silent gap.
+6. `match_basis` became explicit columns (`venue_match`/`date_delta_days`/`vendor_jaccard`)
+   instead of `jsonb` — the signal set is small and fixed for V1.
+
+Decision: implemented the corrected design (full reasoning and schema in
+`docs/engineering/graph-strengthening/ingestion-design.md`). Ran `ensureVendorAccounts.ts`
+(3,287 new accounts — the only change to any pre-existing table, and an intentionally permissive
+one per existing `accounts` philosophy), `runJeremyWeddingClustering.ts`
+(`jeremy-cluster-v1`: 2,872 candidates from 3,273 clustering-eligible posts, 401 posts attached to
+existing candidates via confirmation), and `runJeremyWeddingReconciliation.ts`
+(`reconcile-v1`: 143 high-confidence / 268 ambiguous / 2,092 no-match, of 2,503 candidates with a
+resolved venue). Verified live: `weddings`/`wedding_posts`/`wedding_vendors`/`edges` counts
+unchanged to the row (1,384/1,668/12,310/54,271); `accounts` grew by exactly 3,287. Reran both
+scripts a second time — zero new/changed rows either (idempotency confirmed, not assumed). Spot-
+checked the largest candidate (9 posts, all independently confirming the same real wedding at the
+Art Institute, exact same date) and the highest-vendor-count candidate (28 vendors across 2 posts,
+identical vendor lists, same venue) — both genuine, not clustering artifacts. Added 20 regression
+tests (`graphStrengthening.test.ts`, pure-function + live-DB structural invariants), all passing.
+A real implementation gap found and left as a known limitation, not silently fixed: posts with
+1-2 (not 3+) non-other vendor roles contribute evidence but currently never get attached to any
+candidate, even if their vendor(s) would match an existing one — the design doc mentioned this
+as supported, the clustering script doesn't yet do it. $0 cost throughout, no LLM calls.
+Still true: `weddings`/`wedding_posts`/`wedding_vendors`/`edges`/`phase_dedup()` untouched.
+Merging confidently-reconciled candidates into Ben's live serving graph remains explicitly
+deferred, not attempted.
+
+---
+
+## D018 — 2026-09-04 — Graph ingestion V1: evidence/candidate identity kept separate from Ben's unstable `wedding_id`, deferring the identity-stability fix
+
+Status: Accepted
+Context: the first ingestion design draft found that Ben's `phase_dedup()` (`pipeline.py:398`)
+truncates and rebuilds `weddings`/`wedding_posts`/`wedding_vendors` from scratch on every run —
+`wedding_id` is not stable across reruns. That draft's recommended fix (make `phase_dedup`
+match-and-upsert instead of truncate-rebuild, option 1) was reviewed and explicitly rejected for
+V1: changing Ben's core wedding-identity semantics is a bigger architectural change than this
+workstream should make before the resulting graph additions are validated.
+Decision: V1 separates **immutable evidence identity** (`source post -> vendor -> role -> parser
+version`, which never needs to change) from **wedding identity** (`source post -> real-world
+wedding`, explicitly uncertain and revisable). New, fully independent tables —
+`jeremy_post_vendor_evidence` (stable, no reference to any wedding at all),
+`jeremy_wedding_candidates`/`jeremy_wedding_candidate_posts` (Jeremy-only clustering, kept stable
+across reruns via match-upsert against a table this workstream owns — same clustering algorithm
+as `phase_dedup`, applied without touching Ben's pipeline), and
+`jeremy_wedding_candidate_reconciliation` (a versioned, non-FK-constrained *belief* about which
+Ben wedding a candidate might match, explicitly designed to be re-run and revised, never treated
+as permanent). `weddings`/`wedding_vendors`/`edges` receive zero writes in V1 — even a
+confidently-matched candidate isn't merged into the live serving graph this round; that path is
+designed (see `ingestion-design.md` section 4) but deferred until after V1's output is reviewed.
+Full design in `docs/engineering/graph-strengthening/ingestion-design.md`. $0 cost, no LLM calls,
+no production writes yet — next step is a dry run (not yet run) to produce real candidate/match
+counts before any further decision.
+
+---
+
+## D017 — 2026-09-04 — Graph strengthening iteration 2: no-colon recall fix; ingestion scoped to INCLUDE-only
+
+Status: Accepted
+Context: D016 shipped `stack-parser-ts-v2` (role-accuracy fixes) and named the no-colon/emoji/
+reversed-order caption-format recall gap as the single biggest remaining lever, deferred to its
+own iteration. User also settled two open questions from D016 before this iteration started:
+ingestion population is INCLUDE only (EXCLUDE — including `destination_wedding`, which would
+otherwise pollute a Chicago-focused graph with real-but-wrong-geography vendors — deferred, not
+decided against permanently); and a minimum-evidence display threshold for non-venue vendors is
+a real idea but a *serving-layer* decision to test once relationships exist in `wedding_vendors`,
+not before (venues get a "show even at n=1" exception since users specifically browse venues).
+Decision: shipped `stack-parser-ts-v3` — a `NOCOLON_LINE` fallback pattern (tried only when the
+proven colon-separator `LINE` regex doesn't match), built from real captions read first, not
+guessed. Deliberately stricter than `LINE` (uppercase-first-letter requirement, entire line
+remainder must be just handles, no interspersed prose) specifically to manage the precision risk
+of dropping the colon requirement — verified against hand-written adversarial captions
+("Follow us @handle for more content!") before running the real eval, both correctly rejected.
+Result against the same `vendor_extraction_golden_set` eval (D016): recall 82.6% -> 92.4% pooled,
+precision held (96.4% -> 96.8%, no regression), role accuracy (any-match) 74.9% -> 83.2%. Full
+details in `docs/engineering/graph-strengthening/README.md`.
+Still deliberately not touched: emoji-before-colon breaking the existing colon match, reversed
+`"@handle - Role"` order, pipe-delimited multi-credit lines mis-assigning role across handles —
+each is a separate, real, confirmed issue that needs its own isolated iteration. Still nothing
+written to production graph tables (`accounts`/`post_mentions`/`weddings`/`wedding_vendors`/
+`edges`) — extraction/eval only.
+
+---
+
+## D016 — 2026-09-03 — Graph strengthening: ported Ben's stack parser to TS, built vendor-extraction ground truth, shipped iteration 1 (no production writes yet)
+
+Status: Accepted
+Context: ROADMAP's "re-parse Jeremy's 47k staged captions through the stack parser" was stale on
+two counts — the population should be the 4,033 V3-validated INCLUDE posts (D014), not 47k raw;
+and the parser only exists in Python (`pipeline/pipeline.py`), never bridged to Jeremy's corpus
+at all. Applied the same baseline -> hypothesis -> bounded change -> evaluate -> error-analyze ->
+keep/revert -> record -> regression-test loop used for post classification.
+Decision: ported `parse_caption`/`ROLE_MAP`/`norm` faithfully to
+`apps/web/scripts/graph/stackParser.ts` (read-only extraction function, not a graph writer — see
+`docs/engineering/graph-strengthening/README.md` for full methodology/numbers). Ran it over the
+5,225-candidate pool into new additive-only tables (`stack_extraction_runs`/
+`stack_extraction_entries`), confirming the hypothesis: INCLUDE posts surface vendor relationships
+57.3% new to Ben's `accounts` graph and 65.4% not already in `wedding_vendors`. Built real ground
+truth (not the parser's own output) — 134 posts, 4 independent caption-reading passes, 92 eval /
+42 held-out, persisted to a new `vendor_extraction_golden_set` table
+(`source_note='vendor_gs_v1'`). v1 baseline: 96.4% precision, 82.6% recall (recall gap is almost
+entirely a text-format problem — no-colon/emoji/reversed-order lines, confirmed independently by
+all 4 labelers — deliberately not touched this round, bigger structural change), 68.0% role
+accuracy (any-match). Shipped `stack-parser-ts-v2`: a `ROLE_MAP` keyword bundle chosen from
+measured mismatch counts (added `band`/`content_creator` as real targets the parser never hit;
+`reception`/`ceremony`/`church`/`parish` → `venue` via a whitelist, not a substring — a first
+substring attempt introduced 3 regressions the eval re-run caught, e.g. "Ceremony Musicians"
+false-triggering venue; several smaller safe keyword fixes). Result: 106 real fixes, 0
+regressions (a naive pairwise-join comparison first mis-reported 26 regressions — turned out to
+be a measurement artifact from vendors legitimately credited under 2+ roles in one post, not a
+real bug — worth remembering for future comparisons against this table). Role accuracy 68.0% ->
+74.9%. $0 cost, no LLM calls.
+Explicitly NOT done: no writes to `accounts`/`post_mentions`/`weddings`/`wedding_vendors`/`edges`
+— this whole entry is measurement and a read-only extraction instrument. The recall-format fix
+(the single biggest lever, per all 4 labelers) is deferred to its own iteration, isolated from
+this one. Whether `destination_wedding`/`styled_or_editorial` EXCLUDE posts' vendor relationships
+belong in the graph for a different purpose is an open product question, not resolved.
+
+---
+
 ## D015 — 2026-09-03 — V1 corpus wired into the product (`/feed`); branch committed, NOT pushed
 
 Status: Accepted

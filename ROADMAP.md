@@ -21,6 +21,36 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
   don't assume this landed on `main` without checking. This is also most of the work for the
   "re-parse 47k staged captions" item below — its output (which own-profile posts are
   credible) is the ingest filter that item needs.
+- Graph strengthening (`docs/engineering/graph-strengthening/`, D016–D019): stack parser ported
+  to TS, two iterations eval-tested (96.8% precision / 92.4% recall / 83.2% role accuracy against
+  real ground truth). **Evidence + candidate layer is now implemented and live**:
+  `jeremy_post_vendor_evidence` (a view — 32,633 rows, 4,982 unique vendors), `jeremy_wedding_candidates`
+  (2,872 candidates from 3,273 clustering-eligible posts), `jeremy_wedding_candidate_reconciliation`
+  (143 high-confidence / 268 ambiguous / 2,092 no-match vs. Ben's current weddings). Idempotency
+  verified live (reran both scripts, zero new/changed rows). 20 regression tests passing
+  (`apps/web/scripts/graph/graphStrengthening.test.ts`). **`weddings`/`wedding_posts`/
+  `wedding_vendors`/`edges`/`phase_dedup()` remain completely untouched** — verified live, exact
+  same counts as before this work; `accounts` grew by exactly 3,287 (new vendor handles, the only
+  sanctioned change). A pre-implementation architectural review (D019) found and fixed real
+  problems in the first design (evidence identity was wrong, an unnecessary table, a durability
+  risk from depending on `staging.instagram_posts` — see D019 for detail).
+  **Reconciliation audit closed (D020)**: the 143 high-confidence matches were analyzed (not
+  manually audited — see `docs/engineering/graph-strengthening/reconciliation-audit-143.md`)
+  — 131/143 (91.6%) have an exact shared Instagram post URL between the Jeremy candidate and the
+  Ben wedding (deterministic-strength evidence), the remaining 12 were reviewed and came back
+  11 GREEN / 1 YELLOW / 0 RED with zero false-merge patterns. **Decision: trusted on automated
+  evidence, no reconciliation redesign justified.** Two known, still-unimplemented follow-ups:
+  (A) reconciliation has no evidence floor — its weakest (0.1) confidence bucket still records a
+  `matched_wedding_id`, the "magnet effect" driver identified earlier; (B) order-dependent greedy
+  clustering can under-merge same-wedding posts into separate candidates (concrete case: wedding
+  468, candidates 2105/2116) — confirmed this does not cause reconciliation false merges, just
+  redundant candidates, but is still worth fixing.
+  **Known gap, not yet fixed**: posts with 1-2 (not 3+) vendor roles contribute evidence but
+  aren't currently attached to any candidate even when they'd match one that already exists —
+  fast, well-scoped next addition. **Not yet done, deliberately deferred**: merging
+  confidently-reconciled candidates into Ben's live serving graph (needs a decision on whether to
+  invest in making `weddings.id` stable first, informed by this real data rather than a
+  prerequisite guess).
 - The dewwey.com domain story: point it at the Vercel project (linked
   2026-08-22), add a custom domain for R2 to replace the r2.dev URL, and
   check the Google Maps browser key's referrer allowlist covers the new
@@ -37,9 +67,9 @@ in-flight work is what this section prevents. History: `docs/decisions.md`.
 
 - TS port of the pipeline (926 lines of Python) with OpenRouter swapped in for
   Anthropic-direct and `avatars.py` writing to R2.
-- Re-parse Jeremy's 47k staged captions through the stack parser
-  (`wedding_score` filter, `source='own_profile'`), refresh `edges`, then
-  drop the `staging` schema.
+- Ingest graph-strengthening's extracted vendor relationships into
+  `weddings`/`wedding_vendors`/`edges` (see "Now" above — extraction is built and evaluated,
+  ingestion is not), then drop the `staging` schema.
 
 ## Later
 
