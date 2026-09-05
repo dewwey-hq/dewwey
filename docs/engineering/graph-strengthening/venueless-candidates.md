@@ -67,14 +67,32 @@ problem only, not the reconciliation-decision problem (that's proven code, reuse
       already known in this DB (`The Armour House`, `The Wellsley`, `Chicago Illuminating
       Company` all already appear as credited venues elsewhere in `wedding_vendors`). See
       "Baseline findings" below for the full sample and the match-rate sizing.
-- [ ] **Build a read-only sizing/matching script** (mirror `sizeCaseBAttachOpportunity.ts` —
-      no writes), matching `location_tag` against `accounts.full_name` / `vendors.name` /
-      `vendors.address` for the venue-role accounts Ben already knows. Report: how many of
-      the 300 resolve to exactly one confident match, how many are ambiguous, how many
-      match nothing.
-- [ ] **Read a sample of the actual matches by hand** — confirm they're correct, not just
-      plausible-looking. This is the step that caught real problems in every prior
-      iteration (Case A, the ambiguous-tier audit, Case B) — don't skip it here.
+- [x] **Build a read-only sizing/matching script** (2026-09-05) —
+      `apps/web/scripts/graph/matchVenuelessLocationTags.ts`. Excludes conflicting-tag
+      candidates (posts disagree, 5) and generic city/region placeholders (65), matches
+      remainder against `vendors.name`/`accounts.full_name` (exact, case-insensitive),
+      requires the matched account to carry a `venue` role in `account_tags` (guards the
+      "vendor's own location, not the venue" risk from the baseline sample). Result: **131
+      confident single-account matches**, 93 no match, 3 matched-a-name-but-no-venue-role
+      (correctly held back), 3 ambiguous (all "Field Museum" → two distinct accounts,
+      `fieldmuseum` vs `fieldmuseumspecialevents` — correctly not resolved rather than
+      guessed).
+- [x] **Read a sample of the actual matches by hand** (2026-09-05) — two full spot checks,
+      not just eyeballing venue names:
+      - Candidate 554 → `galleriamarchetti` (2 matches total for this exact venue, the one
+        the user originally flagged): caption reads "their enchanting garden venue,
+        `@galleriamarchetti`" in prose, followed by a clean 7-role credit list (photo,
+        hotel, beauty, floral, rentals, photobooth, planning) with **no "Venue:" line at
+        all** — textbook example of why this candidate never got a venue anchor from
+        caption parsing alone. Real wedding, real evidence, genuinely just missing the
+        anchor.
+      - Candidates 1370/1374 → `Chicago Illuminating Company` (the most frequent match,
+        20+ candidates — checked specifically because of that frequency): two completely
+        different real weddings ("Emily and Grant's cocktail hour," "#CICBride Hannah"),
+        each with a full, internally-consistent 8-10-role vendor stack and zero venue
+        credit line in either. Confirms the high frequency is a real, popular venue with
+        many real weddings in Jeremy's corpus — not a data artifact.
+      **Verdict: precision looks genuinely good.** Proceeding to the backfill step.
 - [ ] **Decide**: if precision looks genuinely good, build the backfill script
       (`UPDATE jeremy_wedding_candidates SET venue_account_id = $1 WHERE id = $2 AND
       venue_account_id IS NULL`, `--dry-run` first, idempotency verified). If not, record
