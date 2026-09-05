@@ -112,20 +112,38 @@ this mission's initial scope.
         duplicate.
       **Both checked out safe, but the pattern is real and needs a systematic check, not
       per-case luck** — see the refined creation-script requirement below.
-- [ ] **Build the creation script** — mirror `applyJeremyEvidenceToGraph.ts`'s shape:
-      `INSERT INTO weddings (venue_id, event_date_est, is_chicago)` for the pilot batch
-      only, then `INSERT INTO wedding_posts` / `wedding_vendors` for that new wedding's
-      evidence, logged into the new `jeremy_weddings_created` provenance table.
-      `--dry-run` first, read the full result by hand, idempotency verified live.
-      **Refined requirement from the pilot (2026-09-05)**: before creating each candidate,
-      check not just "does the resolved `venue_account_id` have zero existing Ben
-      weddings" but also cross-reference the candidate's OTHER extracted vendor accounts
-      (any of them, not just role='venue') against Ben's `weddings`/`wedding_vendors` by
-      date+Jaccard, the same rule `checkIntraBatchDuplicates.ts` already uses — a secondary
-      account mentioned in the caption (a reception venue when the anchor is the ceremony
-      church, a sibling venue brand) could reveal an existing Ben wedding this candidate
-      should match instead of needing creation. Build this as an extension of the existing
-      duplicate-check script, not a one-off per-candidate manual check.
+- [x] **Secondary-account duplicate check** (2026-09-05) —
+      `apps/web/scripts/graph/checkExistingDuplicatesForCreation.ts`. For all 447, compares
+      each candidate's FULL vendor set (every extracted account/role, not just the resolved
+      venue anchor) against every Ben wedding sharing at least one vendor account, same
+      jaccard>0.5-within-21-days rule. **Result: 0 of 447 flagged** — the multi-venue risk
+      pattern found in the pilot (church/reception, sibling venue brands) does not produce
+      any false positives at scale, matching the two hand-checked instances.
+- [x] **Build the creation script** (2026-09-05) —
+      `apps/web/scripts/graph/createWeddingsFromJeremyEvidence.ts`. Deliberately hardcodes
+      the 15 hand-verified pilot candidate IDs rather than accepting a `--limit` flag, so
+      scaling up requires deliberately editing the list, not bumping a number.
+      **Real schema wrinkle found and solved**: `wedding_posts.post_id` is a NOT NULL FK to
+      Ben's own `posts` table — Jeremy's captions live in `staging.instagram_posts`, a
+      different table. No prior mission needed to bridge this (they only added credits to
+      weddings that already had Ben-crawled posts). Solved by importing the underlying
+      post(s) into `posts` with `source='jeremy_evidence'` (a new, self-explanatory value,
+      no CHECK constraint exists — confirmed before choosing it), upserting the owner
+      account, keyed on `posts.shortcode`'s existing UNIQUE constraint (extracted from the
+      Instagram URL) for natural idempotency.
+      **Second real gap found and solved**: `account_locations` has NO row at all for 14 of
+      the 15 pilot venue accounts (Ben's location enrichment never ran on venues discovered
+      only through Jeremy's evidence) — the naive fallback would have silently set
+      `is_chicago=false` for real Chicago weddings, hiding them from `/weddings` and the
+      `/vendors` browse list. 9 of 15 resolve via the Places-linked `vendors.city='Chicago'`
+      field; the other 6 don't, but every one of the 15 was independently confirmed Chicago
+      during the hand-read pilot (explicit `#chicagowedding` tags or a named Chicago
+      landmark in the caption). Set `is_chicago=true` for this pilot as a **verified
+      judgment call, not a default** — flagged as **not scaling** to the remaining ~432
+      candidates without a real fix (geocoding new venue accounts into
+      `account_locations`), see Open questions below.
+      **`--dry-run` result (final)**: 15 weddings, 17 posts imported (matches multi-post
+      candidates 351×2, 662×3, rest ×1), 172 `wedding_vendors` rows.
 - [ ] **Decide on scope beyond the pilot** — if the pilot's duplicate/quality checks come
       back clean, decide how much of the remaining 447 (and later, the 1,765) to bring in,
       and under what continuing verification cadence (spot-checks per batch, not just the
@@ -136,6 +154,14 @@ this mission's initial scope.
 ## Baseline findings
 
 *(not yet filled in — the loop's first step)*
+
+## Open questions, not resolved here
+
+- **`is_chicago` for new venue accounts beyond this pilot.** `account_locations` has no
+  row for 14/15 pilot venues; 9/15 resolve via `vendors.city='Chicago'`, the rest were
+  confirmed only by hand-reading the caption. Scaling past a hand-verified pilot needs a
+  real mechanism (geocoding, or requiring `vendors.city` presence as a precondition for
+  automated creation) rather than manual verification per candidate.
 
 ## Deliberately not touched this mission
 
