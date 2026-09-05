@@ -27,14 +27,19 @@
  * missing, --commit only).
  *
  * Usage (from apps/web):
- *   bun run scripts/graph/retireNonWeddingPosts.ts           # dry run (default)
- *   bun run scripts/graph/retireNonWeddingPosts.ts --commit  # real write — human only
+ *   bun run scripts/graph/retireNonWeddingPosts.ts                                   # dry run, default candidates file
+ *   bun run scripts/graph/retireNonWeddingPosts.ts --commit                          # real write — human only
+ *   bun run scripts/graph/retireNonWeddingPosts.ts --candidates=data/foo.json        # a later batch (e.g. a second user-flagged round)
  */
 import { readFileSync } from "node:fs";
 import { getPool, closePool } from "../classify/db";
 
+const candidatesArg = process.argv.find((a) => a.startsWith("--candidates="));
+const candidatesPath = candidatesArg
+  ? candidatesArg.slice("--candidates=".length)
+  : "./data/non_wedding_delete_candidates.json";
 const CANDIDATES = JSON.parse(
-  readFileSync(new URL("./data/non_wedding_delete_candidates.json", import.meta.url), "utf8")
+  readFileSync(new URL(candidatesPath, import.meta.url), "utf8")
 ) as { post_urls: string[] };
 
 function shortcode(url: string): string {
@@ -75,8 +80,7 @@ async function main() {
     console.log("[tick5] before:", before[0]);
 
     const { rows: targets } = await client.query(
-      `select p.id as post_id, p.shortcode, wp.wedding_id,
-              (select count(*) from wedding_posts wp2 where wp2.wedding_id = wp.wedding_id)::int as n_posts_on_wedding
+      `select p.id as post_id, p.shortcode, wp.wedding_id
        from posts p
        join wedding_posts wp on wp.post_id = p.id
        where p.shortcode = any($1::text[])`,
@@ -85,20 +89,32 @@ async function main() {
     const missing = shorts.filter((s) => !targets.some((t) => t.shortcode === s));
     if (missing.length) console.log("[tick5] WARNING: not found on any wedding_posts row (already retired?):", missing);
 
-    const provenance: { post_url: string; shortcode: string; wedding_id: string; wedding_also_retired: boolean }[] = [];
-    const weddingsFullyRetired = new Set<string>();
-
     for (const t of targets) {
       await client.query(`delete from wedding_posts where post_id = $1`, [t.post_id]);
-      const willEmpty = t.n_posts_on_wedding === 1;
-      provenance.push({
-        post_url: `https://www.instagram.com/p/${t.shortcode}/`,
-        shortcode: t.shortcode,
-        wedding_id: String(t.wedding_id),
-        wedding_also_retired: willEmpty,
-      });
-      if (willEmpty) weddingsFullyRetired.add(String(t.wedding_id));
     }
+
+    // Re-check remaining post count AFTER all of this batch's deletes, not a
+    // per-post pre-count — a wedding with 2+ candidate posts in the SAME
+    // batch (e.g. duplicate posts of one non-wedding event) would otherwise
+    // never be recognized as empty, leaving an orphaned weddings row behind.
+    const affectedWeddingIds = [...new Set(targets.map((t) => String(t.wedding_id)))];
+    const { rows: remaining } = await client.query(
+      `select wedding_id, count(*)::int as n
+       from wedding_posts where wedding_id = any($1::bigint[])
+       group by wedding_id`,
+      [affectedWeddingIds]
+    );
+    const remainingById = new Map(remaining.map((r: any) => [String(r.wedding_id), r.n]));
+    const weddingsFullyRetired = new Set(
+      affectedWeddingIds.filter((wid) => (remainingById.get(wid) ?? 0) === 0)
+    );
+
+    const provenance = targets.map((t) => ({
+      post_url: `https://www.instagram.com/p/${t.shortcode}/`,
+      shortcode: t.shortcode,
+      wedding_id: String(t.wedding_id),
+      wedding_also_retired: weddingsFullyRetired.has(String(t.wedding_id)),
+    }));
 
     for (const wid of weddingsFullyRetired) {
       await client.query(`delete from wedding_vendors where wedding_id = $1`, [wid]);
@@ -116,7 +132,7 @@ async function main() {
             p.wedding_id,
             p.wedding_also_retired,
             "non_wedding_posts mission (D040) — role_shape_v1 or hand-labeled EXCLUDE",
-            "non-wedding-posts.md tick 5",
+            candidatesArg ? `non-wedding-posts.md, batch: ${candidatesPath}` : "non-wedding-posts.md tick 5",
           ]
         );
       }
@@ -136,9 +152,12 @@ async function main() {
       [...weddingsFullyRetired].sort((a, b) => Number(a) - Number(b))
     );
 
-    const seedShorts = new Set(shorts.slice(0, 11)); // seeds are always first 11 in the candidates file
-    const seedsDetached = provenance.filter((p) => seedShorts.has(p.shortcode)).length;
-    console.log(`[tick5] of the 11 original seeds, detached this run: ${seedsDetached}/11`);
+    if (!candidatesArg) {
+      // Only meaningful for the original tick-5 file, where seeds are always first 11.
+      const seedShorts = new Set(shorts.slice(0, 11));
+      const seedsDetached = provenance.filter((p) => seedShorts.has(p.shortcode)).length;
+      console.log(`[tick5] of the 11 original seeds, detached this run: ${seedsDetached}/11`);
+    }
 
     if (commit) {
       await client.query("commit");
@@ -146,9 +165,10 @@ async function main() {
     } else {
       await client.query("rollback");
       console.log("[tick5] DRY RUN complete — rolled back, nothing changed.");
-      console.log(
-        "[tick5] To actually apply this (human only, not auto-mode): ! cd apps/web && bun run scripts/graph/retireNonWeddingPosts.ts --commit"
-      );
+      const commitCmd = candidatesArg
+        ? `bun run scripts/graph/retireNonWeddingPosts.ts --commit --candidates=${candidatesPath}`
+        : "bun run scripts/graph/retireNonWeddingPosts.ts --commit";
+      console.log(`[tick5] To actually apply this (human only, not auto-mode): ! cd apps/web && ${commitCmd}`);
     }
   } finally {
     client.release();

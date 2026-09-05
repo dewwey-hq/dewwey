@@ -1,0 +1,116 @@
+[
+  {
+    "post_url": "https://www.instagram.com/p/DbtRJx4h2m3/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Corporate conference + dinner for ~200 healthcare professionals at Loft Lucia, not a wedding. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Dbvme2GKIIY/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "DJ nightclub set at The Tonk Chicago. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbwmtUBMjP6/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "DJ/party night at Chicago Theater Works ('The Doors have opened... crowd moving'). [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db0-Z-LPt1G/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'SUMMER CIRCUS' entertainment-design showcase at City Hall Chicago Events. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db3Yrzgi0fV/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "'La dolce vita... with a baby on the way' — a baby-shower-themed event, not a wedding, despite a full vendor stack. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db8htU7Aj3R/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Second post on the same wedding_id 1179, same vendor team/event ('Go ahead. Spritz yourself.') — same baby-shower event, not a separate wedding post. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db58jJ_EXJS/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Jerry Garcia tribute concert at Garcia's Chicago. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db83z-eCeei/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Uniting Voices choir production/stage lighting showcase at The Geraghty, a nonprofit performance not a wedding. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db9TdFwsQ3r/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Punk show announcement at Ramova Theatre. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db_QGgIp1WM/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert recap (Agalloch) at Thalia Hall. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcBzj27RR8_/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Pro-wrestling show at Lincoln Hall (same wrestle_league_official event series already retired once from a different post). [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcBZMu4kSTH/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Motoblot motorcycle-rally concert at Ramova Theatre. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcEJz9QR3hB/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Funk concert (Lettuce Funk) at Garcia's Chicago. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcEAB8CBZWY/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert (Fiddlehead) at Thalia Hall. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcGkxj5BCNi/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Second post on the same wedding_id 1276, same concert ('In The Round' version of the same Fiddlehead show). [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcIR_JoDV0i/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Fire-performance nightlife recap at Alhambra Chicago. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcJXirQOMZ7/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Live music boat-cruise event promo (City Cruises). [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcMvE8cIA5j/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert announcement (Mobb Deep's Havoc) at Ramova Theatre. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcO8mOIpUAW/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert review (Belmont tour) at House of Blues Chicago. [non-wedding-posts mission D042, batch 2, user-flagged]"
+  }
+]

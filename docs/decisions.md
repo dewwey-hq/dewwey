@@ -4,6 +4,45 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D042 — 2026-09-05 — Non-wedding posts batch 2 (19 more retired) + all mission labels promoted to `golden_set`
+
+Status: Accepted
+Context: after D041 closed the mission, the user independently hand-flagged 17 more
+`venue_tagged` URLs on the serving graph, then separately pushed back on treating this as
+one-off deletions: "shouldn't we use those as our golden set... learn from these for future
+algorithm or filter or ML progress."
+Decision: (1) Verified all 17 against Supabase (same discipline as the original seeds) —
+confirmed corporate events, DJ nights, a baby-shower-themed post, and several concerts,
+none matching the already-locked `role_shape_v1` (confirms its deliberately narrow recall).
+Two shared a `wedding_id` with a same-event sibling post; both siblings included so the
+whole junk wedding retires. Caught and fixed a real bug in `retireNonWeddingPosts.ts`
+first: it computed "will this wedding become empty" from a stale per-post pre-count, so a
+wedding with 2+ candidate posts in the same batch was never recognized as empty — exactly
+the case for two of these 17 — and would have left an orphaned `weddings` row. Fixed to
+re-check remaining `wedding_posts` count after all of a batch's deletes. Dry-run confirmed,
+then committed: 19 posts detached, 17 weddings retired (`weddings` 1,584→1,567,
+`wedding_posts` 1,895→1,876, `wedding_vendors` 14,664→14,591, `edges` refreshed to
+61,727). Generalized the retirement script with `--candidates=<path>` for reuse on a future
+batch. (2) Loaded all 105 hand-labeled posts from this mission (11 seeds, 50 tune, 25
+heldout, 19 batch-2) into `golden_set` via 4 `loadGoldenSet.ts` calls, one `source_note`
+per origin (`non_wedding_posts_{seed,tune,heldout,batch2}_2026-09-05`) — `golden_set` 551 →
+656 rows. This is the first `public.posts`/`venue_tagged` slice in `golden_set`; every
+prior row was `staging.instagram_posts`/own-profile (noted in
+`docs/engineering/post-classification/README.md`'s "Population note").
+Why: `golden_set`'s own contract (`pipeline/schema.sql`: "what every classifier version
+gets scored against before it ships") and the mission's own eval rule 7 already said a
+Ben-post labeled set earns a `source_note` once a human has agreed the labels are ground
+truth — that bar was met here (direct user labels for seeds/batch-2, user-endorsed
+rubric-based reads for tick 2) and hadn't been acted on yet. Letting hand-verified ground
+truth live only in mission-scoped JSON files means it gets re-derived or ignored the next
+time someone needs it.
+Related: D040, D041, `docs/engineering/graph-strengthening/non-wedding-posts.md` ("Batch 2"
+and "Labels promoted to golden_set" sections), `docs/engineering/post-classification/README.md`,
+`loadGoldenSet.ts`, `ROADMAP.md` Next (re-score against the full 105-row slice before
+attempting a broader rule).
+
+---
+
 ## D041 — 2026-09-05 — Non-wedding posts mission complete: role_shape_v1 locked, 46 posts retired
 
 Status: Accepted

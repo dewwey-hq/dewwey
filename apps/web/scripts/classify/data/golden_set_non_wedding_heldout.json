@@ -1,0 +1,152 @@
+[
+  {
+    "post_url": "https://www.instagram.com/p/DawV8dzlcTm/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Named couple 'Grace & Brit's special day', 9-role stack, Revel Chicago. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Danptrwjox9/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Generic venue-capability copy ('your visions are limitless') naming no couple or specific event. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcJXE_1xqsY/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Names the bride 'Gisela' specifically (same bride as the doc's own known-good citation at ULC), 6-role stack, real Chicago venue. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Da6AKpHh7K_/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert flyer ('TICKETS IN BIO') at House of Blues. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcO0vB1MwjK/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Outlaw Music Festival concert lineup announcement. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DakullPgRcO/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Full event-vendor stack but themed as a reality-TV 'villa'/'bombshell' party with cigar rolling and hookah; no couple, no wedding language. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DGRpdgZP683/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Corporate 'Black Creativity Gala' recap at MSI. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcLsYywhNmb/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Named couple 'Addison & Will's Chicago wedding', 6-role stack, Morgan Manor / Morgan's on Fulton. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcLdPPAnLuQ/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Named couple 'Gianna and Jacob's wedding day', 7-role stack, real Chicago venue. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcOkzzCRNpC/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "Full 10-role stack and real venue, but generic 'An Indian ceremony is a beautiful celebration...' copy names no couple and no unique fact tying it to one specific event. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DYmeIIBkVkR/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Calligraphy workshop event promo ('An Evening of Lettering & Intention'). [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db-BmmRlRix/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Band show announcement at Beat Kitchen. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcMNAYHkRgc/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Named couple 'Gina & Nick', 13-role stack, Field Museum Chicago. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcEYJVlRBVJ/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Funk concert recap at Garcia's ('Thanks for an amazing show'). [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcCMFkvGmYS/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Named couple 'Taylor & James', 10-role stack, Fourth Church Chicago (note: is_chicago is null on this row despite a clearly Chicago venue — separate data gap, not a labeling call). [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DZDI_zSlhSL/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Food/lifestyle influencer weekly recap, no wedding content. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcOyif7IFoA/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Band album/release-show announcement at Lincoln Hall. [non-wedding-posts mission D040, group=similar_pool]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcCHrIMljR2/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Named couple 'Anisha + Darien', Saraband Chicago. [non-wedding-posts mission D040, group=known_good]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db_4hAplAHk/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Named couple 'Dalila + Kyle', Morton Arboretum. [non-wedding-posts mission D040, group=known_good]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcKQ5wkuRwd/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Named couple with date, 'Callie and Mikey became Mr. & Mrs. Lamb', Artifact Events. [non-wedding-posts mission D040, group=known_good]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DbmHqAnGep4/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "Style-Me-Pretty-style editorial copy, full stack, but no couple named in caption and 'the full wedding' link isn't evidence inside the post itself. [non-wedding-posts mission D040, group=known_good]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db9A4R2iVu5/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Named couple 'maya + xavier', Garfield Park Conservatory. [non-wedding-posts mission D040, group=known_good]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db9FRD1mlqD/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Named couple 'Lauren and Dalton's ceremony', officiant's own account, The Library at 190. [non-wedding-posts mission D040, group=known_good]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/Db_4ebxJuff/",
+    "expected_decision": "REVIEW",
+    "exclusion_reason": "insufficient_evidence",
+    "notes": "Generic 'POV: Your dream wedding...' template despite an 18-role stack — no couple named, no unique fact. [non-wedding-posts mission D040, group=known_good]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcKbYbYMZVs/",
+    "expected_decision": "INCLUDE",
+    "exclusion_reason": null,
+    "notes": "Same wedding as above (wedding_id 1163), second vendor's anniversary post naming 'Ben and Selena'. [non-wedding-posts mission D040, group=known_good]"
+  }
+]

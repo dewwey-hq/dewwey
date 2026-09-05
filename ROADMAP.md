@@ -59,6 +59,12 @@ anything below: `docs/decisions.md` (D001–D040 so far).
   14,918→14,664, `edges` 63,229→61,848). Rule locked into
   `graphStrengthening.test.ts`; the crawler-side `is_wedding` gap is
   documented in `pipeline.py` but not yet wired up (low recall by design).
+  **Batch 2** (D042, same day): user hand-flagged 17 more, verified and
+  retired the same way (+ 2 same-event siblings) — 19 posts / 17 weddings
+  (`weddings` 1,584→1,567, `wedding_vendors` 14,664→14,591, `edges`
+  61,848→61,727); caught and fixed a same-batch multi-post retirement bug
+  first. All 105 hand-labeled posts from both batches promoted into
+  `golden_set` (551→656 rows, first `venue_tagged` slice — see Next).
   `docs/engineering/graph-strengthening/non-wedding-posts.md`.
 
 ## Shipped, on `main` (compressed — see `docs/decisions.md` for full detail)
@@ -121,6 +127,15 @@ anything below: `docs/decisions.md` (D001–D040 so far).
   Auth → Providers → Google. The button already ships.
 - **TS port of the pipeline** (926 lines of Python) with OpenRouter swapped in for
   Anthropic-direct and `avatars.py` writing to R2.
+- **Wire an `is_wedding` gate into `pipeline.py`'s `phase_dedup()`** (D040-D042): 105 hand-
+  labeled `venue_tagged` posts now live in `golden_set` (`source_note like
+  'non_wedding_posts_%'`) — the first Ben-corpus slice, previously 100% own-profile. `role_shape_v1`
+  (locked, low-recall by design) is the only rule shipped so far; with this larger labeled
+  set a caption-based rule might now clear the precision bar that failed on the smaller
+  tick-2 sample (0.80 tune / 0.667 heldout) — re-score against the full golden_set slice
+  before trying, same eval discipline as D040 (tune/heldout, ≥98% precision, 0 false-
+  EXCLUDEs on known-good). Whatever ships should gate the crawler itself, not just retire
+  after the fact.
 
 ## Later
 

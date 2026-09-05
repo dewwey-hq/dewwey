@@ -184,6 +184,17 @@ bun run scripts/classify/loadGoldenSet.ts scripts/classify/data/golden_set_v0.js
   --labeled-by claude-bootstrap-v0 --source-note bootstrap_v0_stratified_sample
 ```
 
+**Population note (2026-09-05, D040/D042):** every `source_note` above is
+`staging.instagram_posts` (Jeremy's own-profile corpus). `golden_set` gained its first
+`public.posts` / `venue_tagged` (Ben's corpus) slice from the non-wedding-posts mission —
+105 rows across four source_notes (`non_wedding_posts_seed_2026-09-05`,
+`_tune_2026-09-05`, `_heldout_2026-09-05`, `_batch2_2026-09-05`), a mix of confirmed real
+Chicago weddings and confirmed non-weddings (concerts, galas, corporate events) a user
+hand-flagged on the serving graph, verified against `labeling_rubric.md`. Filter by
+`source_note like 'non_wedding_posts_%'` to isolate it — don't assume every `golden_set`
+row is an own-profile post when building a future eval harness or a `venue_tagged`-side
+gate (see `pipeline.py`'s `phase_dedup()` comment on the still-open `is_wedding` gap).
+
 **This is a starting point, not a finished ground truth.** It was labeled by reading text
 carefully, not by an actual human domain reviewer — treat any eval numbers against it as
 provisional until a person (ideally Ben or Jeremy, who know what a credible post actually

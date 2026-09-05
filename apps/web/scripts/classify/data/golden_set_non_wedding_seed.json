@@ -1,0 +1,68 @@
+[
+  {
+    "post_url": "https://www.instagram.com/p/DcNUEvvMvIk/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert at Garcia's (Sneezy). User: not a wedding. [non-wedding-posts mission D040, group=seed]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcNx6TSnMb2/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert at Lincoln Hall (Choker, Arima Ederra). User: not a wedding. [non-wedding-posts mission D040, group=seed]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcOHR6qx7kB/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "TV interview about The Firehouse block party. User: not a wedding. [non-wedding-posts mission D040, group=seed]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcLmlMnNS91/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Ronald McDonald House fundraiser gala at The Geraghty. User: not a wedding. [non-wedding-posts mission D040, group=seed]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcKuJQ-NDop/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Shuffle-dance coverage of a Zhu show at Navy Pier Event Center. User: not a wedding. [non-wedding-posts mission D040, group=seed]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcKp-bOjpUb/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert photo at House of Blues Chicago (Jutes). User: not a wedding. [non-wedding-posts mission D040, group=seed]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcL46UADhss/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert at House of Blues Chicago (WILT opening for Jutes). User: not a wedding. [non-wedding-posts mission D040, group=seed]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcJvqkRt-1X/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Milestone birthday at RC Chicago. User: not a wedding. [non-wedding-posts mission D040, group=seed]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcMEf72FUi8/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert announcement at Reggies Live. User: not a wedding. [non-wedding-posts mission D040, group=seed]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcJQjFJgIbN/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "vendor_marketing_generic",
+    "notes": "Revel Space WNBA/Deloitte team-wear marketing. User: marketing, not a wedding. [non-wedding-posts mission D040, group=seed]"
+  },
+  {
+    "post_url": "https://www.instagram.com/p/DcJhXRTET86/",
+    "expected_decision": "EXCLUDE",
+    "exclusion_reason": "not_wedding_related",
+    "notes": "Concert at House of Blues Chicago (Jay Wheeler). User: not a wedding. [non-wedding-posts mission D040, group=seed]"
+  }
+]

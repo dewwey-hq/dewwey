@@ -367,20 +367,22 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
   });
 
   it("weddings/wedding_posts are unaffected by the reconciliation rerun — reconciliation never writes to Ben's graph (wedding_vendors/edges are D023's separate, deliberate ingestion, asserted in its own describe block)", async () => {
-    // 1584/1895 reflects the non-wedding-posts mission's tick 5 retirement (D040,
-    // 2026-09-05): -40 weddings/-46 posts from D039 Phase 2's 1624/1941 snapshot (concerts,
-    // galas, and birthdays that had been sitting on Ben's serving graph). This literal has
-    // now gone stale six times in one arc from six different legitimate missions (D027, the
-    // reconciliation rerun, D035, D036, D039, D040) touching tables this test snapshots
-    // absolutely. Expected and accepted — update it again next time rather than treat
-    // repeated drift as a sign something's wrong.
+    // 1567/1876 reflects the non-wedding-posts mission's tick 5 retirement in two batches
+    // (D040-D042, 2026-09-05): batch 1 was -40 weddings/-46 posts from D039 Phase 2's
+    // 1624/1941 snapshot, batch 2 (a second user-flagged round, same role_shape_v1-adjacent
+    // hand-review process, no new rule) was a further -17 weddings/-19 posts from 1584/1895
+    // (concerts, corporate events, and a baby-shower-themed post that had been sitting on
+    // Ben's serving graph). This literal has now gone stale seven times in one arc from seven
+    // different legitimate missions (D027, the reconciliation rerun, D035, D036, D039, D040,
+    // D042) touching tables this test snapshots absolutely. Expected and accepted — update it
+    // again next time rather than treat repeated drift as a sign something's wrong.
     const { rows } = await pool.query(`
       select
         (select count(*) from weddings) as weddings,
         (select count(*) from wedding_posts) as wedding_posts
     `);
-    expect(Number(rows[0].weddings)).toBe(1584);
-    expect(Number(rows[0].wedding_posts)).toBe(1895);
+    expect(Number(rows[0].weddings)).toBe(1567);
+    expect(Number(rows[0].wedding_posts)).toBe(1876);
   });
 });
 
@@ -464,16 +466,16 @@ describe("graph ingestion — D023 (DB)", () => {
     expect(Number(rows[0].n)).toBe(0);
   });
 
-  it("wedding_vendors grew by exactly the ingested count (14,564 pre-existing + 100 ingested = 14,664) — no pre-existing row was touched", async () => {
-    // 14,564/14,664 reflects D027's Case A (+56 rows), D035's wedding-creation pilot (+172
-    // rows), D036 Phase 1 (+945 rows), D039 Phase 2 (+1,335 rows), and D040's tick 5
-    // retirement (-254 rows, from the 40 non-wedding weddings it retired entirely) — five
-    // unrelated provenance paths from D023's own jeremy_wedding_vendors_ingested, all
-    // landing after D023's original 12,310/12,410 snapshot. Confirmed (2026-09-05): none of
-    // D040's 40 retired wedding_ids appear in jeremy_wedding_vendors_ingested, so all 254
-    // removed rows came out of the "untouched" bucket, not the ingested one. "untouched"
-    // still correctly means "not from D023's ingestion," not "unaffected by every other
-    // mission." Update these two literals again if another workstream lands or removes rows.
+  it("wedding_vendors grew by exactly the ingested count (14,491 pre-existing + 100 ingested = 14,591) — no pre-existing row was touched", async () => {
+    // 14,491/14,591 reflects D027's Case A (+56 rows), D035's wedding-creation pilot (+172
+    // rows), D036 Phase 1 (+945 rows), D039 Phase 2 (+1,335 rows), D040's tick 5 retirement
+    // batch 1 (-254 rows, 40 weddings) and D042's batch 2 (-73 rows, 17 weddings) — six
+    // unrelated provenance paths from D023's own jeremy_wedding_vendors_ingested, all landing
+    // after D023's original 12,310/12,410 snapshot. Confirmed (2026-09-05): none of either
+    // batch's retired wedding_ids appear in jeremy_wedding_vendors_ingested, so all removed
+    // rows came out of the "untouched" bucket, not the ingested one. "untouched" still
+    // correctly means "not from D023's ingestion," not "unaffected by every other mission."
+    // Update these two literals again if another workstream lands or removes rows.
     const { rows } = await pool.query(`
       select
         count(*) filter (where not exists (
@@ -483,25 +485,26 @@ describe("graph ingestion — D023 (DB)", () => {
         count(*) as total
       from wedding_vendors wv
     `);
-    expect(Number(rows[0].untouched)).toBe(14564);
-    expect(Number(rows[0].total)).toBe(14664);
+    expect(Number(rows[0].untouched)).toBe(14491);
+    expect(Number(rows[0].total)).toBe(14591);
   });
 
-  it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1584/1895/14334) — only wedding_vendors gained rows from D023 itself", async () => {
-    // 1584/1895/14334 reflects D035's +15 weddings/+17 posts, D036 Phase 1's +100
-    // weddings/+112 posts/+2 accounts, D039 Phase 2's +125 weddings/+144 posts, and D040's
-    // tick 5 retirement (-40 weddings/-46 posts, 2026-09-05) -- separate missions' legitimate
-    // writes (and one deliberate removal) landing after D023's original 1384/1668/14330
-    // snapshot, not a D023 regression. accounts is untouched by D040 — it detaches/retires
-    // weddings/wedding_posts/wedding_vendors rows only, never deletes an account.
+  it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1567/1876/14334) — only wedding_vendors gained rows from D023 itself", async () => {
+    // 1567/1876/14334 reflects D035's +15 weddings/+17 posts, D036 Phase 1's +100
+    // weddings/+112 posts/+2 accounts, D039 Phase 2's +125 weddings/+144 posts, D040's tick 5
+    // retirement batch 1 (-40 weddings/-46 posts) and D042's batch 2 (-17 weddings/-19 posts,
+    // 2026-09-05) -- separate missions' legitimate writes (and two deliberate removals)
+    // landing after D023's original 1384/1668/14330 snapshot, not a D023 regression. accounts
+    // is untouched by either retirement batch — they detach/retire weddings/wedding_posts/
+    // wedding_vendors rows only, never delete an account.
     const { rows } = await pool.query(`
       select
         (select count(*) from weddings) as weddings,
         (select count(*) from wedding_posts) as wedding_posts,
         (select count(*) from accounts) as accounts
     `);
-    expect(Number(rows[0].weddings)).toBe(1584);
-    expect(Number(rows[0].wedding_posts)).toBe(1895);
+    expect(Number(rows[0].weddings)).toBe(1567);
+    expect(Number(rows[0].wedding_posts)).toBe(1876);
     expect(Number(rows[0].accounts)).toBe(14334);
   });
 

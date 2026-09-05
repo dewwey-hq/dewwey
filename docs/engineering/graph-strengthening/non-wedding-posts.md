@@ -240,6 +240,88 @@ weddings). Same discipline here:
 
 ## Mission status: CLOSED (2026-09-05) — all 6 ticks + docs close-out done.
 
+## Batch 2 (2026-09-05, D042) — a second user-flagged round, reopened briefly
+
+User independently found and hand-flagged 17 more URLs on the serving graph after the
+mission closed. Same discipline as the original 11 seeds, not a fresh mission: verified
+every URL against Supabase first (all `public.posts.source='venue_tagged'`, `is_chicago=
+true`, none `created_via_jeremy`), read each caption against `labeling_rubric.md`, and
+checked whether the already-locked `role_shape_v1` covered them before treating this as a
+hand-review batch.
+
+**Verification**: all 17 confirmed EXCLUDE `not_wedding_related` — corporate
+conference/dinner (Loft Lucia), DJ/nightclub sets (The Tonk, Chicago Theater Works), a
+"SUMMER CIRCUS" entertainment showcase, a baby-shower-themed event at Gibsons Italia
+("La dolce vita... with a baby on the way," full vendor stack notwithstanding), a Jerry
+Garcia tribute concert, a nonprofit choir/stage-production showcase, three separate punk/
+metal/pro-wrestling shows at Ramova and Lincoln Hall, a motorcycle-rally concert, two more
+concerts at Thalia Hall and Garcia's, a fire-performance nightlife post, a live-music boat
+cruise, and a second House of Blues concert review. **None matched `role_shape_v1`** — all
+have a role outside {venue, band, musician} (photographer, dj, planner, cake, catering,
+content_creator, florist, other), confirming the rule's deliberately narrow recall, exactly
+as tick 4 predicted: most junk still needs hand-review, not a rule.
+
+Two of the 17 (`Db3Yrzgi0fV` wedding 1179, `DcEAB8CBZWY` wedding 1276) share a `wedding_id`
+with a sibling post from the **same** non-wedding event; both siblings (`Db8htU7Aj3R`,
+`DcGkxj5BCNi`) were added to the delete set so the whole junk wedding retires cleanly
+rather than leaving one post behind.
+
+**Bug caught in `retireNonWeddingPosts.ts`** before running the real commit: the "does
+this wedding become empty" check used each post's pre-delete count computed once at the
+top, so a wedding with 2+ candidate posts *in the same batch* (exactly wedding 1179/1276
+above) was never recognized as empty — it would have deleted both posts but left an
+orphaned `weddings`/`wedding_vendors` row behind, which is the exact failure mode the
+mission's own constraints warn against ("never leave an empty wedding in the graph").
+Fixed: the script now re-queries remaining `wedding_posts` count per affected wedding
+*after* all of this batch's deletes, not a stale per-post snapshot. Re-ran the dry run
+after the fix — 1179 and 1276 both now correctly show 0 posts remaining and retire. The
+original committed batch was unaffected by this bug (no wedding in it had 2+ candidate
+posts together), confirmed by re-running its dry run post-fix: 0 posts detached (already
+retired), no errors.
+
+Also generalized the script for reuse: `--candidates=<path>` now selects the candidate
+file (default unchanged), since "user finds more, we verify and retire more" is clearly a
+recurring shape, not a one-off.
+
+**Committed** (2026-09-05, `data/non_wedding_batch2_candidates.json`, dry-run confirmed
+first): 19 posts detached, all 17 target weddings fully retired. `weddings` 1,584→1,567,
+`wedding_posts` 1,895→1,876, `wedding_vendors` 14,664→14,591, `edges` 61,848→61,727
+(refreshed immediately after). `non_wedding_posts_retired` now has 65 rows total across
+both batches. Confirmed no overlap with `jeremy_wedding_vendors_ingested` for any of the
+17 retired wedding_ids. `graphStrengthening.test.ts` snapshot literals updated again
+(seventh drift in this arc) and full suite re-verified green (50/50).
+
+## Labels promoted to `golden_set` (2026-09-05, D042) — don't let ground truth rot in a mission file
+
+User pushback, correctly: retiring rows and moving on would have thrown away 105 pieces of
+hand-verified ground truth the moment this mission's JSON files stopped being read by
+anyone. `golden_set` (`pipeline/schema.sql`, loaded only via `loadGoldenSet.ts`) already
+exists for exactly this — "what every classifier version gets scored against before it
+ships" — and eval rule 7 above already said a Ben-post labeled set earns its own
+`source_note` once a human has agreed the labels are ground truth. That bar is met now:
+the 11 seeds and the 19-post batch 2 are direct user labels; the 75 tick-2 labels are
+independent rubric-based reads a human (the user, this turn) has now endorsed.
+
+Loaded via 4 `loadGoldenSet.ts` calls (upsert by `post_url`, safe to rerun):
+
+| source_note | n | labeled_by |
+|---|---|---|
+| `non_wedding_posts_seed_2026-09-05` | 11 | user |
+| `non_wedding_posts_tune_2026-09-05` | 50 | claude, rubric-based |
+| `non_wedding_posts_heldout_2026-09-05` | 25 | claude, rubric-based |
+| `non_wedding_posts_batch2_2026-09-05` | 19 | user-flagged, claude-verified |
+
+`golden_set` total: 551 → 656. This is the **first** `public.posts`/`venue_tagged` slice in
+`golden_set` — every prior row was `staging.instagram_posts`/own-profile (documented in
+`docs/engineering/post-classification/README.md`'s "Population note"). Practical effect:
+a future rule (a caption-based screen, a `role_shape_v2`, or the `pipeline.py` `is_wedding`
+gate this doc's tick 6 comment left open) can now be scored against real Ben-corpus
+ground truth instead of guessing generalization from 75 examples living in a one-off file.
+Concretely queued in `ROADMAP.md` Next: re-score against the full 105-row slice before
+attempting a broader rule — the caption heuristic failed at n=50/n=25; whether it (or
+something else) clears the bar at n=105 is an open, worth-answering question, not an
+assumption either way.
+
 ## Baseline findings
 
 *(tick 0 is in "Tick 0 findings" above; later ticks append here)*
