@@ -49,11 +49,17 @@ async function main() {
     from jeremy_wedding_vendors_ingested
   `);
 
+  // D035 added a second coverage path this metric didn't originally track: creating a NEW
+  // wedding from Jeremy evidence, not just matching one. Both count as real /feed coverage.
+  const { rows: created } = await pool.query<{ n: string }>(`select count(*) as n from jeremy_weddings_created`);
+
   const { rows: benTotal } = await pool.query<{ n: string }>(`select count(*) as n from weddings`);
 
   const f = funnel[0];
   const t = tiers[0];
   const ing = ingested[0];
+  const createdWeddings = Number(created[0].n);
+  const totalCoveredWeddings = Number(ing.weddings_touched) + createdWeddings;
 
   console.log(`[feed-coverage] /feed corpus (v1_content_corpus, V1 INCLUDE posts): ${f.include_posts}`);
   console.log(
@@ -71,15 +77,18 @@ async function main() {
   console.log(`[feed-coverage]           ambiguous match (false-merge risk): ${t.ambiguous}`);
   console.log(`[feed-coverage]           NO match to any existing Ben wedding at all: ${t.no_match}`);
   console.log(
-    `[feed-coverage] Actually landed in production wedding_vendors: ${ing.rows_ingested} rows, ${ing.weddings_touched} distinct Ben weddings touched`
+    `[feed-coverage] Matched into an EXISTING Ben wedding: ${ing.rows_ingested} rows, ${ing.weddings_touched} distinct weddings touched (D023)`
+  );
+  console.log(
+    `[feed-coverage] Created as a NEW Ben wedding (D035, first identity-creation pilot): ${createdWeddings} weddings`
   );
   console.log(
     `[feed-coverage] Ben's total documented weddings (separate pipeline, unaffected by /feed): ${benTotal[0].n}`
   );
   console.log(
-    `\n[feed-coverage] SUMMARY: of ${f.include_posts} /feed posts, only ${ing.weddings_touched} distinct Ben` +
-      ` weddings (${pct(ing.weddings_touched, benTotal[0].n)} of all documented weddings) have received a` +
-      ` confirmed vendor credit from this corpus so far.`
+    `\n[feed-coverage] SUMMARY: of ${f.include_posts} /feed posts, ${totalCoveredWeddings} distinct Ben` +
+      ` weddings (${pct(String(totalCoveredWeddings), benTotal[0].n)} of all documented weddings) have received a` +
+      ` confirmed vendor credit from this corpus so far (${ing.weddings_touched} matched + ${createdWeddings} created).`
   );
   console.log(
     `[feed-coverage] Architectural note: reconciliation only ever MATCHES a candidate to an EXISTING Ben` +
