@@ -76,7 +76,14 @@ scope it, estimate cost precisely, then ask.
 - [ ] **Extend the `is_chicago` determination** to trust `vendors.city='Chicago'`
       automatically — update `createWeddingsFromJeremyEvidence.ts` (or a small shared
       helper both it and future scripts can use).
-- [ ] **Re-run both duplicate checks** against the 136-candidate Phase 1 pool.
+- [x] **Re-run both duplicate checks** (2026-09-05) against the 136-candidate Phase 1 pool
+      — added a `--phase1` flag to both `checkIntraBatchDuplicates.ts` and
+      `checkExistingDuplicatesForCreation.ts` (scopes to `vendors.city='Chicago'`, same
+      "explicit, re-checkable" pattern as the rest of this mission) rather than a one-off
+      query. **136 confirmed in scope (re-verified live, matches D036's sizing), 0/136
+      flagged on both checks** — 22 venues have 2+ candidates (461 within-venue pairs, 0
+      suspected duplicates), 0/136 flagged for a secondary-account match to an existing Ben
+      wedding.
 - [ ] **Hand-read a proportionate sample** (~15-20) of the 136 end-to-end.
 - [ ] **Dry-run the creation for the clean subset**, read the full result by hand,
       idempotency verified live, then commit (with the user's explicit review, same as

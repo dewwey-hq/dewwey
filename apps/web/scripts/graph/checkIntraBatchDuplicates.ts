@@ -29,6 +29,10 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 
 async function main() {
   const pool = getPool();
+  // --phase1 scopes to the is-chicago-for-new-venues mission's Phase 1 pool (candidates
+  // whose venue resolves via existing, trustworthy vendors.city='Chicago' data) instead of
+  // the full zero-existing-Ben-weddings pool this script originally covered (D034/D035).
+  const phase1 = process.argv.includes("--phase1");
 
   const { rows: candidates } = await pool.query<{
     id: number;
@@ -42,6 +46,7 @@ async function main() {
     where r.matched_wedding_id is null
       and c.venue_account_id is not null
       and not exists (select 1 from weddings w where w.venue_id = c.venue_account_id)
+      ${phase1 ? "and exists (select 1 from vendors v where v.account_id = c.venue_account_id and v.city = 'Chicago')" : ""}
   `);
 
   const { rows: vendorRows } = await pool.query<{ candidate_id: number; account_id: number; role: string }>(
@@ -55,7 +60,7 @@ async function main() {
     vendorsByCandidate.get(r.candidate_id)!.add(`${r.account_id}:${r.role}`);
   }
 
-  console.log(`[dup-check] candidates in scope (447 expected): ${candidates.length}`);
+  console.log(`[dup-check] ${phase1 ? "Phase 1 (vendors.city='Chicago')" : "full"} scope: ${candidates.length} candidates`);
 
   // Group by venue first -- a duplicate can only exist between two candidates at the SAME
   // venue (different venues can never be the same real wedding).

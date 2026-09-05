@@ -31,6 +31,10 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 
 async function main() {
   const pool = getPool();
+  // --phase1 scopes to the is-chicago-for-new-venues mission's Phase 1 pool (candidates
+  // whose venue resolves via existing, trustworthy vendors.city='Chicago' data) instead of
+  // the full zero-existing-Ben-weddings pool this script originally covered (D034/D035).
+  const phase1 = process.argv.includes("--phase1");
 
   const { rows: candidates } = await pool.query<{ id: number; event_date_est: string | null }>(`
     select c.id::int, c.event_date_est::text
@@ -40,8 +44,9 @@ async function main() {
     where r.matched_wedding_id is null
       and c.venue_account_id is not null
       and not exists (select 1 from weddings w where w.venue_id = c.venue_account_id)
+      ${phase1 ? "and exists (select 1 from vendors v where v.account_id = c.venue_account_id and v.city = 'Chicago')" : ""}
   `);
-  console.log(`[existing-dup-check] candidates in scope (447 expected): ${candidates.length}`);
+  console.log(`[existing-dup-check] ${phase1 ? "Phase 1 (vendors.city='Chicago')" : "full"} scope: ${candidates.length} candidates`);
 
   const { rows: candVendorRows } = await pool.query<{ candidate_id: number; account_id: number; role: string }>(
     `select candidate_id::int, account_id::int, role from jeremy_wedding_candidate_vendors
