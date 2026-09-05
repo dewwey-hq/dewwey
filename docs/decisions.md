@@ -4,6 +4,32 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D036 — 2026-09-05 — Scoped the is_chicago gap blocking further wedding creation: two phases, one safe now, one needs go-ahead
+
+Status: Accepted
+Context: D035 hand-verified `is_chicago` for 14/15 pilot venues since `account_locations`
+had no data — explicitly flagged as not scaling. User asked to scope the fix and keep
+going. Sized live: of the 356 candidates still eligible for creation (447 minus D035's 15,
+minus 76 that became reachable via normal reconciliation as a side effect — their venue now
+has a Ben wedding to match against), **136 (38%) resolve confidently via `vendors.city=
+'Chicago'`** (confirmed real, varied Places-geocoded data — 4,925 rows say Chicago, others
+say Milwaukee/Atlanta/Lake Geneva, not a static default). **208 (58%) have no location
+signal in this database at all.**
+Decision: two-phase mission (`docs/engineering/graph-strengthening/
+is-chicago-for-new-venues.md`). Phase 1 (proceeding now, no new cost/infra): extend the
+creation script to trust `vendors.city='Chicago'` automatically for the 136, same
+duplicate-check + hand-read-sample + dry-run discipline as D035, scaled to this larger pool.
+Phase 2 (208 with zero signal): needs real geocoding (Google Places API, already used
+elsewhere in this repo for venue discovery) — a few dollars of real external API cost, an
+"outward-facing" action this repo's own working agreement says to confirm before doing.
+Explicitly not started without the user's separate, explicit go-ahead on the actual API
+spend — scoped and cost-estimated here, not approved here.
+Related: D034/D035 (the mission this closes a gap for), the working agreement on
+outward-facing actions (why Phase 2 gates separately from the DB-write gate every prior
+mission has already hit).
+
+---
+
 ## D035 — 2026-09-05 — First identity-creation write committed: 15 new weddings from Jeremy evidence, pilot only
 
 Status: Accepted

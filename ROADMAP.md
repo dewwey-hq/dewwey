@@ -35,11 +35,15 @@ anything below: `docs/decisions.md` (D001–D031 so far).
   duplicate checks (intra-batch + secondary-account) both clean at
   0/447. 15-candidate hand-read pilot **committed**: 15 new weddings
   (ids 1415-1429), 17 posts imported, 172 vendor credits, idempotency
-  verified. **Blocked from scaling further**: `is_chicago` was a
-  hand-verified judgment call for these 15 (`account_locations` has no
-  data for 14/15 venues) — needs a real geocoding fix before touching
-  the remaining 432. D034/D035,
-  `docs/engineering/graph-strengthening/jeremy-wedding-creation.md`.
+  verified. `is_chicago` was a hand-verified judgment call for these 15
+  — scoped the fix (D036): 136 of the remaining 356 resolve
+  automatically via existing `vendors.city='Chicago'` data (Phase 1, in
+  progress, no new cost); 208 have zero location signal at all and need
+  real geocoding (Phase 2, a few dollars of Google Places API spend —
+  **needs explicit go-ahead before any call is made**, not started).
+  D034/D035/D036,
+  `docs/engineering/graph-strengthening/jeremy-wedding-creation.md`,
+  `docs/engineering/graph-strengthening/is-chicago-for-new-venues.md`.
 
 ## Shipped, on `main` (compressed — see `docs/decisions.md` for full detail)
 
