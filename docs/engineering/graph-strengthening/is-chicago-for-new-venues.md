@@ -73,9 +73,10 @@ scope it, estimate cost precisely, then ask.
 
 ## Checklist (work top to bottom; check off only after live re-verification)
 
-- [ ] **Extend the `is_chicago` determination** to trust `vendors.city='Chicago'`
-      automatically — update `createWeddingsFromJeremyEvidence.ts` (or a small shared
-      helper both it and future scripts can use).
+- [x] **Extend the `is_chicago` determination** (2026-09-05) — updated
+      `createWeddingsFromJeremyEvidence.ts` to query `vendors.city='Chicago'` live per
+      candidate instead of the D035 pilot's hardcoded `true` (kept as a fallback only for
+      the original 15 pilot IDs, which were hand-verified without depending on this field).
 - [x] **Re-run both duplicate checks** (2026-09-05) against the 136-candidate Phase 1 pool
       — added a `--phase1` flag to both `checkIntraBatchDuplicates.ts` and
       `checkExistingDuplicatesForCreation.ts` (scopes to `vendors.city='Chicago'`, same
@@ -92,11 +93,23 @@ scope it, estimate cost precisely, then ask.
       venue/hotel/catering/rentals) applied to all 136, not just the ones found by hand:
       **102 pass, 28 excluded (confirmed mislabel pattern), 6 excluded conservatively
       (no signal either way)**.
-- [ ] **Re-run both duplicate checks once more**, scoped to the filtered 102 (not the
-      original 136 — the pool changed).
-- [ ] **Dry-run the creation for the clean 102** (or whatever remains after the duplicate
-      re-check), read the full result by hand, idempotency verified live, then commit (with
-      the user's explicit review, same as D035).
+- [x] **Re-run both duplicate checks once more** (2026-09-05), scoped to the filtered 102 —
+      added the account_tags venue-role filter into both scripts' `--phase1` mode (not a
+      one-off query). **102 confirmed, 0/102 flagged on both** (19 venues with 2+
+      candidates, 301 within-venue pairs, 0 suspected duplicates; 0/102 secondary-account
+      matches to an existing Ben wedding).
+      **Two more confirmed mislabels found via a targeted bio cross-check** (the
+      `account_tags` filter alone wasn't sufficient — both had a *stray* venue-shaped tag):
+      - 2455 (`hangoutlighting`) — already known from the hand-read pilot, a lighting rental
+        company with a spurious manual `venue` tag (confidence 0.8, evidence_count 1).
+      - 2469 (`blueplatechicago`) — a catering company whose own bio literally reads
+        "Venue: @alliumchicago," naming a different account as the real venue.
+      Checked systematically (bio text search for a venue-redirect pattern) across all 102,
+      not just these two — no other matches. **Final Phase 1 batch: 100 candidates.**
+- [x] **Dry-run the creation for the clean 100** (2026-09-05) — 100 weddings, 112 posts
+      (2 multi-post candidates), 945 `wedding_vendors` rows. Spot-checked the thinnest
+      result (candidate 695, 3 vendors — the clustering minimum) by hand: genuine real
+      wedding, just a short caption. D035's original 15 correctly skip as already-created.
 - [ ] **Decide on Phase 2**: present the geocoding cost estimate and the do-nothing
       alternative to the user; do not call the Places API without explicit go-ahead.
 - [ ] **Docs closed out** — `docs/decisions.md` entry, `ROADMAP.md` updated, this file's

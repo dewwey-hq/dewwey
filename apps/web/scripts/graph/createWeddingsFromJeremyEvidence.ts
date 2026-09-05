@@ -4,11 +4,11 @@
  * this whole workstream that creates a NEW `weddings` row rather than matching evidence to
  * one Ben's crawler already found.
  *
- * Scope: a fixed, hand-verified pilot list of candidate IDs (the same 15 read end-to-end
- * by hand and cross-checked against Ben's existing graph for duplicates — see the mission
- * doc's pilot section). Deliberately NOT parameterized to "all 447" — this mission's own
- * constraint is "pilot small before any larger batch," enforced here by hardcoding the
- * list rather than accepting a --limit flag that could be bumped up carelessly later.
+ * Scope: fixed, hand-verified candidate ID lists (D035's original 15-candidate pilot, plus
+ * D036 Phase 1's 100 — see `docs/engineering/graph-strengthening/jeremy-wedding-creation.md`
+ * and `is-chicago-for-new-venues.md`). Deliberately NOT parameterized to a `--limit` flag —
+ * every batch this script processes must be individually duplicate-checked and hand-read
+ * first; hardcoding forces a deliberate edit to grow the list, not a number bump.
  *
  * A real schema wrinkle surfaced building this: `wedding_posts.post_id` is a NOT NULL FK
  * to Ben's own `posts` table, but Jeremy's captions live in `staging.instagram_posts` — a
@@ -44,7 +44,33 @@ import { getPool, closePool } from "../classify/db";
 // The 15 candidates read end-to-end by hand (mission doc, "Pilot" section, 2026-09-05) —
 // all confirmed genuinely real, distinct weddings; the two multi-venue risk cases in this
 // set (158, 662) were individually cross-checked against Ben's existing graph and cleared.
-const PILOT_CANDIDATE_IDS = [158, 351, 396, 540, 624, 662, 701, 1158, 1222, 1253, 1363, 1650, 2250, 2756, 2804];
+// Already created (D035) -- kept here so a re-run stays a no-op via jeremy_weddings_created,
+// not because this list needs to grow; new batches get their own array below.
+const D035_PILOT_CANDIDATE_IDS = [158, 351, 396, 540, 624, 662, 701, 1158, 1222, 1253, 1363, 1650, 2250, 2756, 2804];
+
+// is-chicago-for-new-venues mission (D036), Phase 1: candidates whose venue resolves via
+// existing vendors.city='Chicago' data AND has a corroborating account_tags role in
+// venue/hotel/catering/rentals. Both duplicate checks clean (checkIntraBatchDuplicates.ts
+// --phase1, checkExistingDuplicatesForCreation.ts --phase1), 15-candidate hand-read sample
+// all genuine real weddings. 102 passed the filter; 2 explicitly excluded after further
+// verification (2026-09-05):
+// - 2455 (hangoutlighting): a lighting RENTAL company ("Mix, match, & customize...
+//   lighting made easy" -- its own bio), not a venue, despite having a stray manual
+//   account_tags 'venue' row (confidence 0.8, evidence_count 1 -- likely a pre-existing
+//   data error, not corroborating evidence).
+// - 2469 (blueplatechicago): a catering company whose OWN bio explicitly reads
+//   "Venue: @alliumchicago" -- it names a DIFFERENT account as the real venue.
+const PHASE1_CANDIDATE_IDS = [
+  31, 37, 44, 55, 57, 61, 80, 94, 153, 161, 162, 166, 199, 210, 231, 278, 306, 317, 326, 377,
+  380, 448, 475, 488, 503, 538, 544, 559, 587, 606, 637, 667, 695, 734, 750, 829, 837, 876,
+  883, 903, 916, 919, 958, 986, 1011, 1085, 1116, 1128, 1136, 1202, 1230, 1238, 1259, 1325,
+  1410, 1421, 1455, 1477, 1487, 1556, 1585, 1594, 1606, 1616, 1632, 1661, 1712, 1718, 1769,
+  1776, 1787, 1792, 1956, 1962, 2005, 2046, 2059, 2089, 2103, 2114, 2124, 2129, 2138, 2254,
+  2297, 2324, 2355, 2364, 2475, 2551, 2585, 2590, 2605, 2628, 2659, 2660, 2830, 2837, 2840,
+  2872,
+];
+
+const CANDIDATE_IDS = [...D035_PILOT_CANDIDATE_IDS, ...PHASE1_CANDIDATE_IDS];
 
 function shortcodeFromUrl(url: string): string | null {
   const m = url.match(/\/p\/([^/]+)/);
@@ -72,7 +98,7 @@ async function main() {
     let postsImported = 0;
     let vendorsInserted = 0;
 
-    for (const candidateId of PILOT_CANDIDATE_IDS) {
+    for (const candidateId of CANDIDATE_IDS) {
       const { rows: candRows } = await client.query<{
         venue_account_id: number;
         event_date_est: string | null;
@@ -91,19 +117,19 @@ async function main() {
         continue;
       }
 
-      // account_locations has NO row at all for 14 of these 15 venue accounts (checked
-      // live, 2026-09-05) -- Ben's location enrichment only ever ran on accounts his own
-      // pipeline touched, never on venues discovered purely through Jeremy's evidence.
-      // Falling back to that table's own coalesce-to-false would silently mark these real
-      // Chicago weddings as non-Chicago, hiding them from /weddings and the /vendors browse
-      // list (both require is_chicago=true) even though detail pages would still work.
-      // For THIS pilot specifically, every one of the 15 candidates was read end-to-end by
-      // hand (mission doc, "Pilot" section) and confirmed unambiguously Chicago (explicit
-      // #chicagowedding tags, or a named Chicago venue/landmark in the caption itself) --
-      // is_chicago=true here is a verified judgment call, not a default. This does NOT
-      // scale to the remaining ~432 candidates without a real fix (e.g. geocoding new
-      // venue accounts into account_locations) -- see the mission doc's open questions.
-      const isChicago = true;
+      // account_locations has no row at all for most venue accounts discovered only
+      // through Jeremy's evidence (D035 finding) -- falling back to that table's own
+      // coalesce-to-false would silently mark real Chicago weddings as non-Chicago, hiding
+      // them from /weddings and the /vendors browse list. D036's Phase 1 fix: trust the
+      // Places-linked vendors.city field (real, varied geocoded data, confirmed 2026-09-05
+      // not a static default) for candidates scoped that way. D035's original 15 were
+      // hand-verified directly (no vendors.city dependency) -- OR here covers both without
+      // re-deriving which path each candidate came from.
+      const { rows: cityRows } = await client.query<{ is_chicago: boolean }>(
+        `select exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago') as is_chicago`,
+        [venueAccountId]
+      );
+      const isChicago = cityRows[0].is_chicago || D035_PILOT_CANDIDATE_IDS.includes(candidateId);
 
       const { rows: weddingRows } = await client.query<{ id: number }>(
         `insert into weddings (venue_id, event_date_est, is_chicago) values ($1, $2, $3) returning id`,
