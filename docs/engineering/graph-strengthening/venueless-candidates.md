@@ -93,10 +93,13 @@ problem only, not the reconciliation-decision problem (that's proven code, reuse
         credit line in either. Confirms the high frequency is a real, popular venue with
         many real weddings in Jeremy's corpus — not a data artifact.
       **Verdict: precision looks genuinely good.** Proceeding to the backfill step.
-- [ ] **Decide**: if precision looks genuinely good, build the backfill script
-      (`UPDATE jeremy_wedding_candidates SET venue_account_id = $1 WHERE id = $2 AND
-      venue_account_id IS NULL`, `--dry-run` first, idempotency verified). If not, record
-      that explicitly as the outcome.
+- [x] **Decide + backfill script built** (2026-09-05) —
+      `apps/web/scripts/graph/backfillVenuelessCandidateAnchors.ts`. `--dry-run`:
+      attempted=131, updated=131, matching the sizing script's confident-match set exactly
+      (same query, same 131 candidates, same accounts). **Blocked**: the real commit was
+      denied by Claude Code's auto-mode classifier (production DB write) — needs the user
+      to run it directly. Exact command: `cd apps/web && bun run
+      scripts/graph/backfillVenuelessCandidateAnchors.ts` (no `--dry-run`).
 - [ ] **Re-run `runJeremyWeddingReconciliation.ts`** for the newly-anchored candidates only,
       then apply the same ingestion bar (`applyJeremyEvidenceToGraph.ts`/
       `applyAmbiguousEvidenceToGraph.ts`'s pattern) to whatever it decides is safe.
