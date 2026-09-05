@@ -13,10 +13,16 @@ anything below: `docs/decisions.md` (D001–D031 so far).
   2026-08-22), add a custom domain for R2 to replace the r2.dev URL, and
   check the Google Maps browser key's referrer allowlist covers the new
   domains (it may be restricted to Jeremy's old ones).
-- **Not yet done**: nobody has visually confirmed production (main just
-  merged PR #1 — 2026-09-04, `dewwey-hq/dewwey#1`) actually serves `/feed`
-  and the newly-ingested vendor data correctly post-deploy. Worth a quick
-  manual check before assuming it's live and correct for real users.
+- **Done 2026-09-05**: PR #3 (`dewwey-hq/dewwey#3`, D026–D031, Cursor +
+  two follow-up fixes) merged to `main` — two test bugs fixed first (a
+  stale `wedding_vendors` row-count snapshot, a pool-lifecycle ordering
+  bug that broke 2 new tests), 47/47 tests green, production deploy
+  confirmed live (`/vendors/galleriamarchetti` returns 200, Feed tab
+  renders).
+- New mission started: giving the 369 venue-less Jeremy candidates a
+  venue anchor via Instagram `location_tag` (81% fill rate, a signal
+  independent of caption parsing). See `docs/engineering/
+  graph-strengthening/venueless-candidates.md`.
 
 ## Shipped, on `main` (compressed — see `docs/decisions.md` for full detail)
 
@@ -41,7 +47,8 @@ anything below: `docs/decisions.md` (D001–D031 so far).
   (D027). Case B (orphaned-post attach) sized and declined (D031): 11 mechanical hits, confirmed
   false merges, zero honest new Feed credits; `galleriamarchetti` Feed 15 matches the evidence.
   Vendor detail Feed now paginates (was silently capped at 50). Mission:
-  `docs/engineering/vendor-feed-gap/README.md`.
+  `docs/engineering/vendor-feed-gap/README.md`. Merged via `dewwey-hq/dewwey#3`
+  (2026-09-05, after fixing two test bugs the PR introduced).
 
 ## Next — open missions, each independently pickable
 

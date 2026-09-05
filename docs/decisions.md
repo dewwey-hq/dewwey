@@ -4,6 +4,31 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D032 — 2026-09-05 — PR #3 (D026–D031) merged after fixing two test bugs it introduced; production confirmed live
+
+Status: Accepted
+Context: PR #3 (`vendor-feed-gap-d026-d031`, Cursor's D026–D031 work plus a user follow-up
+fixing a Bun-only `import.meta.dir` build break) was open, CI green, but `bun run test`
+found two real bugs in its new test code before merging:
+1. `graphStrengthening.test.ts`'s D023 snapshot assertion still expected `wedding_vendors`
+   at 12,310/12,410 — stale, since Case A's 56 rows (D027) pushed it to 12,366/12,466 in a
+   separate provenance table (`stack_reparse_v3_ingested`, not `jeremy_wedding_vendors_
+   ingested`, so D023's own 100-row ingestion count is unaffected). Updated the literals.
+2. The new `vendor feed count invariant (DB)` describe block's own `afterAll(closePool)`
+   was redundant with an *earlier* block's identical call — since `getPool()`/`closePool()`
+   share one module-level singleton, the earlier block's cleanup killed the pool before the
+   later block's tests ran (`Cannot use a pool after calling end on the pool`, 2 failures).
+   Removed the earlier, premature `closePool()` call; kept the one in the last describe
+   block only.
+Decision: fixed both, verified 47/47 tests green + typecheck clean, pushed, confirmed
+Vercel preview green, merged PR #3 to `main` (merge commit, matching PR #1/#2's method).
+Pulled `main` locally, re-verified typecheck/tests green post-merge, confirmed production
+(`dewwey-ben-wallaces-projects.vercel.app`) serves `/vendors/galleriamarchetti` with a 200
+and a rendered Feed tab.
+Related: D026–D031 (what this PR contains), D023 (the snapshot this test protects).
+
+---
+
 ## D031 — 2026-09-04 — Case B (orphaned-post attach) sized and declined; no general attach writer
 
 Status: Accepted
