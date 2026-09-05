@@ -80,20 +80,52 @@ this mission's initial scope.
 
 ## Checklist (work top to bottom; check off only after live re-verification)
 
-- [ ] **Intra-batch duplicate check on the 447** — read-only script, Jaccard+date compare
-      every pair within the 447 (and ideally against the full 2,212, in case a near-miss
-      candidate at a "some existing weddings" venue is actually the same event as one of
-      the 447). Report any pairs that look like the same real wedding; these must be
-      merged/resolved before either is created, not created as two separate rows.
-- [ ] **Pilot: read 10-20 candidates end-to-end by hand** — for each, read the actual
-      captions, the extracted vendor stack, the venue, the date. Judge: is this genuinely,
-      obviously a real, distinct wedding? Note anything that gives you pause (thin
-      captions, suspicious venue, content that reads as non-wedding despite passing V1).
+- [x] **Intra-batch duplicate check on the 447** (2026-09-05) —
+      `apps/web/scripts/graph/checkIntraBatchDuplicates.ts`. 447 confirmed in scope, 73
+      venues have 2+ in-scope candidates (plausible — genuinely new-to-Ben venues can have
+      multiple real weddings), 1,249 within-venue pairs checked. **0 suspected duplicates**
+      (jaccard > 0.5 within 21 days, mirroring `phase_dedup()`'s own rule). Clean.
+- [x] **Pilot: read 15 candidates end-to-end by hand** (2026-09-05) — candidates 158, 351,
+      396, 540, 624, 662, 701, 1158, 1222, 1250s/1253, 1363, 1650, 2250, 2756, 2804. **All
+      15 are genuinely real, distinct, well-documented weddings** — coherent named couples,
+      rich internally-consistent vendor stacks (8-17 credits each), no thin/suspicious
+      content. Two are press/blog reposts (Modern Luxury Weddings, Style Me Pretty) rather
+      than a vendor's own post — still describe real, specific, identifiable weddings, not
+      a concern on their own.
+      **Real risk pattern found and stress-tested, not just noted**: several candidates
+      mention a SECOND location alongside the resolved venue anchor — a ceremony church vs.
+      reception hotel (candidates 158, 624), a "prep location" hotel (540, 1363), a venue +
+      its management company (396). This matters because the clustering algorithm's chosen
+      `venue_account_id` isn't always the account Ben's own crawler would anchor on, so a
+      secondary-mentioned account *could* already have an existing Ben wedding this
+      candidate should have matched instead of needing creation. Checked the two most
+      concrete cases directly:
+      - Candidate 158 ("Ellie & John," 2024-05-12) also credits "Reception:
+        `@thedrakechicago`" — Drake Hotel has 3 existing Ben weddings, but all in 2026 with
+        zero vendor overlap. Not a duplicate.
+      - Candidate 662 (Field Museum wedding, 2025-03-04) is anchored at
+        `fieldmuseumspecialevents` (zero Ben weddings) but the sibling account `fieldmuseum`
+        has 2 existing Ben weddings (2026-05-22, 2026-08-18 — one of which correctly credits
+        *both* accounts as venue, confirming Ben's graph already handles this sibling
+        relationship). Different years, only one shared vendor (`ecbg_studio`, an extremely
+        common cake vendor seen across dozens of unrelated weddings this session). Not a
+        duplicate.
+      **Both checked out safe, but the pattern is real and needs a systematic check, not
+      per-case luck** — see the refined creation-script requirement below.
 - [ ] **Build the creation script** — mirror `applyJeremyEvidenceToGraph.ts`'s shape:
       `INSERT INTO weddings (venue_id, event_date_est, is_chicago)` for the pilot batch
       only, then `INSERT INTO wedding_posts` / `wedding_vendors` for that new wedding's
       evidence, logged into the new `jeremy_weddings_created` provenance table.
       `--dry-run` first, read the full result by hand, idempotency verified live.
+      **Refined requirement from the pilot (2026-09-05)**: before creating each candidate,
+      check not just "does the resolved `venue_account_id` have zero existing Ben
+      weddings" but also cross-reference the candidate's OTHER extracted vendor accounts
+      (any of them, not just role='venue') against Ben's `weddings`/`wedding_vendors` by
+      date+Jaccard, the same rule `checkIntraBatchDuplicates.ts` already uses — a secondary
+      account mentioned in the caption (a reception venue when the anchor is the ceremony
+      church, a sibling venue brand) could reveal an existing Ben wedding this candidate
+      should match instead of needing creation. Build this as an extension of the existing
+      duplicate-check script, not a one-off per-candidate manual check.
 - [ ] **Decide on scope beyond the pilot** — if the pilot's duplicate/quality checks come
       back clean, decide how much of the remaining 447 (and later, the 1,765) to bring in,
       and under what continuing verification cadence (spot-checks per batch, not just the
