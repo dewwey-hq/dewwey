@@ -2,7 +2,7 @@
 
 Check "Now" before starting a thread — two sessions colliding on the same
 in-flight work is what this section prevents. Full history/reasoning for
-anything below: `docs/decisions.md` (D001–D040 so far).
+anything below: `docs/decisions.md` (D001–D042 so far).
 
 ## Now
 
@@ -47,7 +47,7 @@ anything below: `docs/decisions.md` (D001–D040 so far).
   arc) now trace to `/feed`** (`measureFeedCoverage.ts`). Both missions
   (`jeremy-wedding-creation.md`, `is-chicago-for-new-venues.md`) are
   closed. D034-D039.
-- **Done 2026-09-05**: non-wedding posts on serving-graph feeds (D040–D041)
+- **Done 2026-09-05**: non-wedding posts on serving-graph feeds (D040–D042)
   — 11 user-flagged concerts/galas/marketing posts, run as a `/loop`
   eval mission rather than a URL-delete. Confirmed *not* Jeremy
   wedding-creation: all 11 were Ben `venue_tagged` single-post "weddings"

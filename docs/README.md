@@ -22,8 +22,9 @@ at the repo root with a "Now" section.
   parser → Jeremy candidates → reconciliation. 143 high-conf ingested (D023);
   268 ambiguous audited and **not** ingested (D030,
   `graph-strengthening/ambiguous-tier-audit-handoff.md`). Non-wedding
-  `venue_tagged` posts on serving feeds: 46 retired, `role_shape_v1` locked
-  as a regression test (D040–D041, `graph-strengthening/non-wedding-posts.md`)
+  `venue_tagged` posts on serving feeds: 65 retired across two batches,
+  `role_shape_v1` locked as a regression test, all 105 hand labels promoted
+  into `golden_set` (656 rows) (D040–D042, `graph-strengthening/non-wedding-posts.md`)
 - [engineering/vendor-feed-gap/](engineering/vendor-feed-gap/) — applying the
   parser to Ben's own `posts` (Case A committed D027; Case B declined D031)
 - [engineering/places-photos.md](engineering/places-photos.md) — Places photo
