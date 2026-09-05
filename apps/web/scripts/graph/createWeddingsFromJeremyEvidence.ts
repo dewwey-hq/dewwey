@@ -70,7 +70,43 @@ const PHASE1_CANDIDATE_IDS = [
   2872,
 ];
 
-const CANDIDATE_IDS = [...D035_PILOT_CANDIDATE_IDS, ...PHASE1_CANDIDATE_IDS];
+// is-chicago-for-new-venues mission (D038/D039), Phase 2: candidates whose venue account had
+// ZERO location signal in Ben's own data, resolved instead via free WebSearch (D038 pivot
+// from the paid Places API). 130 distinct venue accounts attempted; 99 confirmed real
+// Chicago-metro locations (backfillVenueLocationsViaWebSearch.ts). Both duplicate checks
+// clean (--phase2 mode, 0/169 flagged either check). A NEW risk category surfaced in the
+// 15-candidate hand-read sample (2026-09-05): 44 of the 169 candidates have TWO+ accounts
+// tagged role='venue' -- typically a ceremony church credited alongside a separate,
+// unrelated reception venue (e.g. candidate 1296: resolved venue_account_id was
+// `assumption_church_chicago`, but the underlying caption's actual "Venue:" credit was
+// `@thewellsley`, a different business entirely; candidate 2271 similarly resolved to the
+// church despite an explicit "Venue: @therookerybuilding" in the same caption). This is
+// genuinely ambiguous -- not a clean mislabel like Phase 1's lighting-company/musician cases
+// -- so all 44 are excluded from this batch rather than guessing which of two legitimate
+// accounts is "the" venue (docs/engineering/graph-strengthening/is-chicago-for-new-venues.md
+// has the full 44-candidate list and reasoning). The remaining 125 are the clean batch here.
+const PHASE2_ACCOUNT_IDS = [
+  1438, 2857, 4208, 6059, 7033, 7893, 8024, 8478, 8791, 9829, 11283, 19471, 20812, 3088, 4641,
+  18240, 18283, 18370, 18466, 18489, 18490, 18508, 18543, 18606, 18621, 18631, 18676, 18712,
+  18759, 18793, 18849, 18863, 18865, 18869, 18877, 18892, 18940, 18945, 18975, 19183, 19194,
+  19224, 19260, 19286, 19288, 19292, 19310, 19353, 19354, 19446, 19482, 19535, 19539, 19603,
+  19612, 19628, 19637, 19704, 19812, 19890, 19931, 20346, 20377, 20504, 20545, 20574, 20581,
+  20593, 20679, 20680, 20694, 20755, 20792, 20805, 20819, 20911, 20978, 20979, 21019, 21020,
+  21147, 21161, 21169, 21174, 21178, 21185, 21186, 21192, 21195, 21196, 21197, 21286, 21305,
+  21307, 21319, 21342, 21343, 21348, 21416,
+];
+const PHASE2_CANDIDATE_IDS = [
+  52, 102, 126, 129, 140, 1129, 188, 206, 232, 239, 244, 296, 305, 342, 357, 419, 435, 472,
+  485, 516, 534, 535, 551, 619, 650, 720, 725, 749, 814, 1134, 851, 899, 901, 952, 1004, 1010,
+  1061, 1092, 1099, 1124, 1150, 1198, 1204, 1212, 1243, 1286, 1329, 1345, 1352, 1382, 1388,
+  1413, 1425, 1429, 1447, 1461, 1480, 1488, 1553, 1642, 1747, 1767, 1784, 1810, 1811, 1831,
+  1834, 1843, 1893, 1915, 1909, 1968, 1976, 2021, 2031, 2036, 2066, 2071, 2118, 2141, 2158,
+  2163, 2230, 2249, 2304, 2333, 2338, 2384, 2397, 2332, 2409, 2416, 2421, 2434, 2443, 2459,
+  2470, 2471, 2473, 2490, 2524, 2570, 2558, 2589, 2616, 2619, 2623, 2640, 2643, 2607, 2678,
+  2685, 2691, 2677, 2707, 2723, 2725, 2744, 2761, 2764, 2775, 2816, 2824, 2838, 2849,
+];
+
+const CANDIDATE_IDS = [...D035_PILOT_CANDIDATE_IDS, ...PHASE1_CANDIDATE_IDS, ...PHASE2_CANDIDATE_IDS];
 
 function shortcodeFromUrl(url: string): string | null {
   const m = url.match(/\/p\/([^/]+)/);
@@ -129,7 +165,10 @@ async function main() {
         `select exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago') as is_chicago`,
         [venueAccountId]
       );
-      const isChicago = cityRows[0].is_chicago || D035_PILOT_CANDIDATE_IDS.includes(candidateId);
+      const isChicago =
+        cityRows[0].is_chicago ||
+        D035_PILOT_CANDIDATE_IDS.includes(candidateId) ||
+        PHASE2_ACCOUNT_IDS.includes(venueAccountId);
 
       const { rows: weddingRows } = await client.query<{ id: number }>(
         `insert into weddings (venue_id, event_date_est, is_chicago) values ($1, $2, $3) returning id`,

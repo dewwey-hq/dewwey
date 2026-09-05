@@ -4,26 +4,42 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
-## D039 — 2026-09-05 — Phase 2 web-search lookups completed for all 130 venue accounts
+## D039 — 2026-09-05 — Phase 2 complete: web-search lookups, duplicate checks, and a new
+church/venue-ambiguity filter, creation dry-run ready
 
 Status: Accepted
 Context: D038 pivoted Phase 2's location backfill from the paid Google Places API to free
-`WebSearch`. This entry records the outcome of actually running it, across 4 batches (22,
-20, 45, 43 accounts — the last two batches ran with far more aggressive parallelization
-after the user asked mid-run "cant you parallelize this??", cutting the per-tick overhead
-sharply with no loss of per-result review rigor).
-Decision: 99 of 130 accounts (76%) confirmed as real Chicago-metro locations, added to
-`apps/web/scripts/graph/backfillVenueLocationsViaWebSearch.ts`'s `CONFIRMED_LOCATIONS` with
-per-entry source citations; dry-run verified (99/99 clean inserts, 0 conflicts). 22 left
-inconclusive (handle mismatch or no location signal — not guessed). 2 confirmed real venues
-but explicitly outside the Chicago metro (`stjames1868` in Milwaukee WI, `williams.orchard`
-in LaPorte IN, both ~90min away) — excluded rather than force-fit. Full per-account list:
-`docs/engineering/graph-strengthening/is-chicago-for-new-venues.md` Baseline findings. The
-actual DB write (99 rows into `account_locations`) is dry-run-verified but not yet
-committed — hit the same auto-mode classifier as every write this session; the user has an
-exact `!`-prefixed command to run. The next step (re-running Phase 1's duplicate-check +
-venue-role-filter + hand-read + dry-run-creation pipeline against these 99, which IS
-identity creation) has not started.
+`WebSearch`. This entry records running it to completion and pushing all the way through
+to a creation dry-run, in one continuous session — across 4 search batches (22, 20, 45, 43
+accounts; the last two ran with far more aggressive parallelization after the user asked
+mid-run "cant you parallelize this??", cutting per-tick overhead sharply with no loss of
+per-result review rigor).
+Decision:
+- **Location lookups**: 99 of 130 accounts (76%) confirmed as real Chicago-metro
+  locations, added to `backfillVenueLocationsViaWebSearch.ts`'s `CONFIRMED_LOCATIONS` with
+  per-entry source citations; dry-run verified (99/99 clean, 0 conflicts). 22 left
+  inconclusive (handle mismatch or no signal — not guessed). 2 confirmed real venues
+  explicitly outside the metro (`stjames1868` in Milwaukee WI, `williams.orchard` in
+  LaPorte IN) — excluded rather than force-fit.
+- **Duplicate checks**: extended `checkIntraBatchDuplicates.ts` and
+  `checkExistingDuplicatesForCreation.ts` with a `--phase2` mode (explicit account-ID list,
+  since the location backfill above hasn't landed in the DB yet). 169 candidates in scope,
+  0/169 flagged on either check.
+- **New risk category**: a 15-candidate hand-read sample found 2 cases where the resolved
+  `venue_account_id` was a ceremony church even though the same caption named a different,
+  unrelated reception venue as "Venue:" (verified against raw captions). Systematic check:
+  44 of 169 candidates (26%) have 2+ accounts tagged `role='venue'`. Unlike Phase 1's clean
+  mislabels (a lighting company, a musician), this is genuinely ambiguous — some of the 44
+  are harmless same-venue/different-handle cases. All 44 excluded conservatively rather
+  than adjudicated one-by-one.
+- **Creation dry-run**: 125 clean candidates, dry-run of `createWeddingsFromJeremyEvidence.ts`
+  (extended with a `PHASE2_CANDIDATE_IDS` batch and `is_chicago` now also true for any of
+  the 99 confirmed accounts) → 125 new weddings, 144 posts, 1,335 vendor rows. All 115
+  previously-created weddings (D035+Phase1) correctly no-op via `jeremy_weddings_created`.
+  Spot-checked the thinnest result (candidate 1329, 4 vendors) by hand: genuine.
+Neither the location backfill (99 rows) nor the creation (125 weddings) is committed yet —
+both dry-run-verified only, handed to the user with exact `!`-prefixed commands (same
+auto-mode-classifier block as every write this session).
 Related: D036 (Phase 2 scoping), D038 (WebSearch pivot decision).
 
 ---

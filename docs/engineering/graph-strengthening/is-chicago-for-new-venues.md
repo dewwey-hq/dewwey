@@ -1,14 +1,14 @@
 # is_chicago for newly-discovered venue accounts — closing the gap that blocked scaling past the D035 pilot
 
-**Status (2026-09-05): Phase 1 committed. Phase 2 web-search lookups complete (all 130
-accounts attempted, 99 confirmed) but the backfill itself is not yet committed to the DB
-(dry-run verified, blocked by the auto-mode classifier same as every write this session —
-see the `!`-prefixed command below). The Phase-1-style re-run (duplicate checks, venue-role
-filter, dry-run creation) against the newly-resolved 99 has NOT started yet — that is the
-next identity-creation step and needs its own elevated-stakes review before any commit.**
-Durable checklist — read this file first every wake-up, verify current state before
-checking anything off. Full narrative: `docs/decisions.md` D036 (kickoff), D037 (Phase 1
-committed), D038 (WebSearch pivot), D039 (Phase 2 lookups complete).
+**Status (2026-09-05): Phase 1 committed. Phase 2 fully worked through: all 130 web-search
+lookups done (99 confirmed), duplicate checks + a new church/venue-ambiguity filter applied
+(125 of 169 candidates clean), creation dry-run verified (125 weddings, 144 posts, 1,335
+vendor rows). Nothing committed yet — both the location backfill (99 rows) and the
+creation (125 weddings) are dry-run-verified only, awaiting the user's review and the
+`!`-prefixed commands below.** Durable checklist — read this file first every wake-up,
+verify current state before checking anything off. Full narrative: `docs/decisions.md`
+D036 (kickoff), D037 (Phase 1 committed), D038 (WebSearch pivot), D039 (Phase 2 complete,
+dry-run ready).
 
 ## Why this exists
 
@@ -157,11 +157,46 @@ extend the venue-role filter check, dry-run creation, commit with the user's rev
       ```
       cd apps/web && bun run scripts/graph/backfillVenueLocationsViaWebSearch.ts
       ```
-- [ ] **Re-run the Phase 1 pipeline** (duplicate checks, venue-role filter, hand-read
-      sample, dry-run, commit) against whatever Phase 2 resolves — scoped to the 99
-      `account_locations` rows with `source='websearch'` once the backfill above is
-      committed. This step IS identity creation (same risk tier as D035/D037), not just a
-      location lookup — needs its own elevated-stakes summary before any DB write.
+- [x] **Re-run the Phase 1 pipeline** (2026-09-05) against the 99 confirmed accounts,
+      scoped by an explicit account-ID list (not `account_locations.source='websearch'`,
+      since that write hasn't landed in the DB yet — see checklist item above). Added a
+      `--phase2` mode to both `checkIntraBatchDuplicates.ts` and
+      `checkExistingDuplicatesForCreation.ts`. **169 candidates in scope, 0/169 flagged on
+      both duplicate checks** (30 venues with 2+ candidates, 178 within-venue pairs, 0
+      suspected intra-batch duplicates; 0/169 secondary-account matches to an existing Ben
+      wedding). Bio-redirect check (Phase 1's `"Venue: @other_account"` pattern): 0 matches
+      across all 99 accounts.
+      **New risk category found in the 15-candidate hand-read sample** (see Baseline
+      findings below): a ceremony-church-vs-reception-venue double-credit pattern, distinct
+      from Phase 1's clean mislabels. Systematic check found **44 of 169 candidates (26%)**
+      have 2+ accounts tagged `role='venue'` in `jeremy_wedding_candidate_vendors` — mostly
+      a church credited alongside an unrelated reception venue, where the candidate's
+      resolved `venue_account_id` sometimes picks the church even when the caption itself
+      names a different, more specific "Venue:" credit (verified by reading the raw
+      captions for 2 of the 44). This is genuinely ambiguous, not a confirmed mislabel like
+      Phase 1's lighting-company/musician cases (some of the 44 are actually harmless —
+      same physical venue under two account handles, e.g. `floatingworldgallery`/
+      `floatingworldevents` — but distinguishing those from real church/venue conflicts
+      one-by-one wasn't done given the volume; conservative exclusion covers both cases
+      safely). **All 44 excluded from this batch** rather than guessing which of two
+      legitimate accounts is "the" venue — full candidate ID list in
+      `apps/web/scripts/graph/createWeddingsFromJeremyEvidence.ts`'s `PHASE2_CANDIDATE_IDS`
+      comment. **Clean batch: 125 candidates.**
+      **Dry-run creation** (2026-09-05): 125 new weddings, 144 posts imported (10
+      multi-post candidates), 1,335 `wedding_vendors` rows. All 115 previously-created
+      weddings (D035+Phase1) correctly skip via `jeremy_weddings_created` (idempotency
+      holds). Spot-checked the thinnest result (candidate 1329, 4 vendors): genuine real
+      wedding, short caption, `Venue: @rpmeventsandcatering` correctly resolved with no
+      double-venue-tag ambiguity. `is_chicago` is set `true` for all 125 — the WebSearch
+      confirmation IS the Chicago-metro determination for this batch (parallel to how
+      D035's pilot forced `true` for its hand-verified 15, regardless of literal
+      `vendors.city` string — some Phase 2 locations are suburbs like Oak Brook, Naperville,
+      Kildeer, consistent with "Chicago metro," not literal city-limits, being the actual
+      `is_chicago` semantics this whole workstream has used since D035).
+      **Not yet committed** — awaiting the user's review of this summary and the
+      `account_locations` backfill landing first (creation depends on nothing from that
+      table directly, since `is_chicago` here is hardcoded off the same confirmed-account
+      list, but conceptually the location backfill should land first for consistency).
 - [x] **Docs closed out for Phase 1** (2026-09-05) — `docs/decisions.md` D037,
       `ROADMAP.md` updated, this file's
       Status line set to reflect what actually shipped.
