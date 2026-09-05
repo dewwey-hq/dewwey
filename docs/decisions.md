@@ -4,6 +4,30 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D039 — 2026-09-05 — Phase 2 web-search lookups completed for all 130 venue accounts
+
+Status: Accepted
+Context: D038 pivoted Phase 2's location backfill from the paid Google Places API to free
+`WebSearch`. This entry records the outcome of actually running it, across 4 batches (22,
+20, 45, 43 accounts — the last two batches ran with far more aggressive parallelization
+after the user asked mid-run "cant you parallelize this??", cutting the per-tick overhead
+sharply with no loss of per-result review rigor).
+Decision: 99 of 130 accounts (76%) confirmed as real Chicago-metro locations, added to
+`apps/web/scripts/graph/backfillVenueLocationsViaWebSearch.ts`'s `CONFIRMED_LOCATIONS` with
+per-entry source citations; dry-run verified (99/99 clean inserts, 0 conflicts). 22 left
+inconclusive (handle mismatch or no location signal — not guessed). 2 confirmed real venues
+but explicitly outside the Chicago metro (`stjames1868` in Milwaukee WI, `williams.orchard`
+in LaPorte IN, both ~90min away) — excluded rather than force-fit. Full per-account list:
+`docs/engineering/graph-strengthening/is-chicago-for-new-venues.md` Baseline findings. The
+actual DB write (99 rows into `account_locations`) is dry-run-verified but not yet
+committed — hit the same auto-mode classifier as every write this session; the user has an
+exact `!`-prefixed command to run. The next step (re-running Phase 1's duplicate-check +
+venue-role-filter + hand-read + dry-run-creation pipeline against these 99, which IS
+identity creation) has not started.
+Related: D036 (Phase 2 scoping), D038 (WebSearch pivot decision).
+
+---
+
 ## D038 — 2026-09-05 — Phase 2 pivots from paid Places API to free WebSearch
 
 Status: Accepted

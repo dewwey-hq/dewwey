@@ -43,10 +43,17 @@ anything below: `docs/decisions.md` (D001–D031 so far).
   the real venue) that an earlier filter pass missed. **Total from this
   workstream so far: 115 weddings created; 178 of 1,499 documented
   weddings (11.9%, up from 4.6% at the start of this arc) now trace to
-  `/feed`** (`measureFeedCoverage.ts`). 208 candidates still have zero
-  location signal and need real geocoding (Phase 2, a few dollars of
-  Google Places API spend — **needs explicit go-ahead before any call
-  is made**, not started). D034/D035/D036/D037,
+  `/feed`** (`measureFeedCoverage.ts`). 208 candidates (130 distinct venue
+  accounts) had zero location signal — Phase 2 pivoted from the paid
+  Google Places API to free `WebSearch` after the user asked whether it
+  could do better (D038), then all 130 accounts attempted (D039): 99
+  confirmed real Chicago-metro locations (dry-run verified, not yet
+  committed — pending the user running the handed-off command), 22 left
+  inconclusive rather than guessed, 2 confirmed real venues outside the
+  metro (Milwaukee, LaPorte IN) excluded. Re-running Phase 1's pipeline
+  (duplicate checks, venue-role filter, dry-run creation) against these 99
+  is next, not started — that step is identity creation and needs its
+  own review. D034/D035/D036/D037/D038/D039,
   `docs/engineering/graph-strengthening/jeremy-wedding-creation.md`,
   `docs/engineering/graph-strengthening/is-chicago-for-new-venues.md`.
 

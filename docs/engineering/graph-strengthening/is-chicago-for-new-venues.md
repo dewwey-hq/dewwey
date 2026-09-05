@@ -1,11 +1,14 @@
 # is_chicago for newly-discovered venue accounts — closing the gap that blocked scaling past the D035 pilot
 
-**Status (2026-09-05): Phase 1 committed. Phase 2 not started, needs explicit go-ahead
-(real cost, external API).** 100 weddings created from the is_chicago-resolvable pool,
-after a systematic bio cross-check found 2 more confirmed venue mislabels the initial
-filter missed. Durable checklist — read this file first every wake-up, verify current
-state before checking anything off. Full narrative: `docs/decisions.md` D036 (kickoff),
-D037 (Phase 1 committed).
+**Status (2026-09-05): Phase 1 committed. Phase 2 web-search lookups complete (all 130
+accounts attempted, 99 confirmed) but the backfill itself is not yet committed to the DB
+(dry-run verified, blocked by the auto-mode classifier same as every write this session —
+see the `!`-prefixed command below). The Phase-1-style re-run (duplicate checks, venue-role
+filter, dry-run creation) against the newly-resolved 99 has NOT started yet — that is the
+next identity-creation step and needs its own elevated-stakes review before any commit.**
+Durable checklist — read this file first every wake-up, verify current state before
+checking anything off. Full narrative: `docs/decisions.md` D036 (kickoff), D037 (Phase 1
+committed), D038 (WebSearch pivot), D039 (Phase 2 lookups complete).
 
 ## Why this exists
 
@@ -140,11 +143,25 @@ extend the venue-role filter check, dry-run creation, commit with the user's rev
       after the user asked whether it could do better; tested on 2 real accounts, confirmed
       it returns richer results (exact address + wedding-hosting confirmation, not just a
       city string) at zero real-money cost. See "Phase 2" section above for the method.
-- [ ] **Run Phase 2 web-search lookups** for the 130 distinct venue accounts, paced across
-      multiple ticks (~15-20 per tick), backfilling `account_locations` for confirmed cases
-      only. Leave inconclusive ones unresolved rather than guess.
+- [x] **Run Phase 2 web-search lookups** (2026-09-05) — all 130 distinct venue accounts
+      attempted across 4 batches (22, 20, 45, 43 — later batches parallelized far more
+      aggressively per the user's own prompt mid-run). **99 confirmed** (76%), added to
+      `backfillVenueLocationsViaWebSearch.ts`'s `CONFIRMED_LOCATIONS`, dry-run verified
+      (99/99 clean inserts, 0 conflicts). **22 inconclusive** (handle didn't resolve to a
+      single confident account, or no location signal at all) — left unresolved, listed in
+      Baseline findings below, not retried. **2 confirmed NOT Chicago-metro** (the venue is
+      real but nowhere near Chicago) — `stjames1868` (Milwaukee, WI, ~90min away) and
+      `williams.orchard` (LaPorte, IN, ~90min away) — excluded from the backfill entirely,
+      also listed below so they're not silently re-attempted. The DB write itself is not
+      yet committed — hit the same auto-mode classifier as every other write this session:
+      ```
+      cd apps/web && bun run scripts/graph/backfillVenueLocationsViaWebSearch.ts
+      ```
 - [ ] **Re-run the Phase 1 pipeline** (duplicate checks, venue-role filter, hand-read
-      sample, dry-run, commit) against whatever Phase 2 resolves.
+      sample, dry-run, commit) against whatever Phase 2 resolves — scoped to the 99
+      `account_locations` rows with `source='websearch'` once the backfill above is
+      committed. This step IS identity creation (same risk tier as D035/D037), not just a
+      location lookup — needs its own elevated-stakes summary before any DB write.
 - [x] **Docs closed out for Phase 1** (2026-09-05) — `docs/decisions.md` D037,
       `ROADMAP.md` updated, this file's
       Status line set to reflect what actually shipped.
@@ -188,4 +205,35 @@ mislabels). The 6 with no signal at all are excluded conservatively for this pas
 positive evidence either way, small enough to leave for a later, separate look rather than
 block or force a decision on them now.
 
-**Next tick**: re-run both duplicate checks scoped to the 102, then dry-run creation.
+**Phase 2 web-search results (2026-09-05, all 130 accounts attempted)**:
+
+99 confirmed as real Chicago-metro locations (address/city/region cited per-entry in
+`backfillVenueLocationsViaWebSearch.ts`'s `source` field — a mix of exact street addresses
+and city-only confirmations, per what the search actually returned; nothing guessed).
+Several confirmed locations are outside Chicago proper but within the metro (e.g. Geneva,
+Mokena, Oswego, LaGrange-adjacent suburbs) — consistent with how Phase 1's `vendors.city`
+signal and D035's pilot both already treated genuine Chicagoland suburbs as in-scope, not
+just the city limits.
+
+**22 inconclusive — left unresolved, not guessed**:
+`hyattchicago`, `arrowheadwheaton` (handle resolved to a different-but-similar account, not
+a confident exact match), `alyssabudayyeh`, `ariella.e`, `austinjamescreative` (no location
+signal in results), `bryn.mawrcc`, `cafebauer` (search only returned the differently-spelled
+`cafebrauer`), `chicagoilluminating` (resolved to `chicagoilluminatingcompany`, a plausible
+but unconfirmed handle variant), `loewschicago` (resolved to `loewschicagohotel`),
+`loftluciagallery` (resolved to `loftlucia`), `madhauscollective`, `mswparish`, `ndbasilica`,
+`nickpodraza` (a photographer, not a venue — no address), `small.but.mighty15`,
+`stbenschicago`, `stjamesah`, `stonemanorweddings`, `stsvo`, `we.are.nsci` (a synagogue with
+no location given in results). Each of these is a case where guessing would have been easy
+but the evidence didn't actually support a specific address/city — correctly left open per
+the mission's own "leave inconclusive ones unresolved rather than guess" rule.
+
+**2 confirmed NOT Chicago-metro — excluded, not retried**:
+- `stjames1868` — a real, well-documented wedding venue, but in Milwaukee, WI (~90 min from
+  Chicago), not the Chicago metro area this corpus is scoped to.
+- `williams.orchard` — a real wedding venue, but in LaPorte, IN (~90 min from Chicago),
+  same exclusion reason.
+
+**Next tick**: commit the Phase 2 backfill (99 rows, command above), then re-run both
+duplicate checks + the venue-role filter scoped to `account_locations.source='websearch'`,
+hand-read a proportionate sample, dry-run creation, present to the user for review.
