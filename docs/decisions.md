@@ -4,6 +4,37 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D034 — 2026-09-05 — First identity-creation mission kicked off: new weddings from unmatched Jeremy evidence
+
+Status: Accepted
+Context: `measureFeedCoverage.ts` (added this session) quantified the ceiling on
+match-only reconciliation: only 63 of 1,384 documented weddings (4.6%) have any
+Jeremy-sourced credit, and 2,212 of 2,503 venue-anchored candidates (88%) sit permanently
+unmatched — confirmed by reading `runJeremyWeddingReconciliation.ts` directly, which has no
+`INSERT INTO weddings`, only ever matches to weddings Ben's own crawler already found. User
+asked directly whether to change this; decided yes — build the mechanism to create new
+`weddings` rows from strong, unmatched evidence, explicitly weighing it against this
+session's repeated finding (D030, D031, D033) that even *matching* alone produces real
+false-merge risk at a meaningful rate, so creating new identity is a real escalation, not a
+formality.
+Sized before scoping (not guessed): all 2,212 unmatched candidates already have 3+ named
+vendor roles and a resolved date (clustering enforces that) — evidence quality isn't the
+gating question. Duplicate risk is: 447 sit at venues with **zero** existing Ben weddings
+(lowest risk — nothing to duplicate), 1,765 at venues where Ben has *some* weddings and
+this one just didn't match (higher risk — could be new, could be a missed match).
+Decision: scope the mission to the 447 first. Constraints set: an intra-batch duplicate
+check (Jaccard+date, mirroring `phase_dedup()`'s own rule) before creating anything, a
+10-20-candidate hand-read pilot before any batch write, a new provenance table
+(`jeremy_weddings_created`) so created rows stay auditable/reversible, the same
+additive/dry-run/idempotency bar every prior mission held to. The 1,765 near-miss tier is
+explicitly deferred to a later, stricter pass. Durable checklist:
+`docs/engineering/graph-strengthening/jeremy-wedding-creation.md`.
+Related: D033 (the venue-anchor work this builds on), D030/D031 (the false-merge base rate
+this mission's safeguards are calibrated against), ROADMAP's "Should reconciliation ever
+create a new Ben wedding" Next-item (now active, not just proposed).
+
+---
+
 ## D033 — 2026-09-05 — 369 venue-less candidates: 131 got a correct venue anchor via location_tag; still 0 new production rows
 
 Status: Accepted
