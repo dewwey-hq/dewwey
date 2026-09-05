@@ -8,9 +8,11 @@ reconciliation audit (D020, `reconciliation-audit-143.md`), a reconciliation evi
 `clustering-boundary-investigation.md`), and — as of D023 — **the first production write**: the
 143 high-confidence reconciliation matches are now ingested into Ben's `wedding_vendors` (100
 genuinely new rows, additive-only, fully provenance-logged). Merged to `main` via
-`dewwey-hq/dewwey#1` (D024/D025). Current state, remaining open decisions, and next missions:
-`ROADMAP.md` "Shipped"/"Next" sections and `docs/decisions.md` D016–D025. The parser-iteration
-detail below (D016/D017) is still accurate as history, just no longer the current frontier.
+`dewwey-hq/dewwey#1` (D024/D025). Ambiguous-tier audit closed without ingestion (D030,
+`docs/engineering/graph-strengthening/ambiguous-tier-audit-handoff.md`). Current state,
+remaining open decisions, and next missions: `ROADMAP.md` "Shipped"/"Next" and
+`docs/decisions.md` D016–D031. The parser-iteration detail below (D016/D017) is still
+accurate as history, just no longer the current frontier.
 
 **Original status note (2026-09-03), kept for context:** baseline + eval set built, two
 iterations shipped and regression-tested (`stack-parser-ts-v2`: role-accuracy `ROLE_MAP` fixes;
@@ -182,5 +184,9 @@ every change here is deterministic and was measured against real ground truth, n
   (which wins, or store both as separate `wedding_vendors` role='venue' rows), not a parser-level
   one.
 - Whether/how to ingest extracted relationships into production graph tables at all —
-  **answered for the 143 high-confidence tier (D023): yes, ingested.** Still open for the
-  ambiguous (268) tier — see `ROADMAP.md` "Next".
+  **answered for the 143 high-confidence tier (D023): yes, ingested.** **Answered for the
+  ambiguous (268) tier (D030): no.** Audited the same way as the 143 (5/268 exact-URL vs
+  91.6%; 4 GREEN / 109 YELLOW / 150 RED); dry-run of the 9 identity-safe candidates was
+  all role-variants of accounts already on those weddings. Write skipped. Full writeup:
+  `ambiguous-tier-audit-handoff.md`. The 369 never-reconciled candidates are the
+  venue-less skip, intentional.

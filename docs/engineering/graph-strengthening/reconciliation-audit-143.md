@@ -76,7 +76,9 @@ touched clustering, reconciliation, schema, or any production graph table.
   systematic error (especially false merging) was found in the portion that does require
   interpretation.
 - **Not evidence about the ambiguous (268) or no-match (2,092) buckets.** This audit is scoped
-  strictly to the 143 high-confidence tier.
+  strictly to the 143 high-confidence tier. Those buckets were audited later (D030,
+  `ambiguous-tier-audit-handoff.md`) and not ingested. Known issue A below was fixed in D021
+  (`reconcile-v2` evidence floor) before that audit.
 
 ## Decision
 

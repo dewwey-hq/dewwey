@@ -8,9 +8,16 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
 
 - `apps/web` — Next.js 16 app (was Jeremy's repo, subtree'd with history),
   **Bun** for packages/scripts (`bun install`, `bun run dev`). Queries the
-  merged schema: browse/detail in `lib/server/vendors.ts` read the graph
-  (accounts/edges/weddings) with the Places `vendors` layer as a LEFT JOIN
-  that lights up when Jeremy's data lands. The old Lambda/API Gateway, beta
+  merged schema: `/vendors` browse and `/vendors/<username>` detail
+  (`listVendors`/`getVendorProfile`) live in `lib/server/graph.ts`, reading
+  the graph (accounts/edges/weddings) with the Places `vendors` layer as a
+  LEFT JOIN that lights up when Jeremy's data lands. `lib/server/vendors.ts`
+  is a separate, smaller query layer used only by `/venues`, `/api/vendors`,
+  and the homepage's 3 featured vendors (confirmed 2026-09-04, D026 — this
+  line used to say vendors.ts was the browse/detail layer; it isn't
+  anymore). Vendor detail Feed paginates 20 per page (`?page=`), badge uses
+  `feedTotal` (D026); browse `n_chicago` can still disagree (`is_chicago` gap,
+  out of scope). The old Lambda/API Gateway, beta
   password gate, his data-acquisition `scripts/`, and the CI workflow are
   deleted (2026-08-22). Layout: `app/` is routes+components only; everything
   else is `lib/` (`lib/server/` = server-only).
@@ -18,7 +25,7 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   `schema.sql` is the graph schema. Local rehearsal DB: `docker compose up -d`
   in `pipeline/` (Postgres 16 on localhost:5442, user/pass/db all `dewwey`).
 - `docs/` — ONE documentation universe (Jeremy's docs merged in 2026-08-22):
-  `docs/decisions.md` is the append-only decision log (D001–D008…),
+  `docs/decisions.md` is the append-only decision log (D001–D031…),
   `docs/README.md` the index, `docs/history/` the retired pre-merge
   architecture. Root `ROADMAP.md` has the "Now" section — check it before
   starting a thread.
@@ -33,8 +40,9 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   trusts me"): his 5 tables verbatim in `staging`, transformed into
   `public.vendors` (5,029, full original rows in `raw`), bridge = 1,896
   handle-exact matches to `accounts`, enrichment (163) + runs (572) re-keyed.
-  Still pending: re-parse of his 47k staged captions through the stack
-  parser (drop `staging` after). Connection string in `.env.local`
+  Still pending: drop `staging` only after the remaining ~43k unclassified posts
+  are explicitly retired (D029/D030 — the 4,033 INCLUDE captions are already
+  parsed; that was never a separate re-parse). Connection string in `.env.local`
   (gitignored; password also in dashboard). Note: the claude.ai Supabase
   connector only sees the FirstMover org — use the `supabase` CLI (logged in,
   sees Dewwey org) or direct psql instead.
@@ -42,7 +50,11 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   squatted by a dormant account; the org is `dewwey-hq`.
 - **Vercel**: live (2026-08-22). Project `dewwey` on Ben's hobby team
   (`ben-wallaces-projects`), linked to `dewwey-hq/dewwey`, root `apps/web`,
-  production = `main`, previews per branch. The repo was made **public**
+  production = `main`, previews per branch. **Hobby blocks deploys whose
+  git authors aren't on the team** — `Co-authored-by: Cursor
+  <cursoragent@cursor.com>` fails the GitHub Vercel check instantly
+  (Claude's `noreply@anthropic.com` trailer does not). Strip the Cursor
+  trailer before pushing a preview. The repo was made **public**
   (Ben's call — hobby plan can't deploy private org repos; full-history
   secrets scan came back clean first). Production:
   dewwey-ben-wallaces-projects.vercel.app. Env vars set for
@@ -102,11 +114,12 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
 1. Link Vercel (this repo, root `apps/web`, Ben's account); then the
    dewwey.com domain story.
 2. Ben ↔ Jeremy conversation about the merge (docs/merge-eval.md is the
-   case). Blocks: his data dump into `staging` and anything publicly visible.
-   (Beta code + his scripts/CI are already removed on Ben's instruction —
-   another reason to have the conversation soon.)
+   case). Blocks anything that reads as replacing Jeremy's architecture
+   publicly. His data is already in Supabase (2026-08-22).
 3. TS port of pipeline (926 lines); fold in OpenRouter + `avatars.py`→R2
    upload at the same time.
-4. After the Jeremy conversation: dump his posts/vendors/enrichment into
-   `staging`, handle-match the bridge (~1,896 rows), re-parse his 47k
-   captions through the stack parser, refresh `edges`.
+4. Jeremy-side **1–2 vendor-role evidence gap** (ROADMAP Next): attach sparse
+   posts to existing `jeremy_wedding_candidates` only, never seed new ones.
+   The Ben-side analog (Case B) was sized and declined (D031). Do not re-open
+   the 268-candidate ambiguous tier (D030, audited, not ingested) or re-parse
+   the 4,033 INCLUDE captions (already done, D029).
