@@ -4,6 +4,49 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D035 — 2026-09-05 — First identity-creation write committed: 15 new weddings from Jeremy evidence, pilot only
+
+Status: Accepted
+Context: D034 kicked off building the mechanism to create new `weddings` rows from
+unmatched Jeremy evidence, scoped to the 447 candidates whose venue has zero existing Ben
+weddings. Two duplicate checks run before any write: intra-batch (`checkIntraBatch
+Duplicates.ts`, all 447 against each other, 0 suspected duplicates across 1,249 within-venue
+pairs) and secondary-account (`checkExistingDuplicatesForCreation.ts`, each candidate's
+FULL vendor set against every Ben wedding sharing a vendor account, 0/447 flagged). A
+15-candidate hand-read pilot (every caption, vendor stack, venue, date read directly) found
+a real risk pattern — multi-venue mentions (ceremony church vs. reception hotel, sibling
+venue-brand accounts) — and the two most concrete instances were individually verified
+against Ben's existing graph (different years, negligible vendor overlap in both); the
+systematic check then confirmed 0/447 affected corpus-wide.
+Building the creation script (`createWeddingsFromJeremyEvidence.ts`) surfaced two real
+schema gaps neither prior mission needed to solve, since they only added credits to
+weddings that already had Ben-crawled posts:
+1. `wedding_posts.post_id` is a NOT NULL FK to Ben's own `posts` table; Jeremy's captions
+   live in `staging.instagram_posts`. Solved by importing the underlying post(s) into
+   `posts` (`source='jeremy_evidence'`, no CHECK constraint existed to block this, confirmed
+   before choosing the value), keyed on the existing `shortcode` UNIQUE constraint for
+   idempotency.
+2. `account_locations` has no row for 14/15 pilot venue accounts — Ben's location
+   enrichment never ran on venues discovered only through Jeremy evidence. The naive
+   fallback would have silently set `is_chicago=false` for real Chicago weddings, hiding
+   them from `/weddings` and the `/vendors` browse list. 9/15 resolve via the Places-linked
+   `vendors.city='Chicago'`; all 15 were independently confirmed Chicago by hand during the
+   pilot read. Set `is_chicago=true` as a **verified judgment call for this pilot only** —
+   explicitly does not scale to a larger batch without a real geocoding fix.
+Decision: committed after the user reviewed a full summary (what, why confident, what's
+NOT being claimed) and ran the script directly. **Result: 15 weddings created (ids
+1415-1429), 17 posts imported, 172 `wedding_vendors` rows, `edges` refreshed.** Idempotency
+verified live immediately after (re-run: 0 new inserts, all 15 correctly skipped). Spot-
+checked wedding 1417 (`amazingspacechicago`): correct `is_chicago`, post link, renders on
+its vendor page.
+**Explicitly not decided here**: scope beyond this 15-wedding pilot. The `is_chicago` gap
+must be solved properly (not hand-verified per candidate) before touching the remaining
+432 of the 447, let alone the 1,765 near-miss tier D034 deferred.
+Related: D034 (kickoff, the risk framing this write executed against), D030/D031/D033 (the
+false-merge base rate the duplicate checks were calibrated against).
+
+---
+
 ## D034 — 2026-09-05 — First identity-creation mission kicked off: new weddings from unmatched Jeremy evidence
 
 Status: Accepted

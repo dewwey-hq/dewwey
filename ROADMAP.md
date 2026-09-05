@@ -27,13 +27,18 @@ anything below: `docs/decisions.md` (D001–D031 so far).
 - Added `apps/web/scripts/graph/measureFeedCoverage.ts` — a re-runnable
   coverage metric. Reading as of 2026-09-05: of 4,033 `/feed` posts,
   only 63 distinct Ben weddings (4.6%) have a confirmed vendor credit.
-- **In progress**: acting on the coverage gap above — reconciliation
-  only ever matches a candidate to an *existing* Ben wedding, never
-  creates one (confirmed by reading `runJeremyWeddingReconciliation.ts`
-  directly). User decided (2026-09-05) to build identity-creation:
-  start with the 447 unmatched candidates whose venue has zero existing
-  Ben weddings (lowest duplicate risk), with an intra-batch duplicate
-  check and a hand-read pilot before any batch write. D034,
+- **Pilot done 2026-09-05, scope-beyond-pilot still open**: acting on the
+  coverage gap above — reconciliation only ever matches a candidate to
+  an *existing* Ben wedding, never creates one. Built identity-creation
+  (first ever in this workstream), scoped to the 447 unmatched
+  candidates with zero existing Ben weddings at their venue. Two
+  duplicate checks (intra-batch + secondary-account) both clean at
+  0/447. 15-candidate hand-read pilot **committed**: 15 new weddings
+  (ids 1415-1429), 17 posts imported, 172 vendor credits, idempotency
+  verified. **Blocked from scaling further**: `is_chicago` was a
+  hand-verified judgment call for these 15 (`account_locations` has no
+  data for 14/15 venues) — needs a real geocoding fix before touching
+  the remaining 432. D034/D035,
   `docs/engineering/graph-strengthening/jeremy-wedding-creation.md`.
 
 ## Shipped, on `main` (compressed — see `docs/decisions.md` for full detail)

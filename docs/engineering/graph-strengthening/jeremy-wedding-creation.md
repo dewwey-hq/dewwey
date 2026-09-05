@@ -1,8 +1,12 @@
 # Creating new weddings from unmatched Jeremy evidence — the first identity-creation mission
 
-**Status (2026-09-05): kicked off, not yet started.** Durable checklist for a `/loop`
-mission — read this file first every wake-up, verify current state before checking
-anything off. Full narrative: `docs/decisions.md` D034 (kickoff).
+**Status (2026-09-05): pilot complete and committed, scope-beyond-pilot still open.**
+15 new weddings created from Jeremy evidence (the first identity-creation write this
+workstream has ever made), hand-verified, duplicate-checked two ways, idempotency
+confirmed live. Scaling past this pilot is blocked on a real `is_chicago` fix (see Open
+questions) — not just re-running the same script with more IDs. Durable checklist for a
+`/loop` mission — read this file first every wake-up, verify current state before checking
+anything off. Full narrative: `docs/decisions.md` D034 (kickoff), D035 (pilot committed).
 
 ## Why this is different from everything else this workstream has done
 
@@ -144,12 +148,21 @@ this mission's initial scope.
       `account_locations`), see Open questions below.
       **`--dry-run` result (final)**: 15 weddings, 17 posts imported (matches multi-post
       candidates 351×2, 662×3, rest ×1), 172 `wedding_vendors` rows.
-- [ ] **Decide on scope beyond the pilot** — if the pilot's duplicate/quality checks come
-      back clean, decide how much of the remaining 447 (and later, the 1,765) to bring in,
-      and under what continuing verification cadence (spot-checks per batch, not just the
-      first one). If not clean, redesign the duplicate check before going further.
-- [ ] **Docs closed out** — `docs/decisions.md` entry, `ROADMAP.md` updated, this file's
-      Status line set to closed or "ongoing, phase N complete."
+- [x] **Committed** (2026-09-05) — user reviewed the summary and ran the script directly.
+      15 weddings created (IDs 1415-1429), 17 posts imported, 172 `wedding_vendors` rows,
+      `edges` refreshed. Idempotency verified live immediately after (re-run: all 15
+      "already created, skipping", 0 new inserts). Spot-checked wedding 1417
+      (`amazingspacechicago`): `is_chicago=true`, 1 linked post, renders on
+      `/vendors/amazingspacechicago` locally.
+- [ ] **Decide on scope beyond the pilot** — the `is_chicago` gap (see Open questions) needs
+      a real fix (geocoding new venue accounts into `account_locations`, or requiring
+      `vendors.city` presence as a precondition) before any larger batch — hand-verifying
+      is_chicago per candidate does not scale to 432 more. Once that exists, re-run the two
+      duplicate checks against the remaining 432 (already built, just re-target) and repeat
+      a hand-read pilot at whatever the next batch size is, not skip straight to bulk.
+- [x] **Docs closed out for phase 1 (this 15-wedding pilot)** (2026-09-05) —
+      `docs/decisions.md` D035, `ROADMAP.md` updated. Status line below reflects
+      pilot-complete, not fully closed — scope-beyond-pilot is still open.
 
 ## Baseline findings
 
