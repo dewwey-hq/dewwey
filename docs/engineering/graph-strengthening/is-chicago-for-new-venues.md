@@ -1,9 +1,11 @@
 # is_chicago for newly-discovered venue accounts — closing the gap that blocked scaling past the D035 pilot
 
-**Status (2026-09-05): kicked off. Phase 1 in progress, Phase 2 needs explicit go-ahead
-(real cost, external API).** Durable checklist — read this file first every wake-up,
-verify current state before checking anything off. Full narrative: `docs/decisions.md`
-D036 (kickoff).
+**Status (2026-09-05): Phase 1 committed. Phase 2 not started, needs explicit go-ahead
+(real cost, external API).** 100 weddings created from the is_chicago-resolvable pool,
+after a systematic bio cross-check found 2 more confirmed venue mislabels the initial
+filter missed. Durable checklist — read this file first every wake-up, verify current
+state before checking anything off. Full narrative: `docs/decisions.md` D036 (kickoff),
+D037 (Phase 1 committed).
 
 ## Why this exists
 
@@ -110,9 +112,15 @@ scope it, estimate cost precisely, then ask.
       (2 multi-post candidates), 945 `wedding_vendors` rows. Spot-checked the thinnest
       result (candidate 695, 3 vendors — the clustering minimum) by hand: genuine real
       wedding, just a short caption. D035's original 15 correctly skip as already-created.
+- [x] **Committed** (2026-09-05) — user reviewed the summary and ran the script directly.
+      100 weddings created (ids 1530-1629), 112 posts imported, 945 `wedding_vendors` rows,
+      `edges` refreshed. Idempotency verified live (re-run: 0 new inserts, all 100 correctly
+      skipped). Spot-checked wedding 1558 (`venuesix10`): `is_chicago=true`, renders on its
+      vendor page.
 - [ ] **Decide on Phase 2**: present the geocoding cost estimate and the do-nothing
       alternative to the user; do not call the Places API without explicit go-ahead.
-- [ ] **Docs closed out** — `docs/decisions.md` entry, `ROADMAP.md` updated, this file's
+- [x] **Docs closed out for Phase 1** (2026-09-05) — `docs/decisions.md` D037,
+      `ROADMAP.md` updated, this file's
       Status line set to reflect what actually shipped.
 
 ## Baseline findings

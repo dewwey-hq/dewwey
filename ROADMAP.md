@@ -36,12 +36,17 @@ anything below: `docs/decisions.md` (D001–D031 so far).
   0/447. 15-candidate hand-read pilot **committed**: 15 new weddings
   (ids 1415-1429), 17 posts imported, 172 vendor credits, idempotency
   verified. `is_chicago` was a hand-verified judgment call for these 15
-  — scoped the fix (D036): 136 of the remaining 356 resolve
-  automatically via existing `vendors.city='Chicago'` data (Phase 1, in
-  progress, no new cost); 208 have zero location signal at all and need
-  real geocoding (Phase 2, a few dollars of Google Places API spend —
-  **needs explicit go-ahead before any call is made**, not started).
-  D034/D035/D036,
+  — scoped the fix (D036) and **shipped Phase 1** (D037): 100 more
+  weddings created (ids 1530-1629, 112 posts, 945 vendor credits) after
+  a systematic bio cross-check caught 2 mislabeled "venues" (a lighting
+  rental company, a caterer whose own bio named a different account as
+  the real venue) that an earlier filter pass missed. **Total from this
+  workstream so far: 115 weddings created; 178 of 1,499 documented
+  weddings (11.9%, up from 4.6% at the start of this arc) now trace to
+  `/feed`** (`measureFeedCoverage.ts`). 208 candidates still have zero
+  location signal and need real geocoding (Phase 2, a few dollars of
+  Google Places API spend — **needs explicit go-ahead before any call
+  is made**, not started). D034/D035/D036/D037,
   `docs/engineering/graph-strengthening/jeremy-wedding-creation.md`,
   `docs/engineering/graph-strengthening/is-chicago-for-new-venues.md`.
 

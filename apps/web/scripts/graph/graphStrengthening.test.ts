@@ -367,19 +367,19 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
   });
 
   it("weddings/wedding_posts are unaffected by the reconciliation rerun — reconciliation never writes to Ben's graph (wedding_vendors/edges are D023's separate, deliberate ingestion, asserted in its own describe block)", async () => {
-    // 1399/1685 reflects D035's 15 created weddings/17 imported posts (2026-09-05) landing
-    // after this test's 1384/1668 snapshot — a different, deliberate mission's writes, not
-    // reconciliation. This literal has now gone stale three times in one day from three
-    // different legitimate additive missions (D027, this rerun, D035) touching tables this
-    // test snapshots absolutely; update it again next time rather than treat repeated
-    // drift as a sign something's wrong.
+    // 1499/1797 reflects D036 Phase 1's +100 weddings/+112 posts (2026-09-05) landing after
+    // D035's 1399/1685 snapshot — this literal has now gone stale four times in one day
+    // from four different legitimate additive missions (D027, the reconciliation rerun,
+    // D035, D036) touching tables this test snapshots absolutely. Expected and accepted —
+    // update it again next time rather than treat repeated drift as a sign something's
+    // wrong.
     const { rows } = await pool.query(`
       select
         (select count(*) from weddings) as weddings,
         (select count(*) from wedding_posts) as wedding_posts
     `);
-    expect(Number(rows[0].weddings)).toBe(1399);
-    expect(Number(rows[0].wedding_posts)).toBe(1685);
+    expect(Number(rows[0].weddings)).toBe(1499);
+    expect(Number(rows[0].wedding_posts)).toBe(1797);
   });
 });
 
@@ -463,13 +463,13 @@ describe("graph ingestion — D023 (DB)", () => {
     expect(Number(rows[0].n)).toBe(0);
   });
 
-  it("wedding_vendors grew by exactly the ingested count (12,538 pre-existing + 100 ingested = 12,638) — no pre-existing row was touched", async () => {
-    // 12,538/12,638 reflects D027's Case A (+56 rows, stack_reparse_v3_ingested) and D035's
-    // wedding-creation pilot (+172 rows, jeremy_weddings_created) both landing after
-    // D023's original 12,310/12,410 snapshot — both are unrelated provenance paths from
-    // D023's own jeremy_wedding_vendors_ingested, so "untouched" still correctly means "not
-    // from D023's ingestion," not "unaffected by every other mission." Update these two
-    // literals again if another additive workstream lands more rows.
+  it("wedding_vendors grew by exactly the ingested count (13,483 pre-existing + 100 ingested = 13,583) — no pre-existing row was touched", async () => {
+    // 13,483/13,583 reflects D027's Case A (+56 rows), D035's wedding-creation pilot (+172
+    // rows), and D036 Phase 1 (+945 rows) — three unrelated provenance paths from D023's own
+    // jeremy_wedding_vendors_ingested, all landing after D023's original 12,310/12,410
+    // snapshot. "untouched" still correctly means "not from D023's ingestion," not
+    // "unaffected by every other mission." Update these two literals again if another
+    // additive workstream lands more rows.
     const { rows } = await pool.query(`
       select
         count(*) filter (where not exists (
@@ -479,24 +479,25 @@ describe("graph ingestion — D023 (DB)", () => {
         count(*) as total
       from wedding_vendors wv
     `);
-    expect(Number(rows[0].untouched)).toBe(12538);
-    expect(Number(rows[0].total)).toBe(12638);
+    expect(Number(rows[0].untouched)).toBe(13483);
+    expect(Number(rows[0].total)).toBe(13583);
   });
 
-  it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1399/1685/14330) — only wedding_vendors gained rows from D023 itself", async () => {
-    // 1399/1685 reflects D035's +15 weddings/+17 posts (2026-09-05), a separate mission's
-    // legitimate writes landing after D023's original 1384/1668 snapshot -- not a D023
-    // regression. accounts stayed exactly 14330: none of D035's imported posts needed a
-    // new owner account, all were already known.
+  it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1499/1797/14332) — only wedding_vendors gained rows from D023 itself", async () => {
+    // 1499/1797/14332 reflects D035's +15 weddings/+17 posts and D036 Phase 1's +100
+    // weddings/+112 posts/+2 accounts (2026-09-05) -- separate missions' legitimate writes
+    // landing after D023's original 1384/1668/14330 snapshot, not a D023 regression. Unlike
+    // D035 (0 new accounts needed), D036 Phase 1's imported posts needed 2 new owner
+    // accounts that weren't already known.
     const { rows } = await pool.query(`
       select
         (select count(*) from weddings) as weddings,
         (select count(*) from wedding_posts) as wedding_posts,
         (select count(*) from accounts) as accounts
     `);
-    expect(Number(rows[0].weddings)).toBe(1399);
-    expect(Number(rows[0].wedding_posts)).toBe(1685);
-    expect(Number(rows[0].accounts)).toBe(14330);
+    expect(Number(rows[0].weddings)).toBe(1499);
+    expect(Number(rows[0].wedding_posts)).toBe(1797);
+    expect(Number(rows[0].accounts)).toBe(14332);
   });
 
   it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {

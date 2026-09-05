@@ -4,6 +4,47 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D037 — 2026-09-05 — is_chicago Phase 1 committed: 100 more weddings created, systematic bio check caught 2 more mislabels
+
+Status: Accepted
+Context: D036 scoped Phase 1 to 136 candidates resolving via `vendors.city='Chicago'`. Both
+duplicate checks (extended with a `--phase1` flag) came back clean at 0/136. A 15-candidate
+hand-read pilot found all real weddings, but also a **new risk category** beyond D035's
+scope: `venue_account_id` can itself resolve to a non-venue vendor. Two confirmed by
+reading captions directly — a lighting rental company (candidate 2455, `hangoutlighting`,
+whose own bio describes lighting products) and a musician credited under "Ceremony/Cocktail
+music" in the same caption that clearly labels the real venue elsewhere (candidate 2411,
+`cloudgatequartet`).
+Generalized into a filter (require the venue account to carry an `account_tags` role in
+venue/hotel/catering/rentals — real venues are legitimately often also hotel/catering/
+rentals-tagged, e.g. a hotel or restaurant-group venue) and applied to all 136: 102 passed,
+28 excluded (confirmed pattern), 6 excluded conservatively (no signal). Re-ran both
+duplicate checks against the 102 — clean again (0/102 flagged on both).
+**The filter itself wasn't sufficient**: candidate 2455 (`hangoutlighting`) still passed it,
+because a stray *manual* `account_tags` venue row (confidence 0.8, evidence_count 1 — likely
+a pre-existing data error) satisfied the requirement despite the account's bio contradicting
+it. Ran a systematic bio-text search (does the venue account's own bio name a *different*
+handle as "Venue: @...") across all 102, not just re-checking the one known case — found one
+more: candidate 2469, `blueplatechicago` (a caterer whose bio literally reads "Venue:
+@alliumchicago"). **Final Phase 1 batch: 100 candidates.**
+Extended `createWeddingsFromJeremyEvidence.ts`'s `is_chicago` logic to query
+`vendors.city='Chicago'` live per candidate instead of D035 pilot's hardcoded `true`
+(retained as a fallback only for D035's original 15 IDs, which were hand-verified without
+depending on this field).
+Decision: committed after the user reviewed a summary (same format as D035's) and ran the
+script directly. **Result: 100 weddings created (ids 1530-1629), 112 posts, 945
+`wedding_vendors` rows, `edges` refreshed.** Idempotency verified live (0 new inserts on
+re-run). Spot-checked wedding 1558 (`venuesix10`): correct `is_chicago`, renders on its
+vendor page. Fixed 3 more stale snapshot assertions in `graphStrengthening.test.ts` (same
+now-expected pattern as D027/the reconciliation rerun/D035 — this is the fourth occurrence
+in one day, explicitly treated as normal, not a regression signal).
+**Not decided here**: Phase 2 (208 candidates, zero location signal, needs real Google
+Places API spend) — still requires the user's separate, explicit go-ahead before any call.
+Related: D036 (Phase 1 scoping), D034/D035 (the mission this extends), D030/D031/D033 (the
+false-merge base rate every duplicate check in this workstream is calibrated against).
+
+---
+
 ## D036 — 2026-09-05 — Scoped the is_chicago gap blocking further wedding creation: two phases, one safe now, one needs go-ahead
 
 Status: Accepted
