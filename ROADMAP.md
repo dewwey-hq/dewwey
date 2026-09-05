@@ -19,10 +19,18 @@ anything below: `docs/decisions.md` (D001–D031 so far).
   bug that broke 2 new tests), 47/47 tests green, production deploy
   confirmed live (`/vendors/galleriamarchetti` returns 200, Feed tab
   renders).
-- New mission started: giving the 369 venue-less Jeremy candidates a
-  venue anchor via Instagram `location_tag` (81% fill rate, a signal
-  independent of caption parsing). See `docs/engineering/
-  graph-strengthening/venueless-candidates.md`.
+- **Done 2026-09-05**: 369 venue-less Jeremy candidates — 131 got a
+  correct venue anchor via Instagram `location_tag`, hand-verified,
+  but 0 new `wedding_vendors` rows (the one safe match was fully
+  redundant, the ambiguous tier repeated D030's false-merge pattern).
+  D033, `docs/engineering/graph-strengthening/venueless-candidates.md`.
+- Added `apps/web/scripts/graph/measureFeedCoverage.ts` — a re-runnable
+  coverage metric. Current reading: of 4,033 `/feed` posts, only 63
+  distinct Ben weddings (4.6%) have a confirmed vendor credit. Root
+  cause quantified, not yet acted on: reconciliation only ever matches
+  a candidate to an *existing* Ben wedding, never creates one — 2,092
+  of 2,503 venue-anchored candidates (84%) have no existing Ben wedding
+  to match at all. See "Next" below.
 
 ## Shipped, on `main` (compressed — see `docs/decisions.md` for full detail)
 
@@ -52,6 +60,17 @@ anything below: `docs/decisions.md` (D001–D031 so far).
 
 ## Next — open missions, each independently pickable
 
+- **Should reconciliation ever create a new Ben wedding, not just match existing ones?**
+  (raised 2026-09-05, not scoped as a mission yet — bigger and riskier than anything shipped
+  so far, needs its own careful design pass before starting). `measureFeedCoverage.ts`
+  quantified the real ceiling: 84% of venue-anchored, unmatched Jeremy candidates (2,092 of
+  2,503) have zero existing Ben wedding at that venue to match against — under the current
+  "match-only" architecture, no amount of better matching logic can turn these into
+  documented weddings. This is the dominant reason `/feed`'s 4,033 posts have only produced
+  63 documented weddings so far. Opening this door means designing real identity-creation
+  safeguards (when is Jeremy-only evidence trustworthy enough to become a NEW wedding
+  record, not just corroborate an existing one) — explicitly not attempted in D023/D030/D033,
+  all of which were scoped to matching only.
 - **1–2 vendor-role evidence gap**: posts with only 1-2 (not 3+) non-`other` roles produce
   evidence but never attach to an existing candidate even when they'd match one. Mission: extend
   `runJeremyWeddingClustering.ts` to attempt attachment for these posts against existing

@@ -4,6 +4,46 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D033 — 2026-09-05 — 369 venue-less candidates: 131 got a correct venue anchor via location_tag; still 0 new production rows
+
+Status: Accepted
+Context: D030 explained the 369 `venue_account_id IS NULL` candidates as an intentional
+reconciliation skip (no venue anchor), flagging "no reconciliation without a
+venue-extraction follow-up" as out of scope there. This session found and tried exactly
+that follow-up: 300/369 have an Instagram `location_tag` (independent of caption parsing),
+81/300 clean venue names on a hand-read sample.
+Built `apps/web/scripts/graph/matchVenuelessLocationTags.ts` (read-only sizing) and
+`backfillVenuelessCandidateAnchors.ts` (the write): exact-name match to
+`vendors.name`/`accounts.full_name`, required the matched account to already carry a
+`venue` role (guards a real risk found by hand — a vendor's own location tagged instead of
+the wedding venue, e.g. a beauty studio), single-account only (ambiguous multi-match held
+back, e.g. "Field Museum" → 2 distinct accounts, correctly not resolved). Result: **131
+confident matches**, hand-verified via two spot checks (a `galleriamarchetti` candidate
+whose venue was named in prose with no "Venue:" credit line; `chicagoilluminatingcompany`'s
+20+ matches, checked because of the frequency, confirmed as genuinely many real weddings).
+Commit blocked by Claude Code's auto-mode classifier; user ran it directly. Idempotency
+verified live.
+Re-ran the existing `runJeremyWeddingReconciliation.ts` (no scoping/dry-run in that script —
+diffed a before/after snapshot to protect D030's recorded audit: 405 pre-existing matches
+unchanged in identity, 1 improved, 5 fell below the ambiguous floor, none previously
+ingested so no production impact either way). Of the 131: only 1 reached high-confidence
+(candidate 1635 → wedding 300, genuine but **fully redundant** — same venue/photographer/
+planner/florist/date already in `wedding_vendors`) and 9 were ambiguous. Read a non-exact
+ambiguous case by hand (candidate 2028 → wedding 478, `chicagoilluminatingcompany`):
+**confirmed false merge** — two different real couples ("Jessie and Lucas" vs. wedding
+478's actual couple), 20 days apart, sharing only one vendor (a makeup artist working both).
+Same "magnet" pattern D030 already found at this exact venue. The other 120/131 have no
+existing Ben wedding at that venue at all — the architectural limit `measureFeedCoverage.ts`
+quantified (reconciliation only matches existing weddings, never creates new ones).
+Decision: **do not ingest.** No ingestion script built. The 131 venue anchors themselves
+stay (real, correct, permanent data-quality improvement to `jeremy_wedding_candidates`,
+reusable if Ben's crawler ever documents a wedding at one of those 120 venues later) — only
+the reconciliation→ingestion step is declined, matching D030/D031's bar exactly.
+Related: D030 (the audit method and false-merge pattern this repeats), D031 (Case B, same
+"0 new rows" shape), D026-D027 (Case A, the sibling mission this was scoped alongside).
+
+---
+
 ## D032 — 2026-09-05 — PR #3 (D026–D031) merged after fixing two test bugs it introduced; production confirmed live
 
 Status: Accepted

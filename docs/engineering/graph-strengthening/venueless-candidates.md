@@ -1,6 +1,11 @@
 # Venue-less Jeremy candidates — giving 369 candidates a venue anchor via Instagram location tags
 
-**Status (2026-09-05): kicked off, not yet started.** Durable checklist for a `/loop`
+**Status (2026-09-05): closed.** 131/369 candidates got a correct, hand-verified venue
+anchor via Instagram `location_tag` (permanent data-quality improvement, reusable if Ben's
+crawler ever covers those venues in the future) — **but 0 new `wedding_vendors` rows**,
+same as the ambiguous-tier audit and Case B before it: the one safe reconciliation match
+was fully redundant, and the ambiguous tier repeated a confirmed false-merge pattern.
+Full writeup: `docs/decisions.md` D033. Durable checklist for a `/loop`
 mission — read this file first every wake-up, verify current state before checking
 anything off. Full narrative: `docs/decisions.md` D032 (kickoff), D030 (why these 369 exist
 and were excluded), `docs/engineering/graph-strengthening/ambiguous-tier-audit-handoff.md`
@@ -100,11 +105,33 @@ problem only, not the reconciliation-decision problem (that's proven code, reuse
       denied by Claude Code's auto-mode classifier (production DB write) — needs the user
       to run it directly. Exact command: `cd apps/web && bun run
       scripts/graph/backfillVenuelessCandidateAnchors.ts` (no `--dry-run`).
-- [ ] **Re-run `runJeremyWeddingReconciliation.ts`** for the newly-anchored candidates only,
-      then apply the same ingestion bar (`applyJeremyEvidenceToGraph.ts`/
-      `applyAmbiguousEvidenceToGraph.ts`'s pattern) to whatever it decides is safe.
-- [ ] **Docs closed out**: `docs/decisions.md` entry, `ROADMAP.md` updated, this file's
-      Status line set to closed either way.
+- [x] **Re-run `runJeremyWeddingReconciliation.ts`** (2026-09-05) — this script has no
+      scoping/`--dry-run` (processes ALL candidates, upserts by `(candidate_id,
+      reconciliation_version)`); ran it and diffed a before/after snapshot to protect
+      D030's already-recorded audit. Result: 405 pre-existing matches unchanged in identity
+      (only benign jaccard/confidence drift from Case A's 56 new `wedding_vendors` rows
+      changing Jaccard denominators), 1 pre-existing candidate improved (jaccard 0.07→1.0,
+      a genuinely better match now visible), 5 pre-existing weak matches correctly fell
+      below the ambiguous floor — **none of the drifted candidates were ever ingested, so
+      no production data was affected either way.**
+      Of the 131 newly-anchored candidates: only **1 became high-confidence, 9 ambiguous,
+      120 still no-match** (Ben's crawler has no wedding at all at 120 of these venues —
+      the same "match-only, never create" architectural limit documented in the
+      `measureFeedCoverage.ts` finding). Read both non-obvious cases by hand:
+      - **Candidate 1635 (high, jaccard 0.75)** → wedding 300 (`charcoalfactoryloft`):
+        genuine, correct match — same venue, date, photographer, planner, florist as
+        Ben's existing row. **Adds zero new information** (fully redundant).
+      - **Candidate 2028 (ambiguous, jaccard 0.08)** → wedding 478
+        (`chicagoilluminatingcompany`): **confirmed false merge** — candidate is "Jessie
+        and Lucas," Apr 8, with photo/makeup/planning/decor/production/catering/band all
+        different from wedding 478's actual vendors (Apr 28, a different couple). The only
+        overlap is one makeup artist working two different real weddings at the same
+        popular venue 20 days apart — exactly D030's "magnet" pattern repeating here.
+      **Decision: do not ingest.** Same standard as D030/D031 — the one safe candidate adds
+      nothing new, and the ambiguous tier repeats a confirmed false-merge pattern. No
+      ingestion script built; none needed.
+- [x] **Docs closed out** (2026-09-05) — `docs/decisions.md` D033, `ROADMAP.md` updated,
+      this file's Status line set to closed.
 
 ## Baseline findings
 
