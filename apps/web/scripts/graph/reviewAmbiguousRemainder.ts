@@ -11,9 +11,10 @@
  * Usage (from anywhere): bun apps/web/scripts/graph/reviewAmbiguousRemainder.ts
  */
 import { readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
-const REVIEW_DIR = join(import.meta.dir, "data/reconciliation_review");
+const REVIEW_DIR = join(dirname(fileURLToPath(import.meta.url)), "data/reconciliation_review");
 
 type Ranked = {
   score: number;

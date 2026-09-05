@@ -50,7 +50,11 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   squatted by a dormant account; the org is `dewwey-hq`.
 - **Vercel**: live (2026-08-22). Project `dewwey` on Ben's hobby team
   (`ben-wallaces-projects`), linked to `dewwey-hq/dewwey`, root `apps/web`,
-  production = `main`, previews per branch. The repo was made **public**
+  production = `main`, previews per branch. **Hobby blocks deploys whose
+  git authors aren't on the team** — `Co-authored-by: Cursor
+  <cursoragent@cursor.com>` fails the GitHub Vercel check instantly
+  (Claude's `noreply@anthropic.com` trailer does not). Strip the Cursor
+  trailer before pushing a preview. The repo was made **public**
   (Ben's call — hobby plan can't deploy private org repos; full-history
   secrets scan came back clean first). Production:
   dewwey-ben-wallaces-projects.vercel.app. Env vars set for

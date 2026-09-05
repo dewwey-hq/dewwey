@@ -11,9 +11,10 @@
  * Usage (from apps/web): bun run scripts/graph/auditAmbiguous.ts
  */
 import { readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
-const REVIEW_DIR = join(import.meta.dir, "data/reconciliation_review");
+const REVIEW_DIR = join(dirname(fileURLToPath(import.meta.url)), "data/reconciliation_review");
 
 function parseCsv(text: string): Record<string, string>[] {
   const rows: string[][] = [];
