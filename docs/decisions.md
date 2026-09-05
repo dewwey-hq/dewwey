@@ -4,6 +4,32 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D038 — 2026-09-05 — Phase 2 pivots from paid Places API to free WebSearch
+
+Status: Accepted
+Context: D036 scoped Phase 2 (208 unmatched candidates, 130 distinct venue accounts, zero
+location signal) around the Google Places Text Search API, estimated at $2-4 for 130
+lookups, gated on the user's explicit go-ahead given it's a real external paid call. User
+asked directly whether `WebSearch` could do this better instead of spending money.
+Tested before committing to either path — two real accounts from the 130, not hypothetical:
+`goebbertevents` returned confirmation as a real Chicago-metro wedding venue (Pingree
+Grove, IL) with capacity/address detail and a wedding photographer's blog post as
+corroboration; `saddleandcycleclub` returned an exact street address (900 W Foster Ave,
+Chicago) plus explicit confirmation of hosting weddings — both richer than a bare city
+string, which is all the Places API would have returned.
+Decision: use `WebSearch` for Phase 2 instead of the Places API. No real-money gate applies
+(a normal tool call, not an external paid service) — proceeding without a separate cost
+sign-off, same additive/dry-run/hand-read discipline as every other phase still applies.
+Method: search `"<venue username>" instagram Chicago [wedding venue]` per distinct venue
+account, record a judgment (confirmed-Chicago / confirmed-not / inconclusive, cited),
+backfill `account_locations` for confirmed cases only, leave inconclusive ones unresolved.
+Paced across multiple `/loop` ticks (~15-20 lookups/tick) so each stays genuinely reviewed.
+After resolving, the pool re-enters Phase 1's exact pipeline (duplicate checks, venue-role
+filter, hand-read sample, dry-run, commit).
+Related: D036 (original Phase 2 scoping), D037 (the Phase 1 pipeline this reuses).
+
+---
+
 ## D037 — 2026-09-05 — is_chicago Phase 1 committed: 100 more weddings created, systematic bio check caught 2 more mislabels
 
 Status: Accepted

@@ -44,21 +44,40 @@ surface. Hand-read a sample (not all 136 — D035's 15 already validated the und
 evidence-quality bar; a smaller confirmatory sample, e.g. 15-20, is proportionate here)
 before committing.
 
-## Phase 2 — the 208 with zero signal (needs explicit go-ahead, real cost)
+## Phase 2 — the 208 (130 distinct venue accounts) with zero signal
 
-No existing trustworthy data resolves these. Two paths, not decided here:
-1. **Geocode via the Google Places API** (`GOOGLE_MAPS_API_KEY`/browser key already used by
-   `phase_m2` in `pipeline/pipeline.py` for exactly this kind of venue lookup) — search each
-   venue's name, confirm it resolves to a real Chicago-metro place, backfill
-   `account_locations`/`vendors` properly. This is the *right* long-term fix (also benefits
-   every future mission touching these accounts, not just this one) but costs real money
-   (Places Text Search is roughly $0.017-0.032/request — ~208 lookups is a few dollars, cheap
-   in absolute terms but still a real external paid call) and is an "outward-facing" action
-   this repo's own working agreement says to confirm before doing.
-2. **Continued hand-verification in small batches** — doesn't scale, but zero cost/infra.
-   Reasonable if the 208 turn out to be a low priority relative to other work.
-**Do not start Phase 2 without the user's explicit go-ahead on the actual API calls** —
-scope it, estimate cost precisely, then ask.
+**Revised 2026-09-05**: originally scoped as a paid Google Places API lookup (~$2-4 for 130
+distinct venues). User asked whether free web search could do this better — tested directly
+before committing to either path:
+
+```
+WebSearch("\"goebbertevents\" instagram Chicago wedding venue")
+-> "The Venue at Goebbert's... rustic farm wedding venue located in Pingree Grove, IL
+   (Chicago area)... 9,600 sq ft... seats up to 500" [instagram.com, goebbertevents.com,
+   a wedding photographer's blog post about a real wedding there]
+
+WebSearch("\"saddleandcycleclub\" instagram Chicago")
+-> "Chicago's historic private club... 900 West Foster Avenue, Chicago, IL 60640...
+   member-sponsored private events... weddings, galas" [saddleandcycle.com, Yelp, LinkedIn]
+```
+
+**Free web search wins on both cost and quality** — it returned an exact address and
+confirmed wedding-hosting activity, which the Places API alone (address only) wouldn't have.
+**Decision: use `WebSearch` instead of the Places API for Phase 2.** No real-money gate
+applies to this path (it's a normal tool call, not an external paid service) — proceeding
+without a separate cost sign-off, same DB-write discipline as every other phase still
+applies (additive, dry-run, hand-read sample, idempotent).
+
+Method: for each of the 130 distinct venue accounts (208 candidates share these), search
+`"<username>" instagram Chicago [wedding venue]`, read the results, and record a judgment:
+confirmed-Chicago-metro (with the source cited), confirmed-not-Chicago, or inconclusive
+(leave unresolved rather than guess). Backfill `account_locations` (address/city/region/
+in_metro/source/verified_at — `lat`/`lng` left null, web search doesn't geocode) for
+confirmed cases only. Pace across multiple `/loop` ticks (~15-20 lookups per tick, not all
+130 in one shot) so each result stays genuinely reviewed, not rubber-stamped.
+After backfilling, this pool re-enters the exact same pipeline Phase 1 used: re-run both
+duplicate checks scoped to the newly-resolved candidates, hand-read a proportionate sample,
+extend the venue-role filter check, dry-run creation, commit with the user's review.
 
 ## Constraints (same bar as D030/D031/D033/D035)
 
@@ -117,8 +136,15 @@ scope it, estimate cost precisely, then ask.
       `edges` refreshed. Idempotency verified live (re-run: 0 new inserts, all 100 correctly
       skipped). Spot-checked wedding 1558 (`venuesix10`): `is_chicago=true`, renders on its
       vendor page.
-- [ ] **Decide on Phase 2**: present the geocoding cost estimate and the do-nothing
-      alternative to the user; do not call the Places API without explicit go-ahead.
+- [x] **Decide on Phase 2** (2026-09-05) — pivoted from paid Places API to free `WebSearch`
+      after the user asked whether it could do better; tested on 2 real accounts, confirmed
+      it returns richer results (exact address + wedding-hosting confirmation, not just a
+      city string) at zero real-money cost. See "Phase 2" section above for the method.
+- [ ] **Run Phase 2 web-search lookups** for the 130 distinct venue accounts, paced across
+      multiple ticks (~15-20 per tick), backfilling `account_locations` for confirmed cases
+      only. Leave inconclusive ones unresolved rather than guess.
+- [ ] **Re-run the Phase 1 pipeline** (duplicate checks, venue-role filter, hand-read
+      sample, dry-run, commit) against whatever Phase 2 resolves.
 - [x] **Docs closed out for Phase 1** (2026-09-05) — `docs/decisions.md` D037,
       `ROADMAP.md` updated, this file's
       Status line set to reflect what actually shipped.
