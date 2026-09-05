@@ -21,7 +21,9 @@ at the repo root with a "Now" section.
 - [engineering/graph-strengthening/](engineering/graph-strengthening/) — stack
   parser → Jeremy candidates → reconciliation. 143 high-conf ingested (D023);
   268 ambiguous audited and **not** ingested (D030,
-  `graph-strengthening/ambiguous-tier-audit-handoff.md`)
+  `graph-strengthening/ambiguous-tier-audit-handoff.md`). Non-wedding
+  `venue_tagged` posts on serving feeds: 46 retired, `role_shape_v1` locked
+  as a regression test (D040–D041, `graph-strengthening/non-wedding-posts.md`)
 - [engineering/vendor-feed-gap/](engineering/vendor-feed-gap/) — applying the
   parser to Ben's own `posts` (Case A committed D027; Case B declined D031)
 - [engineering/places-photos.md](engineering/places-photos.md) — Places photo

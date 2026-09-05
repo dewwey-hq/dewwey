@@ -4,6 +4,78 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D041 — 2026-09-05 — Non-wedding posts mission complete: role_shape_v1 locked, 46 posts retired
+
+Status: Accepted
+Context: continuation of D040's `/loop` mission
+(`docs/engineering/graph-strengthening/non-wedding-posts.md`). Ticks 1–6 ran to
+completion the same day.
+Decision: Tick 1 expanded the 11 seeds into a 191-post similar-set pool across four
+buckets (same-venue, caption heuristic, role-shape, feed head) — caught and fixed an
+inner-join bug that silently dropped posts with a null `venue_id`. Tick 2 hand-labeled 75
+posts (50 pool sample + 25 known-good candidates) against `labeling_rubric.md`, reading
+full captions, and split tune/heldout before scoring anything; several auto-selected
+"known-good" candidates turned out to be generic vendor marketing on inspection, and one
+pool post (`Db37U0ivH5m`) turned out to be a genuine wedding held *at* House of Blues
+Chicago. Tick 3 built a thin `public.posts` adapter for `prefilter.ts` (it only reads
+`staging.instagram_posts`) and confirmed the doc's predicted gap exactly: `prefilter-v3`
+defers on effectively everything here because these posts mention known graph vendors. The
+caption heuristic failed the locked bar (80% tune precision, 66.7% heldout — wrongly
+excludes real weddings mentioning "concert" or a "Live Music:" credit line). A role-shape
+rule (wedding's `wedding_vendors` role set is a non-empty subset of {venue, band,
+musician}) hit 100% precision / 0 false-EXCLUDEs on tune, known-good, AND heldout — locked
+as `role_shape_v1` (tick 4, frozen before looking at heldout, per the classifier's own
+eval discipline). Tick 5: dry-run then user-committed retirement of 46 distinct posts (11
+seeds + 34 hand-labeled pool EXCLUDEs + 10 corpus-wide `role_shape_v1` matches, deduped) —
+40 weddings fully retired (0 posts remaining), 6 posts detached from mixed weddings that
+keep their real posts. `weddings` 1,624→1,584, `wedding_posts` 1,941→1,895,
+`wedding_vendors` 14,918→14,664, `edges` 63,229→61,848 (refreshed). Provenance logged to
+new table `non_wedding_posts_retired`. Tick 6: locked `role_shape_v1` into
+`graphStrengthening.test.ts` ("non-wedding-posts role_shape_v1 gate" describe block, 3
+tests) and documented the known `is_wedding` gate gap directly in `pipeline.py`'s
+`phase_dedup()` — the rule is NOT wired into the crawler itself (low recall by design,
+would need the same eval discipline to extend, not a fresh invention).
+Why: matches the mission's own valid-complete-outcome bar — a locked rule where it's safe,
+a hand-review list (not a generalized heuristic) everywhere else, zero regressions on every
+known-good real-wedding slice measured.
+Related: D040, `docs/engineering/graph-strengthening/non-wedding-posts.md` (full tick-by-tick
+findings), `labeling_rubric.md`, `graphStrengthening.test.ts`.
+
+---
+
+## D040 — 2026-09-05 — Non-wedding posts on serving-graph feeds: not Jeremy creation;
+kicked off as a `/loop` with an eval bar, not a URL-delete
+
+Status: Accepted
+Context: user flagged 11 Instagram URLs on vendor/wedding feeds as clearly not weddings
+(concerts, a gala, a birthday, a block party, one venue-marketing post) and asked for an
+iterate-and-eval loop rather than a one-shot delete, without knowing the root cause.
+Live lookup of all 11 against Supabase (same day): every row is `public.posts.source=
+'venue_tagged'` (Ben's tagged-feed crawler), each is the sole post on its own wedding
+(ids 1306–1380, inside the original Ben ID space), **zero** are `jeremy_evidence`, **zero**
+sit on a `jeremy_weddings_created` wedding, **zero** have a V3 classification. The
+D035–D039 identity-creation write is the wrong layer. The working hypothesis: Ben's
+`phase_dedup()` treats every `has_stack` (≥3 vendor roles) venue-tagged post as a wedding,
+with no `is_wedding` gate — and multi-purpose venues (House of Blues, Lincoln Hall,
+Reggies, Garcia's, Navy Pier) host concerts/galas/corporate that also carry credit stacks.
+The V1 classifier was never run on this corpus because `public.posts` was assumed
+pre-filtered by construction (post-classification README, "Where the posts live"). They
+look newly introduced because feeds sort `event_date_est DESC` and these posts use
+`posted_at` as the wedding date, so Aug 2026 concerts sit at the head next to real
+weddings from the same week.
+Decision: kick off as a `/loop` mission (`docs/engineering/graph-strengthening/non-wedding-posts.md`)
+that reuses the classifier's own eval discipline (seeds ≠ population; independent labels
+via `labeling_rubric.md`; tune/held-out split; removal is EXCLUDE-precision, not V3's
+INCLUDE-precision; propose → re-run the same eval, not just the 11 URLs —
+`prefilter-v2`'s regression is the cautionary case). Do not delete the 11 as a first
+move, do not unfreeze V3's prompt, do not `phase_dedup()` truncate. A caption heuristic
+already hits 86 weddings / 96 posts — that is a sizing clue, not a delete list.
+Related: D009–D015 (classifier + why venue_tagged was out of scope), D031 (Case B already
+found non-wedding orphaned Ben posts and declined a general attach), D035–D039 (the
+creation arc this is *not*), `labeling_rubric.md`.
+
+---
+
 ## D039 — 2026-09-05 — Phase 2 complete: web-search lookups, duplicate checks, and a new
 church/venue-ambiguity filter, creation dry-run ready
 

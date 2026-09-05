@@ -368,6 +368,22 @@ def phase_enrich(cap=1200, chunk=100):
 
 # ---------- phase: dedup ----------
 
+# KNOWN GAP (D040, docs/engineering/graph-strengthening/non-wedding-posts.md):
+# this builds a wedding from every post with has_stack (>=3 distinct vendor
+# roles) -- there is no is_wedding gate. A venue's tagged feed also carries
+# concerts, galas, and birthdays, which are structurally identical to a
+# wedding credit stack. The mission locked one narrow, measured rule
+# (role_shape_v1: exclude when a wedding's wedding_vendors role set is a
+# non-empty subset of {venue, band, musician}, 100% precision / 0 false
+# EXCLUDEs on real weddings across every slice tested) and retired the 46
+# posts it and a hand-labeled sample already caught -- see the mission doc's
+# tick 4/5 findings and scripts/graph/graphStrengthening.test.ts's
+# "non-wedding-posts role_shape_v1 gate" tests. That rule is NOT applied
+# here yet (low recall by design, and doing so would need the same
+# eval discipline the mission used, not a fresh reinvention) -- a future
+# crawl can still reintroduce the same shape of junk until this phase (or a
+# post-ingest filter reusing role_shape_v1 verbatim) actually gates on it.
+
 def phase_dedup():
     log("DEDUP: rebuilding weddings")
     conn = db(); cur = conn.cursor()

@@ -2,7 +2,7 @@
 
 Check "Now" before starting a thread — two sessions colliding on the same
 in-flight work is what this section prevents. Full history/reasoning for
-anything below: `docs/decisions.md` (D001–D031 so far).
+anything below: `docs/decisions.md` (D001–D040 so far).
 
 ## Now
 
@@ -47,6 +47,19 @@ anything below: `docs/decisions.md` (D001–D031 so far).
   arc) now trace to `/feed`** (`measureFeedCoverage.ts`). Both missions
   (`jeremy-wedding-creation.md`, `is-chicago-for-new-venues.md`) are
   closed. D034-D039.
+- **Done 2026-09-05**: non-wedding posts on serving-graph feeds (D040–D041)
+  — 11 user-flagged concerts/galas/marketing posts, run as a `/loop`
+  eval mission rather than a URL-delete. Confirmed *not* Jeremy
+  wedding-creation: all 11 were Ben `venue_tagged` single-post "weddings"
+  that `phase_dedup()` formed on a 3+ role credit stack, with no
+  `is_wedding` gate. Locked one narrow rule (`role_shape_v1`: wedding's
+  role set ⊆ {venue, band, musician}, 100% precision / 0 false-EXCLUDEs
+  across tune, known-good, and heldout) plus a hand-labeled review list;
+  retired 46 posts / 40 weddings (`weddings` 1,624→1,584, `wedding_vendors`
+  14,918→14,664, `edges` 63,229→61,848). Rule locked into
+  `graphStrengthening.test.ts`; the crawler-side `is_wedding` gap is
+  documented in `pipeline.py` but not yet wired up (low recall by design).
+  `docs/engineering/graph-strengthening/non-wedding-posts.md`.
 
 ## Shipped, on `main` (compressed — see `docs/decisions.md` for full detail)
 

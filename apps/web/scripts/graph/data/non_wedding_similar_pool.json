@@ -1,0 +1,2544 @@
+{
+  "generated_at": "2026-09-05T15:36:26.023Z",
+  "note": "UNLABELED similar-set pool for the non-wedding-posts mission (tick 1). Do not treat 'buckets' as a label — tick 2 hand-labels a sample of this pool against labeling_rubric.md.",
+  "seed_venues": [
+    "hobchicago",
+    "lh_schubas",
+    "reggieslive",
+    "garcias_chicago",
+    "navypiereventcenter",
+    "revelspace",
+    "rcchicago",
+    "thegeraghty",
+    "_thefirehouse_"
+  ],
+  "bucket_sizes_raw": {
+    "same_venue": 67,
+    "caption_heuristic": 96,
+    "role_shape": 10,
+    "feed_head": 50
+  },
+  "bucket_sizes_unique": {
+    "same_venue": 67,
+    "caption_heuristic": 96,
+    "role_shape": 10,
+    "feed_head": 50
+  },
+  "pool": [
+    {
+      "post_url": "https://www.instagram.com/p/Clg-yYGPLi5/",
+      "shortcode": "Clg-yYGPLi5",
+      "wedding_id": "41",
+      "venue": "rm1520",
+      "source": "venue_tagged",
+      "roles": "catering,photographer,planner,venue",
+      "event_date_est": "2022-11-28T06:00:00.000Z",
+      "caption_head": "Still looking for the perfect place to host your holiday get together? Room 1520 is offering a FREE venue rental for any dates December 2022 and January 2023 - ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/CstxhfqJx9K/",
+      "shortcode": "CstxhfqJx9K",
+      "wedding_id": "57",
+      "venue": "vcollectiverooftop",
+      "source": "venue_tagged",
+      "roles": "beauty_other,cake,catering,florist,photographer,planner,venue",
+      "event_date_est": "2023-05-26T05:00:00.000Z",
+      "caption_head": "belated anniversary post looking back at rebecca and bobby’s low-key micro wedding and the vendor team that made it happen! happy one year, you two 🌸\n\nplanning:",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/CtR1Ta0r2ZK/",
+      "shortcode": "CtR1Ta0r2ZK",
+      "wedding_id": "61",
+      "venue": "rm1520",
+      "source": "venue_tagged",
+      "roles": "cake,other,photographer,planner,venue",
+      "event_date_est": "2023-06-09T05:00:00.000Z",
+      "caption_head": "Did you know that not only does Room 1520 host weddings but we also welcome in dozens of corporate events and private events each season? Check out this gorgeou",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/CuhQhrWACfI/",
+      "shortcode": "CuhQhrWACfI",
+      "wedding_id": "66",
+      "venue": "morgan.mfg",
+      "source": "venue_tagged",
+      "roles": "catering,other,photographer,planner,rentals,venue",
+      "event_date_est": "2023-07-10T05:00:00.000Z",
+      "caption_head": "Here for the music. Here to make it original.\n\nHow?\nEnhance the dance floor with the live music. \nMake that dance floor dark.\nMix old and new. \nPlay remixes tha",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/C1iVjJSvxFJ/",
+      "shortcode": "C1iVjJSvxFJ",
+      "wedding_id": "76",
+      "venue": "nizucresort",
+      "source": "venue_tagged",
+      "roles": "cake,dj,florist,hair,makeup,musician,other,photographer,planner,stationery,venue,videographer",
+      "event_date_est": "2023-12-31T06:00:00.000Z",
+      "caption_head": "✨2023 Highlights ✨ || A 3-day birthday bash in the stunning @nizucresort \n\nCreative Partners:\nPlanning & Design: @keshevents\nVenue: @nizucresort\nFloral + Design",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/C2Vc86TPYDD/",
+      "shortcode": "C2Vc86TPYDD",
+      "wedding_id": "85",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "catering,photographer,planner,rentals,stationery",
+      "event_date_est": "2024-01-20T06:00:00.000Z",
+      "caption_head": "✨Stylish Celebrations for Every Occasion✨ Who says style is reserved for weddings alone? \n\nEmbrace The Art Of Celebrating, because every moment deserves its spo",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/C3fTrBpg1Km/",
+      "shortcode": "C3fTrBpg1Km",
+      "wedding_id": "90",
+      "venue": "thegwenchicago",
+      "source": "venue_tagged",
+      "roles": "catering,photographer,venue",
+      "event_date_est": "2024-02-18T06:00:00.000Z",
+      "caption_head": "It’s my #sundayviews, a weekly post where I share my favorite things + places + jewelry I’m obsessed with, like the Bri star hoops (available in silver too) I’m",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/C8KSV4lJCjM/",
+      "shortcode": "C8KSV4lJCjM",
+      "wedding_id": "100",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "dj,musician,photobooth",
+      "event_date_est": "2024-06-13T05:00:00.000Z",
+      "caption_head": "Adding a live 🎷 player to your next event is a must!\n@dgsax_ is an absolute beast!!!\n\n@mychicagoweddingdj \n@bff_booths \n#events #eventdj #wedding #weddingdj #dj",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/C9QeGymPgVY/",
+      "shortcode": "C9QeGymPgVY",
+      "wedding_id": "105",
+      "venue": "venuewestchicago",
+      "source": "venue_tagged",
+      "roles": "other,planner,venue",
+      "event_date_est": "2024-07-10T05:00:00.000Z",
+      "caption_head": "🍫 🍭🍬 It was an evening of pure imagination with our friends at @anixtercenter for their annual gala held at the fabulous @venuewestchicago 🍬🍭🍫\n.\nPlanning @fiveg",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/C_pJ_XHAl7_/",
+      "shortcode": "C_pJ_XHAl7_",
+      "wedding_id": "119",
+      "venue": "rcchicago",
+      "source": "venue_tagged",
+      "roles": "attire,dj,florist,hair,jeweler,planner,rentals,stationery,venue",
+      "event_date_est": "2024-09-08T05:00:00.000Z",
+      "caption_head": "Feeling on top of the world in more ways than one. \n.\n@tistephens and @ydw88\n.\nPlanner: @clementinechicago\nVenue: @rcchicago\nJeweler: @alanroccafinejewelry\nMake",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DAWgreXPLJG/",
+      "shortcode": "DAWgreXPLJG",
+      "wedding_id": "120",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "cake,catering,photographer",
+      "event_date_est": "2024-09-25T05:00:00.000Z",
+      "caption_head": "Thanks @p1rap for including us yearly in your Birthday Ice Cream🍦 Social Extravaganza!!!! Cheers to more years! Book your event at www.craftedeventsllc.com #cra",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DBF_nWHuRUk/",
+      "shortcode": "DBF_nWHuRUk",
+      "wedding_id": "121",
+      "venue": "935wilsonabbey",
+      "source": "venue_tagged",
+      "roles": "attire,content_creator,hair,venue",
+      "event_date_est": "2024-10-14T05:00:00.000Z",
+      "caption_head": "opening for August Underground at the @asianfashionshowchi @thechicagofashionweek 2024 ❤️‍🔥\n\nthank you for choosing me in opening for you @theaugustunderground ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DBKpNd5vng7/",
+      "shortcode": "DBKpNd5vng7",
+      "wedding_id": "123",
+      "venue": "935wilsonabbey",
+      "source": "venue_tagged",
+      "roles": "attire,hair,venue,videographer",
+      "event_date_est": "2024-10-16T05:00:00.000Z",
+      "caption_head": "opening for KAINE at the @asianfashionshowchi @thechicagofashionweek 2024 🖤\n\n@kaine.bau thank you so much for giving me the opportunity opening for you, it was ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DBhP_6PON4-/",
+      "shortcode": "DBhP_6PON4-",
+      "wedding_id": "126",
+      "venue": "rcchicago",
+      "source": "venue_tagged",
+      "roles": "attire,dj,florist,hair,jeweler,planner,rentals,stationery,venue",
+      "event_date_est": "2024-10-24T05:00:00.000Z",
+      "caption_head": "If you're wearing a veil, use it as a photo op! It adds softness and elegance to your getting-ready photos. Tiana absolutely stuns in her bridal portraits.👰‍♀️💫",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DB610X0vHAN/",
+      "shortcode": "DB610X0vHAN",
+      "wedding_id": "127",
+      "venue": "ashyanabanquets",
+      "source": "venue_tagged",
+      "roles": "cake,other,photographer,venue",
+      "event_date_est": "2024-11-03T05:00:00.000Z",
+      "caption_head": "Presenting to you our best work yet!\n\nIt took countless hours of woodworking, painting, and dedication to bring this project to life. But every moment was worth",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DGRpdgZP683/",
+      "shortcode": "DGRpdgZP683",
+      "wedding_id": "151",
+      "venue": "msichicago",
+      "source": "venue_tagged",
+      "roles": "band,musician,other,planner,venue",
+      "event_date_est": "2025-02-20T06:00:00.000Z",
+      "caption_head": "17 Live Recap Videos from the Sold-Out Black Creativity Gala!\n\nLast Saturday, we brought 750 guests on an unforgettable musical journey at the @msichicago. This",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DJZizAsxTXA/",
+      "shortcode": "DJZizAsxTXA",
+      "wedding_id": "166",
+      "venue": "thestudiochicago",
+      "source": "venue_tagged",
+      "roles": "cake,catering,florist,other,photographer,venue",
+      "event_date_est": "2025-05-08T05:00:00.000Z",
+      "caption_head": "🎉 Calling all Minions! Sweet Astrid’s 2nd birthday bash was a delightful blend of whimsy and style. From the playful “filet minion” bites to the enchanting swee",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DKiQIt4tZGK/",
+      "shortcode": "DKiQIt4tZGK",
+      "wedding_id": "172",
+      "venue": "gibsonsitalia",
+      "source": "venue_tagged",
+      "roles": "cake,catering,photographer,planner,rentals,venue",
+      "event_date_est": "2025-06-05T05:00:00.000Z",
+      "caption_head": "The last picture is my favorite. \nThe cutest jungle first birthday. With literally the best client ever to work with. @dipikagaur thank you for being an all sta",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DMKsScGCJ_L/",
+      "shortcode": "DMKsScGCJ_L",
+      "wedding_id": "184",
+      "venue": "mo_emiratespalace",
+      "source": "venue_tagged",
+      "roles": "other,planner,venue",
+      "event_date_est": "2025-07-16T05:00:00.000Z",
+      "caption_head": "Hotelier Insight: Behind the Scenes with Anand Punjani\n\nGo behind the scenes of a breathtaking 3-day wedding at Emirates Palace Mandarin Oriental with Anand Pun",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DPJgKBdjY7D/",
+      "shortcode": "DPJgKBdjY7D",
+      "wedding_id": "224",
+      "venue": "loyola_cuneomansion",
+      "source": "venue_tagged",
+      "roles": "cake,catering,dj,hair,musician,other,photobooth,photographer,planner,rentals,transportation,venue",
+      "event_date_est": "2025-09-28T05:00:00.000Z",
+      "caption_head": "✨ Wedding moments that will never be replaced by AI ✨\n\nNo matter how advanced tech gets, it will never replicate the raw joy of being in a room with your favori",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DPXAmvnjrR8/",
+      "shortcode": "DPXAmvnjrR8",
+      "wedding_id": "232",
+      "venue": "bellalunabh",
+      "source": "venue_tagged",
+      "roles": "attire,cake,dj,hair,makeup,other,photographer,rentals,venue,videographer",
+      "event_date_est": "2025-10-03T05:00:00.000Z",
+      "caption_head": "From high school sweethearts to finding their own paths, and then back into each other’s arms. Tania & Daniel’s love story is nothing short of beautiful. 💕 They",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DPWROObjXBF/",
+      "shortcode": "DPWROObjXBF",
+      "wedding_id": "233",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "other,photographer,venue",
+      "event_date_est": "2025-10-03T05:00:00.000Z",
+      "caption_head": "Happy LOLA Friday! Time to meet our gal, @lolakristyd! To learn a little bit more about Kristy, check out our story!\n\nHi, I’m Kristy - the “elder LOLA” on the t",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DQf4186jRu7/",
+      "shortcode": "DQf4186jRu7",
+      "wedding_id": "255",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "catering,dj,other,planner,rentals,venue",
+      "event_date_est": "2025-10-27T05:00:00.000Z",
+      "caption_head": "Too much? Never heard of her.\n\nEvent | @therevelgroup\nDecor | @revel_decor\nCatering | @limelightcatering\nProduction | @frostchicago\nDJ | @thedjtess",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DQUEX2YDd8R/",
+      "shortcode": "DQUEX2YDd8R",
+      "wedding_id": "255",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "catering,dj,other,planner,rentals,venue",
+      "event_date_est": "2025-10-27T05:00:00.000Z",
+      "caption_head": "Maximalism? We call it personality.\n\n🌎 @revelglobalevents \n🍴 @limelightcatering \n🖌️ @revel_decor \n📍 @revelspace \n❄️ @frostchicago \n🎧 @thedjtess",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DQf5eobjPe3/",
+      "shortcode": "DQf5eobjPe3",
+      "wedding_id": "255",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "catering,dj,other,planner,rentals,venue",
+      "event_date_est": "2025-10-27T05:00:00.000Z",
+      "caption_head": "Aesthetic overload, just how we like it.\n\nEvent | @therevelgroup \nDecor | @revel_decor\nCatering | @limelightcatering\nProduction | @frostchicago\nDJ | @thedjtess",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DQUFjnijHiI/",
+      "shortcode": "DQUFjnijHiI",
+      "wedding_id": "255",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "catering,dj,other,planner,rentals,venue",
+      "event_date_est": "2025-10-27T05:00:00.000Z",
+      "caption_head": "Whimsy? We maxed it out.\n\nEvents | @revelglobalevents \nDecor | @revel_decor \nCatering | @limelightcatering \nProduction | @frostchicago \nDJ | @thedjtess",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DQa_bXgDYOl/",
+      "shortcode": "DQa_bXgDYOl",
+      "wedding_id": "255",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "catering,dj,other,planner,rentals,venue",
+      "event_date_est": "2025-10-27T05:00:00.000Z",
+      "caption_head": "Because “fun” deserves a production budget.\n\nEvent | @therevelgroup \nDecor | @revel_decor \nCatering | @limelightcatering \nProduction | @frostchicago \nDJ | @thed",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DRIhrd3kWBN/",
+      "shortcode": "DRIhrd3kWBN",
+      "wedding_id": "269",
+      "venue": "thefultonwest",
+      "source": "venue_tagged",
+      "roles": "cake,catering,other,photographer,planner,rentals,venue",
+      "event_date_est": "2025-11-16T06:00:00.000Z",
+      "caption_head": "SUPER KITTY MODE: ACTIVATED! 💥🐱\n\nRose turned 3 and saved the day with sprinkles, giggles, and lots of kitty superpowers!\n\nWe’ve loved planning every one of her ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DRNEBQgkUg6/",
+      "shortcode": "DRNEBQgkUg6",
+      "wedding_id": "270",
+      "venue": "sofarchicago",
+      "source": "venue_tagged",
+      "roles": "content_creator,musician,other,venue",
+      "event_date_est": "2025-11-18T06:00:00.000Z",
+      "caption_head": "The elevator to the @catalyst.ranch opened and me and MY TRIBE ‘took the vibes thru dere’ last Friday for R&B Singles Night!😎🔥 @1soul.1tribe \n\nBig love to @sofa",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DSAhqXlkdRc/",
+      "shortcode": "DSAhqXlkdRc",
+      "wedding_id": "279",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,catering,dj,hair,other,photographer,rentals,stationery,venue,videographer",
+      "event_date_est": "2025-12-08T06:00:00.000Z",
+      "caption_head": "Studio This Is, a Chicago luxury collective, specializes in wedding photography and videography, blending artistic, documentary, and editorial styles to capture",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DSNeQftEVKi/",
+      "shortcode": "DSNeQftEVKi",
+      "wedding_id": "281",
+      "venue": "loyola_cuneomansion",
+      "source": "venue_tagged",
+      "roles": "cake,catering,dj,hair,musician,other,photobooth,photographer,planner,rentals,transportation,venue",
+      "event_date_est": "2025-12-13T06:00:00.000Z",
+      "caption_head": "AI CANNOT match this feeling 😭🙌\n\nNo matter how advanced tech gets, it will never replicate the raw joy of being in a room with your favorite people, feeling the",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DUIytqiEfJu/",
+      "shortcode": "DUIytqiEfJu",
+      "wedding_id": "327",
+      "venue": "thestudiochicago",
+      "source": "venue_tagged",
+      "roles": "cake,catering,florist,other,rentals,venue",
+      "event_date_est": "2026-01-30T06:00:00.000Z",
+      "caption_head": "Feeling like we need a little joyful color on the feed….and cake! 🤩\n\nMinion. But make it fashion, and delicious! 💛🤩💖✨\n\nAstrid’s 2nd birthday bash was an absolut",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DUT6XWtEYqU/",
+      "shortcode": "DUT6XWtEYqU",
+      "wedding_id": "331",
+      "venue": "kulmhotel",
+      "source": "venue_tagged",
+      "roles": "dj,florist,other,venue",
+      "event_date_est": "2026-02-03T06:00:00.000Z",
+      "caption_head": "St. Moritz, pt. 1 🤍\n\nDay one at Privé Retreat and Switzerland wasted absolutely no time impressing.\n\nWe stepped straight into history with a tour of the legenda",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DVthJe7lDQf/",
+      "shortcode": "DVthJe7lDQf",
+      "wedding_id": "381",
+      "venue": "bellafineartandevents",
+      "source": "venue_tagged",
+      "roles": "planner,rentals,venue",
+      "event_date_est": "2026-03-10T05:00:00.000Z",
+      "caption_head": "101 years of life deserves nothing less than a little Bougie Chef magic ✨\n\nHonored to cater this beautiful 101st birthday celebration. From the menu to the flor",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DXPhMgklY8B/",
+      "shortcode": "DXPhMgklY8B",
+      "wedding_id": "421",
+      "venue": "chezeventvenue",
+      "source": "venue_tagged",
+      "roles": "dj,florist,musician,other,venue,videographer",
+      "event_date_est": "2026-04-02T05:00:00.000Z",
+      "caption_head": "It’s been a blissful birthday week ✨\n\nOn April 9th, I celebrated Chapter 30: A Celebration with Purpose and words cannot describe the level of gratitude I have ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DW1bZR1kypH/",
+      "shortcode": "DW1bZR1kypH",
+      "wedding_id": "421",
+      "venue": "chezeventvenue",
+      "source": "venue_tagged",
+      "roles": "dj,florist,musician,other,venue,videographer",
+      "event_date_est": "2026-04-02T05:00:00.000Z",
+      "caption_head": "BIRTHDAY WEEK IS HERE 🎂🎉🩷✨\n\nGrateful to be here and grateful for my neighbors! Join the neighborhood this Thursday April 9th, 8pm-12am at @chezeventvenue \n\nChap",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DXhWRSDle74/",
+      "shortcode": "DXhWRSDle74",
+      "wedding_id": "436",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "cake,catering,florist,photobooth,photographer,planner,rentals,stationery,venue,videographer",
+      "event_date_est": "2026-04-10T05:00:00.000Z",
+      "caption_head": "A ceremony should feel defined before anyone walks down the aisle.\n\nEvery element here was placed with that in mind. The draping sets the boundary, the aisle es",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DW9XFvclYso/",
+      "shortcode": "DW9XFvclYso",
+      "wedding_id": "436",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "cake,catering,florist,photobooth,photographer,planner,rentals,stationery,venue,videographer",
+      "event_date_est": "2026-04-10T05:00:00.000Z",
+      "caption_head": "A beautiful space is only the beginning.\n\nWhat matters is how it holds once the night starts. Here, the structure of the reception carried that weight. Long tab",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DYTao_QFqD4/",
+      "shortcode": "DYTao_QFqD4",
+      "wedding_id": "480",
+      "venue": "chezeventvenue",
+      "source": "venue_tagged",
+      "roles": "dj,other,planner,venue",
+      "event_date_est": "2026-04-29T05:00:00.000Z",
+      "caption_head": "OUR FIRST EVER BOLLYWOOD GALA WAS SUCH A BLAST! All of our ballers showed up and showed out and it was such a beautiful event! More photos to come!\n\nPromoter: @",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DXuOpAcFTz8/",
+      "shortcode": "DXuOpAcFTz8",
+      "wedding_id": "480",
+      "venue": "chezeventvenue",
+      "source": "venue_tagged",
+      "roles": "dj,other,planner,venue",
+      "event_date_est": "2026-04-29T05:00:00.000Z",
+      "caption_head": "A BLACK TIE GALA brought to you by @theballerevents with your favorite DJs @tribahlmusic from Boston, and your local favorites @shamrozejan @djmissbhalla ! Come",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DYC3MS1RjV9/",
+      "shortcode": "DYC3MS1RjV9",
+      "wedding_id": "510",
+      "venue": "chezeventvenue",
+      "source": "venue_tagged",
+      "roles": "dj,florist,musician,other,photographer,venue",
+      "event_date_est": "2026-05-07T05:00:00.000Z",
+      "caption_head": "TBT: April was a month of gratitude and celebration in this neighborhood!! So let’s run in back with a little recap ✨\n\nWe celebrated co-founder @talyssagd11 30t",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DYGGM-my-l7/",
+      "shortcode": "DYGGM-my-l7",
+      "wedding_id": "517",
+      "venue": "hotelhaya",
+      "source": "venue_tagged",
+      "roles": "band,florist,musician,photobooth,photographer,stationery,venue,videographer",
+      "event_date_est": "2026-05-08T05:00:00.000Z",
+      "caption_head": "Lights. Camera. Circle of Excellence. 🎬🏆\n\nA little old Hollywood glamour, live music, unforgettable moments, and a celebration of the people who made this year ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DYPlEQKzcaW/",
+      "shortcode": "DYPlEQKzcaW",
+      "wedding_id": "523",
+      "venue": "humbledhospitality",
+      "source": "venue_tagged",
+      "roles": "catering,florist,other,photobooth,venue",
+      "event_date_est": "2026-05-12T05:00:00.000Z",
+      "caption_head": "When Todd sent an inquiry asking us to plan his husband’s @thetraitorsus and Swiftie themed 40th birthday weekend, we were very normal and chill about it. \n\nJk ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DYmeIIBkVkR/",
+      "shortcode": "DYmeIIBkVkR",
+      "wedding_id": "569",
+      "venue": "himandhervintage",
+      "source": "venue_tagged",
+      "roles": "beauty_other,musician,venue",
+      "event_date_est": "2026-05-21T05:00:00.000Z",
+      "caption_head": "Every detail of this evening was carefully chosen, and that starts with the people and places bringing it to life.\n\n@himandhervintage sets the scene with vintag",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DYr3nAzFqDm/",
+      "shortcode": "DYr3nAzFqDm",
+      "wedding_id": "572",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "musician,other,photographer,planner,rentals",
+      "event_date_est": "2026-05-21T05:00:00.000Z",
+      "caption_head": "Meaning of romance. A little surprise for his wife. Just because. An intimate dinner for two at @thelibraryat190 \n\nTeam:\nEvent Planning & Decor: @yourcamellia_e",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DYnRkvkRJy-/",
+      "shortcode": "DYnRkvkRJy-",
+      "wedding_id": "572",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "musician,other,photographer,planner,rentals",
+      "event_date_est": "2026-05-21T05:00:00.000Z",
+      "caption_head": "“Celebration of memories already made\nand all the beautiful chapters still waiting to be written… “\n\nAn intimate dinner for two at @thelibraryat190 - where roma",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZDI_zSlhSL/",
+      "shortcode": "DZDI_zSlhSL",
+      "wedding_id": "606",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "other",
+      "event_date_est": "2026-06-01T05:00:00.000Z",
+      "caption_head": "Living on the Veg - A Week in Review 🌱\n\nSharing all my fun my fun adventures, no matter where in the world I am!\n\nHere are some fun highlights from Chicago:\n- D",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZId3i0EUpd/",
+      "shortcode": "DZId3i0EUpd",
+      "wedding_id": "609",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "catering,dj,other,photographer,planner,venue",
+      "event_date_est": "2026-06-03T05:00:00.000Z",
+      "caption_head": "What matters most to us are words like these. Hearing from clients who, through months of collaboration and a singular once- in-a-lifetime event, become family,",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZNa4hWEfTm/",
+      "shortcode": "DZNa4hWEfTm",
+      "wedding_id": "609",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "catering,dj,other,photographer,planner,venue",
+      "event_date_est": "2026-06-03T05:00:00.000Z",
+      "caption_head": "Creating a vision beyond anything Chloe and Zach imagined, setting the scene for promises of forever. \n\nA blend of beauty and whimsy, nods to nature and delicat",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZYGG8Wj3m8/",
+      "shortcode": "DZYGG8Wj3m8",
+      "wedding_id": "609",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "catering,dj,other,photographer,planner,venue",
+      "event_date_est": "2026-06-03T05:00:00.000Z",
+      "caption_head": "The view down the aisle, the look back at a room full of loved ones, or locking eyes with the love of your life - at The Geraghty, the whole room is yours, desi",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZN6F7kCY3M/",
+      "shortcode": "DZN6F7kCY3M",
+      "wedding_id": "623",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "cake,catering,dj,florist,makeup,photographer,planner,venue,videographer",
+      "event_date_est": "2026-06-05T05:00:00.000Z",
+      "caption_head": "we’re definitely taking it back because it’s been (almost) a year since celebrating Maddie + Will!!! \n\nThe best day with the best people ❤️ \n\nPhotographer: @may",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZNfA2eukfr/",
+      "shortcode": "DZNfA2eukfr",
+      "wedding_id": "624",
+      "venue": "thewellsley",
+      "source": "venue_tagged",
+      "roles": "catering,florist,photographer,planner,venue",
+      "event_date_est": "2026-06-05T05:00:00.000Z",
+      "caption_head": "What a way to welcome your guests to the Windy City 🎶\n\nPlanning: @jessica_birchdesignstudio @birchdesignstudio \nVenue: @thewellsley \nFloral Design: @revel_decor",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZVYJBQPSLN/",
+      "shortcode": "DZVYJBQPSLN",
+      "wedding_id": "636",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "band,florist,hair,musician,photographer,planner,transportation,venue,videographer",
+      "event_date_est": "2026-06-08T05:00:00.000Z",
+      "caption_head": "The details🍸 Easily some of my favorite pieces of content to capture — the details that make the couples’ day authentic to them. \n\nPlanning | @bridget_mary_wedd",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZX1_baup87/",
+      "shortcode": "DZX1_baup87",
+      "wedding_id": "643",
+      "venue": "wrigleyfieldevents",
+      "source": "venue_tagged",
+      "roles": "florist,rentals,venue",
+      "event_date_est": "2026-06-09T05:00:00.000Z",
+      "caption_head": "A grand slam of a gala for @cubscharities! ⚾️💙\n\nThis year’s Bricks & Ivy Gala, presented by @motorolaus, welcomed 600 guests to Wrigley Field in support of Cubs",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZYBQEQlGS6/",
+      "shortcode": "DZYBQEQlGS6",
+      "wedding_id": "646",
+      "venue": "thewellsley",
+      "source": "venue_tagged",
+      "roles": "photographer,planner,venue",
+      "event_date_est": "2026-06-09T05:00:00.000Z",
+      "caption_head": "Such an amazing time celebrating Annie & Will! Thank you for letting TVK Music be part of your special day. Wishing you both a lifetime of happiness together!\n\n",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZamFCXJ32J/",
+      "shortcode": "DZamFCXJ32J",
+      "wedding_id": "649",
+      "venue": "eeeventco",
+      "source": "venue_tagged",
+      "roles": "hair,photographer,venue,videographer",
+      "event_date_est": "2026-06-10T05:00:00.000Z",
+      "caption_head": "Lately I’ve been getting a lot of Italian wedding and I notice that Italians are:\n\n1. Fashion Forward People\n2. Talented af (the groom sing the opera and also, ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZilYzikQi3/",
+      "shortcode": "DZilYzikQi3",
+      "wedding_id": "656",
+      "venue": "artifacteventschicago",
+      "source": "venue_tagged",
+      "roles": "cake,catering,dj,other,photobooth,photographer,venue",
+      "event_date_est": "2026-06-12T05:00:00.000Z",
+      "caption_head": "Bellies full + belly dancing?! May’s @thursdaytherapychi 's event was full of great live music by @northsidebrassmusicco ! Belly dancing performed by @aishah_be",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DaGsfqsRf1p/",
+      "shortcode": "DaGsfqsRf1p",
+      "wedding_id": "677",
+      "venue": "anitadeeyachtcharters",
+      "source": "venue_tagged",
+      "roles": "catering,dj,other,photographer,venue",
+      "event_date_est": "2026-06-17T05:00:00.000Z",
+      "caption_head": "Do you want the boat tour?✨\n\nThanks to all of you who joined us on the River and Lake for our third annual Summer Boat Party⛵️It’s something we look forward to ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZvPswlD9wd/",
+      "shortcode": "DZvPswlD9wd",
+      "wedding_id": "692",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "cake,catering,dj,florist,musician,other,planner,transportation,venue,videographer",
+      "event_date_est": "2026-06-18T05:00:00.000Z",
+      "caption_head": "A once-in-a-lifetime couple with once-in-a-lifetime  friends and family to celebrate a once-in-a-lifetime day. Chicago felt like Italy. Butter yellow is my new ",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZvTzaoIIww/",
+      "shortcode": "DZvTzaoIIww",
+      "wedding_id": "694",
+      "venue": "etrefarms",
+      "source": "venue_tagged",
+      "roles": "attire,cake,catering,content_creator,dj,hair,makeup,musician,other,photobooth,photographer,rentals,stationery,transportation,venue,videographer",
+      "event_date_est": "2026-06-18T05:00:00.000Z",
+      "caption_head": "The Gardenhires!!!! Every detail of this day was jaw dropping and fully thought out from start to finish- if you can think of it, Lauren and Ethan had it. Some ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DZvUebBoCdY/",
+      "shortcode": "DZvUebBoCdY",
+      "wedding_id": "694",
+      "venue": "etrefarms",
+      "source": "venue_tagged",
+      "roles": "attire,cake,catering,content_creator,dj,hair,makeup,musician,other,photobooth,photographer,rentals,stationery,transportation,venue,videographer",
+      "event_date_est": "2026-06-18T05:00:00.000Z",
+      "caption_head": "Details I loved from this day 🕊️\n\nVenue: \n@etrefarms\n\nEvent Coordinator: Morgan Newman \n\nLead Designer: Nicole VanLente \n\nPhotography:\n@melinamassephoto\n\nVideog",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DaA-xMXhqtf/",
+      "shortcode": "DaA-xMXhqtf",
+      "wedding_id": "731",
+      "venue": "thefultonwest",
+      "source": "venue_tagged",
+      "roles": "cake,catering,dj,rentals,venue",
+      "event_date_est": "2026-06-25T05:00:00.000Z",
+      "caption_head": "Chris’s 35th x Juneteenth x Black Yacht Weekend x Summertime Chi 2026\n\nStill on a high from this past weekend when I pulled off a Surprise 35th birthday for my ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DaMQbWtDpjI/",
+      "shortcode": "DaMQbWtDpjI",
+      "wedding_id": "765",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "band,beauty_other,catering,hair,makeup,musician,other,photographer,planner,rentals,venue,videographer",
+      "event_date_est": "2026-06-30T05:00:00.000Z",
+      "caption_head": "I love a client who pushes for individuality in their imagery. Photo was so important to Madison, so we met, we did walkthroughs, she shared inspo and we talked",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DaTykeiBeWm/",
+      "shortcode": "DaTykeiBeWm",
+      "wedding_id": "777",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "cake,catering,florist,musician,other,photographer,planner,videographer",
+      "event_date_est": "2026-07-02T05:00:00.000Z",
+      "caption_head": "And they indeed DID dance all night 😏\n\nSimi & Patrick, what an honor to have captured your day. So full of love, dancing, culture, killer food, and of course - ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DaSylTOEXvI/",
+      "shortcode": "DaSylTOEXvI",
+      "wedding_id": "779",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "other,photographer,planner,venue",
+      "event_date_est": "2026-07-02T05:00:00.000Z",
+      "caption_head": "That exact moment you look at each other and realize the wedding of your dreams is no longer just a dream, it’s right in front of you in brilliant living color.",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DaWO1ygu9v_/",
+      "shortcode": "DaWO1ygu9v_",
+      "wedding_id": "783",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "other",
+      "event_date_est": "2026-07-03T05:00:00.000Z",
+      "caption_head": "@courtgrove knows how to plan a birthday! \nCake: The Bear chocolate cake @loaf_lounge \nPastry: @loaf_lounge \nFlowers: @primrose_chicago \nRestaurant: @sepiachica",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DaWoXMLJabz/",
+      "shortcode": "DaWoXMLJabz",
+      "wedding_id": "788",
+      "venue": "fairliechicago",
+      "source": "venue_tagged",
+      "roles": "dj,photographer,planner,venue,videographer",
+      "event_date_est": "2026-07-04T05:00:00.000Z",
+      "caption_head": "artists for every moment.✨🕺\n\n🪩 djs who move culture and pack your dance floor.\n📷 photographers who freeze every raw, beautiful detail.\n🎞️ filmmakers who capture",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DawV8dzlcTm/",
+      "shortcode": "DawV8dzlcTm",
+      "wedding_id": "807",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "band,florist,hair,musician,photographer,planner,transportation,venue,videographer",
+      "event_date_est": "2026-07-07T05:00:00.000Z",
+      "caption_head": "You just know it was a good one when your team texts you, “I’m so sorry for how many photos there are… there were just too many amazing moments” 🥲\n\nAnd honestly",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Daf-kqgjnvB/",
+      "shortcode": "Daf-kqgjnvB",
+      "wedding_id": "807",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "band,florist,hair,musician,photographer,planner,transportation,venue,videographer",
+      "event_date_est": "2026-07-07T05:00:00.000Z",
+      "caption_head": "Rain on your wedding morning can be a bit nerve-wracking for some, but Grace and Britt did not let a single drop dampen their spirits. They were just so darn ex",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DakullPgRcO/",
+      "shortcode": "DakullPgRcO",
+      "wedding_id": "824",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "cake,catering,dj,florist,other,photographer,planner,venue",
+      "event_date_est": "2026-07-09T05:00:00.000Z",
+      "caption_head": "A new bombshell has entered the villa.\n\nThe team:\nPlanning and Design: @jessica_birchdesignstudio\n@birchdesignstudio\nVenue: @revelspace\nCatering: @limelightcate",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Danptrwjox9/",
+      "shortcode": "Danptrwjox9",
+      "wedding_id": "828",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "other,photographer,planner,venue",
+      "event_date_est": "2026-07-10T05:00:00.000Z",
+      "caption_head": "Hands in the air if your love story demands a room that can hold this much energy. At @thegeraghty, your visions are limitless in a space designed for your high",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DauGOQDFro-/",
+      "shortcode": "DauGOQDFro-",
+      "wedding_id": "849",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "catering,dj,hotel",
+      "event_date_est": "2026-07-13T05:00:00.000Z",
+      "caption_head": "What a way to kick off birthday week! 🎉💃🏾\n\nThis year’s Chosen Few House Music Picnic did NOT disappoint! It was nothing but great music (thanks to @chosenfewdjs",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Da0h3ROFJzC/",
+      "shortcode": "Da0h3ROFJzC",
+      "wedding_id": "860",
+      "venue": "averyhouse",
+      "source": "venue_tagged",
+      "roles": "catering,florist,venue",
+      "event_date_est": "2026-07-15T05:00:00.000Z",
+      "caption_head": "Remembering an incredible night celebrating Sara and Cody! What a joy it was to be part of such a special day.\n\n@averyhouse \n@clementinechicago \n@chicagobotanic",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbJiASVpnTh/",
+      "shortcode": "DbJiASVpnTh",
+      "wedding_id": "881",
+      "venue": "the.arbory",
+      "source": "venue_tagged",
+      "roles": "attire,cake,florist,hair,makeup,other,photographer,planner,rentals,stationery,venue,videographer",
+      "event_date_est": "2026-07-16T05:00:00.000Z",
+      "caption_head": "If this is the “paraphernalia” they’re talking about… Then yes 🤎\n\nIt’s the flowers inspired by our roots.\nThe music that feels like home.\nThe bright colors that",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbBzIcrEtrU/",
+      "shortcode": "DbBzIcrEtrU",
+      "wedding_id": "881",
+      "venue": "the.arbory",
+      "source": "venue_tagged",
+      "roles": "attire,cake,florist,hair,makeup,other,photographer,planner,rentals,stationery,venue,videographer",
+      "event_date_est": "2026-07-16T05:00:00.000Z",
+      "caption_head": "Culturally rich, intentional, and absolutely breathtaking. ✨ We are so incredibly honored to see this stunning styled shoot featured in @chicagostyleweddings!\n\n",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Da3IkjiERvW/",
+      "shortcode": "Da3IkjiERvW",
+      "wedding_id": "881",
+      "venue": "the.arbory",
+      "source": "venue_tagged",
+      "roles": "attire,cake,florist,hair,makeup,other,photographer,planner,rentals,stationery,venue,videographer",
+      "event_date_est": "2026-07-16T05:00:00.000Z",
+      "caption_head": "Seeing this in print hits different 🥹 \n\nOur modern Mexican-American styled shoot is officially featured in the newest issue of @chicagostyleweddings! 📖\n\nThis pr",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Da6AKpHh7K_/",
+      "shortcode": "Da6AKpHh7K_",
+      "wedding_id": "885",
+      "venue": "hobchicago",
+      "source": "venue_tagged",
+      "roles": "content_creator,other,venue",
+      "event_date_est": "2026-07-17T05:00:00.000Z",
+      "caption_head": "LATINA POR SIEMPRE\n\nAUGUST 15TH ❀ 8PM\n\nTICKETS IN BIO\n\n@hobchicago \n@livenation \n@ticketmaster\n\nflyer by @carlosedsanchez",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Da5gcqlkTZg/",
+      "shortcode": "Da5gcqlkTZg",
+      "wedding_id": "891",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "catering,dj,other,photographer,planner,venue",
+      "event_date_est": "2026-07-17T05:00:00.000Z",
+      "caption_head": "We bring the atmosphere. You bring the energy.\n\nMeet us on the dancefloor at @thegeraghty \n\nFloral + Décor: @kehoedesigns @austin_kehoedesigns \nPlanning: @paule",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Da8qHibD6OJ/",
+      "shortcode": "Da8qHibD6OJ",
+      "wedding_id": "901",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "beauty_other,cake,catering,florist,hair,hotel,musician,other,photographer,venue,videographer",
+      "event_date_est": "2026-07-18T05:00:00.000Z",
+      "caption_head": "Jessica 🤍 will forever hold a special place in my heart. I don’t think there have ever been so many people around during bridal makeup application, it was a par",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbEhbBapiex/",
+      "shortcode": "DbEhbBapiex",
+      "wedding_id": "938",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "band,cake,catering,other,photographer,planner,stationery,venue,videographer",
+      "event_date_est": "2026-07-22T05:00:00.000Z",
+      "caption_head": "The champagne wall has had a long and lovely run. We decided ours should be something you could taste.\n\nGuests stepped up to a vintage-inspired carnival booth, ",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbLvGfTtX6M/",
+      "shortcode": "DbLvGfTtX6M",
+      "wedding_id": "955",
+      "venue": "villanemora",
+      "source": "venue_tagged",
+      "roles": "catering,content_creator,florist,makeup,musician,photographer,planner,venue,videographer",
+      "event_date_est": "2026-07-24T05:00:00.000Z",
+      "caption_head": "When in @villanemora we made this extraordinary wavy table with @mdurpettievents ❤️‍🔥\n\n@kayleemelanconphoto \n@wakefield_films \n@thegirlsgirlcontent \n@giuliamake",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbQm9hxkcYv/",
+      "shortcode": "DbQm9hxkcYv",
+      "wedding_id": "970",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "catering,other,rentals,venue",
+      "event_date_est": "2026-07-26T05:00:00.000Z",
+      "caption_head": "We heard people are still talking about this dinner weeks later.\n\nThe team:\nVenue:  @thegeraghty\nDecor: @kehoedesigns\nA/V: @blackoak.tech\nCatering: @limelightca",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbPQnizTPNl/",
+      "shortcode": "DbPQnizTPNl",
+      "wedding_id": "972",
+      "venue": "row24chi",
+      "source": "venue_tagged",
+      "roles": "catering,dj,officiant,venue,videographer",
+      "event_date_est": "2026-07-26T05:00:00.000Z",
+      "caption_head": "What an unforgettable evening. 🥂💜\n\nOur Birthday Toast was a celebration of the people who have made the past 10 years possible.\n\nTo our Daisie Board Sisters and",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbTm-1MRuEK/",
+      "shortcode": "DbTm-1MRuEK",
+      "wedding_id": "981",
+      "venue": "rcchicago",
+      "source": "venue_tagged",
+      "roles": "catering,content_creator,dj,musician,photographer,transportation,venue",
+      "event_date_est": "2026-07-27T05:00:00.000Z",
+      "caption_head": "We brought together Chicago’s most influential leaders at our annual Power Players event at @rcchicago. From inspiring conversations to exceptional hospitality,",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbVpaiEEXBZ/",
+      "shortcode": "DbVpaiEEXBZ",
+      "wedding_id": "991",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "hair,jeweler,makeup,other,photographer",
+      "event_date_est": "2026-07-28T05:00:00.000Z",
+      "caption_head": "@chicagosportstech @nil.store___ With the Chicago Jersey on point! Kicking off the WNBA All-Star weekend in Chicago. From a @paigebueckers custom jersey to a ME",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbWqZZFjpTI/",
+      "shortcode": "DbWqZZFjpTI",
+      "wedding_id": "997",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "attire,catering,dj,florist,other,photographer,planner,rentals,videographer",
+      "event_date_est": "2026-07-28T05:00:00.000Z",
+      "caption_head": "When the rain plan doesn’t change the vibe… you know you’ve done it right. ☁️✨\n\nA Tuscan thunderstorm wasn’t on the itinerary, but neither was compromising the ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbY1oYOlYER/",
+      "shortcode": "DbY1oYOlYER",
+      "wedding_id": "1017",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "other",
+      "event_date_est": "2026-07-29T05:00:00.000Z",
+      "caption_head": "Still in awe that a Mexican-inspired wedding styled shoot was featured in @chicagostyleweddings and we were honored to be a part of it 🇲🇽🤎✨\n\nThis wasn’t just a ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Dba_JxuFUVI/",
+      "shortcode": "Dba_JxuFUVI",
+      "wedding_id": "1026",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,cake,catering,florist,hair,hotel,musician,photobooth,photographer,planner,stationery,transportation,venue,videographer",
+      "event_date_est": "2026-07-30T05:00:00.000Z",
+      "caption_head": "a few of my favorites from the archives that deserve another moment🤍\n\nPhoto // @colettemariephoto\nVenue // @revelspace\nPlanner // @ohanaeventsinc\nInvitations & ",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbbT2Jlt1B9/",
+      "shortcode": "DbbT2Jlt1B9",
+      "wedding_id": "1028",
+      "venue": "villamediceadililliano",
+      "source": "venue_tagged",
+      "roles": "attire,band,content_creator,florist,musician,other,planner,venue,videographer",
+      "event_date_est": "2026-07-30T05:00:00.000Z",
+      "caption_head": "Rainy days won’t stop us right @mdurpettievents ? \n\nElegance in every detail, with these candelabra taking center stage on this stunning tablescape!\n\n@villamedi",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Dblyye1y1d5/",
+      "shortcode": "Dblyye1y1d5",
+      "wedding_id": "1070",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "musician,rentals,venue",
+      "event_date_est": "2026-08-03T05:00:00.000Z",
+      "caption_head": "Pretty in pink…and plenty to eat. 💗\n\nFrom colorful bites and sweet treats to immersive branding and thoughtful details, The Pink Effect event was a celebration ",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DboWJ3NhYYr/",
+      "shortcode": "DboWJ3NhYYr",
+      "wedding_id": "1093",
+      "venue": "rockwellontheriver",
+      "source": "venue_tagged",
+      "roles": "catering,content_creator,florist,other,photographer,planner,venue",
+      "event_date_est": "2026-08-04T05:00:00.000Z",
+      "caption_head": "This November 6, we’ll be behind the scenes capturing one of the most inspiring nights of the year. ✨\n\nThe Feed Your Mind Gala brings together an extraordinary ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DbqgJsvgI_e/",
+      "shortcode": "DbqgJsvgI_e",
+      "wedding_id": "1106",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,cake,catering,florist,hair,makeup,musician,other,photographer,planner,venue,videographer",
+      "event_date_est": "2026-08-05T05:00:00.000Z",
+      "caption_head": "Not to be dramatic...\n...but if walking into your reception doesn’t make at least one family member say, “holy sh*t”, what’s even the point?\n\nThe team:\nPlanner:",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db3VeSeDYJt/",
+      "shortcode": "Db3VeSeDYJt",
+      "wedding_id": "1106",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,cake,catering,florist,hair,makeup,musician,other,photographer,planner,venue,videographer",
+      "event_date_est": "2026-08-05T05:00:00.000Z",
+      "caption_head": "Our camera roll is mostly table settings. Occasionally one reminds us why.\n\nThe team:\nPlanner: @bigcitybride @hansenmadison\nDecor & Floral: @revel_decor @ilana.",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Dbs7G3RjQdE/",
+      "shortcode": "Dbs7G3RjQdE",
+      "wedding_id": "1106",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,cake,catering,florist,hair,makeup,musician,other,photographer,planner,venue,videographer",
+      "event_date_est": "2026-08-05T05:00:00.000Z",
+      "caption_head": "We spend a lot of time telling clients not to stress about the details. Then w spend approximately 147 obsessing over the details. Worth it. \n\nThe team:\nPlanner",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Dbq_25FiUHb/",
+      "shortcode": "Dbq_25FiUHb",
+      "wedding_id": "1108",
+      "venue": "hyattregencyorlando",
+      "source": "venue_tagged",
+      "roles": "dj,other,photographer,planner,venue",
+      "event_date_est": "2026-08-05T05:00:00.000Z",
+      "caption_head": "Purple light is universally flattering, making it the perfect palette for the @beautychangeslives Orlando gala. Custom projections and ambient washes set the mo",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Dbv9AgXnDar/",
+      "shortcode": "Dbv9AgXnDar",
+      "wedding_id": "1135",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "catering,other,planner,venue",
+      "event_date_est": "2026-08-07T05:00:00.000Z",
+      "caption_head": "Corporate layouts for every part of your day. \n\nEach angle of the room reveals a different moment and feel, delivering a zone to accommodate every need with vis",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Dbvj5qthbf0/",
+      "shortcode": "Dbvj5qthbf0",
+      "wedding_id": "1142",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "beauty_other,catering,other,photographer,planner,venue,videographer",
+      "event_date_est": "2026-08-07T05:00:00.000Z",
+      "caption_head": "Aperol tower. Flowers galore. Champagne popped with a knife. What more could you ask for from a wedding day??\n\nPlanning: @bigcitybride\nVenue: @revelspace\nVideog",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcJTVimP2su/",
+      "shortcode": "DcJTVimP2su",
+      "wedding_id": "1166",
+      "venue": "galleriamarchetti",
+      "source": "venue_tagged",
+      "roles": "attire,cake,catering,dj,florist,hair,hotel,makeup,musician,other,photobooth,photographer,planner,rentals,stationery,transportation,venue,videographer",
+      "event_date_est": "2026-08-10T05:00:00.000Z",
+      "caption_head": "What started at a summer camp so many years ago came together in a celebration displaying a collection of all their favorite things that make up their love stor",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db3e8UqOUfQ/",
+      "shortcode": "Db3e8UqOUfQ",
+      "wedding_id": "1166",
+      "venue": "galleriamarchetti",
+      "source": "venue_tagged",
+      "roles": "attire,cake,catering,dj,florist,hair,hotel,makeup,musician,other,photobooth,photographer,planner,rentals,stationery,transportation,venue,videographer",
+      "event_date_est": "2026-08-10T05:00:00.000Z",
+      "caption_head": "There’s something different about live music on the dance floor. 🎷✨\n\nFor Matt & Emily’s wedding at Galleria Marchetti, our live saxophonist joined the DJ and br",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db4OPXmAG4G/",
+      "shortcode": "Db4OPXmAG4G",
+      "wedding_id": "1168",
+      "venue": "adlerplanet",
+      "source": "venue_tagged",
+      "roles": "catering,florist,planner,venue",
+      "event_date_est": "2026-08-10T05:00:00.000Z",
+      "caption_head": "In every universe, in every lifetime, in every galaxy. 💫\n\nvenue: @adlerplanet \nplanning + coordination: @firmlyrootedevents \nfloral design: @mertleanddot \ncater",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db3AxlhlDyj/",
+      "shortcode": "Db3AxlhlDyj",
+      "wedding_id": "1169",
+      "venue": "venue3two",
+      "source": "venue_tagged",
+      "roles": "catering,hotel,venue",
+      "event_date_est": "2026-08-10T05:00:00.000Z",
+      "caption_head": "Chicago Recap 🐻\n\nMed bestie is married! Such a wonderful and memorable trip 💕 Michigan is a gem. As always, we took advantage of good eats and activities! \n\nMI ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db3X-7wIyJL/",
+      "shortcode": "Db3X-7wIyJL",
+      "wedding_id": "1175",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,band,cake,catering,content_creator,florist,other,photographer,planner,rentals,stationery,venue",
+      "event_date_est": "2026-08-10T05:00:00.000Z",
+      "caption_head": "Some work dinners deserve more than a reservation.\n\nThe team:\n@wipachicago\n@revelspace\n@limelightcatering\n@revel_decor\n@bbjlatovola\n@nuagedesignsinc\n@hallsrenta",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db56etOoCKn/",
+      "shortcode": "Db56etOoCKn",
+      "wedding_id": "1175",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,band,cake,catering,content_creator,florist,other,photographer,planner,rentals,stationery,venue",
+      "event_date_est": "2026-08-10T05:00:00.000Z",
+      "caption_head": "Low lighting. High standards.\n\nThe team:\n@wipachicago\n@revelspace\n@limelightcatering\n@revel_decor\n@bbjlatovola\n@nuagedesignsinc\n@hallsrental\n@studiothisisphotog",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcBYvv5xD6O/",
+      "shortcode": "DcBYvv5xD6O",
+      "wedding_id": "1177",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,catering,dj,florist,hair,other,photographer,venue,videographer",
+      "event_date_est": "2026-08-10T05:00:00.000Z",
+      "caption_head": "the moments guests realized the envelopes at their seats were personalized letters from the bride and groom 🥹 a detail you’ll never regret pouring time and ener",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db1t3G8Oro7/",
+      "shortcode": "Db1t3G8Oro7",
+      "wedding_id": "1177",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,catering,dj,florist,hair,other,photographer,venue,videographer",
+      "event_date_est": "2026-08-10T05:00:00.000Z",
+      "caption_head": "the karolichs know how to throw a party 🪩 @bianca.and.grant \n\npassed espresso martini shots & warm chocolate chip cookies, chicago-style mini hot dogs & milksha",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcKZhvuxRoT/",
+      "shortcode": "DcKZhvuxRoT",
+      "wedding_id": "1177",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,catering,dj,florist,hair,other,photographer,venue,videographer",
+      "event_date_est": "2026-08-10T05:00:00.000Z",
+      "caption_head": "Bianca & Grant 🕊️ 8.8.26\n\n@bianca.and.grant \nCoordinator: @theeventchi \nVenue: @revelspace \nContent Creator: @thebridecam \nPhotographer: @lorenweddings \nVideogr",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db37U0ivH5m/",
+      "shortcode": "Db37U0ivH5m",
+      "wedding_id": "1185",
+      "venue": "hobchicago",
+      "source": "venue_tagged",
+      "roles": "beauty_other,dj,photographer,planner,venue,videographer",
+      "event_date_est": "2026-08-10T05:00:00.000Z",
+      "caption_head": "Getting married at a concert venue might be the move 🤘\n\nOn Saturday we filmed our first ever wedding at House of Blues Chicago (@hobchicago ) and talk about a p",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db58jJ_EXJS/",
+      "shortcode": "Db58jJ_EXJS",
+      "wedding_id": "1195",
+      "venue": "garcias_chicago",
+      "source": "venue_tagged",
+      "roles": "content_creator,other,venue",
+      "event_date_est": "2026-08-11T05:00:00.000Z",
+      "caption_head": "@grahamelesh helped close out the unofficial Deadhead holiday celebrating the “days between” Jerry Garcia’s birthday (August 1st, 1942) and the day of his death",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db83z-eCeei/",
+      "shortcode": "Db83z-eCeei",
+      "wedding_id": "1215",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "other,photographer,venue",
+      "event_date_est": "2026-08-12T05:00:00.000Z",
+      "caption_head": "It’s no secret that @unitingvoicesorg will light up any room, but with dramatic stage beams and tailored production, we gave their unforgettable presence the sp",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db-BmmRlRix/",
+      "shortcode": "Db-BmmRlRix",
+      "wedding_id": "1235",
+      "venue": "beatkitchenbar",
+      "source": "venue_tagged",
+      "roles": "band,musician,venue",
+      "event_date_est": "2026-08-13T05:00:00.000Z",
+      "caption_head": "@embitteredband at @beatkitchenbar - July 9, 2026 with guest vocalist @trosehamblin",
+      "buckets": [
+        "role_shape"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db-LNqui3Ux/",
+      "shortcode": "Db-LNqui3Ux",
+      "wedding_id": "1236",
+      "venue": "aftermidnight.la",
+      "source": "venue_tagged",
+      "roles": "content_creator,dj,venue",
+      "event_date_est": "2026-08-13T05:00:00.000Z",
+      "caption_head": "save for 8/13-8/17) raves happening this weekend in chicago ⬇️\n\nThursday (8/13)\n🎵 mosaic at subt / 21+\n🎵 fusion at the whistler / 21+\n🎵 moments in love at podla",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db-7qe8AgsV/",
+      "shortcode": "Db-7qe8AgsV",
+      "wedding_id": "1237",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "attire,beauty_other,cake,catering,florist,hotel,musician,officiant,other,photobooth,photographer,planner,stationery,transportation,venue,videographer",
+      "event_date_est": "2026-08-13T05:00:00.000Z",
+      "caption_head": "Our favorite rooms don’t need introductions.\n\nVenue: @revelspace\nDecor & Floral: @revel_decor @ ilana.weisbach\nCatering: @limelightcatering @jules_bbe\nPhotograp",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db_icIyC0Kt/",
+      "shortcode": "Db_icIyC0Kt",
+      "wedding_id": "1239",
+      "venue": "rockwellontheriver",
+      "source": "venue_tagged",
+      "roles": "catering,florist,other,photobooth,photographer,rentals,venue",
+      "event_date_est": "2026-08-13T05:00:00.000Z",
+      "caption_head": "♥️ It was such a joy to cater this year’s One Family Illinois Evening of Hope Fundraiser at @rockwellontheriver ! The VIPs got to indulge in passed hors d’Oeuvr",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/Db_QGgIp1WM/",
+      "shortcode": "Db_QGgIp1WM",
+      "wedding_id": "1243",
+      "venue": "thaliahallchicago",
+      "source": "venue_tagged",
+      "roles": "band,content_creator,venue,videographer",
+      "event_date_est": "2026-08-13T05:00:00.000Z",
+      "caption_head": "Still taking in last night’s @agalloch_official show at the historic @thaliahallchicago in Chicago. A few moments from the band’s return to the Windy City after",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcBvAZAjnSO/",
+      "shortcode": "DcBvAZAjnSO",
+      "wedding_id": "1255",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "dj,other,photographer,planner,venue",
+      "event_date_est": "2026-08-14T05:00:00.000Z",
+      "caption_head": "The Geraghty holds space for both high-energy celebrations and intimate, lingering pauses. Step away for a private moment, the party will be waiting just down t",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcB_80rRSsP/",
+      "shortcode": "DcB_80rRSsP",
+      "wedding_id": "1256",
+      "venue": "cobralounge",
+      "source": "venue_tagged",
+      "roles": "band,musician,venue",
+      "event_date_est": "2026-08-14T05:00:00.000Z",
+      "caption_head": "a message from Lunke, our drummer! 🥁 \n\naugust 28th at @cobralounge with @goodsleepyma @summerbruise69 and @greathorsechi \n\nseptember 12th at lincoln hall with @",
+      "buckets": [
+        "role_shape"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcBzj27RR8_/",
+      "shortcode": "DcBzj27RR8_",
+      "wedding_id": "1257",
+      "venue": "lh_schubas",
+      "source": "venue_tagged",
+      "roles": "other,photographer,venue",
+      "event_date_est": "2026-08-14T05:00:00.000Z",
+      "caption_head": "This the type of nip slip tabloids were clamoring for in the 2000s 🪩🕺🏽😅\n\n📸: @oldgringophoto \n🏟️: @lh_schubas \n🤼‍♂️: @wrestle_league_official",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcKIApjBPCG/",
+      "shortcode": "DcKIApjBPCG",
+      "wedding_id": "1257",
+      "venue": "lh_schubas",
+      "source": "venue_tagged",
+      "roles": "other,photographer,venue",
+      "event_date_est": "2026-08-14T05:00:00.000Z",
+      "caption_head": "Man, Skipped Myth, Straight to Legend 🕺🏽\n\n📸: @oldgringophoto \n🏟️: @lh_schubas \n🤼‍♂️: @wrestle_league_official \n\n#dance #prowrestling #disco #manmythlegend #danc",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcJpR-cxQ_b/",
+      "shortcode": "DcJpR-cxQ_b",
+      "wedding_id": "1260",
+      "venue": "chicagoilluminatingcompany",
+      "source": "venue_tagged",
+      "roles": "attire,florist,hair,musician,other,photographer,planner,rentals,venue,videographer",
+      "event_date_est": "2026-08-14T05:00:00.000Z",
+      "caption_head": "the details!!! \n \nVenue: @chicagoilluminatingcompany\nPlanning & Design + Paper Florals: @reverieandcoevents\nPhotographer: @pamelabearden\nContent Creator: @socia",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcEcGvUKFed/",
+      "shortcode": "DcEcGvUKFed",
+      "wedding_id": "1260",
+      "venue": "chicagoilluminatingcompany",
+      "source": "venue_tagged",
+      "roles": "attire,florist,hair,musician,other,photographer,planner,rentals,venue,videographer",
+      "event_date_est": "2026-08-14T05:00:00.000Z",
+      "caption_head": "Where florals play with texture, music plays with mood. \n\nAbsolutely unreal. What a dream team✨️🤍\n\nVenue: @chicagoilluminatingcompany\nPlanning & Design + Paper ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcBc-K3Fdi-/",
+      "shortcode": "DcBc-K3Fdi-",
+      "wedding_id": "1260",
+      "venue": "chicagoilluminatingcompany",
+      "source": "venue_tagged",
+      "roles": "attire,florist,hair,musician,other,photographer,planner,rentals,venue,videographer",
+      "event_date_est": "2026-08-14T05:00:00.000Z",
+      "caption_head": "The design of my dreams. ✨ \n\nVenue: @chicagoilluminatingcompany\nPlanning & Design + Paper Florals: @reverieandcoevents\nPhotographer: @pamelabearden\nContent Crea",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcCAf7SFSkN/",
+      "shortcode": "DcCAf7SFSkN",
+      "wedding_id": "1260",
+      "venue": "chicagoilluminatingcompany",
+      "source": "venue_tagged",
+      "roles": "attire,florist,hair,musician,other,photographer,planner,rentals,venue,videographer",
+      "event_date_est": "2026-08-14T05:00:00.000Z",
+      "caption_head": "i’d marry you a million times🤍\n•\n•\n•\nVenue: @chicagoilluminatingcompany\nPlanning/Design + faux florals: @reverieandcoevents\nPhotographer: @pamelabearden\nVideogr",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcCMFkvGmYS/",
+      "shortcode": "DcCMFkvGmYS",
+      "wedding_id": "1262",
+      "venue": "fourthchurch",
+      "source": "venue_tagged",
+      "roles": "attire,beauty_other,cake,content_creator,florist,musician,photographer,planner,venue,videographer",
+      "event_date_est": "2026-08-14T05:00:00.000Z",
+      "caption_head": "Taylor & James & their perfect summer city wedding day!!!!\n\nAn energy in the air, live music, gelato for all, tears in all eyes, cocktails flowing, hand written",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcFGjnXgHl0/",
+      "shortcode": "DcFGjnXgHl0",
+      "wedding_id": "1267",
+      "venue": "citywinerynsh",
+      "source": "venue_tagged",
+      "roles": "band,musician,venue",
+      "event_date_est": "2026-08-15T05:00:00.000Z",
+      "caption_head": "Use Promo Code \"DATE NIGHT\" for 25% off tickets to the Saturday Sept 5th Ohm Awards Weekend Event \"Date Night\" Featuring @iambigchadreed @shelldhn @essence.sofa",
+      "buckets": [
+        "role_shape"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcEGgIYiNxI/",
+      "shortcode": "DcEGgIYiNxI",
+      "wedding_id": "1268",
+      "venue": "raviniafestival",
+      "source": "venue_tagged",
+      "roles": "band,musician,venue",
+      "event_date_est": "2026-08-15T05:00:00.000Z",
+      "caption_head": "It turned out to be a beautiful evening @raviniafestival last night despite the threat of impending rain. @stevehackmanmusic did an exceptional job blending the",
+      "buckets": [
+        "role_shape"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcECUKCB5Tq/",
+      "shortcode": "DcECUKCB5Tq",
+      "wedding_id": "1269",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "other",
+      "event_date_est": "2026-08-15T05:00:00.000Z",
+      "caption_head": "#latepost #recap of the Midwest premier concert of Good News Mass at Ravinia Festival in Chicago on July 31. Grateful for the experience, to see and hear it per",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcEYJVlRBVJ/",
+      "shortcode": "DcEYJVlRBVJ",
+      "wedding_id": "1271",
+      "venue": "garcias_chicago",
+      "source": "venue_tagged",
+      "roles": "band,musician,venue",
+      "event_date_est": "2026-08-15T05:00:00.000Z",
+      "caption_head": "Incredible to watch @deitchadam and @mavericksuperstar up close. So talented! Thanks for an amazing show @lettucefunk \n@garcias_chicago 8.14.26\n\n#lettucefunk #d",
+      "buckets": [
+        "same_venue",
+        "role_shape"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcEVvpxxLx4/",
+      "shortcode": "DcEVvpxxLx4",
+      "wedding_id": "1272",
+      "venue": "garcias_chicago",
+      "source": "venue_tagged",
+      "roles": "band,musician,venue",
+      "event_date_est": "2026-08-15T05:00:00.000Z",
+      "caption_head": "Gettin’ down @lettucefunk @sharkey335 \n@shmeeans 🪩🎸 @garcias_chicago \n8.14.26\n\n#garciaschicago #deepcutspresents #lettucefunk #isaiahsharkey #funk",
+      "buckets": [
+        "same_venue",
+        "role_shape"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcEJz9QR3hB/",
+      "shortcode": "DcEJz9QR3hB",
+      "wedding_id": "1273",
+      "venue": "garcias_chicago",
+      "source": "venue_tagged",
+      "roles": "band,other,venue",
+      "event_date_est": "2026-08-15T05:00:00.000Z",
+      "caption_head": "They're not the best at what they do, they're the only ones who do what they do 🥬 @lettucefunk at @garcias_chicago brought to you by @deepcutpresents & Dayglo 🤝",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcFQroUICps/",
+      "shortcode": "DcFQroUICps",
+      "wedding_id": "1284",
+      "venue": "hobchicago",
+      "source": "venue_tagged",
+      "roles": "musician,photographer,venue",
+      "event_date_est": "2026-08-16T05:00:00.000Z",
+      "caption_head": "@zhamirazambranomusic at @hobchicago \n.\nShot for @first3.noflash \n.\n#zhamira #hobchicago #chicagophotographer",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcHJEynv8yx/",
+      "shortcode": "DcHJEynv8yx",
+      "wedding_id": "1286",
+      "venue": "uccweddings",
+      "source": "venue_tagged",
+      "roles": "band,beauty_other,content_creator,florist,photographer,planner,venue,videographer",
+      "event_date_est": "2026-08-16T05:00:00.000Z",
+      "caption_head": "POV: I want my wedding Timeless -Elegant -Sophisticated 🥂 \n.\n.\n.\nWedding Planner @lobowles  @stunningandbrilliantevents \nDesign and Decor @lavenderfieldsflorist",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcIIE90OSn5/",
+      "shortcode": "DcIIE90OSn5",
+      "wedding_id": "1294",
+      "venue": "bridgeportartcenter",
+      "source": "venue_tagged",
+      "roles": "cake,catering,content_creator,dj,florist,hair,makeup,musician,other,photographer,planner,venue,videographer",
+      "event_date_est": "2026-08-17T05:00:00.000Z",
+      "caption_head": "Yesterday was such a beautiful and blessed day celebrating my wonderful clients, Marissa & Michael, as they said “I do” at the stunning Bridgeport Art Center. 🤍",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcJw2b4m__5/",
+      "shortcode": "DcJw2b4m__5",
+      "wedding_id": "1305",
+      "venue": "iamtheavalanchenyc",
+      "source": "venue_tagged",
+      "roles": "other,photographer,venue",
+      "event_date_est": "2026-08-17T05:00:00.000Z",
+      "caption_head": "@thestorysofarca x @iamtheavalanchenyc @hobchicago 08/01/2026 \n\n#tssf #thestorysofar #punk #filmphotography #concert",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcJhXRTET86/",
+      "shortcode": "DcJhXRTET86",
+      "wedding_id": "1306",
+      "venue": "hobchicago",
+      "source": "venue_tagged",
+      "roles": "content_creator,musician,venue",
+      "event_date_est": "2026-08-17T05:00:00.000Z",
+      "caption_head": "Curita para el corazón en Chicago ❤️‍🩹 \nBy @zhamirazambranomusic ❣️\n@jaywheelerpr \nat @hobchicago ✨",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcJQjFJgIbN/",
+      "shortcode": "DcJQjFJgIbN",
+      "wedding_id": "1307",
+      "venue": "revelspace",
+      "source": "venue_tagged",
+      "roles": "catering,planner,rentals,venue",
+      "event_date_est": "2026-08-17T05:00:00.000Z",
+      "caption_head": "Proof that great venues know how to play offense.\n\nThe team:\n@17_sport_teamwear\n@deloitte\n@wnba\n@make.the.momt\n@revel_decor\n@revelspace\n@revelglobalevents\n@lime",
+      "buckets": [
+        "same_venue"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcHvtTLCel2/",
+      "shortcode": "DcHvtTLCel2",
+      "wedding_id": "1308",
+      "venue": "chicagoathletichotel",
+      "source": "venue_tagged",
+      "roles": "beauty_other,cake,dj,florist,hair,other,photographer,planner,rentals,venue,videographer",
+      "event_date_est": "2026-08-17T05:00:00.000Z",
+      "caption_head": "Congratulations, Nisha and Miguel! An incredible wedding day for these two. \n\nWedding Team:\n\nPlanning: @lolaeventpros @lolanicolew\nVenue: @chicagoathletichotel\n",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcJa-kMN5-k/",
+      "shortcode": "DcJa-kMN5-k",
+      "wedding_id": "1308",
+      "venue": "chicagoathletichotel",
+      "source": "venue_tagged",
+      "roles": "beauty_other,cake,dj,florist,hair,other,photographer,planner,rentals,venue,videographer",
+      "event_date_est": "2026-08-17T05:00:00.000Z",
+      "caption_head": "💕Nisha and Miguel💕\nBeautiful Bride and Groom's Mehndi \n\n@lolaeventpros \n@lolanicolew \n@joylynphoto \n@chicagoathletichotel \n@ashaddevents \n@lvcasmedia \n@glamatel",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcJvqkRt-1X/",
+      "shortcode": "DcJvqkRt-1X",
+      "wedding_id": "1311",
+      "venue": "rcchicago",
+      "source": "venue_tagged",
+      "roles": "cake,catering,musician,rentals,venue",
+      "event_date_est": "2026-08-17T05:00:00.000Z",
+      "caption_head": "Milestone Birthdays are another event I love to personalize! \n.\n.\n.\n.\n.\n.\n@rcchicago @bittersweetpastryshop @bbjlatavola @tablescapeseventrentals @tablescapesch",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcJpiKqlb5w/",
+      "shortcode": "DcJpiKqlb5w",
+      "wedding_id": "1312",
+      "venue": "venuelogic",
+      "source": "venue_tagged",
+      "roles": "beauty_other,dj,florist,musician,planner,venue",
+      "event_date_est": "2026-08-17T05:00:00.000Z",
+      "caption_head": "It’s been a summer full of love, warmth, light, and also… crazy weather?? For Nora and Collin, no amount of rain or wildfire smoke was a match for their love an",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcJXE_1xqsY/",
+      "shortcode": "DcJXE_1xqsY",
+      "wedding_id": "1314",
+      "venue": "ulcchicago",
+      "source": "venue_tagged",
+      "roles": "band,florist,photographer,planner,rentals,venue",
+      "event_date_est": "2026-08-17T05:00:00.000Z",
+      "caption_head": "On cloud nine because we did that!!! Definitely a mind blowing (and bucket list !) moment seeing the transformation at the @ulcchicago this weekend via florals,",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcMlji1nEsm/",
+      "shortcode": "DcMlji1nEsm",
+      "wedding_id": "1318",
+      "venue": "bridgeportartcenter",
+      "source": "venue_tagged",
+      "roles": "attire,band,catering,florist,makeup,other,photographer,planner,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "💍 It was an absolute joy helping bring Becca & Tim’s wedding day to life back in June with their deliciously custom menu! They included tailored choices such as",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcL-QEggPAG/",
+      "shortcode": "DcL-QEggPAG",
+      "wedding_id": "1319",
+      "venue": "bridgeportartcenter",
+      "source": "venue_tagged",
+      "roles": "dj,florist,hair,makeup,other,photographer,venue,videographer",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "M & M — 8.15.26 🦢\n\nVendor Team: \nPhotography — @candacesimsphoto \nCoordinator — @honorary.bridesmaid \nVenue — @bridgeportartcenter \nContent Creator — @capturedb",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcKaZh7KPIF/",
+      "shortcode": "DcKaZh7KPIF",
+      "wedding_id": "1321",
+      "venue": "311pazzos",
+      "source": "venue_tagged",
+      "roles": "attire,dj,florist,hair,other,photographer,venue,videographer",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "J+D | 8.15.26 🕊️\n\nVendor Team:\nVenue: @311pazzos \nCoordinator: @hei.event\nPhoto & Video: @momentsbyfrank \nContent: @lingerlongermedia \nDJ: @seoulcitypro \nFloral",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcMGvn0lNO3/",
+      "shortcode": "DcMGvn0lNO3",
+      "wedding_id": "1322",
+      "venue": "chicagobotanic",
+      "source": "venue_tagged",
+      "roles": "cake,dj,florist,hair,makeup,photographer,planner,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "A summer celebration in full bloom at the Chicago Botanic Garden🌿🤍 \n\nFloral & Decor: @yannidesignstudio - Eric & Keith \nVenue: @chicagobotanic \nPlanner: @afterg",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcLzIx5kZK8/",
+      "shortcode": "DcLzIx5kZK8",
+      "wedding_id": "1323",
+      "venue": "chicagoculturalcenter",
+      "source": "venue_tagged",
+      "roles": "cake,catering,florist,hair,makeup,photobooth,photographer,planner,rentals,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "Ceremony details of Natalie & Insoo’s beautiful day at @chicagoculturalcenter \n\nMore to come🤍\n\nThe Team\nPhoto Lead @m.w.collective \nSecond Shooter @leahstarkeyp",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcPan7QETNp/",
+      "shortcode": "DcPan7QETNp",
+      "wedding_id": "1323",
+      "venue": "chicagoculturalcenter",
+      "source": "venue_tagged",
+      "roles": "cake,catering,florist,hair,makeup,photobooth,photographer,planner,rentals,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "Natalie & Insoo | August 7th, 2026\n\nA beautiful day at the Chicago Cultural Center, a dream venue of mine for so long.\n\nI first met Natalie and Insoo two years ",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcMNAYHkRgc/",
+      "shortcode": "DcMNAYHkRgc",
+      "wedding_id": "1327",
+      "venue": "fieldmuseum",
+      "source": "venue_tagged",
+      "roles": "cake,catering,dj,florist,hair,musician,officiant,other,photographer,planner,rentals,venue,videographer",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "A love story, on exhibit. 🏛️✨ \n\nFor Gina & Nick, every detail at the Field Museum was designed to feel deeply personal from hand-drawn and sewn ceremony backdro",
+      "buckets": [
+        "caption_heuristic",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcL46UADhss/",
+      "shortcode": "DcL46UADhss",
+      "wedding_id": "1330",
+      "venue": "hobchicago",
+      "source": "venue_tagged",
+      "roles": "band,musician,photographer,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "@wiltband bringing the noise to @hobchicago opening for @jutesmusic on the Smile You’re On Tour.\n\nFresh off the release of “Dent” and with their debut album com",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcKp-bOjpUb/",
+      "shortcode": "DcKp-bOjpUb",
+      "wedding_id": "1331",
+      "venue": "hobchicago",
+      "source": "venue_tagged",
+      "roles": "content_creator,musician,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "@jutesmusic at the @hobchicago \n.\nShot for @digitalnoisemag \n.\n#jutes #chicagophotographer #concertphotographer #hobchicago",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcKuJQ-NDop/",
+      "shortcode": "DcKuJQ-NDop",
+      "wedding_id": "1336",
+      "venue": "navypiereventcenter",
+      "source": "venue_tagged",
+      "roles": "musician,photographer,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "me 🤝 a cheeky shuffle 😌\n\nhad so much fun saturday at @zhu , and if you want to see more coverage from this night, head over to @houseofjandra :)\n\n📍 @navypiereve",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcLsYywhNmb/",
+      "shortcode": "DcLsYywhNmb",
+      "wedding_id": "1337",
+      "venue": "morgansonfulton",
+      "source": "venue_tagged",
+      "roles": "content_creator,florist,photographer,planner,rentals,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "Kinda chic to get the dance floor 🖤🤍 \n\nCrisp monochrome checkers, romantic candlelit tablescapes, and seamless indoor-outdoor views. Addison & Will’s Chicago we",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcMnqNLFVrr/",
+      "shortcode": "DcMnqNLFVrr",
+      "wedding_id": "1338",
+      "venue": "ovationchicago",
+      "source": "venue_tagged",
+      "roles": "attire,catering,dj,florist,hair,hotel,jeweler,other,photographer,transportation,venue,videographer",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "As wedding coordinators, “winging it” is not in our vocabulary.\n\nEven for weddings booked last-minute like this one - where a previous coordinator fell through ",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcMvE8cIA5j/",
+      "shortcode": "DcMvE8cIA5j",
+      "wedding_id": "1339",
+      "venue": "ramovachicago",
+      "source": "venue_tagged",
+      "roles": "dj,musician,other,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "📍CHICAGO📍OCT 24\n.\n @mobbdeephavoc WITH\n @rappernoyd X @djlesproducer x Talib Kweli \n.\n@ramovachicago\n.\n 🔥Roster is stacked ⚡\nYou don’t want to miss it ➡️ Ticket",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcMdiuqlOL6/",
+      "shortcode": "DcMdiuqlOL6",
+      "wedding_id": "1340",
+      "venue": "philamoca",
+      "source": "venue_tagged",
+      "roles": "band,musician,photographer,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "TOUR STARTS THIS WEEKEND! 🫨 Drop your setlist requests in the comments! Maybe some unreleased songs, some older songs, or a fun cover? \n\nLet us know what show y",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcMEf72FUi8/",
+      "shortcode": "DcMEf72FUi8",
+      "wedding_id": "1341",
+      "venue": "reggieslive",
+      "source": "venue_tagged",
+      "roles": "band,photographer,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "THIS THURSDAY! We’ll be at @reggieslive Music Joint with @unvirginmaryband @satinbansheechi and @the_human_trials 🦇🦇🦇 \n🔮 doors 7:30pm / show 8:30pm\n🍕 $15, 21+\n🍀",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcMvmTbFr9d/",
+      "shortcode": "DcMvmTbFr9d",
+      "wedding_id": "1343",
+      "venue": "thegwenchicago",
+      "source": "venue_tagged",
+      "roles": "beauty_other,catering,florist,makeup,other,photobooth,photographer,planner,rentals,transportation,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "What’s better than a wedding day in Chicago?!\n\n-\n\n@thegwenchicago\n@salon61events\n@rosannacoweddings\n@socialbridescollective\n@hearts.and.flower\n@ecbg_studio \n@ok",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcK7RznFKzp/",
+      "shortcode": "DcK7RznFKzp",
+      "wedding_id": "1344",
+      "venue": "rpmprivateevents",
+      "source": "venue_tagged",
+      "roles": "dj,florist,hair,musician,other,photographer,planner,transportation,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "The glow of a city summer wedding ✨\n\nPhotography: @arielle.peters \nSG Planner: @joanna.pirszel \nVenue/Catering: @rpmprivateevents \nFlorist: @lbfloristry \nHair +",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcKbjKHlPOi/",
+      "shortcode": "DcKbjKHlPOi",
+      "wedding_id": "1345",
+      "venue": "rpmprivateevents",
+      "source": "venue_tagged",
+      "roles": "attire,cake,dj,florist,hair,makeup,officiant,photographer,stationery,venue,videographer",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "Everything was beautiful. Like… everything!!!\n\nThe Chicago River. RPM Events. The florals. The details. Taylor. Bryce. The whole dang day!!!\n\nMy favorite part w",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcLdPPAnLuQ/",
+      "shortcode": "DcLdPPAnLuQ",
+      "wedding_id": "1346",
+      "venue": "sarabandechicago",
+      "source": "venue_tagged",
+      "roles": "attire,florist,hair,makeup,other,photographer,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "Classic elegance never goes out of style ✨️⁠\n⁠\nAnd, every detail of Gianna and Jacob's wedding day felt effortlessly timeless—from Gianna's stunning organza bal",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcLmlMnNS91/",
+      "shortcode": "DcLmlMnNS91",
+      "wedding_id": "1348",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "catering,florist,other,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "Such a pleasure, as always, to kick off the night at Ronald McDonald House Charities’ annual fundraiser gala. ✨\nThis marked my 3rd year in a row performing for ",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcMYe9UiJkh/",
+      "shortcode": "DcMYe9UiJkh",
+      "wedding_id": "1349",
+      "venue": "therookerybuilding",
+      "source": "venue_tagged",
+      "roles": "catering,content_creator,dj,hair,makeup,musician,photographer,planner,rentals,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "Last Saturday was a dream.  Drapery: @artofimaginationdecor Events and catering: @jewelleventscatering DJ @djmargot 🎻: @piotrowski_strings Make up: @giselledozi",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcMpCcvmYBy/",
+      "shortcode": "DcMpCcvmYBy",
+      "wedding_id": "1350",
+      "venue": "universityclubofchicago",
+      "source": "venue_tagged",
+      "roles": "florist,photographer,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "Still can’t get over this one 🥂\n\nVenue: @universityclubofchicago \nFlorists: @atmosphereeventsgroup \nPhotography: @timtabstudios \n\n#weddingplanner #luxurywedding",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcL6RrLx5Hd/",
+      "shortcode": "DcL6RrLx5Hd",
+      "wedding_id": "1352",
+      "venue": "ulcchicago",
+      "source": "venue_tagged",
+      "roles": "band,florist,other,photographer,planner,venue",
+      "event_date_est": "2026-08-18T05:00:00.000Z",
+      "caption_head": "Gisela + Charles and the @ulcchicago was a chandelier and floral filled affair full of celebration, romance, and elegance. This moment before the guests arrive ",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOYU2eEUHE/",
+      "shortcode": "DcOYU2eEUHE",
+      "wedding_id": "1353",
+      "venue": "galleriamarchetti",
+      "source": "venue_tagged",
+      "roles": "attire,dj,florist,hair,makeup,photographer,planner,stationery,venue,videographer",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "husband & wife\n08.15.26 🤍\n\nPhotographer: @christytylerphotography \nPlanner/Coordinator: @blushandborrowed \nHair Stylist: @megmichelbrides \nMakeup Artist: @makeu",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcPAco5hFWm/",
+      "shortcode": "DcPAco5hFWm",
+      "wedding_id": "1354",
+      "venue": "chicagoathletichotel",
+      "source": "venue_tagged",
+      "roles": "florist,photographer,planner,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Custom bar? Absolutely🥂 Especially when it looks this good surrounded by candlelight and dreamy blue details!🩵🤩\n\nFloral & Decor: @yannidesignstudio - Ramsey & N",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOpAc0oXMX/",
+      "shortcode": "DcOpAc0oXMX",
+      "wedding_id": "1356",
+      "venue": "chicagoilluminatingcompany",
+      "source": "venue_tagged",
+      "roles": "attire,catering,florist,hair,hotel,musician,photographer,planner,transportation,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "For once in my life, everything felt just right. 🤍\n\nAlexandra and Edward’s wedding day was one of those days that just felt so good from beginning to end. The k",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcO7DFhFBUa/",
+      "shortcode": "DcO7DFhFBUa",
+      "wedding_id": "1357",
+      "venue": "thecanvasvenue",
+      "source": "venue_tagged",
+      "roles": "attire,beauty_other,cake,catering,dj,other,photographer,planner,rentals,venue,videographer",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Nabiha & Taha’s Mehndi✨\n\nPhoto: @rimshanasir \nDecor: @yannidesignstudio \nPlanning: @opulenteventschi \nBridal HMUA: @makeupbyrabia \nBridal gajre: @saazcreations ",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOkzzCRNpC/",
+      "shortcode": "DcOkzzCRNpC",
+      "wedding_id": "1358",
+      "venue": "artifacteventschicago",
+      "source": "venue_tagged",
+      "roles": "cake,catering,dj,florist,hair,makeup,other,photographer,planner,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "An Indian ceremony is a beautiful celebration of love, family, and timeless traditions. Every ritual carries meaning, bringing two families together and honorin",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcPA_QaiQGq/",
+      "shortcode": "DcPA_QaiQGq",
+      "wedding_id": "1359",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "band,musician,officiant,other",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Tomorrow night, Thursday, in Chicago! So many of my worlds and old friends collide for this Chicago SummerDance event. My decade of public programming and runni",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOzhItjFM5/",
+      "shortcode": "DcOzhItjFM5",
+      "wedding_id": "1360",
+      "venue": "raviniafestival",
+      "source": "venue_tagged",
+      "roles": "band,musician,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "First Tchaikovsky in 6 years. What a dream with inimitable  @earlleeconductor @chicagosymphony @raviniafestival 📸 1-8 by Olivia Lutz",
+      "buckets": [
+        "role_shape"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcPDQtBTxEF/",
+      "shortcode": "DcPDQtBTxEF",
+      "wedding_id": "1361",
+      "venue": "cheneymansion",
+      "source": "venue_tagged",
+      "roles": "beauty_other,cake,catering,dj,other,photographer,planner,stationery,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "The perfect summertime soiree? Saying “I do” surrounded by the prettiest blooms, candlelight, and all the people you love at a gorgeous mansion in Oak Park 🧡\n\nH",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOuzOkFv79/",
+      "shortcode": "DcOuzOkFv79",
+      "wedding_id": "1362",
+      "venue": "publicworksgallery",
+      "source": "venue_tagged",
+      "roles": "catering,dj,musician,officiant,photographer,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "“We are because of them.”\n\nWhen I asked Frank and Aaron what story they wanted to tell, it was not of them but of all the incredible people in their lives that ",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOg8tRxM0c/",
+      "shortcode": "DcOg8tRxM0c",
+      "wedding_id": "1363",
+      "venue": "colvinevents",
+      "source": "venue_tagged",
+      "roles": "dj,other,photographer,venue,videographer",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "who can say no to a princess moment 👑 – the bride’s bridesmaid was her personal “paolo” on her wedding day and it made the glam even more special 💫 \n\nbride: @na",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcNUEvvMvIk/",
+      "shortcode": "DcNUEvvMvIk",
+      "wedding_id": "1366",
+      "venue": "garcias_chicago",
+      "source": "venue_tagged",
+      "roles": "musician,other,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Sneezy is sick, who’s checking them out this go around at Garcia’s?\n#livemusicchicago #chicagofunk #chicagolivemusic #chicagoshows @garcias_chicago @deepcutpres",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcO8mOIpUAW/",
+      "shortcode": "DcO8mOIpUAW",
+      "wedding_id": "1367",
+      "venue": "hobchicago",
+      "source": "venue_tagged",
+      "roles": "band,photographer,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Review and photos of @belmontmusic @majorleaguenj @spitehouseband by @dennyray.photography from @hobchicago is live on our website. \n\nChicago welcomed home Belm",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcO0vB1MwjK/",
+      "shortcode": "DcO0vB1MwjK",
+      "wedding_id": "1368",
+      "venue": "huntingtonbankpavilion",
+      "source": "venue_tagged",
+      "roles": "band,musician,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Willie Nelson, the Avett Brothers, Sierra Hull and more at Outlaw Music Festival!\n@willienelsonofficial @theavettbrothers @sierradawnhull @huntingtonbankpavilio",
+      "buckets": [
+        "caption_heuristic",
+        "role_shape",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOdaF2udV-/",
+      "shortcode": "DcOdaF2udV-",
+      "wedding_id": "1369",
+      "venue": "thegeraghty",
+      "source": "venue_tagged",
+      "roles": "florist,other,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Unveil the product launch, then host the awards. Two back to back events that feel coordinated and connected, yet totally unique - all under one roof. \n\nFor @ar",
+      "buckets": [
+        "same_venue",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOyif7IFoA/",
+      "shortcode": "DcOyif7IFoA",
+      "wedding_id": "1370",
+      "venue": "lh_schubas",
+      "source": "venue_tagged",
+      "roles": "musician,photographer,venue,videographer",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Stepping through the portal into a new @pinksqueeze_music era 💫 SO excited to announce today that our next record, “We Can Have It,” will be out 10/23 followed ",
+      "buckets": [
+        "same_venue",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcNx6TSnMb2/",
+      "shortcode": "DcNx6TSnMb2",
+      "wedding_id": "1371",
+      "venue": "lh_schubas",
+      "source": "venue_tagged",
+      "roles": "band,musician,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Choker, Arima Ederra | Lincoln Hall [CHI] | 6.5.26\n@choker @arimaederra @lh_schubas",
+      "buckets": [
+        "same_venue",
+        "role_shape",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOwNdQls-m/",
+      "shortcode": "DcOwNdQls-m",
+      "wedding_id": "1372",
+      "venue": "lmstudiochi",
+      "source": "venue_tagged",
+      "roles": "dj,hair,makeup,officiant,other,photographer,planner,venue,videographer",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "TWO MILITARIES IN LOVE ❤️\nBrianna and Maurice’s story began in Japan in 2022, where two lives crossed quietly, almost unknowingly. It's not until a simple game ",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcPF1MmoJkI/",
+      "shortcode": "DcPF1MmoJkI",
+      "wedding_id": "1373",
+      "venue": "universityclubofchicago",
+      "source": "venue_tagged",
+      "roles": "band,planner,rentals,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "You spend months planning where everyone will sit. The goal is to make sure they don’t stay there 😂\n\nVenue @universityclubofchicago\nPlanning @lofi_events\nDecor ",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcM4-EoCfDg/",
+      "shortcode": "DcM4-EoCfDg",
+      "wedding_id": "1374",
+      "venue": "loftlucia",
+      "source": "venue_tagged",
+      "roles": "catering,florist,venue,videographer",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Taking a break from editing photos to post photos I’ve edited lately. \n\nStill dreaming over @sam_the_blam and the party (wedding) she (and Edward) threw. The de",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOtZrVRGIs/",
+      "shortcode": "DcOtZrVRGIs",
+      "wedding_id": "1375",
+      "venue": null,
+      "source": "venue_tagged",
+      "roles": "attire,florist,other",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "L💜VE was in the air at the National Bridal Market 50th Anniversary Masquerade Gala 🎭💍👰🏽‍♀️💐\n\nFollowing a week of buying & selling at the Merchandise Mart, the i",
+      "buckets": [
+        "caption_heuristic"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcPFvKUsB70/",
+      "shortcode": "DcPFvKUsB70",
+      "wedding_id": "1376",
+      "venue": "reggieslive",
+      "source": "venue_tagged",
+      "roles": "band,musician,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Stoked for @bookofwyrms mighty return to Chicago Saturday @reggieslive , and was way happy to write up these VA fantasy psychOmetal overlords in the @chicago_re",
+      "buckets": [
+        "same_venue",
+        "role_shape",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOmdVcOEMY/",
+      "shortcode": "DcOmdVcOEMY",
+      "wedding_id": "1377",
+      "venue": "venuelogic",
+      "source": "venue_tagged",
+      "roles": "catering,florist,hair,makeup,planner,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "a little glimpse into the sweetest day 🤍✨ 8.15.26\n\n•\n\nVenue: @rockwellontheriver \nVenue Management & Bar: @venuelogic \nPlanning: @thecreativeplanners \nCatering:",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcNOU7BET-4/",
+      "shortcode": "DcNOU7BET-4",
+      "wedding_id": "1378",
+      "venue": "thelogantheatre",
+      "source": "venue_tagged",
+      "roles": "florist,planner,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "A magical Saturday in Chicago! Miranda and Alex thought of everything— from revamping her mother’s wedding dress, brewing their own beer for the day, walking in",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOQPKdEQ2O/",
+      "shortcode": "DcOQPKdEQ2O",
+      "wedding_id": "1379",
+      "venue": "theexchangechicago",
+      "source": "venue_tagged",
+      "roles": "florist,musician,photographer,rentals,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "The Reception\n\nDay two was all about the party. 🥂 Danced through every song, swag surfs, and soul train lines with our favorite people. The most incredible nigh",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcOHR6qx7kB/",
+      "shortcode": "DcOHR6qx7kB",
+      "wedding_id": "1380",
+      "venue": "_thefirehouse_",
+      "source": "venue_tagged",
+      "roles": "officiant,other,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "@pastorphilspeaks and Deon Jackson stopped at @spotlightwgn to talk all about @_thefirehouse_ the Block Party for peace! It was a great conversation!",
+      "buckets": [
+        "same_venue",
+        "caption_heuristic",
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcPH6bEjd-v/",
+      "shortcode": "DcPH6bEjd-v",
+      "wedding_id": "1381",
+      "venue": "the.arbory",
+      "source": "venue_tagged",
+      "roles": "attire,beauty_other,cake,catering,dj,florist,jeweler,other,photographer,planner,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "Some favorites from Claire and Kevin’s wedding at The Arbory. Had a hard time narrowing these down, and I still have so much more from their day to share.\n\nVenu",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcM83IgkfiW/",
+      "shortcode": "DcM83IgkfiW",
+      "wedding_id": "1382",
+      "venue": "ulcchicago",
+      "source": "venue_tagged",
+      "roles": "attire,florist,hair,makeup,other,photographer,planner,venue",
+      "event_date_est": "2026-08-19T05:00:00.000Z",
+      "caption_head": "married my best friend last week!! 🤍\n\ngot to be on the other side of the wedding world and experience the gift of weddings as a bride and celebrating marriage w",
+      "buckets": [
+        "feed_head"
+      ]
+    },
+    {
+      "post_url": "https://www.instagram.com/p/DcP7q1SDpiS/",
+      "shortcode": "DcP7q1SDpiS",
+      "wedding_id": "1383",
+      "venue": "offshorerooftop",
+      "source": "venue_tagged",
+      "roles": "attire,dj,florist,musician,other,planner,venue",
+      "event_date_est": "2026-08-20T05:00:00.000Z",
+      "caption_head": "Whipping this up 🎾❤️💃👰‍♀️ \n\n@cschicagosocial CS Summer Serve\n@galleriamarchetti @rangerover @orloffchicago @vanloyco @tiffanymooreviolin @butterandvine \n\n@natio",
+      "buckets": [
+        "caption_heuristic",
+        "feed_head"
+      ]
+    }
+  ]
+}
