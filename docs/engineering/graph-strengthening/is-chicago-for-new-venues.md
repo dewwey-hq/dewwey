@@ -1,14 +1,14 @@
 # is_chicago for newly-discovered venue accounts — closing the gap that blocked scaling past the D035 pilot
 
-**Status (2026-09-05): Phase 1 committed. Phase 2 fully worked through: all 130 web-search
-lookups done (99 confirmed), duplicate checks + a new church/venue-ambiguity filter applied
-(125 of 169 candidates clean), creation dry-run verified (125 weddings, 144 posts, 1,335
-vendor rows). Nothing committed yet — both the location backfill (99 rows) and the
-creation (125 weddings) are dry-run-verified only, awaiting the user's review and the
-`!`-prefixed commands below.** Durable checklist — read this file first every wake-up,
-verify current state before checking anything off. Full narrative: `docs/decisions.md`
-D036 (kickoff), D037 (Phase 1 committed), D038 (WebSearch pivot), D039 (Phase 2 complete,
-dry-run ready).
+**Status (2026-09-05): DONE. Phase 1 and Phase 2 both committed.** 99 `account_locations`
+rows backfilled via WebSearch; 125 new weddings created from the clean Phase 2 pool (ids
+1755-1879, 144 posts, 1,335 vendor rows). Idempotency re-verified live (both scripts
+re-run: 0 new inserts). Tests updated (5th snapshot-drift occurrence this arc) and green,
+47/47. `/feed` coverage: 18.7% (303/1,624), up from 11.9% at the start of this mission and
+4.6% at the start of the whole workstream. This mission is closed — see
+`jeremy-wedding-creation.md` or a fresh mission doc for what's next in this workstream.
+Full narrative: `docs/decisions.md` D036 (kickoff), D037 (Phase 1 committed), D038
+(WebSearch pivot), D039 (Phase 2 committed).
 
 ## Why this exists
 
@@ -193,10 +193,14 @@ extend the venue-role filter check, dry-run creation, commit with the user's rev
       `vendors.city` string — some Phase 2 locations are suburbs like Oak Brook, Naperville,
       Kildeer, consistent with "Chicago metro," not literal city-limits, being the actual
       `is_chicago` semantics this whole workstream has used since D035).
-      **Not yet committed** — awaiting the user's review of this summary and the
-      `account_locations` backfill landing first (creation depends on nothing from that
-      table directly, since `is_chicago` here is hardcoded off the same confirmed-account
-      list, but conceptually the location backfill should land first for consistency).
+      **Committed** (2026-09-05) — user reviewed the summary and ran both scripts. 99
+      `account_locations` rows backfilled, then 125 weddings created (ids 1755-1879), 144
+      posts imported, 1,335 `wedding_vendors` rows, `edges` refreshed. Idempotency verified
+      live (both scripts re-run: 0 new inserts, everything correctly skipped). Spot-checked
+      wedding 1801 (`rpmeventsandcatering`, candidate 1329, the thinnest result at 4
+      vendors): `is_chicago=true`, `/vendors/rpmeventsandcatering` returns 200 and renders.
+      `measureFeedCoverage.ts` re-run: 303/1,624 documented weddings (18.7%) now trace to
+      `/feed`, up from 178/1,499 (11.9%) before this mission.
 - [x] **Docs closed out for Phase 1** (2026-09-05) — `docs/decisions.md` D037,
       `ROADMAP.md` updated, this file's
       Status line set to reflect what actually shipped.

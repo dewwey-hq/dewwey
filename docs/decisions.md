@@ -37,9 +37,17 @@ Decision:
   the 99 confirmed accounts) → 125 new weddings, 144 posts, 1,335 vendor rows. All 115
   previously-created weddings (D035+Phase1) correctly no-op via `jeremy_weddings_created`.
   Spot-checked the thinnest result (candidate 1329, 4 vendors) by hand: genuine.
-Neither the location backfill (99 rows) nor the creation (125 weddings) is committed yet —
-both dry-run-verified only, handed to the user with exact `!`-prefixed commands (same
-auto-mode-classifier block as every write this session).
+**Committed** (2026-09-05) — user ran both handed-off commands. 99 `account_locations`
+rows landed, then 125 weddings created (ids 1755-1879, 144 posts, 1,335 vendor rows,
+`edges` refreshed). Idempotency re-verified live (both scripts re-run: 0 new inserts).
+Tests updated for the resulting count drift (weddings 1499→1624, wedding_posts 1797→1941,
+accounts 14332→14334, wedding_vendors untouched-by-D023 13483→14818/total 13583→14918 —
+the 5th such drift this arc, expected and documented in the test file itself) and green,
+47/47. Spot-checked wedding 1801 (`rpmeventsandcatering`) live: `is_chicago=true`,
+`/vendors/rpmeventsandcatering` returns 200. `measureFeedCoverage.ts`: 303/1,624 documented
+weddings (18.7%) now trace to `/feed`, up from 178/1,499 (11.9%) before this mission and
+4.6% at the start of the whole workstream. This closes the is-chicago-for-new-venues
+mission.
 Related: D036 (Phase 2 scoping), D038 (WebSearch pivot decision).
 
 ---

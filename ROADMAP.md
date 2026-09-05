@@ -27,36 +27,26 @@ anything below: `docs/decisions.md` (D001–D031 so far).
 - Added `apps/web/scripts/graph/measureFeedCoverage.ts` — a re-runnable
   coverage metric. Reading as of 2026-09-05: of 4,033 `/feed` posts,
   only 63 distinct Ben weddings (4.6%) have a confirmed vendor credit.
-- **Pilot done 2026-09-05, scope-beyond-pilot still open**: acting on the
-  coverage gap above — reconciliation only ever matches a candidate to
-  an *existing* Ben wedding, never creates one. Built identity-creation
-  (first ever in this workstream), scoped to the 447 unmatched
-  candidates with zero existing Ben weddings at their venue. Two
-  duplicate checks (intra-batch + secondary-account) both clean at
-  0/447. 15-candidate hand-read pilot **committed**: 15 new weddings
-  (ids 1415-1429), 17 posts imported, 172 vendor credits, idempotency
-  verified. `is_chicago` was a hand-verified judgment call for these 15
-  — scoped the fix (D036) and **shipped Phase 1** (D037): 100 more
-  weddings created (ids 1530-1629, 112 posts, 945 vendor credits) after
-  a systematic bio cross-check caught 2 mislabeled "venues" (a lighting
-  rental company, a caterer whose own bio named a different account as
-  the real venue) that an earlier filter pass missed. **Total from this
-  workstream so far: 115 weddings created; 178 of 1,499 documented
-  weddings (11.9%, up from 4.6% at the start of this arc) now trace to
-  `/feed`** (`measureFeedCoverage.ts`). 208 candidates (130 distinct venue
-  accounts) had zero location signal — Phase 2 pivoted from the paid
-  Google Places API to free `WebSearch` after the user asked whether it
-  could do better (D038), then run all the way through to a creation
-  dry-run in one session (D039): 99/130 accounts confirmed real
-  Chicago-metro locations; duplicate checks clean (0/169); a new
-  church-vs-reception-venue ambiguity pattern found (44/169 candidates,
-  excluded conservatively); **125-wedding creation dry-run ready** (144
-  posts, 1,335 vendor rows). **Nothing committed yet** — both the 99-row
-  location backfill and the 125-wedding creation are dry-run-verified
-  only, awaiting the user running the handed-off commands. If both land,
-  this workstream's total goes from 115 to 240 weddings created.
-  D034-D039, `docs/engineering/graph-strengthening/jeremy-wedding-creation.md`,
-  `docs/engineering/graph-strengthening/is-chicago-for-new-venues.md`.
+- **Done 2026-09-05**: acted on the coverage gap above — reconciliation
+  only ever matches a candidate to an *existing* Ben wedding, never
+  creates one. Built identity-creation (first ever in this workstream),
+  scoped to the 447 unmatched candidates with zero existing Ben weddings
+  at their venue. Two duplicate checks (intra-batch + secondary-account)
+  clean throughout. 15-candidate hand-read pilot **committed**: 15 new
+  weddings (D035). `is_chicago` was hand-verified for those 15 — scoped
+  the fix (D036) and shipped **Phase 1** (D037): 100 more weddings after
+  a bio cross-check caught 2 mislabeled "venues." **Phase 2** (208
+  candidates / 130 venue accounts with zero location signal) pivoted from
+  the paid Google Places API to free `WebSearch` after the user asked
+  whether it could do better (D038): 99/130 confirmed real Chicago-metro
+  locations across 4 batches, duplicate checks clean, a new
+  church-vs-reception-venue ambiguity pattern found and excluded (44 of
+  169 candidates), **125 more weddings created** from the clean pool
+  (D039). **Total from this workstream: 240 weddings created; 303 of
+  1,624 documented weddings (18.7%, up from 4.6% at the start of this
+  arc) now trace to `/feed`** (`measureFeedCoverage.ts`). Both missions
+  (`jeremy-wedding-creation.md`, `is-chicago-for-new-venues.md`) are
+  closed. D034-D039.
 
 ## Shipped, on `main` (compressed — see `docs/decisions.md` for full detail)
 
