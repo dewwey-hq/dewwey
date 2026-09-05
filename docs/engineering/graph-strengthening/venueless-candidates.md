@@ -62,9 +62,11 @@ problem only, not the reconciliation-decision problem (that's proven code, reuse
 
 ## Checklist (work top to bottom; check off only after live re-verification)
 
-- [ ] **Read a sample of `location_tag` values by hand** (~20-30, from the 300) — report
-      here what they actually look like (clean venue names? addresses? generic city tags?
-      a mix?) before deciding on a matching strategy.
+- [x] **Read a sample of `location_tag` values by hand** (2026-09-05) — 30 random distinct
+      values read directly. **~87% are clean, specific real venue/place names** — many
+      already known in this DB (`The Armour House`, `The Wellsley`, `Chicago Illuminating
+      Company` all already appear as credited venues elsewhere in `wedding_vendors`). See
+      "Baseline findings" below for the full sample and the match-rate sizing.
 - [ ] **Build a read-only sizing/matching script** (mirror `sizeCaseBAttachOpportunity.ts` —
       no writes), matching `location_tag` against `accounts.full_name` / `vendors.name` /
       `vendors.address` for the venue-role accounts Ben already knows. Report: how many of
@@ -85,4 +87,41 @@ problem only, not the reconciliation-decision problem (that's proven code, reuse
 
 ## Baseline findings
 
-*(not yet filled in — the loop's first step)*
+**Sample of 30 random distinct `location_tag` values (2026-09-05)**: `The Lytle House`,
+`Renaissance Chicago Downtown Hotel`, `The Casino Club`, `Chicago Cultural Center`, `Stone
+Manor`, `The Midland Hotel, Chicago, A Tribute Portfolio Hotel`, `Inverness, Illinois`,
+`Adler Planetarium, Chicago`, `Loft Lucia`, `Chicago Athletic Association Hotel`, `Chicago
+Illuminating Company`, `The Armour House`, `Lake Bluff, Illinois`, `Palmer House Hilton
+Downtown Chicago`, `Westmoreland Country Club`, `Beatnik On The River`, `The Gwen Hotel`,
+`Field Museum`, `The Haley Mansion`, `Saddle Cycle Club`, `Evanston, IL`, `Crystal-Eyez
+Makeup & Beauty Lounge`, `The Wellsley`, `Chicago, Illinois`, `The Langham, Chicago`,
+`Artifact Events`, `Colvin House`, `Garfield Park Conservatory`, `LM Studio Chicago`,
+`Private Location`.
+
+Read by hand: the large majority (~26/30) are clean, specific venue names. Two risk
+categories present in even this small sample:
+- **City/region-level generic tags** (`Inverness, Illinois`, `Lake Bluff, Illinois`,
+  `Evanston, IL`, `Chicago, Illinois`, `Private Location`) — not a venue, must be excluded,
+  not matched to anything.
+- **A vendor's business location tagged, not necessarily the wedding venue**
+  (`Crystal-Eyez Makeup & Beauty Lounge` — a beauty studio, plausibly tagged because
+  hair/makeup happened there, not because the wedding did). **Real risk to watch for
+  when building the matcher**: matching a location_tag to *any* known Ben account by name
+  isn't enough — should probably prefer/require the matched account to already have a
+  `venue`-shaped role (`v_account_role`/`account_tags`) before trusting it as this
+  candidate's venue anchor, not just any name match.
+
+**Sizing (corpus-wide, all 300, not just the sample)**:
+- 96 distinct `location_tag` values across the 300 candidates (many candidates share
+  popular venues, e.g. multiple weddings at Adler Planetarium).
+- **70 / 300 (23%) are generic city/region-level placeholders** (regex `^[A-Za-z ]+,
+  (Illinois|IL)$` or literal `Private Location`) — correctly excludable, not real venues.
+- **128 / 300 (43%) have an exact case-insensitive match to `vendors.name`**; **107 / 300
+  (36%) exact-match `accounts.full_name`** — likely overlapping sets (same venues known via
+  both paths). Not yet deduplicated/unioned, and not yet checked for whether the matched
+  account has a `venue` role — that's the next step, not this one.
+
+**Next tick**: build the actual read-only matching script (union the two match paths,
+require the matched account to carry a `venue` role, dedupe to one account per candidate,
+flag ambiguous multi-account matches instead of guessing), then read a sample of the real
+matches by hand before trusting any count.
