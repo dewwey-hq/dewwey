@@ -84,10 +84,19 @@ scope it, estimate cost precisely, then ask.
       flagged on both checks** — 22 venues have 2+ candidates (461 within-venue pairs, 0
       suspected duplicates), 0/136 flagged for a secondary-account match to an existing Ben
       wedding.
-- [ ] **Hand-read a proportionate sample** (~15-20) of the 136 end-to-end.
-- [ ] **Dry-run the creation for the clean subset**, read the full result by hand,
-      idempotency verified live, then commit (with the user's explicit review, same as
-      D035).
+- [x] **Hand-read a proportionate sample** (2026-09-05, 15 of the 136) — all describe
+      genuine real weddings, but surfaced a new risk category (see Baseline findings):
+      `venue_account_id` can itself resolve to a non-venue vendor (a lighting company, a
+      musician, a wedding planner mislabeled as venue in the source caption). Generalized
+      into a systematic filter (require a corroborating `account_tags` role in
+      venue/hotel/catering/rentals) applied to all 136, not just the ones found by hand:
+      **102 pass, 28 excluded (confirmed mislabel pattern), 6 excluded conservatively
+      (no signal either way)**.
+- [ ] **Re-run both duplicate checks once more**, scoped to the filtered 102 (not the
+      original 136 — the pool changed).
+- [ ] **Dry-run the creation for the clean 102** (or whatever remains after the duplicate
+      re-check), read the full result by hand, idempotency verified live, then commit (with
+      the user's explicit review, same as D035).
 - [ ] **Decide on Phase 2**: present the geocoding cost estimate and the do-nothing
       alternative to the user; do not call the Places API without explicit go-ahead.
 - [ ] **Docs closed out** — `docs/decisions.md` entry, `ROADMAP.md` updated, this file's
@@ -95,4 +104,41 @@ scope it, estimate cost precisely, then ask.
 
 ## Baseline findings
 
-*(Phase 1 sizing above; Phase 1 pilot results to be filled in as the loop works it)*
+**Hand-read pilot, 15 candidates from the 136 (2026-09-05)**: all describe genuine,
+coherent real weddings. But this pilot caught a **new risk category** D035's pilot didn't
+encounter: the candidate clustering's own `venue_account_id` can itself be wrong —
+resolving to a non-venue vendor entirely, not just a "vendor's own location tagged"
+ambiguity (that was the location_tag mission's risk). Two confirmed cases, two different
+root causes:
+- **Candidate 2455**: `venue_account_id` = `hangoutlighting`, a lighting *rental* company
+  ("Mix, match, & customize... lighting made easy" — its own bio). Not a venue.
+- **Candidate 2411**: `venue_account_id` = `cloudgatequartet`, a musician credited under
+  "Ceremony/Cocktail music" in the very same caption — which *also* clearly labels the real
+  venue: "Venue/Catering - @thedrakeoakbrook". A clustering/extraction bug picked the wrong
+  account, despite the correct one being right there.
+- **Candidate 2542** (found via the systematic filter below, confirmed by reading the
+  caption): `venue_account_id` = `ravisloeweddings`, credited "Venue: @ravisloeweddings" in
+  the source caption itself — but everything else in the post (a bridal salon's styling
+  content, "Discover your dream gown at Frontroom Couture Naperville") indicates this is a
+  wedding *planner*, mislabeled as venue by whoever wrote the original caption. A source
+  content error, not a parsing bug — same symptom, different cause.
+
+**Generalized into a systematic filter, applied to all 136** (not just re-checking the 3
+found by hand): does the candidate's `venue_account_id` have an `account_tags` row with
+role in (`venue`,`hotel`,`catering`,`rentals`) — real venues are legitimately often *also*
+tagged hotel/catering/rentals (e.g. a hotel or restaurant-group venue), so this isn't
+requiring an exact `venue` tag, just *some* venue-shaped evidence.
+
+| | count |
+|---|---|
+| Has a venue-shaped role tag (safe) | **102** |
+| Has *only* non-venue roles (planner/dj/musician/etc — the mislabel pattern) | **28** |
+| No role tags at all (no corroborating signal either way) | 6 |
+
+**Decision: proceed with the 102 that have corroborating evidence.** The 28 with only
+non-venue roles are excluded (confirmed-risk pattern, 2 of them hand-verified as genuine
+mislabels). The 6 with no signal at all are excluded conservatively for this pass — no
+positive evidence either way, small enough to leave for a later, separate look rather than
+block or force a decision on them now.
+
+**Next tick**: re-run both duplicate checks scoped to the 102, then dry-run creation.
