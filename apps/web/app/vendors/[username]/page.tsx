@@ -40,13 +40,22 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 export default async function VendorPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ username: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { username } = await params;
-  const data = await getVendorProfile(decodeURIComponent(username));
+  const q = await searchParams;
+  const page = Math.max(1, parseInt((q.page as string) ?? "1", 10) || 1);
+  const PAGE_SIZE = 20;
+  const data = await getVendorProfile(decodeURIComponent(username), {
+    feedLimit: PAGE_SIZE,
+    feedOffset: (page - 1) * PAGE_SIZE,
+  });
   if (!data) notFound();
-  const { profile: p, partners, stacks, enrichment } = data;
+  const { profile: p, partners, stacks, enrichment, feedTotal } = data;
+  const totalPages = Math.max(1, Math.ceil(feedTotal / PAGE_SIZE));
 
   const detailRows: { label: string; value: string }[] = [];
   if (enrichment?.capacity_as_stated || enrichment?.capacity_max) {
@@ -153,6 +162,33 @@ export default async function VendorPage({
       {stacks.map((s) => (
         <WeddingFeedCard key={s.id} stack={s} />
       ))}
+      {feedTotal > PAGE_SIZE && (
+        <nav className="flex items-center justify-between text-sm">
+          {page > 1 ? (
+            <Link
+              href={`/vendors/${encodeURIComponent(p.username)}?page=${page - 1}`}
+              className="rounded-full border border-black/[0.10] px-4 py-2 text-gray-700 hover:border-black/[0.25]"
+            >
+              ← Newer
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-black/[0.56]">
+            Page {page} of {totalPages}
+          </span>
+          {page < totalPages ? (
+            <Link
+              href={`/vendors/${encodeURIComponent(p.username)}?page=${page + 1}`}
+              className="rounded-full border border-black/[0.10] px-4 py-2 text-gray-700 hover:border-black/[0.25]"
+            >
+              Older →
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
+      )}
     </div>
   );
 
@@ -218,7 +254,7 @@ export default async function VendorPage({
             feed={feed}
             worksWith={worksWith}
             details={details}
-            feedCount={stacks.length}
+            feedCount={feedTotal}
             worksWithCount={partners.length}
           />
         </div>

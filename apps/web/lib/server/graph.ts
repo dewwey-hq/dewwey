@@ -107,7 +107,10 @@ export async function listWeddingStacks(opts: {
   return { stacks: rows.map(toStack), total, limit, offset };
 }
 
-export async function getVendorProfile(username: string) {
+export async function getVendorProfile(
+  username: string,
+  opts: { feedLimit?: number; feedOffset?: number } = {}
+) {
   const pool = getPool();
   const { rows } = await pool.query(
     `SELECT
@@ -136,7 +139,7 @@ export async function getVendorProfile(username: string) {
   const a = rows[0];
 
   // The remaining queries only need a.id; run them together.
-  const [{ rows: partnerRows }, { stacks }, { rows: enrichmentRows }] = await Promise.all([
+  const [{ rows: partnerRows }, feed, { rows: enrichmentRows }] = await Promise.all([
     pool.query(
       `SELECT
          partner.id::int,
@@ -158,7 +161,11 @@ export async function getVendorProfile(username: string) {
        LIMIT 24`,
       [a.id]
     ),
-    listWeddingStacks({ accountId: a.id, limit: 50 }),
+    listWeddingStacks({
+      accountId: a.id,
+      limit: opts.feedLimit ?? 20,
+      offset: opts.feedOffset ?? 0,
+    }),
     pool.query(
       `SELECT ve.capacity_min, ve.capacity_max, ve.capacity_as_stated,
               ve.catering, ve.event_insurance, ve.pricing_model, ve.price_display,
@@ -197,7 +204,10 @@ export async function getVendorProfile(username: string) {
       n_weddings: p.n_weddings,
       last_worked_together: p.last_worked_together,
     })),
-    stacks,
+    stacks: feed.stacks,
+    feedTotal: feed.total,
+    feedLimit: feed.limit,
+    feedOffset: feed.offset,
   };
 }
 

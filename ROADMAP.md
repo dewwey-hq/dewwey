@@ -2,7 +2,7 @@
 
 Check "Now" before starting a thread — two sessions colliding on the same
 in-flight work is what this section prevents. Full history/reasoning for
-anything below: `docs/decisions.md` (D001–D024 so far).
+anything below: `docs/decisions.md` (D001–D031 so far).
 
 ## Now
 
@@ -30,21 +30,30 @@ anything below: `docs/decisions.md` (D001–D024 so far).
   (D021, `reconcile-v2`); clustering order-dependence investigated and quantified but **not**
   fixed, pending a schema decision (D022); the validated 143-match tier ingested into Ben's
   `wedding_vendors` for the first time — 100 genuinely new rows, additive-only, fully
-  provenance-logged, idempotent (D023). Merged via `dewwey-hq/dewwey#1` (D024).
+  provenance-logged, idempotent (D023). Merged via `dewwey-hq/dewwey#1` (D024). The 268-candidate
+  **ambiguous reconciliation tier was audited and not ingested** (D030): 5/268 exact-URL vs
+  91.6% in the 143, 4 GREEN / 109 YELLOW / 150 RED on handle-diff, 49 magnet weddings (the
+  false-merge pattern D020 didn't find); dry-run of the 9 identity-safe candidates produced 11
+  role-variant rows and zero new vendor identities, write skipped. The 369 never-reconciled
+  candidates are the venue-less skip, intentional, not a missed run.
+- **Vendor feed/browse undercount** (D026–D031): Case A applied `stack-parser-ts-v3` to Ben's
+  own posts — 56 new `wedding_vendors` rows, `ulcchicago`/wedding 1352 venue credit restored
+  (D027). Case B (orphaned-post attach) sized and declined (D031): 11 mechanical hits, confirmed
+  false merges, zero honest new Feed credits; `galleriamarchetti` Feed 15 matches the evidence.
+  Vendor detail Feed now paginates (was silently capped at 50). Mission:
+  `docs/engineering/vendor-feed-gap/README.md`.
 
 ## Next — open missions, each independently pickable
 
-- **Ambiguous reconciliation tier (268 candidates)**: decide whether/how to bring these into
-  `wedding_vendors`. Mission: they were never audited the way the 143 were (D020 scope was
-  strictly the high-confidence tier) — either build an equivalent audit for this tier first, or
-  make an explicit, recorded decision to leave it un-ingested. End state: a decision recorded in
-  `docs/decisions.md`, and if ingested, the same additive/provenance/idempotency bar D023 set.
 - **1–2 vendor-role evidence gap**: posts with only 1-2 (not 3+) non-`other` roles produce
   evidence but never attach to an existing candidate even when they'd match one. Mission: extend
   `runJeremyWeddingClustering.ts` to attempt attachment for these posts against existing
   candidates only (never let them seed a brand-new candidate, to avoid new low-evidence
   singletons). End state: measured before/after candidate-vendor-count delta, regression tests,
-  no change to 3+-role clustering behavior.
+  no change to 3+-role clustering behavior. **Ben-side analog (Case B) was sized and declined
+  (D031)** — a general attach onto existing Ben weddings would have written false merges.
+  The Jeremy-candidate version is still open and is a different write path (candidates this
+  workstream owns, not `weddings`).
 - **D022 clustering fix (optional, low-priority)**: `>=0.5` instead of `>0.5` in
   `runJeremyWeddingClustering.ts` — fully evaluated (D022, 12 fewer candidates, 0 false merges
   found) but never shipped because retroactively applying it needs a
@@ -54,12 +63,15 @@ anything below: `docs/decisions.md` (D001–D024 so far).
   `docs/engineering/graph-strengthening/clustering-boundary-investigation.md` ("What a future fix
   would look like"). End state: same rigor as D021/D023 — dry-run, idempotency proof, before/after
   counts, no change to the 143 high-confidence tier's content.
-- **Drop the `staging` schema**: blocked on (a) the ambiguous-tier decision above, and (b) the
-  47k-caption re-parse below, since both currently read `staging.instagram_posts` indirectly via
-  `v1_content_corpus`/`v1_content_corpus`-adjacent views. Do not drop until both are resolved.
-- **Re-parse 47k staged captions through the stack parser**: post-classification V1's output
-  (which own-profile posts are credible) is the ingest filter this needs — the filter exists now,
-  the re-parse itself hasn't been run.
+- **Drop the `staging` schema**: previously blocked on the ambiguous-tier decision (now closed,
+  D030, not ingested) and on the INCLUDE-subset re-parse (already done, D029). Still blocked on
+  anything that reads `staging.instagram_posts` for the remaining ~43k unclassified posts, which
+  is a choice not a gap. Do not drop until that dependency is explicitly retired.
+- **Re-parse 47k staged captions through the stack parser** — **closed 2026-09-04 as a
+  misunderstanding**: the 4,033 V1 INCLUDE posts were already parsed (D029); the remaining open
+  work was the ambiguous-tier audit, now also closed (D030, not ingested). The remaining ~43,590
+  posts (score <12 or non-INCLUDE) are still deliberately unparsed, per the V1 classification
+  design — not a gap, a choice.
 - **Google sign-in**: create the OAuth client in Google Cloud Console (redirect URI
   `https://ljcbslfdlfehgjrdnfco.supabase.co/auth/v1/callback`), paste ID/secret into Supabase
   Auth → Providers → Google. The button already ships.

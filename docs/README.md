@@ -18,6 +18,12 @@ at the repo root with a "Now" section.
 - [engineering/post-classification/](engineering/post-classification/) — the
   AI-native pipeline deciding which of the ~45k staged Instagram posts are
   credible real Chicago weddings (D009)
+- [engineering/graph-strengthening/](engineering/graph-strengthening/) — stack
+  parser → Jeremy candidates → reconciliation. 143 high-conf ingested (D023);
+  268 ambiguous audited and **not** ingested (D030,
+  `graph-strengthening/ambiguous-tier-audit-handoff.md`)
+- [engineering/vendor-feed-gap/](engineering/vendor-feed-gap/) — applying the
+  parser to Ben's own `posts` (Case A committed D027; Case B declined D031)
 - [engineering/places-photos.md](engineering/places-photos.md) — Places photo
   billing mechanics (still applies to the browse UI)
 - [engineering/ai-constitution.md](engineering/ai-constitution.md) — standing

@@ -4,6 +4,224 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D031 — 2026-09-04 — Case B (orphaned-post attach) sized and declined; no general attach writer
+
+Status: Accepted
+Context: vendor-feed-gap Case A (D027) recovered 56 credits on posts already in a wedding
+but did not move `galleriamarchetti` (still 15) — that account's remaining gap was Case B
+shaped (posts that never formed a wedding). Mission doc already noted its 3 orphaned posts
+are not real weddings. Corpus-wide ceiling was 202/4,702 orphaned posts with ≥1 named-role
+credit after Case A filters. This pass sized the *real* attach-opportunity: would any of
+those 202 attach to an *existing* wedding under conservative rules, without creating
+weddings (ROADMAP: never seed low-evidence singletons)?
+Method: read-only `sizeCaseBAttachOpportunity.ts` — `parseCaption()` v3, same named-role /
+non-person-label / trailing-period filters as Case A, then two attach rules chosen *after*
+D030 (same-venue + date window with weak overlap is a false-merge factory): (1) the post
+credits a venue that has **exactly one** Ben wedding within `phase_dedup()`'s 21-day window;
+(2) 2+ of the post's handles co-occur on the same nearby wedding. "Any credited account has
+a nearby wedding" was measured as too loose and not used.
+Findings, then every mechanical hit read against source captions and the target wedding's
+existing post:
+- 6 unique-venue matches, 6 two-handle matches (5 not also unique-venue) → **11 posts**.
+- **At least two confirmed false merges** a general writer would have committed: post 4444
+  (`Bride @kate_bauer` at `@publishinghouse_bnb`) → wedding 467, which is Sara and Ben's
+  wedding two days earlier at the same B&B; post 4333 (Koscak rehearsal dinner, "celebrate
+  them tomorrow," 2026-06-06) → wedding 581, Andrea + Joe on 2026-05-24 at the same
+  restaurant. Same-venue 21-day unique match is not identity.
+- The rest of the 11: a Chi Fdn for Women fundraiser, a corporate jazz-quartet ad, a venue
+  walkthrough, a planner marketing post, a generic flower dump, a likely-different Salvatore's
+  week (Emily & Matt / `@lillyphoto` vs `@_nova_photos`). Two identity-plausible leftover
+  posts (DJ Hybrid at Library 190 the night of wedding 1187; Ben+Mariah details post for
+  wedding 602) add **no new `wedding_vendors` rows** — both vendors are already credited.
+  Feed counts are row counts (D026), so attaching them would not move the number the user
+  sees.
+- The README's "promising" post 110 (Tiara and Brandon at `@thebarnattimberpointe`) is a
+  real wedding and correctly unmatched: that venue has **two** weddings in the 21-day window
+  (ids 960 and 1043), so unique-venue refuses. Creating a wedding is out of scope.
+- Honest new-vendor yield of a mechanical attach: two rows, both from rejected posts
+  (`@hannafftevents` on the jazz ad, `@_nova_photos` on the likely-wrong Salvatore's).
+Decision: **do not implement a Case B attach writer.** The 202 ceiling is almost all
+no-nearby-wedding, marketing/non-wedding, or vendors already credited. A general attach
+would have written confirmed false merges. `galleriamarchetti` Feed 15 is consistent with
+the evidence — its orphaned posts are not weddings, and Case A had nothing left to recover.
+The Jeremy-side "1–2 vendor-role evidence gap" (attach sparse posts to *Jeremy candidates*,
+never seeding new ones) remains a separate, still-open ROADMAP Next item; this decision is
+only about Ben's `posts` → `weddings` attach.
+Related: D026/D027 (Case A), D030 (why unique-venue still isn't enough),
+`docs/engineering/vendor-feed-gap/README.md`.
+
+---
+
+## D030 — 2026-09-04 — Ambiguous reconciliation tier audited, not ingested; 369-never-reconciled bucket explained as intentional
+
+Status: Accepted
+Context: D028 handed off the 268-candidate ambiguous `reconcile-v2` tier (and a previously
+untracked 369-candidate never-reconciled bucket) for a D020-equivalent audit. Worked the
+handoff checklist live against Supabase, no re-parse.
+Findings (full writeup: `docs/engineering/graph-strengthening/ambiguous-tier-audit-handoff.md`):
+1. **The 369 are an intentional exclusion, not a missed run.** They are exactly the 369
+   candidates with `venue_account_id IS NULL`. `runJeremyWeddingReconciliation.ts` skips them
+   (`if (c.venue_account_id == null) continue`) because venue is the matching anchor. Same
+   clustering version and creation window as everyone else; zero have a `role='venue'` row even
+   in raw `stack_extraction_entries` (not the evidence-view's accounts INNER JOIN). No
+   reconciliation of this bucket without a venue-extraction follow-up, which is out of scope.
+2. **Exact shared post URL: 5 / 268 (1.9%)**, vs 131 / 143 (91.6%) in D020. This tier is not
+   "the 143 with weaker auxiliary evidence." Three of the five miss high-confidence only because
+   Jaccard is `=` 0.5 (threshold is `>`); one is 16 days; one shares a URL with a 310-day date
+   disagreement (still auto-confirmed per D020's URL-overrides-date rule).
+3. **Non-exact remainder (263): 4 GREEN / 109 YELLOW / 150 RED.** Handle-diff, not role-labeled
+   Jaccard. 49 Ben weddings are targeted by >1 of the 268 (D020 found 1). The magnet is the
+   false-merge pattern D020 did not find: same venue, reused vendors, distinct event dates
+   (e.g. candidates 1492/1629 → wedding 282 `@universityclubofchicago`, Jaccard 0.09/0.06,
+   Nov 20 and Dec 31 stacks vs a Dec 16 Ben wedding). Only 20 / 263 entered ambiguous on both
+   date≤30 and Jaccard>0.3.
+4. **Dry-run of the 9 identity-safe candidates** (5 exact + 4 GREEN), `applyAmbiguousEvidenceToGraph.ts`,
+   read entry-by-entry: 80 attempted, 11 INSERT, 69 SKIP, rolled back. **All 11 inserts are
+   accounts already on that wedding under a different role** (`band` vs `musician`,
+   `content_creator` vs `videographer`, or `other` → planner/rentals). Feed counts are
+   `wedding_vendors` row counts (D026), so committing would inflate Feed for people already
+   credited. Zero new vendor identities.
+Decision: **do not ingest the ambiguous tier.** User reviewed the dry-run and agreed. 259
+YELLOW/RED stay out on false-merge risk; the 9 identity-safe candidates add nothing the graph
+doesn't already have at the account level. Script remains un-run except `--dry-run`. Not a
+reconciliation redesign — the evidence floor (D021) is doing its job; this band is named
+ambiguous because most of it is. The 2,092 no-match bucket is still correctly excluded.
+Related: D020/`reconciliation-audit-143.md` (method), D021 (evidence floor), D023 (write bar
+this dry-run met and then declined to commit), D026/D027 (parent vendor-feed-gap mission),
+D028/D029 (handoff). Next: Case B of `docs/engineering/vendor-feed-gap/README.md` (orphaned
+posts / 1–2-role attach), still in ROADMAP "Now."
+
+---
+
+## D029 — 2026-09-04 — Corrected stale ROADMAP item: the 47k-caption "re-parse" already happened for the V1 INCLUDE subset
+
+Status: Accepted
+Context: user asked directly whether posts in the 4,033 V1-INCLUDE corpus that mention real
+vendors (e.g. `ulcchicago`, `salvatoreschicago`) get run through the caption-parsing
+pipeline to update `wedding_vendors`. Checked live rather than assumed: `ROADMAP.md`'s
+"Re-parse 47k staged captions through the stack parser" Next-item was stale — it read as
+not-yet-started, but `jeremy_post_vendor_evidence`'s view definition confirms the 4,033
+INCLUDE posts have already been run through `stackParser.ts` (`stack_extraction_entries`,
+via `runStackParserBaseline.ts`), and that output is exactly what feeds
+`jeremy_wedding_candidates`. Confirmed with real accounts: Jeremy's evidence has 38
+mentions of `ulcchicago` and 9 of `salvatoreschicago`, more than currently reflected in
+`wedding_vendors` for either (9 and 7 credited weddings respectively) — i.e. real,
+already-extracted evidence sitting un-ingested, same shape as D028's ambiguous tier.
+Decision: this was never separate work — it's the same D028 handoff. `ROADMAP.md`'s item
+rewritten to say so explicitly and point at the handoff doc; the handoff doc
+(`docs/engineering/graph-strengthening/ambiguous-tier-audit-handoff.md`) updated with an
+explicit "no re-parsing needed" section and the `ulcchicago`/`salvatoreschicago` spot-check
+query, so whoever picks it up (Cursor or otherwise) doesn't waste effort re-deriving or
+re-running extraction that already exists. Also noted, not fixed: the evidence view inner-
+joins to `accounts` by handle, so a vendor mentioned only in Jeremy's corpus with no
+existing Ben account is currently invisible to the whole pipeline — flagged as a possible
+follow-up, not this audit's scope unless it turns out to matter materially.
+Related: D028 (the handoff this corrects/clarifies), D009-D015 (post classification V1,
+the INCLUDE filter), D016-D025 (the extraction/candidate/reconciliation machinery).
+
+---
+
+## D028 — 2026-09-04 — Ambiguous reconciliation tier (268) handed off to Cursor; a new, previously-untracked 369-candidate gap found
+
+Status: Accepted
+Context: D026/D027's vendor-feed-gap mission expanded scope (user's call, asked directly)
+to also cover the "Ambiguous reconciliation tier" ROADMAP Next-item after checking why the
+user expected a "dramatic" venue-coverage increase from "~3k+ posts" — that number is
+`jeremy_wedding_candidates` (2,872), of which only 143 (D020/D023) have been decided.
+Re-measured live before handing off: 143 high-confidence (closed), **268 ambiguous with a
+match** (ROADMAP's own figure, confirmed exact), 2,092 correctly excluded by the
+`reconcile-v2` evidence floor (D021), and a **new, previously-undocumented 369 candidates
+that never went through `reconcile-v2` reconciliation at all** — not mentioned in D019-D021
+or `reconciliation-audit-143.md`, cause not yet investigated.
+Decision: user was at 96% of their Claude session budget with a 2-hour reset window: rather
+than spend that budget on an open-ended audit, this phase is handed off to a separate
+tool/session (Cursor, or a fresh Claude session) via a self-contained brief —
+`docs/engineering/graph-strengthening/ambiguous-tier-audit-handoff.md` — written to be read
+cold with the exact numbers, the D020 audit method to mirror, the D023 safety bar to match,
+and an explicit end state. The vendor-feed-gap mission's own Case A/B work (a different,
+unrelated corpus — Ben's own posts) is unaffected and continues separately if resumed.
+Related: D019-D021, D023 (the reconciliation/ingestion machinery this reuses),
+D020/`reconciliation-audit-143.md` (the audit method to mirror), D026/D027 (this session's
+vendor-feed-gap mission that surfaced the scope question), `ROADMAP.md` "Next" (item
+updated to point at the handoff doc).
+
+---
+
+## D027 — 2026-09-04 — Case A vendor-feed-gap backfill committed; `galleriamarchetti`/`kehoedesigns` confirmed still unfixed (Case B needed)
+
+Status: Accepted
+Context: D026 kicked off the vendor-feed-gap mission. `apps/web/scripts/graph/
+reparseBenPostsStackParserV3.ts` (Case A: recover missing credits on posts already in a
+wedding) was built and dry-run verified. Read entry-by-entry by hand before trusting the
+counts, per this repo's own verification standard — that read caught three real bugs before
+commit: (1) `role='other'` (stackParser.ts's catch-all) concentrated real noise, including a
+pre-existing misclassification already in Ben's graph (wedding 592 is a fashion runway show,
+"The Walking Body • Runway," not a wedding) and a celebrity-mention false positive
+(`@martingarrix` "crashed the after party" ≠ an actual videographer); policy set to commit
+only named-role matches, defer `other` to manual review; (2) a node-postgres bigint-as-string
+gotcha silently broke the exclusion filters until `::int`-cast in the query; (3) the shared
+`HANDLE` regex's trailing-period capture would have created duplicate accounts for venues
+that already exist cleanly, fixed with local normalization (Instagram usernames can't end in
+a period).
+Decision: committing the write itself was denied by Claude Code's auto-mode classifier as a
+production DB write (matching this repo's working agreement and the same guardrail class
+D022/D024 hit for an `ALTER TABLE`). User approved after reviewing the recommendation and ran
+it directly. **Result: 56 new `wedding_vendors` rows, 4 `venue_id`/`is_chicago` backfills.**
+Idempotency verified live immediately after (`entries_new=0 inserted=0` on re-run).
+Verified live: `ulcchicago`/wedding 1352 now `role='venue'`, `weddings.venue_id=580`,
+`is_chicago=true` — the exact bug the mission was named for, fixed.
+**Important finding, checked rather than assumed**: `galleriamarchetti` (the account the user
+actually pointed at — "Feed 15... I think there's more than 15") is **unchanged at 15** after
+this commit, and `kehoedesigns` (the baseline audit's single largest gap, 18/33) is also
+**unchanged at 18**. Neither account's gap was Case A shaped — `galleriamarchetti`'s missing
+posts never formed a wedding at all (Case B), and `kehoedesigns`'s "reachable but uncredited"
+weddings turned out to be mostly generic prose mentions with no structured credit line,
+correctly not recovered. This confirms the baseline audit's own caveat (D026: "974 is a
+ceiling, not the real gap") — Case A's real yield (56) landed in different accounts than the
+two examples discussed with the user. Case B is what closes the user's own example.
+Related: D026 (kickoff), `docs/engineering/vendor-feed-gap/README.md` (durable checklist,
+updated with this result), D023 (the additive-write bar this backfill met).
+
+---
+
+## D026 — 2026-09-04 — Vendor feed/browse undercount diagnosed; TS additive-backfill mission kicked off as a `/loop`
+
+Status: Accepted
+Context: user reported `/vendors/<username>` Feed tab counts look lower than the real Instagram
+evidence — confirmed live at `galleriamarchetti` (15 `wedding_vendors` rows, matching the Feed
+tab exactly, vs. 19 posts mentioning the account, 4 of which never formed a wedding at all) and
+`ulcchicago` (missing wedding 1352, "Gisela + Charles," whose caption has `"Venue @ulcchicago"`
+on its own line — every other vendor on that caption got credited, this one didn't, purely
+because the parser's `LINE` regex requires a punctuation separator and this line has none).
+Decision: this is not a new bug to design a fix for — it's an already-validated fix
+(`apps/web/scripts/graph/stackParser.ts`'s `v3` `NOCOLON_LINE`, added earlier today per
+`docs/engineering/graph-strengthening/README.md` iteration 2, 82.6%→92.4% recall on real ground
+truth) that has only ever run against Jeremy's staging corpus, never against Ben's own
+already-ingested `posts`/`post_mentions`. Kicked off as a `/loop` mission (durable checklist:
+`docs/engineering/vendor-feed-gap/README.md`) rather than a single implementation pass, matching
+this repo's established investigate→implement→validate→document arc style.
+**Design constraint decided up front**: implement as a TypeScript backfill against Supabase
+directly (`pipeline.py` has never touched Supabase — hardcoded to `localhost:5442` — and this
+sandbox has no Python/psycopg2 regardless), and **never re-run a `phase_dedup()`-equivalent
+truncate** — `applyJeremyEvidenceToGraph.ts`'s own header already documents that a
+truncate/rebuild of `weddings`/`wedding_posts`/`wedding_vendors` wipes the graph-strengthening
+workstream's writes and renumbers every wedding ID, which today's Jeremy-reconciliation run (63
+weddings merged by ID, 13:33–21:05) depends on. The backfill must be surgical additive
+inserts/updates, following the exact D023 pattern: `on conflict do nothing`, a provenance table,
+`--dry-run` with transaction rollback, explicit `refresh materialized view edges`, idempotency
+verified live before considering any step done.
+Also found, deliberately deferred (not what the user flagged, and structurally independent): a
+second, smaller gap in `/vendors` browse and `/vendors?slot=Venue` — `listVendors()`
+(`apps/web/lib/server/graph.ts:204`) inner-joins `v_account_role` and requires `n_chicago >= 1`,
+and ~40% of `weddings.is_chicago` rows are `NULL` rather than computed. Vendor detail pages are
+not is_chicago-gated (confirmed live), so this doesn't explain the Feed-tab undercount itself.
+Related: `docs/engineering/graph-strengthening/README.md` (the parser this mission reuses),
+`docs/engineering/vendor-feed-gap/README.md` (this mission's durable checklist), D019/D023
+(the additive-write pattern being reused), `ROADMAP.md` "Next" (the "1–2 vendor-role evidence
+gap" item this mission extends to Ben's own graph).
+
+---
+
 ## D025 — 2026-09-04 — `dewwey-hq/dewwey#1` merged to `main`; local `main` fast-forwarded
 
 Status: Accepted

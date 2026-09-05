@@ -189,7 +189,9 @@ evidence, `insert ... on conflict (wedding_id, account_id, role) do nothing` —
 pre-existing row is ever modified. Every inserted row is logged in
 `jeremy_wedding_vendors_ingested` for provenance, since `wedding_vendors` itself carries none.
 Full reasoning, safety verification, and before/after numbers: D023 in `docs/decisions.md`.
-**Durability caveat**: `phase_dedup()`'s `TRUNCATE ... RESTART IDENTITY CASCADE` would wipe this
+A later additive write from a different corpus (Ben's own `posts`, Case A / D027) also
+landed in `wedding_vendors` (56 rows, provenance `stack_reparse_v3_ingested`). The
+ambiguous Jeremy tier was audited and **not** ingested (D030). **Durability caveat**: `phase_dedup()`'s `TRUNCATE ... RESTART IDENTITY CASCADE` would wipe this
 write along with `weddings.id` itself if it ever runs again — recovery is rerun reconciliation
 then rerun the apply script, both idempotent. The durable source of truth stays the evidence/
 candidate/reconciliation layer, never `wedding_vendors`.

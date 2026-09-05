@@ -118,6 +118,41 @@ describe("daysBetween (unit)", () => {
   });
 });
 
+describe("parseCaption v3 NOCOLON_LINE (unit, vendor-feed-gap Case A fixtures)", () => {
+  // Imported lazily so the unit-only path doesn't need DATABASE_URL.
+  async function parse(caption: string) {
+    const { parseCaption } = await import("./stackParser");
+    return parseCaption(caption);
+  }
+
+  it("extracts 'Venue @ulcchicago' (the Case A index line — space, no punctuation separator)", async () => {
+    const { stack, has_stack } = await parse("Venue @ulcchicago\nPlanner: @someone\nPhoto: @other");
+    expect(stack.some((e) => e.handle === "ulcchicago" && e.role === "venue")).toBe(true);
+    expect(has_stack).toBe(true);
+  });
+
+  it("extracts 'Band @yazzevents'", async () => {
+    const { stack } = await parse("Band @yazzevents");
+    expect(stack).toEqual([
+      expect.objectContaining({ handle: "yazzevents", role: "band", role_raw: "Band" }),
+    ]);
+  });
+
+  it("extracts 'Coordination @ymleliteevents' as planner", async () => {
+    const { stack } = await parse("Coordination @ymleliteevents");
+    expect(stack).toEqual([
+      expect.objectContaining({ handle: "ymleliteevents", role: "planner", role_raw: "Coordination" }),
+    ]);
+  });
+
+  it("still matches colon-form LINE (v3 is additive, does not drop the original parser)", async () => {
+    const { stack } = await parse("Venue: @galleriamarchetti");
+    expect(stack).toEqual([
+      expect.objectContaining({ handle: "galleriamarchetti", role: "venue" }),
+    ]);
+  });
+});
+
 // --- Structural invariants against the live DB. Read-only. ---
 describe("graph-strengthening invariants (DB)", () => {
   const pool = getPool();
@@ -455,5 +490,31 @@ describe("graph ingestion — D023 (DB)", () => {
     expect(fkColumns).not.toContain("wedding_id");
     expect(fkColumns).toContain("account_id");
     expect(fkColumns).toContain("candidate_id");
+  });
+});
+
+describe("vendor feed count invariant (DB)", () => {
+  const pool = getPool();
+  afterAll(async () => {
+    await closePool();
+  });
+
+  it("galleriamarchetti Feed equals wedding_vendors rows (still 15 after Case A/B — D027/D031)", async () => {
+    const { rows } = await pool.query(`
+      select count(*)::int as n from wedding_vendors wv
+      join accounts a on a.id = wv.account_id
+      where a.username = 'galleriamarchetti'
+    `);
+    expect(rows[0].n).toBe(15);
+  });
+
+  it("ulcchicago has a venue credit on wedding 1352 (the Case A index bug, D027)", async () => {
+    const { rows } = await pool.query(`
+      select wv.role::text as role
+      from wedding_vendors wv
+      join accounts a on a.id = wv.account_id
+      where a.username = 'ulcchicago' and wv.wedding_id = 1352
+    `);
+    expect(rows.map((r) => r.role)).toContain("venue");
   });
 });
