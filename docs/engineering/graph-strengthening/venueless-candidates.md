@@ -3,8 +3,7 @@
 **Status (2026-09-05): closed.** 131/369 candidates got a correct, hand-verified venue
 anchor via Instagram `location_tag` (permanent data-quality improvement, reusable if Ben's
 crawler ever covers those venues in the future) — **but 0 new `wedding_vendors` rows**,
-same as the ambiguous-tier audit and Case B before it: the one safe reconciliation match
-was fully redundant, and the ambiguous tier repeated a confirmed false-merge pattern.
+same as the ambiguous-tier audit and Case B before it: the one safe reconciliation match was fully redundant, and the ambiguous tier repeated a confirmed false-merge pattern.
 Full writeup: `docs/decisions.md` D033. Durable checklist for a `/loop`
 mission — read this file first every wake-up, verify current state before checking
 anything off. Full narrative: `docs/decisions.md` D032 (kickoff), D030 (why these 369 exist

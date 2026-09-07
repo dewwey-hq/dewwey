@@ -128,6 +128,27 @@ create table account_locations (
   verified_at timestamptz
 );
 
+-- "V1 data completion, venues-first" mission (D047 follow-on, 2026-09-06). Some real venues
+-- run multiple Instagram handles (a main account plus a dedicated events-booking account --
+-- Art Institute of Chicago has three: artinstitutechi/artinstitutespecialevents/
+-- artinstituteevents; Field Museum, MSI, Chicago History Museum, Harry Caray's, and several
+-- others each have two) -- without this table, the SAME real venue's documented weddings get
+-- silently split across separate `/vendors/<username>` pages, undercounting coverage on each
+-- one individually. Each row is independently verified (WebSearch, same discipline as every
+-- other identity claim in this project -- never inferred from username/name similarity alone,
+-- which produced false positives: a shared "Venue Partners:" marketing boilerplate line and a
+-- multi-city franchise chain both looked like aliasing on name-pattern grounds and weren't).
+-- `alias_account_id` is the non-canonical handle; `canonical_account_id` is the one the app
+-- displays under. Purely additive -- no existing account or wedding_vendors row is touched;
+-- the app layer (apps/web/lib/server/graph.ts) resolves alias->canonical at query time.
+create table account_aliases (
+  alias_account_id     bigint primary key references accounts(id),
+  canonical_account_id bigint not null references accounts(id),
+  note                  text,
+  confirmed_at          timestamptz not null default now(),
+  check (alias_account_id <> canonical_account_id)
+);
+
 -- ============================================================
 -- Crawl frontier: every account is a potential next seed.
 -- Lives in the ops schema — crawler bookkeeping, not product data.
@@ -512,6 +533,44 @@ join lateral (
 ) pc on pc.decision = 'INCLUDE'
 where latest.role <> 'other';
 
+-- Human-confirmed-evidence (2026-09, human-labeling-ui mission), DELIBERATELY
+-- separate from jeremy_post_vendor_evidence above, not unioned with it --
+-- classifier-derived and human-confirmed evidence have different
+-- confidence/provenance semantics and should stay independently queryable,
+-- not silently treated as interchangeable by a downstream consumer. Gated
+-- on golden_set (a human/labeling-script-only table -- never a classifier)
+-- instead of candidate_score>=12 + v3 INCLUDE, so a post the classifier
+-- never scored highly enough to even run V3 on, or that V3 EXCLUDEd/
+-- REVIEWed, can still become evidence once a human has confirmed it's a
+-- real wedding. Does NOT resolve Chicago relevance (see
+-- jeremy_wedding_candidates.chicago_status below) or vendor correctness --
+-- those stay separate, explicit pipeline stages, never collapsed into "human
+-- said WEDDING therefore graph-eligible."
+create view human_confirmed_post_vendor_evidence as
+select
+  latest.source_post_url,
+  a.id as account_id,
+  latest.role,
+  latest.role_raw,
+  latest.line_no,
+  latest.parser_version,
+  cs.score as candidate_score,
+  cs.candidate_generation_version
+from (
+  select distinct on (post_url, line_no, handle)
+    post_url as source_post_url, line_no, handle, role, role_raw, stack_parser_version as parser_version
+  from stack_extraction_entries
+  order by post_url, line_no, handle, extracted_at desc
+) latest
+join accounts a on lower(a.username::text) = latest.handle
+left join candidate_scores cs on cs.post_url = latest.source_post_url
+  and cs.candidate_generation_version = 'candidate-score-v1'
+where latest.role <> 'other'
+  and exists (
+    select 1 from golden_set gs
+    where gs.post_url = latest.source_post_url and gs.expected_decision = 'INCLUDE'
+  );
+
 -- Jeremy-owned wedding-candidate identity, fully independent of Ben's
 -- `weddings.id`. Stable across reruns via match-upsert against THIS table
 -- (never truncated) -- not Ben's truncate-rebuild -- so it requires zero
@@ -523,6 +582,16 @@ create table jeremy_wedding_candidates (
   clustering_version text not null,
   venue_account_id   bigint references accounts(id),   -- nullable; recomputed as evidence accrues
   event_date_est     date,                              -- an ESTIMATE, recomputed on every touch
+  -- Explicit tri-state, not a boolean and not a silent inference. V3-sourced
+  -- candidates already resolved geography as part of classification, so
+  -- this stays null for them (not applicable, not "unconfirmed"). Only
+  -- populated for candidates clustered from human_confirmed_post_vendor_evidence,
+  -- where a human confirming "real wedding" says nothing about Chicago
+  -- relevance -- that's a separate fact, resolved from account_locations.in_metro
+  -- (never guessed). Only CHICAGO_CONFIRMED is eligible for graph creation
+  -- without additional human review; CHICAGO_AMBIGUOUS/NOT_CONFIRMED are
+  -- surfaced for review, never silently included or excluded.
+  chicago_status     text check (chicago_status in ('CHICAGO_CONFIRMED','CHICAGO_NOT_CONFIRMED','CHICAGO_AMBIGUOUS')),
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
@@ -540,7 +609,15 @@ create index on jeremy_wedding_candidate_posts (candidate_id);
 
 -- Derived, not maintained -- always consistent, no upsert-with-greatest
 -- bookkeeping needed (unlike Ben's wedding_vendors, which hand-maintains
--- n_confirmations).
+-- n_confirmations). Resolves a candidate's vendor list regardless of which
+-- evidence view clustered it -- this is a read-side rollup keyed by an
+-- ALREADY-DECIDED candidate_id (one post belongs to exactly one candidate,
+-- pinned at cluster time), not a blended discovery pool, so unioning the
+-- two evidence sources here does not reintroduce the "don't merge evidence"
+-- concern that applies to clustering itself. The `not exists` guard in the
+-- second branch only matters for a post that happens to satisfy BOTH
+-- evidence views at once (score>=12, V3 INCLUDE, and independently
+-- golden_set-confirmed) -- counted once, via jeremy_post_vendor_evidence.
 create view jeremy_wedding_candidate_vendors as
 select
   cp.candidate_id,
@@ -550,6 +627,19 @@ select
   array_agg(distinct e.source_post_url) as source_post_urls
 from jeremy_wedding_candidate_posts cp
 join jeremy_post_vendor_evidence e on e.source_post_url = cp.source_post_url
+group by cp.candidate_id, e.account_id, e.role
+union all
+select
+  cp.candidate_id,
+  e.account_id,
+  e.role,
+  count(distinct e.source_post_url) as n_confirmations,
+  array_agg(distinct e.source_post_url) as source_post_urls
+from jeremy_wedding_candidate_posts cp
+join human_confirmed_post_vendor_evidence e on e.source_post_url = cp.source_post_url
+where not exists (
+  select 1 from jeremy_post_vendor_evidence jpve where jpve.source_post_url = cp.source_post_url
+)
 group by cp.candidate_id, e.account_id, e.role;
 
 -- A versioned BELIEF about which Ben wedding a Jeremy candidate might
@@ -633,6 +723,65 @@ select distinct on (username) *
 from account_classification_runs
 order by username, classified_at desc;
 
+-- ============================================================
+-- Human post labeling (2026-09, human-labeling-ui) — Jeremy's rapid-review
+-- tool, spanning the whole ecosystem: staging.instagram_posts (Jeremy's
+-- 47,623-post own-profile corpus) AND public.posts (Ben's 6,370-post
+-- venue_tagged corpus, the live serving graph behind /weddings) --
+-- label_queue.source records which. Durable, append-only: relabeling a post
+-- never destroys the prior observation (unlike golden_set, which is
+-- current-state-only by design). golden_set stays the deliberate,
+-- human-reviewed regression set; this table is the raw keystroke log that
+-- feeds it via syncHumanLabelsToGoldenSet.ts, run on demand, never
+-- automatically. WEDDING/NOT_WEDDING/UNSURE are content judgments;
+-- UNVIEWABLE/SKIP are technical/non-judgment outcomes and must never be
+-- promoted into golden_set.
+-- ============================================================
+create type human_label_decision as enum (
+  'WEDDING', 'NOT_WEDDING', 'UNSURE', 'UNVIEWABLE', 'SKIP'
+);
+
+create table human_post_labels (
+  id            bigint generated always as identity primary key,
+  post_url      text not null,
+  queue_version text,                    -- which label_queue batch served this
+  decision      human_label_decision not null,
+  labeled_by    text not null,           -- 'jeremy' for v1
+  client_ms     integer,                 -- ms this post was on screen before this keypress; observability only
+  notes         text,                    -- optional free-text comment, carries through to golden_set.notes on sync
+  labeled_at    timestamptz not null default now()
+);
+create index on human_post_labels (post_url, labeled_at desc);
+create index on human_post_labels (labeled_by, queue_version);
+
+-- Serving layer: latest human action per post. Same DISTINCT ON convention
+-- as post_classifications_current.
+create view human_post_labels_current as
+select distinct on (post_url) *
+from human_post_labels
+order by post_url, labeled_at desc;
+
+-- The frozen, resumable initial sample. Built once by buildLabelingQueue.ts
+-- per queue_version so a refresh or a new session always resumes the same
+-- order -- a future re-sample (informed by round 1) adds a NEW queue_version,
+-- never mutates an existing one.
+create table label_queue (
+  post_url      text not null,
+  queue_version text not null,
+  bucket        text not null,   -- 'random' | 'v1_include' | 'v1_exclude_review' | 'below_cutoff' | 'public_posts_random'
+  source        text not null default 'staging',  -- 'staging' (staging.instagram_posts, Jeremy's own-profile
+                                                    -- corpus) | 'public' (public.posts, Ben's venue_tagged
+                                                    -- corpus -- the live serving graph behind /weddings)
+  rank          integer not null,  -- serving order within (queue_version)
+  added_at      timestamptz not null default now(),
+  primary key (post_url, queue_version)
+);
+create index on label_queue (queue_version, rank);
+
+comment on table human_post_labels is 'RAW (append-only): every human labeling action from the /label review UI — never overwritten on relabel';
+comment on view human_post_labels_current is 'DERIVED: latest human label per post_url';
+comment on table label_queue is 'OPS: the frozen, resumable review order for a given queue_version, built by buildLabelingQueue.ts';
+
 comment on table post_classification_runs is 'DERIVED (append-only): every classification attempt for a post, keyed by post_url (stable across staging.instagram_posts and public.posts). See post_classifications_current for the latest per post.';
 comment on table golden_set is 'REGRESSION TEST: hand-labeled posts. Never written by a classifier — read-only ground truth for the eval harness.';
 comment on table account_classification_runs is 'DERIVED (append-only): account-level archetype prior (wedding_venue / wedding_photographer / generic_lifestyle / etc) — an input to post classification, not a verdict on its own.';
@@ -704,3 +853,405 @@ comment on table account_tags is 'DERIVED: role votes per account (florist x9 po
 comment on view v_account_role is 'DERIVED: the winning role per account, from account_tags votes';
 comment on table account_locations is 'DERIVED: geo per account; in_metro=true means verified Chicago-metro venue';
 comment on table ops.crawl_frontier is 'OPS: crawler to-do list — every account, its priority, hop distance, and crawl status';
+
+-- ============================================================
+-- Content eligibility vs. structured-entity eligibility (2026-09,
+-- human-labeling-ui mission) — these are different questions. The
+-- human-confirmed-evidence pipeline above (stack extraction ->
+-- human_confirmed_post_vendor_evidence -> clustering -> reconciliation ->
+-- weddings) answers "do we have enough evidence to create/strengthen a
+-- structured multi-vendor wedding entity" and stays deliberately
+-- conservative (requires a 3+-role credit stack). It does NOT answer "is
+-- this credible Chicago wedding content worth showing on a vendor's
+-- page" -- that bar is much lower: a real human-confirmed wedding with
+-- confirmed Chicago relevance, full stop. No vendor-attribution, no
+-- credit-stack richness, no clustering, no reconciliation requirement.
+-- Conflating the two made 742 confirmed real weddings look like only 18
+-- were usable -- they were never the same question. See
+-- docs/engineering/human-labeling/README.md for the full writeup.
+-- ============================================================
+
+-- Per-post Chicago relevance, independent of clustering/candidacy -- a
+-- human WEDDING label resolves "is this real," not "is this Chicago."
+-- Priority order matches labeling_rubric.md's own hierarchy: a resolved
+-- venue's verified location outranks the post's own location_tag, which
+-- outranks an explicit "Chicago" mention in the caption tied to this
+-- event; a vendor's own market is deliberately NEVER used (not reliable
+-- evidence for where the depicted event was). A pure function of already-
+-- durable, already-immutable evidence -- changing the rule later is
+-- CREATE OR REPLACE VIEW, never a relabel, never a deletion.
+create view human_confirmed_post_geography as
+select
+  gs.post_url,
+  case
+    -- "Any positive signal wins" rather than picking one arbitrary venue
+    -- when a post credits several (ceremony + reception, or extraction
+    -- noise) -- confirmed live: some posts have 2+ distinct venue-role
+    -- accounts, e.g. a church (no location on file) alongside a confirmed-
+    -- Chicago reception venue. Picking just one (by account_id or scan
+    -- order) is exactly the kind of guessing this project has explicitly
+    -- avoided elsewhere for the same ambiguity (D039's church-vs-reception
+    -- pattern) -- but that caution was about NOT auto-resolving which
+    -- account is "the" venue for a structured entity (Layer 2). For this
+    -- per-post content signal (Layer 1), a real confirmed-Chicago credit
+    -- co-existing with an unresolved one is still real positive evidence,
+    -- not evidence against.
+    when venue_signals.any_confirmed then 'CONFIRMED'
+    when sp.location_tag ~* 'chicago' then 'CONFIRMED'
+    when sp.caption_raw ~* 'chicago' then 'CONFIRMED'
+    when venue_signals.any_not_confirmed then 'NOT_CONFIRMED'
+    when sp.location_tag ~* '(new york|los angeles|miami|dallas|houston|atlanta|denver|seattle|boston|nashville|austin|san francisco|milwaukee|indianapolis|detroit|florida|california|texas|tuscany|italy|mexico|paris|london)' then 'NOT_CONFIRMED'
+    when sp.caption_raw ~* '(new york|los angeles|miami|dallas|houston|atlanta|denver|seattle|boston|nashville|austin|san francisco|milwaukee|indianapolis|detroit|florida|california|texas|tuscany|italy|mexico|paris|london)' then 'NOT_CONFIRMED'
+    when venue_signals.has_any_venue then 'AMBIGUOUS'
+    else 'NO_SIGNAL'
+  end as chicago_status
+from golden_set gs
+join staging.instagram_posts sp on sp.post_url = gs.post_url
+left join lateral (
+  select
+    bool_or(al.in_metro = true or v.city = 'Chicago') as any_confirmed,
+    bool_or(al.in_metro = false) as any_not_confirmed,
+    count(*) > 0 as has_any_venue
+  from human_confirmed_post_vendor_evidence e
+  left join account_locations al on al.account_id = e.account_id
+  -- vendors.account_id is NOT unique (confirmed live: one account has 4
+  -- rows) -- a plain join here would silently fan out one venue credit
+  -- into multiple rows. Same LATERAL + ORDER BY + LIMIT 1 defensive
+  -- pattern already used elsewhere in this codebase for the same reason
+  -- (e.g. apps/web/app/api/vendors/for-team/route.ts).
+  left join lateral (
+    select city from vendors where account_id = e.account_id order by id limit 1
+  ) v on true
+  where e.source_post_url = gs.post_url and e.role = 'venue'
+) venue_signals on true
+where gs.expected_decision = 'INCLUDE';
+
+-- THE Layer-1 content corpus: human-confirmed real wedding + confirmed
+-- Chicago relevance. Nothing else. Deliberately does NOT require vendor
+-- attribution, a rich credit stack, resolved wedding identity, or
+-- reconciliation -- those remain independent, joinable, non-gating
+-- signals (human_confirmed_post_vendor_evidence for vendor attribution;
+-- jeremy_wedding_candidates/reconciliation for structured-entity
+-- evidence), never folded into this gate.
+create view human_confirmed_chicago_wedding_content as
+select gs.post_url, gs.labeled_by, gs.labeled_at, gs.source_note
+from golden_set gs
+join human_confirmed_post_geography g on g.post_url = gs.post_url
+where gs.expected_decision = 'INCLUDE' and g.chicago_status = 'CONFIRMED';
+
+comment on view human_confirmed_post_geography is 'DERIVED: per-post Chicago relevance tri-state (+NO_SIGNAL), independent of clustering -- see the section comment above for why this exists separately from jeremy_wedding_candidates.chicago_status';
+comment on view human_confirmed_chicago_wedding_content is 'THE PRODUCT (Layer 1): human-confirmed real wedding + confirmed Chicago relevance, nothing else required. Vendor attribution/credit-stack/clustering/reconciliation stay independent, non-gating signals -- see docs/engineering/human-labeling/README.md';
+
+-- Vendor association (D046, 2026-09-06): a further correction to the same
+-- principle above -- "don't make a downstream use-case requirement a
+-- prerequisite for retaining upstream evidence." human_confirmed_post_
+-- vendor_evidence only captures vendors TAGGED/CREDITED in caption text
+-- (stack-parser output); it has no notion of "the post's own author is
+-- itself a known vendor." A venue posting about a real wedding it hosted,
+-- crediting no one else, looked like zero vendor association even though
+-- the venue IS the vendor. This view adds that missing signal with
+-- explicit provenance (author vs. tagged vs. both) as one more
+-- independent, joinable, NON-GATING dimension -- it does not change
+-- Layer 1 membership (human_confirmed_chicago_wedding_content is
+-- untouched). Scoped to all golden_set INCLUDE posts (matches
+-- human_confirmed_post_vendor_evidence's own scope), not just the
+-- Chicago-confirmed subset, so it's reusable regardless of Layer-1 status.
+create view human_confirmed_post_vendor_association as
+with author as (
+  select
+    gs.post_url,
+    -- Resolves the post's author account from whichever corpus it came
+    -- from, same defensive LEFT JOIN posture as getQueueBatch() in
+    -- apps/web/lib/server/labeling.ts (staging.instagram_posts OR
+    -- posts/accounts) -- unlike human_confirmed_post_geography above,
+    -- deliberately does not assume staging-only.
+    coalesce(a1.id, a2.id) as author_account_id
+  from golden_set gs
+  left join staging.instagram_posts sp on sp.post_url = gs.post_url
+  left join accounts a1 on lower(a1.username::text) = lower(sp.owner_username)
+  left join posts p on p.url = gs.post_url
+  left join accounts a2 on a2.id = p.owner_id
+  where gs.expected_decision = 'INCLUDE'
+),
+tagged as (
+  select source_post_url as post_url, count(distinct account_id) as tagged_vendor_count
+  from human_confirmed_post_vendor_evidence
+  group by source_post_url
+)
+select
+  au.post_url,
+  au.author_account_id,
+  -- EXISTS, not a plain join -- vendors.account_id is NOT unique
+  -- (confirmed live: one account has 4 rows); a join here would fan out
+  -- rows exactly like the bugs already found and fixed elsewhere in this
+  -- workstream.
+  exists (select 1 from vendors v where v.account_id = au.author_account_id) as author_is_vendor,
+  coalesce(t.tagged_vendor_count, 0) as tagged_vendor_count,
+  (exists (select 1 from vendors v where v.account_id = au.author_account_id)
+     or coalesce(t.tagged_vendor_count, 0) > 0) as has_vendor_association,
+  case
+    when exists (select 1 from vendors v where v.account_id = au.author_account_id)
+         and coalesce(t.tagged_vendor_count, 0) > 0 then 'BOTH'
+    when exists (select 1 from vendors v where v.account_id = au.author_account_id) then 'AUTHOR_ONLY'
+    when coalesce(t.tagged_vendor_count, 0) > 0 then 'TAGGED_ONLY'
+    else 'NONE'
+  end as vendor_association_type
+from author au
+left join tagged t on t.post_url = au.post_url;
+
+-- Thin, purely derived selection for a vendor-page-shaped surface, which
+-- structurally needs a vendor to route the post to. This is a downstream
+-- consumer's own stricter requirement applied at query time -- it does
+-- NOT change what Layer 1 itself contains.
+create view human_confirmed_vendor_page_content as
+select c.post_url, c.labeled_by, c.labeled_at, c.source_note,
+       va.author_account_id, va.author_is_vendor,
+       va.tagged_vendor_count, va.vendor_association_type
+from human_confirmed_chicago_wedding_content c
+join human_confirmed_post_vendor_association va on va.post_url = c.post_url
+where va.has_vendor_association;
+
+comment on view human_confirmed_post_vendor_association is 'DERIVED: per-post vendor-association evidence (author-is-vendor OR tagged/credited vendor), independent and non-gating -- see D046 in docs/decisions.md';
+comment on view human_confirmed_vendor_page_content is 'One downstream consumer''s stricter view (Layer 1 content that also has a vendor to attach it to) -- does not redefine Layer 1 itself';
+
+-- "v1 data completion, venues-first" mission (D047 follow-on, 2026-09-06). Track B's blanket
+-- "venue-authored + V3 INCLUDE" promotion hand-read at only ~50-72% real-wedding precision (one
+-- confirmed false positive, ~22% generic marketing) -- too noisy to auto-promote wholesale. The
+-- couple-signal pattern (explicit named-couple language: Mr./Mrs., "Couple:", "Bride:", or
+-- "Name & Name") narrowed this to near-100% precision on two independent hand-read samples,
+-- INDEPENDENT of V3's own decision (most hits were posts V3 never scored or even EXCLUDEd) --
+-- a venue's own account posting about a named couple is about as strong a "real wedding, real
+-- Chicago location" prior as this corpus has. Third, deliberately separate evidence source
+-- (same provenance-separation rule as human_confirmed_post_vendor_evidence vs.
+-- jeremy_post_vendor_evidence) -- gated on stack_extraction_entries rows produced by
+-- runStackParserOnVenueCoupleSignalPosts.ts (decision='VENUE_COUPLE_SIGNAL_INCLUDE'), scoped to
+-- posts authored by a known Chicago venue vendor whose caption matches the couple-signal
+-- pattern, explicitly excluding anything already in golden_set (avoid double-counting content
+-- already flowing through the human-confirmed path).
+create view venue_couple_signal_post_vendor_evidence as
+select
+  latest.source_post_url,
+  a.id as account_id,
+  latest.role,
+  latest.role_raw,
+  latest.line_no,
+  latest.parser_version
+from (
+  select distinct on (post_url, line_no, handle)
+    post_url as source_post_url, line_no, handle, role, role_raw, stack_parser_version as parser_version
+  from stack_extraction_entries
+  where stack_parser_version = (select max(stack_parser_version) from stack_extraction_runs)
+  order by post_url, line_no, handle, extracted_at desc
+) latest
+join accounts a on lower(a.username::text) = latest.handle
+where latest.role <> 'other'
+  and exists (
+    select 1
+    from staging.instagram_posts sp
+    join accounts va on lower(va.username::text) = lower(sp.owner_username)
+    join vendors v on v.account_id = va.id
+    where sp.post_url = latest.source_post_url
+      and v.city = 'Chicago' and v.category = 'venue'
+      and sp.caption_raw ~ '(Mr\.? *& *Mrs\.?|Couple: *@|Bride: *@|[A-Z][a-z]+ *(&|\+|and) *[A-Z][a-z]+)'
+      and not exists (select 1 from golden_set gs where gs.post_url = sp.post_url)
+  );
+
+comment on view venue_couple_signal_post_vendor_evidence is 'DERIVED: vendor evidence for venue-authored, couple-signal-matched posts (V3-independent) -- see D047 follow-on in docs/decisions.md';
+
+-- "v1 data completion, venues-first" mission (D047 follow-on, 2026-09-06), fourth evidence
+-- source. Scoping finding: 18,802 posts authored by a non-venue Chicago vendor (photographer,
+-- florist, planner, etc.) never got a jeremy_wedding_candidates venue anchor -- but this turned
+-- out NOT to be a "vendor category" gap (the existing pipeline already anchors on ANY post with
+-- a resolved venue-role credit, regardless of who authored it). It's a STACK-PARSER format gap:
+-- hand-reading a sample of these posts found real weddings at real, already-known Chicago venues
+-- credited only as a plain inline @mention ("wedding at @salvageone!", "venue 💒: @xyz") rather
+-- than the parser's expected "Venue: @handle" label line. Bounded and low-risk, unlike the
+-- abandoned venue_couple_signal-v2 track's open-ended name-pattern matching: this only matches
+-- an EXACT handle already resolved as a Chicago venue in `vendors` (not a new-account-discovery
+-- heuristic), reuses the exact promise-filter regex already proven in `venue_coverage_v3`
+-- (buildVenueCoverageQueue.ts) to drop generic non-wedding content (birthday parties, etc.), and
+-- unions in the post's OWN already-correctly-parsed non-venue vendor credits (photographer,
+-- planner, ...) from jeremy_post_vendor_evidence so it can clear clustering's >=3-distinct-role
+-- eligibility floor using real, already-verified evidence -- it only ever ADDS the missing venue
+-- role, never invents other roles. Explicitly excludes anything already covered (has a `venue`
+-- role in jeremy_post_vendor_evidence or human_confirmed_post_vendor_evidence already, or the
+-- post is already a documented wedding). Sized live: 2,143 posts match a known Chicago venue
+-- handle inline; 1,214 also clear the promise filter.
+create view venue_inline_mention_post_vendor_evidence as
+with recovered_venue as (
+  select distinct sp.post_url as source_post_url, va.id as account_id, 'venue' as role
+  from staging.instagram_posts sp
+  cross join lateral regexp_matches(sp.caption_raw, '@([a-zA-Z0-9_.]+)', 'g') as m(handle_arr)
+  join accounts va on lower(va.username::text) = lower(m.handle_arr[1])
+  join vendors v on v.account_id = va.id and v.city = 'Chicago' and v.category = 'venue'
+  where sp.caption_raw ~* '(wedding day|.s wedding|their wedding|wedding at |wedding weekend|wedding celebration|wedding reception|wedding ceremony|congrat.*wedding|bride|groom|mr\.? *& *mrs\.?)'
+    and not exists (select 1 from jeremy_post_vendor_evidence e where e.source_post_url = sp.post_url and e.role = 'venue')
+    and not exists (select 1 from human_confirmed_post_vendor_evidence e where e.source_post_url = sp.post_url and e.role = 'venue')
+    and not exists (select 1 from wedding_posts wp join posts p on p.id = wp.post_id where p.url = sp.post_url)
+)
+select source_post_url, account_id, role from recovered_venue
+union
+select e.source_post_url, e.account_id, e.role
+from jeremy_post_vendor_evidence e
+where e.source_post_url in (select source_post_url from recovered_venue);
+
+comment on view venue_inline_mention_post_vendor_evidence is 'DERIVED: recovers the missing venue-role credit for posts where a known Chicago venue was mentioned inline rather than in a labeled "Venue:" line, unioned with the post''s own already-parsed non-venue vendor credits -- see D047 follow-on in docs/decisions.md';
+
+-- Track C (D047 follow-on, 2026-09-06): a venue's own portfolio content -- styled shoots,
+-- venue-introduction posts, generic "our space is great for X" marketing -- proves the venue
+-- hosts/can host weddings and shows its aesthetic, but is deliberately NOT gated on "is this a
+-- specific real documented couple's wedding" the way the structured jeremy_wedding_candidates /
+-- weddings pipeline is. Concrete motivating example, hand-verified this session: thefultonwest's
+-- own account repeatedly reused two identical vendor-team photo sets across "National Cake Day,"
+-- "Happy World Smile Day," a 1-year "Venue Day" anniversary post, and a generic capacity pitch --
+-- real, useful content showing the venue's work, but no couple is ever named or evidenced, so it
+-- correctly never became a `weddings` row. This view is that content's home: no V3/golden_set
+-- gate, no clustering/reconciliation, no couple/date extraction -- just a basic non-spam floor
+-- (has a real caption) on posts connected to a known Chicago venue vendor, own-profile OR
+-- tagged. Every row is tagged with whether it ALSO cleared the couple-signal bar
+-- (has_couple_evidence, same regex as venue_couple_signal_post_vendor_evidence above) and
+-- whether it's ALSO already a documented real wedding (is_documented_wedding, via wedding_posts)
+-- -- a post can be zero, one, or both simultaneously, never forced into one bucket. Purely
+-- additive, non-gating, and not wired into any page yet (that's a separate, deferred UI decision
+-- -- see docs/decisions.md D047).
+create view venue_portfolio_content as
+with venue_posts as (
+  select sp.post_url, sp.caption_raw, va.id as venue_account_id, 'own_profile' as connection
+  from staging.instagram_posts sp
+  join accounts va on lower(va.username::text) = lower(sp.owner_username)
+  join vendors v on v.account_id = va.id
+  where v.city = 'Chicago' and v.category = 'venue'
+  union
+  select e.source_post_url as post_url, sp.caption_raw, va.id as venue_account_id, 'tagged' as connection
+  from jeremy_post_vendor_evidence e
+  join accounts va on va.id = e.account_id
+  join vendors v on v.account_id = va.id
+  join staging.instagram_posts sp on sp.post_url = e.source_post_url
+  where e.role = 'venue' and v.city = 'Chicago' and v.category = 'venue'
+  union
+  select e.source_post_url as post_url, sp.caption_raw, va.id as venue_account_id, 'tagged' as connection
+  from human_confirmed_post_vendor_evidence e
+  join accounts va on va.id = e.account_id
+  join vendors v on v.account_id = va.id
+  join staging.instagram_posts sp on sp.post_url = e.source_post_url
+  where e.role = 'venue' and v.city = 'Chicago' and v.category = 'venue'
+)
+select distinct on (post_url)
+  post_url,
+  venue_account_id,
+  connection,
+  (caption_raw ~ '(Mr\.? *& *Mrs\.?|Couple: *@|Bride: *@|[A-Z][a-z]+ *(&|\+|and) *[A-Z][a-z]+)') as has_couple_evidence,
+  exists (select 1 from wedding_posts wp join posts p on p.id = wp.post_id where p.url = venue_posts.post_url) as is_documented_wedding
+from venue_posts
+where coalesce(length(trim(caption_raw)), 0) > 15
+order by post_url, connection;
+
+comment on view venue_portfolio_content is 'Track C (D047 follow-on): a Chicago venue''s own portfolio content, own-profile or tagged, no couple/wedding gate at all -- non-gating dimension, distinct from Layer 1 (human_confirmed_chicago_wedding_content) and the structured weddings entity. See docs/decisions.md D047.';
+
+-- Styled-shoot vs. real-wedding signal (D049, 2026-09-07). The user wants staged/editorial
+-- content (no real couple) separated from real documented weddings -- not deleted, tagged, so a
+-- future UI can default to real weddings and let users opt into styled content. Signal design
+-- was empirically validated against golden_set ground truth before building this (94 confirmed-
+-- styled EXCLUDE rows, 1,237 confirmed-real INCLUDE rows -- see docs/decisions.md D049 for the
+-- full precision/recall numbers): a refined "styled shoot/editorial" phrase+hashtag regex has
+-- 0.16% false-positive rate (vs. 16.7% for the bare "styl" substring the user themselves warned
+-- would be noisy); vendor-stack richness and author-is-vendor do NOT discriminate styled from
+-- real (both average ~7.2-7.45 distinct credits, ~81-83% vendor-authored) and are deliberately
+-- NOT used as classifying signals here, only as a secondary "how much is at stake" dimension
+-- once something is otherwise flagged; repeat-producer accounts (an author who shows up 2+ times
+-- in the confirmed-styled set) is a real, validated signal matching the user's own hypothesis
+-- ("some accounts might even be generating more styled shoots"). "Model" as a credited role was
+-- tested and found to have zero occurrences anywhere in stack_extraction_entries at this
+-- corpus's current scale -- not included as a structured signal for that reason.
+create view post_styled_shoot_signal as
+with post_universe as (
+  select sp.post_url, sp.caption_raw as caption, lower(sp.owner_username) as author_username
+  from staging.instagram_posts sp
+  union
+  select p.url as post_url, p.caption, lower(a.username::text) as author_username
+  from posts p
+  left join accounts a on a.id = p.owner_id
+),
+scored as (
+  select post_url, max(caption) as caption, max(author_username) as author_username
+  from post_universe
+  group by post_url
+),
+golden_styled as (
+  -- Highest-confidence source: the user's own golden_set labels. EXCLUDE only -- the 10
+  -- INCLUDE/REVIEW rows that also carry a "styl" note are deliberately left OUT of this
+  -- CONFIRMED bucket (the labeler's own words were "can't tell if this is real or styled"),
+  -- surfaced instead in docs/decisions.md D049 as a separate, already-ambiguous-by-admission set.
+  select post_url from golden_set
+  where expected_decision = 'EXCLUDE'
+    and (exclusion_reason = 'styled_or_editorial' or notes ~* 'styl' or exclusion_reason ~* 'styl')
+),
+golden_styled_authors as (
+  select s.author_username, count(*) as n_styled_posts
+  from golden_styled gsty
+  join scored s on s.post_url = gsty.post_url
+  where s.author_username is not null
+  group by s.author_username
+  having count(*) >= 2
+),
+known_network_accounts (username) as (
+  values ('styledshootsacrossamerica'), ('stylemepretty'), ('chicagostyleweddings')
+)
+select
+  s.post_url,
+  s.author_username,
+  (gsty.post_url is not null) as golden_set_confirmed_styled,
+  coalesce(
+    s.caption ~* '(styled shoot|styled editorial|this styled|editorial shoot|stylized shoot|style.?d wedding)'
+    or s.caption ~* '#(styledshoot|stylizedshoot|editorialwedding|editorialshoot|weddingflatlay|flatlaystyling|designerschallenge)\y',
+    false
+  ) as phrase_or_hashtag_signal,
+  coalesce(s.author_username in (select username from known_network_accounts), false) as known_network_account,
+  (gsa.author_username is not null) as repeat_producer_account,
+  coalesce(s.caption ~* 'styl', false) as bare_keyword_signal,
+  case
+    when gsty.post_url is not null then 'CONFIRMED'
+    when s.caption ~* '(styled shoot|styled editorial|this styled|editorial shoot|stylized shoot|style.?d wedding)'
+      or s.caption ~* '#(styledshoot|stylizedshoot|editorialwedding|editorialshoot|weddingflatlay|flatlaystyling|designerschallenge)\y'
+      then 'LIKELY'
+    -- known_network_account is deliberately NOT in the LIKELY tier: hand-verification found
+    -- chicagostyleweddings (one of the 3 known accounts) also authors real, golden_set-CONFIRMED
+    -- weddings -- 9 of them -- so it's a mixed-content publication account, not a pure styled-
+    -- shoot producer. Demoted to POSSIBLE alongside the other weak/noisy signals.
+    when gsa.author_username is not null
+      or s.author_username in (select username from known_network_accounts)
+      or s.caption ~* 'styl'
+      then 'POSSIBLE'
+    else 'NO_SIGNAL'
+  end as confidence
+from scored s
+left join golden_styled gsty on gsty.post_url = s.post_url
+left join golden_styled_authors gsa on gsa.author_username = s.author_username;
+
+comment on view post_styled_shoot_signal is 'DERIVED (D049): per-post styled-shoot-vs-real tri/quad-state signal (CONFIRMED/LIKELY/POSSIBLE/NO_SIGNAL), independent and non-gating -- never used to delete or exclude anything, only to tag. See docs/decisions.md D049.';
+
+-- Rolls the per-post signal above up to the wedding level, for the ~50 already-created weddings
+-- whose source post(s) carry a styled-shoot signal. Purely additive -- no weddings/wedding_posts
+-- row is read-written, this only surfaces the tag for a future UI layer. Only weddings with at
+-- least one flagged post appear (an explicit filter, not a default-false column), so "not in this
+-- view" means NO_SIGNAL across all of that wedding's posts.
+create view wedding_styled_shoot_flag as
+with post_scores as (
+  select
+    wp.wedding_id,
+    pss.post_url,
+    pss.confidence,
+    case pss.confidence when 'CONFIRMED' then 3 when 'LIKELY' then 2 when 'POSSIBLE' then 1 else 0 end as rank
+  from wedding_posts wp
+  join posts p on p.id = wp.post_id
+  join post_styled_shoot_signal pss on pss.post_url = p.url
+)
+select
+  wedding_id,
+  (array_agg(confidence order by rank desc))[1] as styled_shoot_confidence,
+  count(*) filter (where confidence <> 'NO_SIGNAL') as flagged_post_count
+from post_scores
+group by wedding_id
+having max(rank) > 0;
+
+comment on view wedding_styled_shoot_flag is 'DERIVED (D049): rolls post_styled_shoot_signal up to the wedding level -- only weddings with >=1 flagged post appear. Never touches weddings/wedding_posts; a future UI reads this to tag/separate styled-shoot content from real weddings.';

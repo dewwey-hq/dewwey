@@ -6,6 +6,44 @@ anything below: `docs/decisions.md` (D001–D042 so far).
 
 ## Now
 
+- **Shipped 2026-09-06**: "v1 data completion, venues-first" (D043-D047,
+  `docs/decisions.md`, full narrative), then its direct follow-on "beyond
+  INCLUDE mining + account aliases" (D048, same day — the user pushed
+  back again: "I still don't believe that's enough documented weddings
+  per venue"). Combined result as of D048: **weddings more than doubled,
+  1,567→3,435**, Feed coverage (`measureFeedCoverage.ts`) **19.3%→63.3%**.
+  Named reference venues, directly verifiable on `/vendors` today:
+  bridgeportartcenter 23→150, rockwellontheriver →116, venuelogic 26→185,
+  the.arbory 22→74, fairliechicago 19→49, sarabandechicago 17→37,
+  thewellsley 21→26, gpconservatory 16→18, the_carter_fultonmarket 18→18.
+  D047's mechanism: 2,030 trustworthy unmatched/uncreated candidates
+  across 253 already-known venues, tiered by risk and processed with a
+  systematic venue-identity filter (double-venue-tag ambiguity,
+  bio-redirect mislabels) — including a mid-mission discovery that
+  `venuelogic` is a hospitality company co-tagged on ~160 candidates at
+  two popular venues, wrongly excluded as "ambiguous" until verified
+  otherwise. D048 added three more things once the user judged D047
+  still under-counting: (1) a new `/label` queue (`beyond_include_v1`,
+  833 posts) mining specifically V3's own unreviewed REVIEW tier + EXCLUDE
+  posts with a real vendor stack + score-6-11 posts V3 never even scored —
+  not blind full-corpus review; (2) `account_aliases` (new table +
+  `apps/web/lib/server/graph.ts` changes) so a venue running multiple
+  Instagram handles (Art Institute of Chicago has three) merges onto one
+  `/vendors` page instead of fragmenting coverage — 15 pairs verified and
+  live; (3) a stack-parser precision fix (`stackParser.ts` v3→v4) for a
+  "Venue Partners:" boilerplate line that was silently matching the same
+  regex as a real "Venue:" credit, contaminating the ambiguity backlog.
+  Explicitly deferred, not forgotten: the double-venue-tag-ambiguity
+  backlog's remaining ~113 fragmented candidates, `fourthchurch`/
+  `thefultonwest` (already untangled in D047, see decisions.md),
+  Track C (non-gating portfolio content view — shipped in D047 as
+  `venue_portfolio_content`, not yet wired into any page), any
+  vendor-page UI work to surface Layer-1/Layer-2 distinctly (still
+  data-only), and non-venue vendor categories (explicitly out of scope
+  all session). `/label`'s `beyond_include_v1` queue is the active
+  in-flight thread — sync its results through the same
+  golden_set→stack-parse→cluster→reconcile→create pipeline once the user
+  makes progress on it.
 - Ben ↔ Jeremy merge conversation (`docs/merge-eval.md` is the case). Data
   import already done on Ben's authorization (2026-08-22); the conversation
   is now about the merge itself and rotating his RDS/API credentials.
@@ -145,3 +183,11 @@ anything below: `docs/decisions.md` (D001–D042 so far).
 - Monthly recency crawl (Vercel cron or GitHub Actions).
 - Venue photos → R2 at seed time (`vendors.photo_keys`). Needs a server-side
   Places key (~$7/1k photo fetches, est. $100–175 one-time).
+- Use `golden_set`'s growing human-labeled corpus (1,710+ rows as of the
+  human-labeling-ui session, spanning both `staging.instagram_posts` and
+  `public.posts`) to look for what confirmed-WEDDING posts have in common
+  and steer scraping/crawl strategy with it — candidate re-prioritization
+  in `ops.crawl_frontier`, retuning `candidateScore.ts`'s formula now that
+  there's a much bigger labeled set than it was built against, or informing
+  the Google Places search strings in `pipeline.py`. Not scoped as a
+  mission yet — a promising direction surfaced by the labeling data itself.

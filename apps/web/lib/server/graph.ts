@@ -90,21 +90,46 @@ export async function listWeddingStacks(opts: {
   limit?: number;
   offset?: number;
   accountId?: number;
+  /** Alias account ids (account_aliases) whose wedding_vendors rows also count toward
+   * accountId's Feed -- see resolveAccountIdentity(). Only meaningful when accountId is set. */
+  aliasAccountIds?: number[];
 } = {}) {
   const limit = Math.min(opts.limit ?? 20, 100);
   const offset = opts.offset ?? 0;
+  const accountIds = opts.accountId != null ? [opts.accountId, ...(opts.aliasAccountIds ?? [])] : null;
   const { rows } = await getPool().query(
     `${STACK_SELECT}
-     WHERE ($3::int IS NULL AND w.is_chicago)
-        OR ($3::int IS NOT NULL AND EXISTS (
+     WHERE ($3::int[] IS NULL AND w.is_chicago)
+        OR ($3::int[] IS NOT NULL AND EXISTS (
              SELECT 1 FROM wedding_vendors x
-             WHERE x.wedding_id = w.id AND x.account_id = $3))
+             WHERE x.wedding_id = w.id AND x.account_id = ANY($3::int[])))
      ORDER BY w.event_date_est DESC NULLS LAST, w.id DESC
      LIMIT $1 OFFSET $2`,
-    [limit, offset, opts.accountId ?? null]
+    [limit, offset, accountIds]
   );
   const total = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
   return { stacks: rows.map(toStack), total, limit, offset };
+}
+
+/**
+ * Resolves a requested account id through `account_aliases` (D047 follow-on, 2026-09-06 --
+ * some real venues run multiple Instagram handles, e.g. Art Institute of Chicago has three).
+ * Visiting an alias's own URL still resolves to the canonical account's identity (name, bio,
+ * avatar) so both handles render the same profile, and returns every alias id feeding INTO
+ * that canonical account so callers can merge wedding counts/Feed across all of them --
+ * additive, doesn't touch any wedding_vendors row.
+ */
+async function resolveAccountIdentity(requestedId: number): Promise<{ canonicalId: number; aliasIds: number[] }> {
+  const { rows } = await getPool().query<{ canonical_account_id: number }>(
+    `select canonical_account_id from account_aliases where alias_account_id = $1`,
+    [requestedId]
+  );
+  const canonicalId = rows.length > 0 ? rows[0].canonical_account_id : requestedId;
+  const { rows: aliasRows } = await getPool().query<{ alias_account_id: number }>(
+    `select alias_account_id from account_aliases where canonical_account_id = $1`,
+    [canonicalId]
+  );
+  return { canonicalId, aliasIds: aliasRows.map((r) => r.alias_account_id) };
 }
 
 export async function getVendorProfile(
@@ -112,6 +137,16 @@ export async function getVendorProfile(
   opts: { feedLimit?: number; feedOffset?: number } = {}
 ) {
   const pool = getPool();
+
+  // Resolve alias->canonical FIRST (D047 follow-on, 2026-09-06) -- visiting either handle of
+  // a multi-account venue (e.g. artinstitutespecialevents) renders the same canonical profile,
+  // with wedding counts/Feed merged across every alias. See resolveAccountIdentity() and
+  // account_aliases in pipeline/schema.sql.
+  const { rows: rawRows } = await pool.query<{ id: number }>(`SELECT id::int FROM accounts WHERE username = $1::citext`, [username]);
+  if (rawRows.length === 0) return null;
+  const { canonicalId, aliasIds } = await resolveAccountIdentity(rawRows[0].id);
+  const allIds = [canonicalId, ...aliasIds];
+
   const { rows } = await pool.query(
     `SELECT
        a.id::int, a.username::text, CASE WHEN v.name IS NULL OR v.name IN (a.username::text, '@' || a.username::text)
@@ -122,9 +157,9 @@ export async function getVendorProfile(
        COALESCE(al.city, v.city) AS city,
        v.place_id, v.rating, v.review_count, v.website AS places_website,
        (SELECT COUNT(*) FROM wedding_vendors wv JOIN weddings w ON w.id = wv.wedding_id
-         WHERE wv.account_id = a.id)::int AS n_weddings,
+         WHERE wv.account_id = ANY($2::int[]))::int AS n_weddings,
        (SELECT COUNT(*) FROM wedding_vendors wv JOIN weddings w ON w.id = wv.wedding_id
-         WHERE wv.account_id = a.id AND w.is_chicago)::int AS n_chicago_weddings
+         WHERE wv.account_id = ANY($2::int[]) AND w.is_chicago)::int AS n_chicago_weddings
      FROM accounts a
      LEFT JOIN v_account_role var ON var.account_id = a.id
      LEFT JOIN account_locations al ON al.account_id = a.id
@@ -132,8 +167,8 @@ export async function getVendorProfile(
        SELECT name, address, city, place_id, rating, review_count, website
        FROM vendors WHERE account_id = a.id ORDER BY id LIMIT 1
      ) v ON true
-     WHERE a.username = $1::citext`,
-    [username]
+     WHERE a.id = $1`,
+    [canonicalId, allIds]
   );
   if (rows.length === 0) return null;
   const a = rows[0];
@@ -148,21 +183,24 @@ export async function getVendorProfile(
               THEN COALESCE(partner.full_name, partner.username::text) ELSE pv.name END AS name,
          pvar.role::text AS role,
          partner.avatar_path AS avatar,
-         e.n_weddings::int, e.last_worked_together
+         SUM(e.n_weddings)::int AS n_weddings, MAX(e.last_worked_together) AS last_worked_together
        FROM edges e
        JOIN accounts partner
-         ON partner.id = CASE WHEN e.account_a = $1 THEN e.account_b ELSE e.account_a END
+         ON partner.id = CASE WHEN e.account_a = ANY($1::int[]) THEN e.account_b ELSE e.account_a END
        LEFT JOIN v_account_role pvar ON pvar.account_id = partner.id
        LEFT JOIN LATERAL (
          SELECT name FROM vendors WHERE account_id = partner.id ORDER BY id LIMIT 1
        ) pv ON true
-       WHERE $1 IN (e.account_a, e.account_b)
-       ORDER BY e.n_weddings DESC, e.last_worked_together DESC NULLS LAST
+       WHERE (e.account_a = ANY($1::int[]) OR e.account_b = ANY($1::int[]))
+         AND partner.id <> ALL($1::int[])
+       GROUP BY partner.id, partner.username, name, pvar.role, partner.avatar_path
+       ORDER BY n_weddings DESC, last_worked_together DESC NULLS LAST
        LIMIT 24`,
-      [a.id]
+      [allIds]
     ),
     listWeddingStacks({
-      accountId: a.id,
+      accountId: canonicalId,
+      aliasAccountIds: aliasIds,
       limit: opts.feedLimit ?? 20,
       offset: opts.feedOffset ?? 0,
     }),
@@ -239,16 +277,24 @@ export async function listVendors(opts: {
      FROM accounts a
      JOIN v_account_role var ON var.account_id = a.id
      JOIN (
-       SELECT wv.account_id,
+       -- D047 follow-on, 2026-09-06: a real venue running multiple Instagram handles (see
+       -- account_aliases) shouldn't fragment its wedding count across separate browse cards --
+       -- merge every alias's rows onto the canonical account_id here.
+       SELECT COALESCE(aa.canonical_account_id, wv.account_id) AS account_id,
               COUNT(*) FILTER (WHERE w.is_chicago) AS n_chicago
-       FROM wedding_vendors wv JOIN weddings w ON w.id = wv.wedding_id
-       GROUP BY wv.account_id
+       FROM wedding_vendors wv
+       JOIN weddings w ON w.id = wv.wedding_id
+       LEFT JOIN account_aliases aa ON aa.alias_account_id = wv.account_id
+       GROUP BY COALESCE(aa.canonical_account_id, wv.account_id)
      ) cnt ON cnt.account_id = a.id
      LEFT JOIN LATERAL (
        SELECT name, place_id, rating, review_count, neighborhood, photo_keys
        FROM vendors WHERE account_id = a.id ORDER BY id LIMIT 1
      ) v ON true
      WHERE cnt.n_chicago >= GREATEST($5::int, 1)
+       -- alias accounts never appear as their own card -- their weddings already counted
+       -- toward the canonical account above.
+       AND NOT EXISTS (SELECT 1 FROM account_aliases WHERE alias_account_id = a.id)
        AND ($1::text[] IS NULL OR var.role = ANY($1::vendor_role[]))
        AND ($4::text IS NULL
             OR a.username::text ILIKE $4 ESCAPE '\\'
@@ -292,8 +338,9 @@ export async function homeStats() {
   const { rows } = await getPool().query(`
     SELECT
       (SELECT COUNT(*) FROM weddings WHERE is_chicago)::int AS chicago_weddings,
-      (SELECT COUNT(DISTINCT wv.account_id)
+      (SELECT COUNT(DISTINCT COALESCE(aa.canonical_account_id, wv.account_id))
          FROM wedding_vendors wv JOIN weddings w ON w.id = wv.wedding_id
+         LEFT JOIN account_aliases aa ON aa.alias_account_id = wv.account_id
         WHERE w.is_chicago)::int AS credited_vendors,
       (SELECT COUNT(*) FROM edges)::int AS collaborations`);
   return rows[0] as {
@@ -306,10 +353,11 @@ export async function homeStats() {
 /** Chicago-credited vendor count per role, for homepage category cards. */
 export async function categoryCounts(): Promise<Record<string, number>> {
   const { rows } = await getPool().query(`
-    SELECT var.role::text AS role, COUNT(DISTINCT wv.account_id)::int AS n
+    SELECT var.role::text AS role, COUNT(DISTINCT COALESCE(aa.canonical_account_id, wv.account_id))::int AS n
     FROM wedding_vendors wv
     JOIN weddings w ON w.id = wv.wedding_id AND w.is_chicago
     JOIN v_account_role var ON var.account_id = wv.account_id
+    LEFT JOIN account_aliases aa ON aa.alias_account_id = wv.account_id
     GROUP BY var.role`);
   return Object.fromEntries(rows.map((r) => [r.role, r.n]));
 }

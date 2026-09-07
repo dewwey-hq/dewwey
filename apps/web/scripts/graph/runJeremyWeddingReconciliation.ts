@@ -135,7 +135,12 @@ async function main() {
   await closePool();
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Guarded so RECONCILIATION_VERSION can be imported (e.g. by
+// reportHumanConfirmedGraphValue.ts) without re-triggering a live
+// reconciliation run as a side effect of the import.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

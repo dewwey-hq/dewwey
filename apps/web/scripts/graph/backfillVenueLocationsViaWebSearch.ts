@@ -145,7 +145,226 @@ const CONFIRMED_LOCATIONS: ConfirmedLocation[] = [
   { accountId: 21343, username: "venutisrestaurant", address: null, city: "Addison", region: "IL", source: "web:instagram.com/venutisrestaurant, venutis.com" },
   { accountId: 21348, username: "victoriainthepark", address: null, city: "Mount Prospect", region: "IL", source: "web:instagram.com/victoriainthepark, victoriavenues.com" },
   { accountId: 21416, username: "westinchicagonw", address: null, city: "Itasca", region: "IL", source: "web:instagram.com/westinchicagonw" },
+
+  // Batch 5 (2026-09-06) — new mission: "v1 data completion, venues-first" (D046 follow-on,
+  // docs/decisions.md). Sourced from a FRESH cohort — 252 v_account_role='venue' accounts with
+  // no vendors bridge and no account_locations row at all (not the D034-scoped 447 candidates
+  // Batches 1-4 worked through). First 49 of 252 searched: 33 confirmed Chicago-metro, 11
+  // confirmed NOT Chicago (excluded, not listed here), 4 inconclusive (no confident match:
+  // thecedar, cspshall, harraycaraycelebrations, iahcchicago — left unresolved, not retried).
+  // Two handle-variant cases (same pattern as Batch 4's thegreathallatmistwood): the search
+  // consistently surfaced a near-identical live handle for the same real business --
+  // lacunacatalystsuites (live handle lacunabycatalystsuites, Pilsen) and publishinghousebnb
+  // (live handle publishinghouse_bnb, West Loop) -- treated as the same entity under an
+  // alternate/historic handle, not guessed blind. Several confirmed entries are bars/breweries/
+  // nightclubs with a real Chicago address but no explicit wedding-hosting confirmation
+  // (electricfuneralbar, kerrymanchicago, cobralounge, mhouse.chicago, slipperysloped,
+  // momshousechicago, swigchicago, easydoesitchicago) -- same precedent as Batch 1's
+  // figdrinks/murphysbleachers: this script's only job is confirming the ADDRESS is genuinely
+  // Chicago, not whether it's primarily a wedding venue -- that's the account_tags venue-role
+  // corroboration filter's job downstream (same as every prior batch). westloopweddingwalk is
+  // a multi-venue promotional tour brand, not a single physical venue -- location confirmed
+  // (Chicago, West Loop) but almost certainly won't survive the venue-role corroboration filter;
+  // included here rather than silently dropped so that filter (not this script) makes the call.
+  // whitehawkcc (Crown Point, IN, ~50min south of downtown) included as Chicago-metro/NW Indiana,
+  // consistent with this mission's precedent of suburb inclusion by drive time, not city limits --
+  // genuinely borderline, flagged for review. dunespavilion (Indiana Dunes State Park, NW Indiana,
+  // ~70+ min) excluded as closer to Batch 2's excluded ~90min precedent (stjames1868,
+  // williams.orchard) than to any confirmed-in-scope suburb -- also borderline, flagged.
+  { accountId: 2864, username: "holynamecathedral", address: "730 N Wabash Ave", city: "Chicago", region: "IL", source: "web:weddingwire.com, lakeshoreinlove.com, 312film.com" },
+  { accountId: 7581, username: "drurylaneproductions", address: null, city: "Oakbrook Terrace", region: "IL", source: "web:drurylaneevents.com, chicagostyleweddings.com (historic name for Drury Lane Theatre/Events)" },
+  { accountId: 4188, username: "wrigleyontheriver", address: null, city: "Chicago", region: "IL", source: "web:wrigleyontheriver.com, chicagoeventgroup.com (Wrigley Building)" },
+  { accountId: 6260, username: "cityviewloft", address: null, city: "Chicago", region: "IL", source: "web:cityviewloftchicago.com, eivans.com" },
+  { accountId: 3564, username: "raviniafestival", address: null, city: "Highland Park", region: "IL", source: "web:ravinia.org, chicagostyleweddings.com" },
+  { accountId: 7038, username: "chiefoneillspub", address: "3471 N Elston Ave", city: "Chicago", region: "IL", source: "web:chiefoneillspub.com" },
+  { accountId: 8324, username: "electricfuneralbar", address: "3529 S Halsted St", city: "Chicago", region: "IL", source: "web:yelp.com, apple maps (Bridgeport)" },
+  { accountId: 1303, username: "kerrymanchicago", address: "661 N Clark St", city: "Chicago", region: "IL", source: "web:instagram.com/kerrymanchicago" },
+  { accountId: 4904, username: "lacunacatalystsuites", address: null, city: "Chicago", region: "IL", source: "web:lacunaeventsbylm.com, instagram.com/lacunabycatalystsuites (handle variant, Pilsen)" },
+  { accountId: 4994, username: "theschoolhousechicago", address: null, city: "Chicago", region: "IL", source: "web:partyslate.com (Orleans & Hill)" },
+  { accountId: 4151, username: "sunsetridgecc", address: "2100 Sunset Ridge Rd", city: "Northfield", region: "IL", source: "web:sunsetridgecc.org, yelp.com" },
+  { accountId: 1645, username: "meridianbanquets", address: null, city: "Rolling Meadows", region: "IL", source: "web:meridianbanquets.com, weddingwire.com" },
+  { accountId: 1526, username: "trivolitavern", address: "114 N Green St", city: "Chicago", region: "IL", source: "web:trivolitavern.com, restaurantguru.com" },
+  { accountId: 8124, username: "fitzgeraldsnightclub", address: "6615 W Roosevelt Rd", city: "Berwyn", region: "IL", source: "web:fitzgeraldsnightclub.com, enjoyillinois.com" },
+  { accountId: 11109, username: "hellenicmuseum", address: "333 S Halsted St", city: "Chicago", region: "IL", source: "web:nationalhellenicmuseum.org, weddingwire.com (Greektown)" },
+  { accountId: 8163, username: "16occhicago", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/16occhicago" },
+  { accountId: 8952, username: "publishinghousebnb", address: "108 N May St", city: "Chicago", region: "IL", source: "web:publishinghousebnb.com, instagram.com/publishinghouse_bnb (handle variant, West Loop)" },
+  { accountId: 6634, username: "cobralounge", address: "235 N Ashland Ave", city: "Chicago", region: "IL", source: "web:cobralounge.com" },
+  { accountId: 5809, username: "halfacrebeer", address: "2050 W Balmoral Ave", city: "Chicago", region: "IL", source: "web:halfacrebeer.com, chicagostyleweddings.com (Brews & I Dos)" },
+  { accountId: 6304, username: "fourthchurch", address: "126 E Chestnut St", city: "Chicago", region: "IL", source: "web:fourthchurch.org" },
+  { accountId: 4355, username: "stgeorgechicagogoc", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/stgeorgechicagogoc (St George Greek Orthodox Cathedral, est. 1923)" },
+  { accountId: 4207, username: "sheratongrandchicago", address: null, city: "Chicago", region: "IL", source: "web:herecomestheguide.com, weddingwire.com (Riverwalk)" },
+  { accountId: 4386, username: "bolingbrookgolfclub", address: null, city: "Bolingbrook", region: "IL", source: "web:bolingbrookgolfclub.com, weddingwire.com" },
+  { accountId: 3813, username: "mhouse.chicago", address: "800 W 27th St", city: "Chicago", region: "IL", source: "web:instagram.com/mhouse.chicago" },
+  { accountId: 3808, username: "thestudiochicago", address: "2255 S Michigan Ave", city: "Chicago", region: "IL", source: "web:lmstudiochicago.com, instagram.com/thestudiochicago" },
+  { accountId: 1480, username: "westloopweddingwalk", address: null, city: "Chicago", region: "IL", source: "web:westloopweddingwalk.com (multi-venue tour brand, not a single venue -- flag for role-filter)" },
+  { accountId: 2764, username: "slipperysloped", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/slipperysloped (dance bar)" },
+  { accountId: 2761, username: "monochromebrew", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/monochromebrew (brewery)" },
+  { accountId: 2757, username: "momshousechicago", address: "26 W Division St", city: "Chicago", region: "IL", source: "web:instagram.com/momshousechicago, linktr.ee (nightclub)" },
+  { accountId: 2753, username: "swigchicago", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/swigchicago" },
+  { accountId: 2738, username: "offhoursbeerco", address: "3520 S Halsted St", city: "Chicago", region: "IL", source: "web:instagram.com/offhoursbeerco (Bridgeport, Ramova-adjacent)" },
+  { accountId: 2734, username: "easydoesitchicago", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/easydoesitchicago (bar/shop)" },
+  { accountId: 2697, username: "pilotprojectbrewing", address: "2140 N Milwaukee Ave", city: "Chicago", region: "IL", source: "web:tagvenue.com, ma.to (Logan Square)" },
+
+  // Batch 6 (2026-09-06) — continuing the same 252-account cohort, accounts 51-100 by
+  // evidence_count (much lower confidence tier than Batch 5, 0.65 vs 0.8-0.95 -- and it
+  // showed: far more out-of-state noise this round, e.g. citywineryatl/hv/bos/_pgh,
+  // thebitterendnyc, ardmoremusichall, theexchangeva, mclemoreresort -- skipped without a
+  // search call, obviously non-Chicago by name, same as Batch 5's Scotland/Riviera Maya
+  // entries). 17 searched: 11 confirmed Chicago-metro, 3 confirmed NOT Chicago
+  // (epiphanyfarmsestate -- Downs, IL, 2.5hrs south; lakelawnresort -- Delavan, WI, ~90min,
+  // same exclusion radius as Batch 2's stjames1868/williams.orchard; verandahistoricinn --
+  // Senoia, GA), 3 inconclusive (wadehouseweddings, elmsmansion, evanstonspace -- no
+  // confident match, left unresolved). fadschicagolakeview (Fred Astaire Dance Studios) and
+  // metrochicago (a live-music venue) are real Chicago addresses but not primarily wedding
+  // venues -- included per Batch 1's own precedent (this script confirms location only; the
+  // venue-role corroboration filter downstream decides legitimacy).
+  { accountId: 4245, username: "taochicago", address: null, city: "Chicago", region: "IL", source: "web:partyslate.com (River North)" },
+  { accountId: 4638, username: "thearbory", address: "2219 W Grand Ave", city: "Chicago", region: "IL", source: "web:thearborychicago.com, weddingwire.com (likely handle variant of the.arbory, same business)" },
+  { accountId: 4610, username: "hyattcentricmagmile", address: null, city: "Chicago", region: "IL", source: "web:hyatt.com, weddingwire.com" },
+  { accountId: 2576, username: "catalystranchchicago", address: "656 W Randolph St", city: "Chicago", region: "IL", source: "web:catalystranch.com, yelp.com (West Loop)" },
+  { accountId: 5115, username: "metrochicago", address: "3730 N Clark St", city: "Chicago", region: "IL", source: "web:instagram.com/metrochicago (Wrigleyville, live-music venue)" },
+  { accountId: 5741, username: "cantignygolf", address: null, city: "Wheaton", region: "IL", source: "web:cantigny.org, theknot.com" },
+  { accountId: 5544, username: "jewishmuseumchicago", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/jewishmuseumchicago" },
+  { accountId: 5079, username: "bridgesofpoplarcreek", address: "1400 Poplar Creek Dr", city: "Hoffman Estates", region: "IL", source: "web:bridgesofpoplarcreek.com, weddingwire.com" },
+  { accountId: 6129, username: "olympiafieldscc", address: "2800 Country Club Dr", city: "Olympia Fields", region: "IL", source: "web:instagram.com/olympiafieldscc, caratsandcake.com" },
+  { accountId: 3407, username: "fadschicagolakeview", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/fadschicagolakeview (Fred Astaire Dance Studios, not a venue -- flag for role-filter)" },
+  { accountId: 4600, username: "maxwellstrading", address: null, city: "Chicago", region: "IL", source: "web:maxwellstrading.com, gretchenwittryphotography.com (West Loop)" },
+
+  // Batch 7 (2026-09-06), continuing the same 252-account cohort, accounts 101-150 by
+  // evidence_count (same 0.65 confidence tier as Batch 6). 17 searched: 13 confirmed
+  // Chicago-metro, 3 confirmed NOT Chicago (pritzlaffevents -- Milwaukee, WI;
+  // warehouseonnorth -- Elburn, IL, ~50-55mi/~1hr west, excluded as too far/uncertain
+  // vs. this project's established suburb-inclusion precedent; ritzcarlton -- ambiguous
+  // global brand handle, the actual Chicago property's real handle is @rcchicago, not
+  // this one -- not guessed), 2 inconclusive (concordiaplace -- no specific address found,
+  // just a vague "Chicago communities" bio, too weak to confirm; thewalkinchicago -- no
+  // match at all). Two more handle-variant cases (same pattern as Batches 4/5):
+  // morgan.mfg. (trailing-dot handle in our DB; the live business account is morgan.mfg,
+  // already resolved earlier this session with 18 documented weddings -- same real West
+  // Loop venue) and madegallery (live handle madegallerychicago, 1430 W Chicago Ave).
+  // wrigleyfieldevents and officialwrigleyfield are two real, separate handles for the
+  // same Wrigley Field events complex -- both confirmed. Several confirmed entries are
+  // bars/breweries/boat-rental/cultural venues with a real Chicago(-metro) address but no
+  // explicit wedding-hosting confirmation (theleavittstreettavern, chicagoboatco,
+  // theathenaeum_chicago) -- same precedent as every prior batch: this script confirms
+  // location only, the venue-role corroboration filter decides legitimacy downstream.
+  { accountId: 7376, username: "theleavittstreettavern", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/theleavittstreettavern, facebook.com/theleavittstreet" },
+  { accountId: 8150, username: "officialwrigleyfield", address: null, city: "Chicago", region: "IL", source: "web:wrigleyfieldevents.com, partyslate.com (Wrigleyville)" },
+  { accountId: 8524, username: "wrigleyfieldevents", address: null, city: "Chicago", region: "IL", source: "web:wrigleyfieldevents.com (Wrigleyville, sister handle to officialwrigleyfield)" },
+  { accountId: 8511, username: "naiaontheriver", address: "300 N La Salle Dr", city: "Chicago", region: "IL", source: "web:yelp.com (Chicago River)" },
+  { accountId: 8954, username: "morgan.mfg.", address: "401 N Morgan St", city: "Chicago", region: "IL", source: "web:morgan-mfg.com, wezoree.com (handle variant of morgan.mfg, West Loop)" },
+  { accountId: 9038, username: "theathenaeum_chicago", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/theathenaeum_chicago, do312.com" },
+  { accountId: 8828, username: "stmarkchicago", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/stmarkchicago, stmarkchicago.org" },
+  { accountId: 9051, username: "chicagoboatco", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/chicagoboatco (Chicago River)" },
+  { accountId: 8486, username: "rreventschicago", address: null, city: "Chicago", region: "IL", source: "web:rreventschicago.com, modernluxury.com (downtown, Chicago River)" },
+  { accountId: 8101, username: "beatkitchenbar", address: null, city: "Chicago", region: "IL", source: "web:beatkitchen.com, do312.com (Roscoe Village, Belmont Ave)" },
+  { accountId: 8094, username: "pollyannabrewingcompany", address: null, city: "Lemont", region: "IL", source: "web:pollyannabrewing.com" },
+  { accountId: 7768, username: "madegallery", address: "1430 W Chicago Ave", city: "Chicago", region: "IL", source: "web:instagram.com/madegallerychicago (handle variant)" },
+  { accountId: 8025, username: "115bourbonstreet", address: null, city: "Alsip", region: "IL", source: "web:weddingwire.com, theknot.com (~20min S of the Loop)" },
+
+  // Batch 8 (2026-09-06), continuing the same 252-account cohort, accounts 151-195 (offset
+  // 150, limit 50 of the remaining unresolved pool -- only 45 rows returned, near the end of
+  // this cohort). 25 searched (of the promising-looking subset; obviously-non-Chicago names
+  // -- trumpgolfjupiter/trumpgolfpalmbeach/themaralagoclub/trumpdoral (all FL),
+  // ramblingroseranchatx (Austin), hotelhaya (Tampa), smackinntownmke (Milwaukee),
+  // hoophall (Springfield MA), manoir_de_kerhuel (France), ashkenazberkeley/moesalley
+  // (CA), nscchurchwi (WI), missouristatejazzstudies (MO) -- skipped without a search
+  // burn, same "don't guess, don't waste a query on the obvious" discipline as before).
+  // 14 confirmed Chicago-metro. Explicit non-Chicago/non-venue exclusions:
+  // epiphanyfarmsestate (Downs, IL -- 2.5hrs S of Chicago, too far), gbchicagowestloop
+  // (Brazilian Jiu-Jitsu gym, not an event venue), ronaldmcdonaldhousechicago (Chicago
+  // charity housing, not a wedding venue), lovelyonsphoto/pepesoffice (photographer /
+  // personal accounts, not venues), thethreepeaksranch (Westcliffe, CO),
+  // imperialakeunion (Seattle, WA -- "Imperia Lake Union"). Inconclusive, left
+  // unresolved: churchclubchicago, dream_creeks, rah.ent, bellafineartandevents,
+  // holacafe_eventos, elgrancaribe, ktmac1116, thursdaytherapychi (no confirmed
+  // wedding-venue identity found), palmerhouseinn (ambiguous -- exact-name match is a
+  // Falmouth, MA B&B, not Chicago's "Palmer House Hilton" which uses a different handle;
+  // not guessed).
+  { accountId: 10392, username: "thedawsonchicago", address: null, city: "Chicago", region: "IL", source: "web:theknot.com, partyslate.com (River West)" },
+  { accountId: 10611, username: "thehegewisch", address: null, city: "Chicago", region: "IL", source: "web:thehegewisch.com (Hegewisch, SE side)" },
+  { accountId: 10714, username: "theelmlagrange", address: "23 W Harris Ave", city: "La Grange", region: "IL", source: "web:lgba.com, theelmlagrange.com" },
+  { accountId: 10895, username: "penthousehydepark", address: null, city: "Chicago", region: "IL", source: "web:penthousehydepark.com (Hyde Park)" },
+  { accountId: 11108, username: "theatriachicago", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/theatriachicago, forgetmenotarts.com (Humboldt Park)" },
+  { accountId: 2483, username: "msichicagoevents", address: null, city: "Chicago", region: "IL", source: "web:griffinmsi.org/host-an-event (Museum of Science and Industry)" },
+  { accountId: 2830, username: "themartchicago", address: null, city: "Chicago", region: "IL", source: "web:eventective.com (Merchandise Mart)" },
+  { accountId: 830, username: "artifecteventschicago", address: null, city: "Chicago", region: "IL", source: "web:artifacteventschicago.com (Ravenswood)" },
+  { accountId: 10678, username: "onceuponatimeeventsllc", address: null, city: "Chicago", region: "IL", source: "web:weddingwire.com (Once Upon a Wedding, Chicago-based planner)" },
+  { accountId: 10644, username: "geraghtynorth_", address: "2100 Sanders Rd", city: "Northbrook", region: "IL", source: "web:chicagostarmedia.com (Geraghty North, opening 2027, North Shore)" },
+  { accountId: 11044, username: "napersettlement", address: "523 S Weber St", city: "Naperville", region: "IL", source: "web:napersettlement.org, weddingwire.com (~40min from downtown)" },
+  { accountId: 1203, username: "skydeckchicago", address: null, city: "Chicago", region: "IL", source: "web:theskydeck.com/private-events/weddings (Willis Tower)" },
+  { accountId: 1993, username: "stolensaddlechi", address: "3505 N Clark St", city: "Chicago", region: "IL", source: "web:blockclubchicago.org, stolensaddlebar.com (Wrigleyville)" },
+  { accountId: 2771, username: "pennywhistletavern", address: "1854 S Blue Island Ave", city: "Chicago", region: "IL", source: "web:giantpennywhistle.com, yelp.com (Pilsen)" },
+
+  // Batch 9 (2026-09-06, autonomous /loop continuation), continuing the same 252-account cohort
+  // -- the pool re-sorts as prior batches resolve accounts, so this is not a fixed offset range.
+  // 17 searched (skipped obvious non-Chicago names without a search burn: citywinerynyc/
+  // -phil/-nsh/-pgh/-bos/-hv/-atl -- all real City Winery locations in OTHER cities, not Chicago's
+  // own handle; bevhillshotel -- Beverly Hills; trumpturnberryscotland -- Scotland;
+  // editionrivieramayakanai/stregiskanairesort -- Riviera Maya, Mexico; wisconsinunion --
+  // Madison, WI). 8 confirmed Chicago-metro. Explicit non-Chicago/non-venue exclusions:
+  // cspshall (Cedar Rapids, IA), dunespavilion (Chesterton, IN -- same "Indiana out of scope"
+  // call as Batch 7's whitehawkcc), themarqueeshow (St. Charles, MO), contidisanbonifacio
+  // (Tuscany, Italy), villagesuitesbayharbor (Petoskey, MI), tickledpinkchicago (a Chicago
+  // charity fundraiser account, not a venue), wipachicago (Wedding Industry Professionals
+  // Association's Chicago chapter -- an industry association, not a venue), stregishotels
+  // (ambiguous global-brand handle -- the actual St. Regis Chicago's own marketing uses a
+  // different handle; not guessed, same precedent as Batch 7's ritzcarlton exclusion).
+  // Inconclusive, left unresolved: thecedar (no exact-handle match found).
+  { accountId: 6004, username: "harraycaraycelebrations", address: null, city: "Chicago", region: "IL", source: "web:theknot.com, weddingwire.com (Harry Caray's Catering & Events, River North + Lombard)" },
+  { accountId: 1653, username: "iahcchicago", address: null, city: "Chicago", region: "IL", source: "web:instagram.com/iahcchicago (Irish American Heritage Center)" },
+  { accountId: 5183, username: "glenoakcc", address: "21W451 Hill Ave", city: "Glen Ellyn", region: "IL", source: "web:glenoakcountryclub.org, wikipedia (Glen Oak Country Club)" },
+  { accountId: 2850, username: "celebratebloom", address: "3801 N Elston Ave", city: "Chicago", region: "IL", source: "web:celebrateatbloom.com (Bloom Events, Avondale)" },
+  { accountId: 2989, username: "belvedereeventsandbanquets", address: "1170 W Devon Ave", city: "Elk Grove Village", region: "IL", source: "web:belvederebanquets.com, weddingwire.com" },
+  { accountId: 3298, username: "wearespin", address: "344 N State St", city: "Chicago", region: "IL", source: "web:wearespin.com (SPIN, River North)" },
+  { accountId: 3660, username: "publicworksgallery", address: "2141 W North Ave", city: "Chicago", region: "IL", source: "web:publicworksgallery.com (Wicker Park)" },
+  { accountId: 3823, username: "dearlybelovedchicago", address: "900 N Franklin St", city: "Chicago", region: "IL", source: "web:yelp.com (River North)" },
+
+  // Batch 10 (2026-09-06, autonomous /loop continuation), same 252-account cohort re-sorted
+  // after Batch 9 resolved accounts. 14 searched (skipped obvious non-Chicago names: most of
+  // this stretch of the pool turned out to be out-of-market music-venue/festival handles --
+  // theryman/3rdandlindsley/ramsheadonstage/grandpointnorth/thunderbirdmusichall/
+  // ardmoremusichall/bardavonpresents/theexchangeva/castletheatre/theburlky/hobcleveland/
+  // mclemoreresort/eastwindsfestival/thebirchmere/thebitterendnyc/skydogshoals/brooklynbotanic/
+  // lakelawnresort/theheritagecollection/nizucresort/hyattregencyorlando/lakeviewmarina.bham --
+  // none plausibly Chicago, skipped without a search burn). 7 confirmed Chicago-metro,
+  // including a THIRD handle variant of the already-resolved West Loop venue at 401 N Morgan St
+  // (401morganmfg, alongside morgan.mfg and morgan.mfg. from Batches 7/earlier). Explicit
+  // non-Chicago exclusions: stonehavenweddings (Section, AL), wadehouseweddings (Greenbush,
+  // WI), elmsmansion (New Orleans, LA), chspourhouse (Charleston, SC -- name coincidence only).
+  // Inconclusive, left unresolved: evanstonspace, zbarchicago (no exact-handle match found),
+  // lincoln919 (a "Lincoln Theatre" account -- plausibly Chicago's Lincoln Hall given a
+  // "CHICAGO TONIGHT" post surfaced in results, but the address doesn't match and multiple
+  // cities have a Lincoln Theatre; not guessed).
+  { accountId: 6147, username: "terrace16chicago", address: "401 N Wabash Ave", city: "Chicago", region: "IL", source: "web:chicagostyleweddings.com, choosechicago.com (Trump Tower, 16th floor)" },
+  { accountId: 6151, username: "cabrachicago", address: "200 N Green St", city: "Chicago", region: "IL", source: "web:thehoxton.com (West Loop rooftop)" },
+  { accountId: 6138, username: "hotellincoln", address: "1816 N Clark St", city: "Chicago", region: "IL", source: "web:jdvhotels.com, yelp.com (Lincoln Park/Old Town)" },
+  { accountId: 6586, username: "401morganmfg", address: "401 N Morgan St", city: "Chicago", region: "IL", source: "web:401morganmfg.com, morgan-mfg.com (3rd handle variant of the already-resolved West Loop venue)" },
+  { accountId: 6631, username: "durtynellies", address: "180 N Smith St", city: "Palatine", region: "IL", source: "web:wedding-spot.com, eventective.com" },
+  { accountId: 5658, username: "artinstituteevents", address: null, city: "Chicago", region: "IL", source: "web:artic.edu/venue-rental (Art Institute of Chicago)" },
+  { accountId: 5808, username: "thefifty50group", address: "1924 W Chicago Ave", city: "Chicago", region: "IL", source: "web:thefifty50group.com (Wicker Park)" },
+
+  // Batch 11 (2026-09-06, autonomous /loop continuation). The remaining pool has become
+  // dominated by a large, distinct cluster of national touring-circuit music-venue/festival
+  // handles (theryman, 3rdandlindsley, ardmoremusichall, hobcleveland, mclemoreresort, etc. --
+  // Nashville/Cleveland/PA/TN/NYC venues) that already got a first look in Batch 10 and were
+  // skipped without a search burn there; they reappear here (offset-based querying re-surfaces
+  // already-judged-excluded accounts since exclusion never writes an account_locations row) --
+  // not re-searched again, no new information since Batch 10. Of this batch's actual NEW tail
+  // (7 accounts past Batch 10's cutoff), 4 confirmed Chicago-metro. Inconclusive, left
+  // unresolved: theplazahotel (no Chicago-specific match; likely a same-named NYC/other-market
+  // venue but not confirmed either way), sandvalleygolf (possibly Sand Valley Golf Resort,
+  // Nekoosa WI, but not confirmed -- not guessed).
+  { accountId: 6721, username: "themontrosesaloon", address: "2933 W Montrose Ave", city: "Chicago", region: "IL", source: "web:montrosesaloon.com, yelp.com (Albany Park)" },
+  { accountId: 6725, username: "illuminatedbrewworks", address: null, city: "Chicago", region: "IL", source: "web:ibw-chicago.com (West Loop; possibly since closed, location confirmed regardless)" },
+  { accountId: 6726, username: "mysticrogueirishpub", address: "6070 N Northwest Hwy", city: "Chicago", region: "IL", source: "web:mysticrogueirishpub.com, yelp.com" },
+  { accountId: 6933, username: "magikstreetbylm", address: "2150 S Canalport Ave", city: "Chicago", region: "IL", source: "web:lacunaeventsbylm.com/magik-street (Pilsen/Bridgeport)" },
 ];
+// whitehawkcc (Crown Point, IN, ~50min S of downtown) explicitly excluded per user
+// review 2026-09-06 -- Indiana is out of scope for this corpus, same call as Batch 2's
+// stjames1868/williams.orchard exclusions. westloopweddingwalk kept in (user confirmed) --
+// the venue-role corroboration filter downstream still decides whether it survives as
+// "a venue" for candidate creation, this script only confirms the address is Chicago.
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");

@@ -56,6 +56,46 @@ async function main() {
     21305, 21307, 21319, 21342, 21343, 21348, 21416,
   ];
 
+  // --batch5: "v1 data completion, venues-first" mission (D046 follow-on, 2026-09-06) --
+  // 33 venue accounts confirmed Chicago-metro via WebSearch (backfillVenueLocationsViaWebSearch.ts
+  // Batch 5), from a fresh 252-account pool distinct from Phase 1/2's 447-candidate scope.
+  const batch5 = process.argv.includes("--batch5");
+  const BATCH5_ACCOUNT_IDS = [
+    2864, 7581, 4188, 6260, 3564, 7038, 8324, 1303, 4904, 4994, 4151, 1645, 1526, 8124, 11109,
+    8163, 8952, 6634, 5809, 6304, 4355, 4207, 4386, 3813, 3808, 1480, 2764, 2761, 2757, 2753,
+    2738, 2734, 2697,
+    // Batch 6 (2026-09-06), appended to the same allowlist -- same mechanism, no new flag needed.
+    4245, 4638, 4610, 2576, 5115, 5741, 5544, 5079, 6129, 3407, 4600,
+  ];
+
+  // --venue-couple-signal: D047 follow-on (2026-09-06) -- see checkIntraBatchDuplicates.ts's
+  // comment. Scoped by clustering_version, no account-ID list needed.
+  const venueCoupleSignal = process.argv.includes("--venue-couple-signal");
+
+  // --tier1/--tier2/--tier3: see checkIntraBatchDuplicates.ts's comment -- the full
+  // system-wide unmatched/uncreated pool, tiered by candidates-per-venue.
+  const tier1 = process.argv.includes("--tier1");
+  const tier2 = process.argv.includes("--tier2");
+  const tier3 = process.argv.includes("--tier3");
+  const TIER_BASE = `
+    select c2.venue_account_id
+    from jeremy_wedding_candidates c2
+    join jeremy_wedding_candidate_reconciliation r2
+      on r2.candidate_id = c2.id and r2.reconciliation_version = 'reconcile-v2'
+    where r2.matched_wedding_id is null
+      and c2.venue_account_id is not null
+      and c2.clustering_version <> 'venue-couple-signal-v1'
+      and not exists (select 1 from jeremy_weddings_created j2 where j2.candidate_id = c2.id)
+    group by c2.venue_account_id
+  `;
+  const TIER_FILTER = tier1
+    ? `and c.venue_account_id in (${TIER_BASE} having count(*) between 1 and 4)`
+    : tier2
+      ? `and c.venue_account_id in (${TIER_BASE} having count(*) between 5 and 14)`
+      : tier3
+        ? `and c.venue_account_id in (${TIER_BASE} having count(*) >= 15)`
+        : "";
+
   const { rows: candidates } = await pool.query<{ id: number; event_date_est: string | null }>(`
     select c.id::int, c.event_date_est::text
     from jeremy_wedding_candidates c
@@ -63,11 +103,19 @@ async function main() {
       on r.candidate_id = c.id and r.reconciliation_version = 'reconcile-v2'
     where r.matched_wedding_id is null
       and c.venue_account_id is not null
-      and not exists (select 1 from weddings w where w.venue_id = c.venue_account_id)
+      and not exists (select 1 from jeremy_weddings_created j where j.candidate_id = c.id)
+      -- batch5/venue-couple-signal/tierN deliberately drop the "venue has zero existing
+      -- weddings" pre-filter -- see checkIntraBatchDuplicates.ts's comment and
+      -- docs/decisions.md D047. This script's own cross-wedding Jaccard check below is the
+      -- actual duplicate protection either way.
+      ${batch5 || venueCoupleSignal || tier1 || tier2 || tier3 ? "" : "and not exists (select 1 from weddings w where w.venue_id = c.venue_account_id)"}
       ${phase1 ? PHASE1_FILTER : ""}
       ${phase2 ? "and c.venue_account_id = any($1::bigint[])" : ""}
-  `, phase2 ? [PHASE2_ACCOUNT_IDS] : []);
-  console.log(`[existing-dup-check] ${phase2 ? "Phase 2 (websearch-confirmed)" : phase1 ? "Phase 1 (city+venue-role filtered)" : "full"} scope: ${candidates.length} candidates`);
+      ${batch5 ? "and c.venue_account_id = any($1::bigint[])" : ""}
+      ${venueCoupleSignal ? "and c.clustering_version = 'venue-couple-signal-v1'" : ""}
+      ${tier1 || tier2 || tier3 ? `and c.clustering_version <> 'venue-couple-signal-v1' ${TIER_FILTER}` : ""}
+  `, phase2 ? [PHASE2_ACCOUNT_IDS] : batch5 ? [BATCH5_ACCOUNT_IDS] : []);
+  console.log(`[existing-dup-check] ${tier1 ? "Tier 1 (1-4 candidates/venue)" : tier2 ? "Tier 2 (5-14 candidates/venue)" : tier3 ? "Tier 3 (15+ candidates/venue)" : venueCoupleSignal ? "venue-couple-signal (D047)" : batch5 ? "Batch 5 (v1 venues-first, websearch-confirmed)" : phase2 ? "Phase 2 (websearch-confirmed)" : phase1 ? "Phase 1 (city+venue-role filtered)" : "full"} scope: ${candidates.length} candidates`);
 
   const { rows: candVendorRows } = await pool.query<{ candidate_id: number; account_id: number; role: string }>(
     `select candidate_id::int, account_id::int, role from jeremy_wedding_candidate_vendors

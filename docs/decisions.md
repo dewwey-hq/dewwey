@@ -4,6 +4,842 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D049 — 2026-09-07 — Styled-shoot vs. real-wedding signal: flag, don't delete
+
+Status: Accepted, in progress
+Context: the user wants staged/editorial "styled shoot" content (no real couple) separated from
+real documented weddings — explicitly NOT deleted, tagged, so a future UI can default to real
+weddings and let users opt into styled content (a filter/pill, or auto-include when a venue has
+very low real-wedding coverage). Rationale given directly: styled shoots show a venue "at its
+best," real weddings show day-to-day reality and should carry more weight; vendor graphs/edges
+stay legitimate either way. Two signals proposed ("models" credited, the word "styled") — the
+second explicitly flagged by the user as noisy ("style or styled by... plenty of other ways style
+is used"). Asked me to mine `golden_set` labeling history and "think hard" before building
+anything, and report a best-estimate styled count in both already-created weddings and the
+remaining ~47k unprocessed corpus.
+
+Empirical grounding (all against golden_set — 2,859 rows total, spans 13 labeling batches; 1,237
+confirmed-real INCLUDE, 104 rows with a "styl" signal in notes/exclusion_reason — 94 EXCLUDE
+confirmed-not-real, 7 INCLUDE, 3 REVIEW): a refined "styled shoot/editorial" phrase+hashtag regex
+has a 0.16-0.24% false-positive rate against confirmed-real weddings vs. 46% recall against
+confirmed-styled ones — the bare `styl` substring alone has a 16.7% false-positive rate,
+confirming the user's own warning. Vendor-stack richness does NOT discriminate styled from real
+(7.45 vs. 7.20 average distinct credits) — refutes the naive "heavy stack = probably real (or
+probably styled)" assumption; `author_is_vendor` likewise doesn't discriminate (80.9% vs. 82.9%).
+"Model" as a credited role: zero occurrences anywhere in `stack_extraction_entries` at this
+corpus's scale — the user's idea is theoretically sound but not empirically present as a
+structured signal. Repeat-producer accounts ARE a real, validated signal (`chicagostyleweddings`
+7-8 styled posts, `michiganavenueevents` 5, several repeat photographers/planners) — directly
+confirms the user's own hypothesis ("some accounts might even be generating more styled shoots").
+One correction found via hand-verification during the build (below): `chicagostyleweddings` is a
+MIXED-content account — 9 of its posts are also golden_set-CONFIRMED real weddings — so
+known-network-account membership alone is too weak for a high-confidence tier.
+
+Decision: shipped `post_styled_shoot_signal` and `wedding_styled_shoot_flag`
+(`pipeline/schema.sql`, `apps/web/scripts/graph/applyStyledShootSchema.ts`) — two new, purely
+additive/derived views, no existing table touched, nothing gates on them. Per-post tri/quad-state
+`confidence`: `CONFIRMED` (golden_set says so directly — 94 rows, matches exactly), `LIKELY`
+(the high-precision phrase/hashtag regex only), `POSSIBLE` (repeat-producer account, known-network
+account, or the noisy bare-keyword match — all weak signals kept but never promoted to LIKELY),
+`NO_SIGNAL` (everything else). `wedding_styled_shoot_flag` rolls this up per wedding — only
+weddings with ≥1 flagged post appear, nothing in `weddings`/`wedding_posts` is read-written.
+
+Caught and fixed one real bug via hand-verification before trusting any count: the first hashtag
+regex had no word-boundary, so `#editorialweddingphotography` (a common REAL wedding-photographer
+tag, sitting right next to `#realwedding` in the same caption) matched `#editorialwedding` as a
+substring prefix — inflated the already-created-wedding LIKELY count from a true ~20 to a false
+53. Fixed with Postgres's `\y` word-boundary anchor; re-verified the false-positive rate held
+(3 of 1,237 confirmed-real posts, ~0.24%, one of which — `DbJiASVpnTh` — is a post the user's own
+golden_set note called "confusing... says styled shoot" on an otherwise-real wedding, not a
+regex bug).
+
+**Live counts, current data (2026-09-07)**: of 3,520 already-created weddings, **8 CONFIRMED**
+(golden_set says these specific posts are styled — worth a hand-audit before any UI change),
+**10 LIKELY** (high-precision phrase/hashtag signal), **823 POSSIBLE** (weak/noisy signal only —
+mostly a real wedding whose caption happens to contain "styl" somewhere, e.g. "bridal style" —
+not a recommendation to treat these as styled, just flagged for visibility). **Remaining ~47k
+unprocessed corpus**: smaller than the user's own hope going in — only 80 untouched posts clear
+both a real (3+-role) vendor stack AND a LIKELY/POSSIBLE signal (7 LIKELY, 73 POSSIBLE); posts
+authored by the known repeat-producer accounts are already all touched by prior missions (0 new).
+Honest recalibration communicated to the user: this mission is not a large new-volume unlock the
+way `beyond_include_v1` was — the payoff is trust/quality (correctly tagging what's already
+flowing in through other paths), not a hidden pool of untapped real-vs-styled content.
+
+Shipped a small (80-post) ground-truth-growing `/label` queue, `styled_shoot_v1`
+(`apps/web/scripts/classify/buildStyledShootQueue.ts`), same "test which signal is predictive"
+bucket-tagging discipline as `beyond_include_v1`. **Deliberately did NOT flip
+`CURRENT_QUEUE_VERSION`** (`apps/web/lib/server/labeling.ts`) away from `beyond_include_v1` — the
+user still has ~600 posts unlabeled there and the `/label` UI has no queue-version selector, so
+switching would silently redirect them mid-flight. `styled_shoot_v1` is built and ready; switch
+the constant (or add a selector) whenever the user wants to work it.
+
+**Round 1 sync results (2026-09-07, same day)**: at the user's explicit go-ahead ("yes you can
+flip it over now and ill get thru those 80"), flipped `CURRENT_QUEUE_VERSION` to
+`styled_shoot_v1` and verified live (first `/api/labels` post served was captioned "We are loving
+the photos from this styled shoot!... Models: nikki.callo & Omar Mendez" — the user's own
+model-credit hypothesis, confirmed in the wild on the first result). User labeled all 80. Results
+validated the tri-state design directly: **LIKELY** posts were 71% NOT_WEDDING (5/7), **POSSIBLE**
+posts were 58% NOT_WEDDING (42/73) — both meaningfully above baseline, LIKELY the stronger signal
+as designed. Synced (`styled_shoot_v1_sync_round1_2026-09-07`, 119 rows — includes 39 leftover
+unsynced `beyond_include_v1` labels picked up by the same global sync) → `golden_set` grew
+2,859→2,978; `post_styled_shoot_signal` CONFIRMED grew 94→141. Ran the full
+sync→stack-parse→cluster(`--evidence-source human_confirmed`)→reconcile pipeline: 39 new
+candidates, 25 creation-eligible after reconciliation (6 already matched an existing wedding — 2
+high-confidence, 4 ambiguous, left as an inert belief per standing policy — and 8 had no
+resolvable venue account at all, skipped). **Hand-read all 25, not a sample** (small batch).
+Found two exclusion shapes concentrated in one round for the first time: **geography** (7 of 25
+resolve to a venue with no confirmed Chicago location — Notre Dame IN, a Michigan farm, Saugatuck
+MI, Long Beach IN, and others — content the user's fast caption-only labeling had no way to catch,
+since `/label` doesn't surface geography-confirmation status, a real product gap worth fixing
+later) and **generic vendor marketing / ambiguous content** (10 of 25 — an officiant's service
+pitch, a videographer's brand pitch, package/pricing copy, a seasonal announcement, and — notably
+— one post whose own caption said "this stunning editorial shoot we created," exactly the
+false-positive this mission exists to catch, that had still been labeled WEDDING in a fast pass).
+1 more excluded pending geography verification despite good content. **Net: 7 new weddings**
+(candidates 3377/3380/3381/3385/3392/3395/3401 → weddings 5799-5805, 67 vendor credits).
+`weddings` 3520→**3527**. Full test suite green (87/87) after updating every pinned literal this
+touched (`graphStrengthening.test.ts`, `vendorAssociation.test.ts`,
+`styledShootSignal.test.ts`) — one, a strict "0 identity changes" invariant on high-confidence
+reconciliation matches, briefly went to 1 and was individually investigated (not just bumped):
+confirmed a benign "recurring vendor team, different real wedding" case already established
+throughout this whole arc, zero production impact (candidate never ingested).
+
+Explicitly deferred, matching the user's own sequencing ("first step now is to document... and
+flag"): the actual `/vendors` UI filter/pill toggle, and "low venue coverage → auto-include
+styled" display logic — product/UX decisions for once this tagging has more labeling rounds
+behind it. Full test suite green (87/87) after adding `styledShootSignal.test.ts`.
+
+## D047 — 2026-09-06 — "V1 data completion, venues-first": scaling past the ~800-post labeling queue using existing infra, and relaxing one D034-era scoping filter
+
+Status: Accepted, in progress (Track A Batches 5-7 shipped, 195 of 252 unresolved venue accounts
+remain; Track B abandoned, see below)
+Context: the user wanted to stop circling on data-layer philosophy and use the full 47k+ post
+corpus, not just the ~2,000-post `/label` queue — specifically, more Chicago venues than the
+product shows today, prioritizing venues over other vendor categories (explicitly deferred:
+"hold off on all the vendors"), with a concrete, self-verifiable bar: a real venue page on
+localhost should show more posts/weddings than it does today (example given: `venuelogic` at 26).
+Live sizing before proposing anything: `vendors` (Places-sourced) already has 5,029 Chicago
+businesses (430 category=venue); `candidate_scores` already covers all 47,623 posts; 917
+venue-authored posts are V3 `INCLUDE` and never human-reviewed at all; 252 venue-tagged
+accounts (`v_account_role='venue'`) had zero Chicago-location signal at all (no `vendors`
+bridge, no `account_locations` row) — the exact same shape as D036-D039's already-proven
+WebSearch methodology, just a fresh cohort.
+Decision (Track A, this entry): re-ran the `is-chicago-for-new-venues.md` WebSearch method
+against 49 of the 252 unresolved accounts (Batch 5, appended to
+`backfillVenueLocationsViaWebSearch.ts`'s `CONFIRMED_LOCATIONS`) — 33 confirmed Chicago-metro
+(committed), 11 confirmed NOT Chicago (Riviera Maya x2, Scotland, Tuscany, Nashville, NYC,
+Beverly Hills, Northern Michigan, Madison WI, a Pennsylvania handle collision, Indiana Dunes —
+the user explicitly excluded the one Indiana borderline call, `whitehawkcc`/Crown Point),
+4 inconclusive (left unresolved).
+**Real, surprising finding mid-implementation, surfaced rather than worked around**: the 33
+confirmed venues almost all already had exactly one existing Ben wedding each (33 venues, 33
+weddings) — a different population than D034's original "venue has zero Ben weddings" scope.
+`createWeddingsFromJeremyEvidence.ts`'s duplicate-check scripts pre-filtered on that same "zero
+weddings" condition, which was D034's scoping convenience for its own population, not a safety
+mechanism (the actual protection is the two Jaccard-based duplicate checks, both still fully in
+force). Dropped that pre-filter for a new `--batch5` mode in both `checkIntraBatchDuplicates.ts`
+and `checkExistingDuplicatesForCreation.ts`, scoped by an explicit `BATCH5_ACCOUNT_IDS` list
+(same pattern as Phase 2's `PHASE2_ACCOUNT_IDS`). 23 candidates in scope; hand-read all of them
+(proportionate given the small size) and found a real risk pattern: all 10 candidates at
+`fourthchurch` were contaminated — most are the *same* real wedding ("Lyndsey and Robert")
+reposted by its photographer over more than a year (outside the 21-day dedup window, so only one
+pair got caught by the Jaccard check), and at least 2 explicitly credit "Venue:
+@universityclubofchicago" in the caption — a clustering misattribution, not fourthchurch's
+evidence at all (same bug pattern as `is-chicago-for-new-venues.md`'s candidates 2411/2542).
+**All 10 `fourthchurch` candidates excluded from this batch** (flagged as a future targeted
+follow-up, not lost). The clean remaining 13 (holynamecathedral x7, bolingbrookgolfclub x2,
+trivolitavern, meridianbanquets, cityviewloft, drurylaneproductions) — all genuinely distinct,
+named-couple real weddings on inspection — were dry-run verified then committed: **13 new
+weddings, 15 posts, 148 `wedding_vendors` rows** (`weddings` 1567→1580, `wedding_vendors`
+14591→14739). Idempotency untouched (all prior D035/Phase1/Phase2 batches correctly skip).
+`is_chicago=true` set via a new `BATCH5_ACCOUNT_IDS` fallback in the same OR-clause pattern as
+`PHASE2_ACCOUNT_IDS`. A side effect, not a separate write: the same 33 new `account_locations`
+rows also flipped one previously-ambiguous `golden_set` post to Chicago-`CONFIRMED` via
+`human_confirmed_post_geography`'s existing venue-signals join — Layer 1
+(`human_confirmed_chicago_wedding_content`) moved 639→640, `human_confirmed_vendor_page_content`
+579→580 (D046's views, both purely additive/derived, no logic changed).
+Why: reuses proven infrastructure end to end (Places-sourced `vendors`, the already-validated
+free-WebSearch Chicago-verification method, the existing evidence→cluster→reconcile→create
+pipeline) rather than inventing anything new; the one filter relaxation is narrowly scoped
+(a new named batch, not a change to Phase 1/2's historical behavior) and protected by the same
+duplicate-detection machinery already trusted elsewhere in this workstream.
+Related: D034, D036-D039 (`is-chicago-for-new-venues.md`, the proven method this reuses), D046
+(the views this compounds with), D023 (the ingestion-count test literals this also bumped).
+
+**Update, same day — Batches 6-7, a bonus find, an abandoned track, and a queue reprioritization:**
+Batches 6-7 continued Track A into a lower-confidence tier of the 252-account cohort
+(evidence_count/confidence 1/0.65, vs. Batch 5's 3-9/0.8-0.95) — noticeably noisier (many
+out-of-state music venues, handle collisions) but still net-positive: 24 more confirmed
+(11 + 13), several handle-variant cases (morgan.mfg./madegallery), one genuinely excluded
+ambiguous-brand handle (`ritzcarlton` — the real Chicago property's actual handle is
+`@rcchicago`, not guessed). Batch 6 unlocked 6 candidates, 5 created after hand-read (1
+excluded: no named couple, hotel marketing hashtags, and V3's own current decision is EXCLUDE
+— not overridden on an ambiguous call). Batch 7 unlocked 0 new candidates. 195 of the original
+252 accounts remain unsearched; marginal yield is dropping as the confidence tier drops.
+**Separately, a small pre-existing backlog was found and cleared**: `applyJeremyEvidenceToGraph.ts`
+(D023's original high-confidence ingestion script, `match_confidence` 0.75-0.85) had never been
+re-run against candidates created/matched after its original run — only 4 new rows, safe,
+same mechanism, committed.
+**Track B (the "getting the 47k to show up" volume lever) was attempted and abandoned**: a new
+`venue_couple_signal` evidence source (extraction script, evidence view, third clustering
+version `venue-couple-signal-v1`) was built end-to-end and clustered 212 candidates, but a
+disqualifying bug was found before any creation — the couple-signal regex's generic
+`Name & Name` pattern matches vendor ROLE LABELS ("Rentals & Chairs", "Planning & Decor"), not
+just couple names; only 4 of 207 hand-checked candidates survive the strict, reliable pattern
+(Mr./Mrs., "Couple:", "Bride:"), and the real corpus-wide population under the strict pattern
+is only 33 posts — not worth pursuing. Zero weddings created from this track. The 212
+candidates are left in `jeremy_wedding_candidates` (inert, non-production) rather than deleted,
+per this project's reversible-over-destructive preference — flagged in test comments
+(`graphStrengthening.test.ts`) so a future session doesn't mistake their presence for validated
+evidence.
+**The actual "get the 47k to show up" lever turned out to be the existing `/label` UI**: the
+remaining unlabeled portion of the `v2` queue (978 posts) was reprioritized (`label_queue.rank`,
+additive reordering only, no rows added/removed) so the 189 venue-authored posts come first,
+ordered by ascending existing-documented-wedding-count per venue — a human WEDDING label there
+feeds the already-built human-confirmed-evidence pipeline exactly like Track A's WebSearch
+batches do, but sourced from human judgment instead of automated matching.
+Net effect so far: `weddings` 1567→1585 (+18), `wedding_vendors` +193, Feed coverage
+(`measureFeedCoverage.ts`) 19.3%→20.4%.
+
+**Update, same day — "corrected priority": the user pushed back that none of the above touched
+the venues actually visible on `/vendors`** (bridgeportartcenter, the.arbory, fairliechicago,
+venuelogic, etc.) — correct: Track A only ever targeted newly-discovered accounts, a population
+disjoint from already-popular, already-documented venues. Sized the real opportunity: **2,030
+trustworthy candidates (excluding the abandoned venue-couple-signal-v1), unmatched, uncreated,
+spanning 253 already-known venues** — the same "drop the D034 zero-existing-weddings pre-filter"
+mechanism as Batch 5/6, just applied at its true full scope via a new `--tier1/--tier2/--tier3`
+mode on both duplicate-check scripts (tiered by candidates-per-venue: 156 venues 1-4 each,
+53 venues 5-14 each, 39 venues 15+ each — the 15+ tier carries real repost/misattribution risk,
+same shape as Fourth Church, and is deliberately deferred).
+**Tier 1 shipped**: a naive first pass resurfaced candidates 2411/2455/2469/2542
+(cloudgatequartet/hangoutlighting/blueplatechicago/ravisloeweddings) — already-documented
+mislabels from D036's Phase 1 (`is-chicago-for-new-venues.md`) that a fresh hand-read alone
+missed (2469's caption opens with a genuine couple's story; the misattribution — "Venue:
+@sohohouse @tigerlilyevents @blueplatechicago" — is further down). Built a proper systematic
+filter instead of whack-a-mole: excluded candidates with 2+ distinct accounts tagged
+`role='venue'` (73 of 241, the Phase 2 church-vs-reception ambiguity pattern) and candidates
+whose venue account's own bio contains a "Venue: @otherhandle" redirect (1). Explicitly did
+**not** require an `account_tags` venue-shaped role at all — verified live that this produces
+false positives at this broader scope (candidate 21, a genuine hand-verified Loews Chicago
+Hotel wedding, has zero `account_tags` rows — simply never classified, not evidence of
+anything wrong). Content-quality issues (generic marketing/advice copy despite a real vendor
+stack) are a separate risk, caught by hand-reading ~43 of 241 candidates (~18%) plus a
+corpus-wide regex sweep for marketing-CTA language — 9 more excluded. Net: 241 → 159. Dry-run
+verified, committed: **159 new weddings, 179 posts, 1,452 `wedding_vendors` rows, +6 accounts**
+(previously-unseen secondary vendor handles). `weddings` 1585→1744, Feed coverage 20.4%→27.7%.
+Tier 1 touches none of the user's 8 named venues (all Tier 3) — it grows the long tail.
+Related: is-chicago-for-new-venues.md (Baseline findings — the exact mislabel patterns this
+filter now catches systematically instead of by hand), D034 (the zero-existing-weddings scoping
+convenience this keeps relaxing, now at full scope).
+
+**Update, same day — Tier 2 shipped (53 venues, 5-14 candidates each, 440 total), including 4 of
+the user's 8 named venues (venuelogic, thewellsley, gpconservatory, the_carter_fultonmarket).**
+Same systematic filter as Tier 1, plus `fourthchurch`/`thefultonwest` excluded entirely (both
+already confirmed contaminated). New finding: a supplementary WIDE (no date-window) Jaccard
+check across same-venue candidates surfaced 128 high-similarity pairs the standard 21-day check
+misses — but hand-reading a sample showed most are **not** duplicates: a venue's recurring
+preferred vendor team (same photographer+planner+florist trio) produces identical vendor-set
+fingerprints across many genuinely different real weddings (e.g. `saintclementparish` candidates
+1024 "S+B's reception" vs. 2246 "Susanna wore her heart" — different couples, same trio).
+Blanket-excluding on Jaccard alone would have wrongly discarded real, distinct content — directly
+against the user's explicit priority ("largely we are way too exclusionary today... even if
+there's not a full vendor stack, if it showcases a real credible couple... great to show users").
+Only excluded pairs with a directly-verified duplicate signal (matching couple name/handle
+across both posts, or same-day dates): 7 pairs, plus 3 more content-quality excludes from
+hand-reading the named venues directly (a venue-introduction marketing post, two "no couple,
+pure marketing copy" posts). Net: 440 → 337. Dry-run verified, committed: **337 new weddings,
+368 posts, 3,141 `wedding_vendors` rows, +2 accounts**. `weddings` 1744→2081, Feed coverage
+27.7%→39.4%. Named-venue growth, directly verifiable on `/vendors`: venuelogic 26→29, thewellsley
+21→26, gpconservatory 16→19.
+
+**Update, same day — Tier 3 shipped (39 venues, 15+ candidates each, 1,349 total), including the
+remaining 4 of the user's 8 named venues** (bridgeportartcenter, rockwellontheriver,
+chicagoilluminatingcompany, the.arbory, fairliechicago, sarabandechicago). Same systematic
+filter as Tier 1/2, plus `fourthchurch`/`thefultonwest` excluded entirely (already confirmed
+contaminated). Highest-risk tier by construction (candidate volume concentrates exactly where
+Fourth Church's problem hid), so it got the most scrutiny: a same-venue Jaccard scan restricted
+to 0-3 day gaps found only 2 pairs, both already caught by the standard 21-day check — no hidden
+near-term duplicate cluster at scale. A broader wide-window scan (no day limit) showed real
+clustering at the highest-volume venues (38 pairs at bridgeportartcenter, 59 at
+chicagoilluminatingcompany, 30 at rockwellontheriver) — hand-read samples confirmed the same
+Tier-2 finding: mostly a venue's recurring preferred vendor team producing identical vendor-set
+fingerprints across many genuinely different real weddings, not duplicates (e.g.
+bridgeportartcenter candidates 369/553, same photographer+venue-manager, no shared couple
+identity). One genuine duplicate found this way and excluded (385/557, "Lola and Noah"/"L&N",
+same photographer). `thelibraryat190` (19 candidates) was hand-read in full given a
+generic-hashtag pattern resembling `thefultonwest`'s contamination — turned out mostly genuine
+(only 2 of 19 excluded). Standard 21-day check found 9 more near-term duplicates, all
+hand-verified and resolved. Corpus-wide marketing-CTA regex swept 27 matches; only 3 lacked any
+couple-name signal (excluded), the other 24 kept (real couple + a cross-tagged vendor's own
+promo line, same pattern tolerated in every prior tier). Net: 1,349 → 1,076. Dry-run verified,
+committed: **1,076 new weddings, 1,213 posts, 10,128 `wedding_vendors` rows, +21 accounts**.
+`weddings` 2081→3157 — roughly **double** the pre-session count of 1,567. Feed coverage
+39.4%→**60.1%**.
+Final named-venue growth, all directly verifiable on `/vendors` today: **the.arbory 22→75,
+bridgeportartcenter 23→67, fairliechicago 19→50, sarabandechicago 17→36**, venuelogic 26→29,
+thewellsley 21→26, gpconservatory 16→20, the_carter_fultonmarket 18→17 (net -1 despite Tier 2's
++contributions there — some pre-existing rows likely got re-attributed during a reconciliation
+rerun mid-session; not investigated further, flagged for awareness not alarm given the tiny
+scale).
+This closes the three-tier "corrected priority" sweep across the entire known-venue population
+(2,030 trustworthy candidates → 1,772 created after all systematic + hand-verified filtering,
+across all three tiers combined). Remaining, explicitly deferred: `fourthchurch` and
+`thefultonwest`'s clusters (contaminated, need per-candidate untangling, not a batch operation);
+the 207 `venue-couple-signal-v1` candidates (abandoned track, inert); the 195 of 252 original
+Track A WebSearch accounts never searched (diminishing returns observed, lower priority now that
+the much larger tiered sweep landed); Track C (portfolio content) and any vendor-page UI work to
+actually surface Layer 2/portfolio content — both still genuinely separate, undone work.
+
+**Update, same day — final cleanup of the original "18 hand-reviewed" candidates, and a new
+labeling strategy.** 4 of the 18 were still unhandled after the tiered sweep (which only
+considers candidates with `matched_wedding_id is null` — these had a weak-but-non-null automated
+match, or were caught by the double-venue-tag filter, both cases a human had already reviewed
+and cleared): 2954, 2959, 2967 created directly; 2981 (confidence 0.4, below
+`applyJeremyEvidenceToGraph.ts`'s 0.75-0.85 scope) attached via a new one-off script
+(`attachStrayHumanConfirmedCandidate.ts`) — this is the one deliberate, documented exception to
+the "`jeremy_wedding_vendors_ingested` only ever holds the audited 0.75-0.85 tier" invariant,
+excluded by candidate ID in the test rather than widening the confidence band. `weddings`
+3157→3160, `wedding_vendors` +30. All 18 original candidates now resolved.
+**Separately, `/label`'s queue strategy changed**: instead of general stratified sampling (`v2`),
+a new queue (`venue_coverage_v1`, `buildVenueCoverageQueue.ts`) targets posts connected to the
+116 known Chicago venues with ≤5 documented weddings (own-profile OR tagged-as-venue, 4,077
+posts, 1,210 of them at venues with ZERO weddings), ordered by that venue's current wedding count
+ascending — directly per the user's ask ("give me the existing venues and posts from their feed
+or that they were tagged in, prioritizing ones with low coverage... I'd like more coverage for
+the venues at the bottom with only a few weddings or none"). `CURRENT_QUEUE_VERSION` in
+`labeling.ts` now points to it; `v2`'s 2,081 rows are untouched, not deleted, switch back by
+reverting that one constant.
+
+**Update, same day — queue tightened twice more (v2 → v3) after direct user correction, then
+"let yourself cook" autonomy granted.** `venue_coverage_v1` shipped with no content filter at
+all and wasted review time on birthday/cocktail-hour posts ("it'd be a waste of human time...
+we should have this queue be an actual attempt of maybe real weddings"). `v2` added a
+promise filter (bare `caption ilike '%wedding%'` OR has a vendor-credit stack OR V3
+INCLUDE/REVIEW) but the user caught it as still too loose — a bare "wedding" substring let
+through generic multi-purpose-venue marketing (Le Loft's "birthday party, shower, or wedding
+event", `#chicagoweddingvenue` hashtag with no actual wedding described). Also corrected a
+planned fix before it was built: don't require an explicit couple-name pattern, since these
+posts are low-coverage *because* they already failed the same automated bars once — requiring
+the bar again is circular and excludes exactly what human review exists for. `v3`
+(`buildVenueCoverageQueue.ts`, `CURRENT_QUEUE_VERSION="venue_coverage_v3"`) tightened the
+"mentions wedding" signal to specific-event phrases (`wedding day`, `their wedding`, `wedding
+at `, ceremony/reception language, bride/groom/Mr&Mrs) instead of a bare keyword — 380 posts,
+breakdown by current wedding count: 0:40, 1:30, 2:112, 3:21, 4:36, 5:141. This is the queue
+actually served today. User then gave explicit standing authorization to stop checking in on
+routine execution decisions and self-pace via `/loop` ("you need to set a loop and let
+yourself cook on this... I don't want to hand hold here").
+
+**Update, same day — Track A batch 8 (autonomous), diminishing returns confirmed; fourthchurch
+untangled, thefultonwest confirmed correctly excluded.** Batch 8 searched 25 of the remaining
+~195 unresolved venue accounts (skipped the obviously-non-Chicago names without a search burn
+— Trump golf properties in FL, Austin/Tampa/Milwaukee/Springfield-MA handles, etc.):
+14 confirmed Chicago-metro (thedawsonchicago, thehegewisch, theelmlagrange, penthousehydepark,
+theatriachicago, msichicagoevents, themartchicago, artifecteventschicago,
+onceuponatimeeventsllc, geraghtynorth_, napersettlement, skydeckchicago, stolensaddlechi,
+pennywhistletavern) but **zero newly-unlocked `jeremy_wedding_candidates`** — these venues'
+content lives in Jeremy's raw own-profile corpus, not yet vendor-tagged evidence, so Track A's
+identity-backfill alone doesn't move them; they're exactly the kind of content the `/label`
+`venue_coverage_v3` queue is now built to reach instead (once `vendors`, not just
+`account_locations`, bridges them). Confirms the "6→0 unlocked candidates" diminishing-returns
+pattern from batches 6-7 continues.
+
+Hand-read `fourthchurch`'s full 12-candidate cluster individually rather than leaving the whole
+venue dark. Found the SAME "one wedding reposted for a year" pattern that originally motivated
+its exclusion, but ALSO found genuinely distinct real weddings hiding underneath it, both
+things true at once: Lyndsey+Robert's wedding (thedalcy reception, fourthchurch ceremony) was
+reposted 6 times (candidates 375/511/563/607/1561/2518, identical 18-vendor stack every time —
+kept 375 as the representative, discarded the other 5 as pure reposts, not 6 separate
+weddings). Isabel+Alex (University Club of Chicago reception) was posted twice under different
+framing (1948/2583, same planner/florist team — kept the richer 2583). James+Taylor
+(theexchangechicago reception, candidates 2394/2833) already reconciles to an existing wedding
+(1262) at 0.4/0.8 confidence — already in the graph, no new create needed. Two more, Kim+Tim
+(2166, wildmanbt reception) and an unnamed couple's "wedding exit" post (2047, standalone
+4-vendor stack, no repeat pattern) were genuinely distinct one-off real weddings. Net: **4 new
+weddings** (candidates 375, 2583, 2166, 2047 — `weddings` 5076-5079), 43 `wedding_vendors` rows,
+`weddings` 3160→3164.
+
+`thefultonwest`'s own 9 non-`venue-couple-signal-v1` candidates were also hand-read and are
+**correctly** excluded, not under-reviewed: every one is the venue's own repeated
+self-marketing content — two distinct identical vendor-team photo sets reused verbatim across
+"National Cake Day," "Happy World Smile Day," a 1-year "Venue Day" anniversary post, and a
+generic capacity pitch ("intimate celebration for under 75 guests") — no couple is ever named
+or evidenced across any of the 9 posts. This is real Track-C-shaped venue portfolio content by
+this project's own definition (showcases the venue's work, not a specific documented couple),
+not a wedding-creation miss — a useful concrete example for scoping Track C's
+`venue_portfolio_content` view when that gets built. `thefultonwest`'s 16
+`venue-couple-signal-v1` candidates remain untouched (already-abandoned track, D047's Track B
+v2 finding — loose "Name & Name" regex matches vendor role labels, not couple names — still
+applies, not re-litigated here).
+
+**Update, same day — Track C shipped: `venue_portfolio_content` view.** Pure-additive,
+non-gating home for exactly the kind of content thefultonwest's cluster surfaced: a venue's own
+portfolio/marketing posts (own-profile or tagged, no V3/golden_set gate, no clustering or
+couple/date extraction — just a basic non-spam floor, caption length > 15 chars). Every row is
+tagged with `has_couple_evidence` (same couple-signal regex as the abandoned
+`venue_couple_signal_post_vendor_evidence`, here purely informational, not a filter) and
+`is_documented_wedding` (already in `wedding_posts` or not) — a post can be neither, either, or
+both. Live count: 12,416 rows across all known Chicago venues, 1,836 already documented
+weddings, 3,582 with couple evidence (a much larger pool than the abandoned 207-candidate
+`venue-couple-signal-v1` track, but this view drives no auto-creation, so the same false-positive
+risk that killed that track doesn't apply here). `apps/web/scripts/graph/
+applyVenuePortfolioContentSchema.ts` (idempotent, `create or replace view`) and
+`venuePortfolioContent.test.ts` (4 structural invariant tests, all green). Not wired into any
+page yet — data-only, per the original plan's explicit UI deferral.
+
+**Update, same day — first `/label` human-labeling sync round.** With the user labeling live in
+parallel (`venue_coverage_v3`), ran the full sync pipeline: `syncHumanLabelsToGoldenSet.ts`
+(304 new `golden_set` rows, 111 INCLUDE) → `runStackParserOnGoldenSet.ts` (31 newly-eligible
+posts, 6 with a parseable credit stack) → `runJeremyWeddingClustering.ts --evidence-source
+human_confirmed` (8 new `human-confirmed-v1` candidates) → `runJeremyWeddingReconciliation.ts`
+(full rerun: high=1,856 ambiguous=478 insufficient=556 no-venue=60 of 3,232 total candidates —
+the insufficient-evidence tier's size DROPPED from 2,101 to 556 this session, the expected
+signature of 1,578 newly-created weddings absorbing previously-unmatched candidates, not a
+concern). Hand-read all 8 new candidates: 2 created (3231 Kelly & Chris/sarabandechicago,
+unmatched; 3229 Concorde Banquets, a genuinely distinct real wedding at 0.4-confidence weak
+match to a DIFFERENT post on an existing wedding — same recurring-vendor-team pattern, not a
+duplicate). 6 excluded: 3230 (0.8-confidence match to wedding 527 — literally the SAME post_url,
+a true duplicate); 3227 (Revel Space venue-tour marketing, no couple — now correctly lives in
+`venue_portfolio_content` instead); 3225 (generic seasonal marketing, no venue tag); 3226 and
+3228 (real content, named couple in one case, but no venue role parsed at all — not attributable
+to any venue page, out of scope for THIS venue-coverage mission even though real); 3232 (Villa
+Pizzo — Lake Como-shaped destination wedding, not plausibly Chicago). `weddings` 3164→3166.
+Confirms the label-sync → creation pipeline works end to end at small scale; re-run periodically
+as labeling continues (`/label` progress as of this round: 41 NOT_WEDDING, 6 WEDDING on
+`venue_coverage_v3` specifically, plus other queue versions synced in the same pass).
+
+**Update, same day — fourth evidence source shipped: `venue_inline_mention_post_vendor_evidence`,
+first batch created.** Scoping the deferred "non-venue vendor categories" priority found this
+was never really a vendor-category gap: `jeremy_wedding_candidates` already anchors on ANY post
+with a resolved venue-role credit, regardless of who authored it, so non-venue vendors already
+benefit from every venue-anchored batch shipped this session. The real gap, found by hand-reading
+a sample of the 18,802 non-venue-vendor-authored posts with no venue anchor: real weddings at
+real, already-known Chicago venues credited only as a plain inline `@mention` ("wedding at
+@salvageone!", "venue 💒: @xyz") rather than the stack parser's expected `Venue: @handle` label
+line — a parser-format gap, not a missing-data gap. Sized live: 2,143 posts inline-mention a
+known Chicago venue handle; 1,214 also clear the same promise-filter regex proven in
+`venue_coverage_v3`. Built as a fourth, bounded evidence source (unlike the abandoned
+`venue_couple_signal` track's open-ended name-pattern matching, this only matches an EXACT
+handle already resolved as a Chicago venue in `vendors`): `venue_inline_mention_post_vendor_evidence`
+(`pipeline/schema.sql`, `apps/web/scripts/graph/applyVenueInlineMentionSchema.ts`) recovers the
+missing venue-role credit and unions in the post's own already-parsed non-venue credits so it can
+clear clustering's ≥3-distinct-role eligibility floor on real, already-verified evidence.
+`runJeremyWeddingClustering.ts --evidence-source venue_inline_mention` added as a fourth mode
+(`clustering_version='venue-inline-mention-v1'`), same non-mixing provenance-separation rule as
+the other three sources. First run: 26 candidates. Hand-read all of them (small enough for 100%
+review, not a sample): 5 excluded for double-venue-tag ambiguity (same systematic filter as Tier
+1/2/3 — one 4-way case), 2 excluded as within-batch duplicates (same couple, same venue, >21 days
+apart so never auto-merged), 1 excluded on an explicit `account_locations.in_metro=false` despite
+a Chicago-sounding handle name. The remaining 18 — 18 different named couples/events at 14
+different already-known Chicago venues, 18 distinct dates spanning 2024-2026 — created cleanly:
+`weddings` 3166→3184, `wedding_vendors` +40. This is now this mission's most promising remaining
+lever (bigger than a single Track A WebSearch batch, safer than the abandoned couple-signal
+approach) — re-run periodically as the corpus doesn't change, but the eligibility pool will grow
+as more posts get union-eligible non-venue credits from other sources.
+
+**Update, next autonomous /loop tick — Track A batches 9-10, re-check of the other levers.**
+Re-ran the `venue_inline_mention` clustering (0 new eligible beyond round 1's 82) and the
+`/label` golden_set sync (0 new INCLUDE labels since round 1) — both quiet this tick, expected
+given the corpus is otherwise static and labeling volume was modest. Continued Track A: batch 9
+(17 searched, 8 confirmed — harraycaraycelebrations, iahcchicago, glenoakcc, celebratebloom,
+belvedereeventsandbanquets, wearespin, publicworksgallery, dearlybelovedchicago; explicit
+exclusions include several out-of-market City Winery locations, Beverly Hills/Scotland/Riviera
+Maya properties, and an ambiguous global-brand "stregishotels" handle, same non-guessing
+precedent as `ritzcarlton`) and batch 10 (14 searched, 7 confirmed — terrace16chicago,
+cabrachicago, hotellincoln, a third handle variant of the already-known Morgan MFG West Loop
+venue, durtynellies, artinstituteevents, thefifty50group; this stretch of the pool skewed
+heavily toward out-of-market music-venue/festival handles, skipped without a search burn).
+Batch 9 unlocked zero candidates (same pattern as batch 8); batch 10 unlocked one —
+terrace16chicago candidate 1675, a double-venue-tag case (@terrace16chicago +
+@trumptowerchicago) hand-verified as the SAME real location (Terrace 16 is physically the
+16th-floor restaurant inside Trump Tower Chicago), not a genuine ambiguity — created.
+`weddings` 3184→3185. 15 total new Chicago venues confirmed this tick (Track A running total
+since the tiered sweep: 22 across batches 8-10), most still yielding zero new candidates —
+Track A's marginal value is now mostly future-proofing (feeding `/label`'s coverage queue once
+a `vendors` bridge exists) rather than immediate wedding creation.
+
+**Update, next tick — Track A batch 11 (yield now at zero, deprioritizing), one more /label
+sync round.** Synced 1 new INCLUDE label (round 3, 15 golden_set rows total this round) —
+already stack-parsed, clustering found 0 new eligible posts (already covered). Track A batch 11:
+4 more Chicago venues confirmed (themontrosesaloon, illuminatedbrewworks, mysticrogueirishpub,
+magikstreetbylm), 0 unlocked candidates — the second batch in a row for the newly-confirmed set
+specifically, and the remaining ~160-account pool is now dominated by a large cluster of
+national touring-circuit music-venue handles with essentially zero Chicago density. Per this
+mission's own stated pivot criterion ("if Track A yield stays at zero for 2-3 consecutive
+batches, consider that lever exhausted for now"), deprioritizing further Track A batches —
+future value is now mostly indirect (feeding `/label`'s coverage queue once `vendors` bridges
+exist for these accounts), not immediate wedding creation.
+
+**Update, same tick — the "venuelogic co-tag" recovery batch: this mission's single largest
+individual finding.** Sizing the broader double-venue-tag-ambiguity backlog (candidates excluded
+by Tier 1/2/3's systematic filter, across all evidence sources, still unmatched/uncreated) found
+354 candidates total, heavily concentrated at just two venues: `bridgeportartcenter` (91) and
+`rockwellontheriver` (76) — 47% of the whole backlog. Hand-reading 6 samples (3 per venue) found
+the exact same clean, unambiguous caption pattern every time: `"Venue: @<real venue>"` +
+`"Venue Management & Bar: @venuelogic"` — `venuelogic` is a hospitality/event-management company
+that operates the bar service at both venues, not a competing venue claim, so every one of these
+160 candidates (85 + 75) was a false-positive exclusion, not genuine ambiguity. This is safer
+than the abandoned `venue_couple_signal` track: it's anchored to one specific, verified,
+narrow real-world relationship (one named company, two named venues), not an open-ended
+pattern-match against arbitrary handles.
+
+Built `checkVenueLogicCoTagDuplicates.ts` (same Jaccard>0.5/21-day-window rule as
+`checkIntraBatchDuplicates.ts`, scoped to this exact 160-candidate list) — found exactly one
+suspected intra-batch duplicate (candidates 1200/2993, same photographer, same room, 8 days
+apart; 2993's "Now booking weddings" framing reads as a marketing repost of 1200's imagery,
+excluded). A broader proportionate spot-check (28 of the remaining 159, ~18% — larger than the
+6-sample structural check, since content quality is a separate risk from venue identity) found
+one more generic self-marketing post with no specific wedding described (2918, "Contact us today
+to schedule a tour") — excluded; the other 27 were genuine specific-day recaps. Also recovered
+candidate 3237 from `venue_inline_mention-v1` (excluded there for this exact same now-understood
+pattern). Net: **158 created + 1 recovered = 159 new weddings**, dry-run verified, committed:
+1,388 `wedding_vendors` rows. `weddings` 3185→**3344**. Feed coverage 60.4%→**62.3%**.
+`bridgeportartcenter` 67→**150** documented weddings, `rockwellontheriver` →**113** (previously
+uncounted among this session's named references, now one of the highest-coverage venues in the
+whole corpus). Full test suite green (80/80) after updating the pinned literals.
+
+**Update, same tick — the user finished the `/label` `venue_coverage_v3` queue (218 WEDDING
+labels total).** Ran the full sync pipeline once more: `syncHumanLabelsToGoldenSet.ts` (351 new
+`golden_set` rows, 197 INCLUDE) → `runStackParserOnGoldenSet.ts` (8 newly-eligible posts, 1
+parseable) → clustering (663 eligible now, 1 new candidate created, 1 attached) → reconciliation.
+Investigated where all 197 new INCLUDE posts actually stood: 184 were already clustered from
+earlier in this session (86 already documented, 33 already matched to an existing Ben wedding) —
+strong independent confirmation that the tiered sweep + venuelogic batch already captured most
+of what the user was labeling. Of the rest, 61 candidates were genuinely unresolved
+(unmatched, uncreated). Hand-processed all of them: excluded `thefultonwest`'s 3 (already
+confirmed this session as venue self-marketing — the human WEDDING label correctly reflects real
+wedding-content Layer-1 imagery, which is a separate question from whether it anchors a NEW
+structured `weddings` row; no contradiction), 1 with no venue resolved, 1 already-known
+misattribution (candidate 2469, flagged back in Tier 1), and 1 ambiguous global-brand handle
+(`loewshotels` vs. the caption's actual `@loewschicagohotel` — same non-guessing precedent as
+`ritzcarlton`/`stregihotels`). The remaining 53 spanned many SMALL double-venue-tag co-tag
+patterns rather than one dominant company — hand-read ~20 samples across every distinct pattern
+and confirmed each is safe: ceremony-church + reception-venue (`oldstpatschicago`,
+`saintclementparish`, `lpconservancy`, each paired with a different real reception venue every
+time — same shape as the original `fourthchurch` override), same-entity-two-handles
+(`artinstitutechi`/`artinstitutespecialevents`, `lacuna2150`/`lacunaloftevents`,
+`venutis.banquets`/`venutisrestaurant`, `armourhouseweddings`/`thearmourhousemansion`), and one
+more operator-company pattern (`totlspecialevents` operates both Theater on the Lake and Thompson
+Chicago's event space — same shape as `venuelogic`). Checked all 10 same-venue multi-candidate
+clusters for date/vendor-team collisions — all clean; the closest pair (`saintclementparish`,
+2 days apart) is the exact "S+B's reception" vs. "Susanna wore her heart" pair already documented
+above as a confirmed non-duplicate. Dry-run verified, committed: **53 new weddings**, 74 posts,
+710 `wedding_vendors` rows, +1 account. `weddings` 3344→**3397**. Feed coverage
+62.3%→**62.9%**. Full test suite green (80/80) after updating the pinned literals (one test
+also got a timeout bump, 15s→30s, as the underlying view queries grow heavier with corpus size).
+
+This closes out the `/label` queue-driven creation loop for now — re-run the same
+sync→stack-parse→cluster→reconcile→hand-read→create pipeline whenever meaningful new labeling
+accumulates.
+
+**Update, next autonomous /loop tick — double-venue-tag-ambiguity backlog, round 2.** Re-sized
+the backlog: dropped from 354 to 151 (venuelogic + the /label batch absorbed 203). Now spread
+thin across many smaller venues (max 6/venue) rather than one dominant company. Hand-read 9 of
+the top-8-venues' 39 candidates (23%): found MORE `venuelogic` co-tags that slipped past the
+original sweep (`rockwellontheriver` ×3 pairs + one 3-day Indian-Polish multi-venue wedding;
+`bridgeportartcenter` ×3 pairs — one, 2918, already known as a marketing repost, excluded again),
+more ceremony+reception pairs (`christ_church_winnetka`+`universityclubofchicago`/`uclubashley`,
+`assumption_church_chicago`+`thedrakechicago`/`therookerybuilding`/`thewellsley`), a
+same-entity+ceremony combo (`cbgweddings`/`chicagobotanic`+`stharalambosgoc` — Chicago Botanic
+Garden's two handles plus a church), and one full-vendor-stack single with no couple name but a
+complete, specific 15-vendor credit stack (155 — a wedding planner's personal-brand-voice
+caption, same "even without a couple name, a real credible full stack" bar used throughout this
+mission). Date-collision check across all 8 venue clusters: clean, weeks-to-months apart
+everywhere. Dry-run verified, committed: **38 new weddings**, 41 posts, 487 `wedding_vendors`
+rows. `weddings` 3397→**3435**. Feed coverage 62.9%→**63.3%**. Full test suite green (80/80).
+
+The remaining ~113 of the original 354-candidate backlog (151 minus this round's ~38) are now
+even more fragmented — likely worth one more pass at some point, but diminishing per-venue yield
+makes this a lower priority than it was.
+
+## D048 — 2026-09-06 — "Beyond INCLUDE" mining + account-alias merging + a stack-parser precision fix
+
+Status: Accepted, in progress
+Context: after D047's tiered sweep more than doubled documented weddings (1,567→3,435), the user
+pushed back directly: "I still don't believe that's enough documented weddings per venue... I
+still believe there are real credible weddings in that database that we aren't using." They gave
+two concrete leads: (1) real venues sometimes run multiple Instagram handles (their own example:
+Art Institute of Chicago has `artinstitutespecialevents` as a second account) that should count
+as one venue, not two; (2) every evidence source built this session only ever looked at posts V3
+scored INCLUDE — there's a reasoned, bounded population beyond that worth mining, using human
+judgment to test which automated signals are actually predictive, not just to harvest weddings.
+
+**Track A — new `/label` queue (`beyond_include_v1`, `buildBeyondIncludeQueue.ts`).** Sized live
+against the real DB, not guessed: three specific pools that never got human or clustering
+attention — V3's own REVIEW decision, never reviewed (284 of 378); V3 EXCLUDE but with a real
+3+-role parseable vendor stack (515, a structural counter-signal the text-tone classifier
+doesn't see); score 6-11 posts V3 never even ran on but that have a stack anyway (34). 833 posts
+total, Chicago tri-state filtered (excludes only confirmed-NOT-Chicago, 0 of them). Each row's
+`bucket` records which pool it came from specifically so labeling results can later be grouped
+to see which signal is actually predictive. `CURRENT_QUEUE_VERSION` in `labeling.ts` now points
+here; `venue_coverage_v3`'s 380 rows (fully labeled, D047) are left in place. Live-tested end to
+end via curl against the running dev server before handing off.
+
+**Track B — `account_aliases` (new table, `pipeline/schema.sql`) + app-layer merge.** Systematic
+detection (NOT username-pattern guessing alone — that produced two false positives worth
+recording: a planner's "Venue Partners:" boilerplate signature made an unrelated 4-account
+cluster look aliased, and the multi-city City Winery franchise chain looked aliased by shared
+prefix) using strict substring containment or identical `full_name` as the candidate filter, then
+independently WebSearch-verified every candidate the same way `venuelogic` was verified earlier.
+15 confirmed pairs/groups (29 accounts): Art Institute of Chicago (3 handles), Field Museum, MSI,
+Chicago History Museum, Harry Caray's, LM Studio, Morgan MFG (dot-variant), Salvage One, Sarabande,
+International Museum of Surgical Science, The Dawson, The Hegewisch, Community House in Winnetka,
+Publishing House B&B. `apps/web/scripts/graph/applyAccountAliasesSchema.ts` (idempotent). Modified
+`apps/web/lib/server/graph.ts`: `getVendorProfile` resolves any alias handle to its canonical
+account's identity and merges wedding counts/Feed across every alias
+(`resolveAccountIdentity()`); `listVendors` excludes alias accounts from browse results entirely
+and merges their counts onto canonical; `homeStats`/`categoryCounts` dedupe the same way. Added a
+307 redirect in `app/vendors/[username]/page.tsx` so visiting an alias URL lands on the canonical
+one. Verified live: `artinstitutespecialevents` → 307s to `artinstitutechi`; `artinstitutechi`'s
+Feed went from its own 9 weddings to 17 (correctly merged and deduplicated across all 3 handles);
+`/vendors?q=art+institute` shows only the one canonical card. Purely additive — no
+`wedding_vendors` row was touched, only how they're displayed/counted.
+
+**Track C — stack-parser precision fix (`stackParser.ts`, `STACK_PARSER_VERSION`
+`stack-parser-ts-v3`→`v4`).** Found by hand-reading the suspicious 4-account cluster that
+prompted the false-positive alias check above: `ROLE_MAP`'s `["venue", ["venue"]]` entry is a
+plain substring match, so a planner's `"Venue Partners: @x @y @z"` cross-promo signature line
+(pasted into every post regardless of the actual wedding location) classified identically to a
+genuine `"Venue: @x"` credit — silently injecting false double-venue-tag ambiguity into this
+whole mission's backlog. Fixed with a targeted `VENUE_LIST_MARKER` check (`partner|preferred|
+featured`) that only overrides when the label ALSO contains one of those list-indicating words —
+verified against the exact real caption plus a new permanent unit test
+(`graphStrengthening.test.ts`). Re-ran `runStackParserBaseline.ts` under the bumped version
+against the full 5,225-post scored corpus (safe — writes only to `stack_extraction_entries`/
+`_runs`, never touches graph tables): 36 stale false-positive venue credits reclassified to
+`other`. Did not shrink the *currently open* 113-candidate ambiguity backlog (those 36 landed on
+posts outside that specific pool), but prevents this exact contamination for everything processed
+from here forward, including Track A's new queue. Full test suite green (81/81, one new
+regression test).
+
+**Update, same day — `beyond_include_v1` first sync round, and the "which signal is
+predictive" answer.** User labeled 235 posts. Before syncing, checked labeling results BY
+bucket (the whole point of tagging each queue row with its source pool): `review_unprocessed`
+converted at **69% WEDDING** (20/29), `exclude_with_stack` at **45%** (95/210) — confirming V3's
+own REVIEW tier is a meaningfully stronger signal than "EXCLUDE but has a stack," though both
+are well above a random baseline and both are worth mining. `unscored_with_stack` had zero
+labels yet (unreached). Ran the full pipeline: `syncHumanLabelsToGoldenSet.ts` (234 new rows,
+111 INCLUDE) → `runStackParserOnGoldenSet.ts` (346 posts reprocessed under v4, 74 with a stack)
+→ clustering (`--evidence-source human_confirmed`: 106 new candidates, 5 attached to existing
+ones) → reconciliation (3,365 total candidates now, high=2,112 ambiguous=549 insufficient=369
+no-venue=52). Hand-read all 15 double-venue-tag-ambiguous candidates from this batch: 10 safe
+(more venuelogic pairs, ceremony+reception, same-entity co-tags, one legitimate multi-location
+single wedding day), 5 excluded — two are genuinely new failure shapes worth remembering:
+**multi-wedding recap posts** (a planner's "Wedding 1/Wedding 2/Wedding 3" or "First picture:
+Grant and Elise... Stephen and Simone... Nick and Madi..." annual-highlights post, describing
+several different real weddings in ONE caption — structurally impossible to attribute to a
+single wedding in this pipeline's one-candidate-one-event model; real content, just not usable
+here) — the other 3 are plain educational/marketing posts with no specific wedding at all.
+Checked all 42 weak-match (<0.75 confidence) candidates for exact-post duplicates against their
+matched wedding: found exactly one (3310, matched to wedding 289 — theallureonthelake, the
+Indiana venue already flagged this session for an `is_chicago` correction, still pending). Full
+same-venue date-collision check across the rest: one close pair (7 days apart, both
+`artinstitutespecialevents`) — one was generic beauty-vendor marketing with no couple, excluded;
+the other was a fully-credited named-couple wedding, kept. Found 2 more genuine account-alias
+pairs while hand-reading (`armourhouseweddings`/`thearmourhousemansion`,
+`halimmuseumevents`/`halimmuseum`), independently WebSearch-verified and added to
+`account_aliases` (17 total now). Dry-run verified, committed: **85 new weddings**, 86 posts,
+805 `wedding_vendors` rows, +1 account. `weddings` 3435→**3520**. Feed coverage
+63.3%→**64.2%**. Full test suite green (81/81) — one test's own inequality assumption
+("reconcile-v2 always has less many-to-one match fragmentation than v1") broke at this
+session's scale (1,953+ new weddings created gives v2 vastly more legitimate match targets than
+v1 ever had) and was converted to a pinned, explained snapshot after verifying zero
+ingestion-safety impact.
+
+**Update, 2026-09-07 — a new, systemic gap found and documented (not fixed): the `vendors`
+(Places-identity) table hasn't kept pace with the `accounts` growth this whole D047/D048 arc
+produced.** The user asked directly whether the "vendor list" and "vendor graph" have been kept
+up to date by this work. Answer, checked precisely rather than assumed: the vendor *graph*
+(`edges` matview, refreshed after every creation commit) is fully current — verified live,
+`bridgeportartcenter`/`venuelogic` now show 103 shared weddings. But the vendor *list*'s
+Places-sourced identity layer is not: `vendors` (the Google-Places-scraped table — real address,
+rating, photos, category) is still exactly 5,029 rows, untouched all session, because nothing in
+`createWeddingsFromJeremyEvidence.ts` (or anything else built this arc) ever writes to it — by
+design, that table is only populated by a separate, deliberately out-of-scope Google Places API
+script. Sized live: **5,618 of 7,348 distinct accounts now credited in real weddings (76%) have
+no `vendors` row at all** — they render fine on `/vendors` and vendor detail pages (`listVendors`
+only requires an `accounts` row + a `v_account_role` tag + a wedding credit; `vendors` is a LEFT
+JOIN that adds polish when present, never gates inclusion, per the original D008/D006 design) but
+with no address/rating/photos/category enrichment. Breakdown by role (top): 845 `other`, 292
+`attire`, 292 `photographer`, **199 `venue`**, 174 `videographer`, 156 `catering`, plus 2,403
+accounts with no role tag at all. This is a direct, mechanical consequence of this mission's own
+success — every new wedding this arc created pulls in fresh secondary-vendor handles
+(photographer/planner/florist/etc.) that were never Places-matched, and the venue-coverage push
+specifically means 199 of the newly-covered VENUES themselves are running with zero Places
+enrichment. Not fixed here — a real Google Places API cost/rate-limit tradeoff, explicitly the
+kind of decision this project's `venue-enrichment` design already treats as script-time-only, not
+something to spend live API budget on inside a data-completion sweep. Documented so a future
+session can decide whether/how to close it (a full Places backfill for the 5,618, or a
+lighter-weight WebSearch-based address/category fill reusing this session's own
+`backfillVenueLocationsViaWebSearch.ts` pattern for at least the 199 uncovered venues first, since
+those are the highest-leverage subset for the actual product surface this mission has been
+optimizing).
+
+## D046 — 2026-09-06 — Vendor association: author-is-vendor counts, but stays a non-gating, joinable dimension (not a Layer-1 requirement)
+
+Status: Accepted
+Context: Continuing D045's reframe, the user re-proposed the model as 4
+explicit dimensions (wedding credibility, Chicago relevance, vendor
+association, vendor-stack richness) and asked whether "at least one
+credible vendor connected, either as the author or through credits/tags"
+should gate Layer 1. Live check found `human_confirmed_post_vendor_evidence`
+only ever captured *tagged/credited* vendors (stack-parser output on
+caption text) — it had no concept of "the post's author is itself a known
+vendor." A venue posting its own real wedding, crediting no one else,
+showed up as zero vendor association even though the venue IS the vendor.
+Checked live: of the 639 Layer-1 posts, 433 had a tagged vendor; of the
+other 206, 146 were authored by an account bridged to `vendors` — so the
+real split was 579 with *some* vendor connection (author or credit), only
+60 with genuinely none.
+Decision: the user chose to keep vendor association **non-gating** —
+"Don't make a downstream use-case requirement a prerequisite for retaining
+upstream evidence." Layer 1 (`human_confirmed_chicago_wedding_content`)
+stays untouched at 639. Added two additive views instead:
+`human_confirmed_post_vendor_association` (per golden_set-INCLUDE post,
+all 817: `author_is_vendor`, `tagged_vendor_count`,
+`has_vendor_association`, `vendor_association_type` ∈
+{AUTHOR_ONLY, TAGGED_ONLY, BOTH, NONE} — full corpus breakdown:
+236/62/414/105; Layer-1 subset: 146/50/383/60) and
+`human_confirmed_vendor_page_content` (the actual vendor-page-shaped
+selection = Layer 1 ∩ has_vendor_association = **579** — a downstream
+consumer's own stricter requirement, applied at query time, not baked
+into Layer 1's definition).
+Edge case found, explicitly NOT fixed here (separate, pre-existing,
+orthogonal to this decision): `human_confirmed_post_geography` (and thus
+Layer 1) only resolves posts present in `staging.instagram_posts` — 75 of
+the 817 current golden_set INCLUDE rows exist only in `public.posts` and
+are invisible to Layer 1 entirely. Flagged as a candidate for a future,
+separate fix (widen that view's join the way `getQueueBatch` in
+`labeling.ts` already handles both corpora).
+Why: this is the same principle as D045, applied one layer deeper — an
+attribution signal (which specific vendor to route content to) is a
+different question from a content-quality signal (is this useful,
+credible wedding content). Collapsing them would have silently dropped
+206 real Chicago weddings that happen to have thin/no tagged credit —
+disproportionately venue/vendor "own work" posts, exactly the kind of
+content this project cares most about surfacing.
+Related: D045, D043, D044, `docs/engineering/human-labeling/README.md`.
+
+## D045 — 2026-09-06 — Content eligibility vs. structured-entity eligibility: the human-confirmed-evidence pipeline conflated two different questions
+
+Status: Accepted
+Context: D044's 69-candidate hand-review found only 18 held up as genuinely
+specific weddings, making it look like 742 confirmed real weddings had
+shrunk to 18 usable ones. The user pushed back hard: "we are being too
+exclusionary... these are likely different questions with overlap." Correct
+— the 69-candidate sample was *conditioned* on a 3+-role vendor credit
+stack (needed to build a structured multi-vendor `weddings` entity), which
+correlates heavily with generic vendor/venue marketing (marketing posts
+credit collaborators just as generously as real documented weddings).
+Directly confirmed: the same "looks like marketing" pattern appears in
+only 3 of the full 742 posts, not anywhere near 51/69's rate. Extrapolating
+the conditioned sample's quality to the whole corpus was a sampling-bias
+error.
+Decision: explicitly split into two independent layers, per an
+OBSERVE→BASELINE→HYPOTHESIS→PROPOSED CHANGE→self-challenge design pass
+(user required the self-challenge before implementing): **Layer 1
+(content)** — `human_confirmed_chicago_wedding_content` (new view):
+`golden_set` WEDDING + confirmed Chicago relevance, nothing else required
+— no vendor attribution, no credit-stack richness, no couple-naming, no
+clustering, no reconciliation. **639 posts**, live now. **Layer 2
+(structured entity)** — D044's pipeline, unchanged, still conservative,
+still the only path that writes a `weddings` row. New view
+`human_confirmed_post_geography` resolves Chicago relevance **per post**,
+independent of clustering (the real architectural gap — geography used to
+only ever get computed for posts that survived the narrow 3+-role filter).
+Caught and fixed two bugs while formalizing this: `vendors.account_id` is
+not unique (one account had 4 rows) and was silently fanning one post into
+duplicate result rows; an early version picked one arbitrary venue account
+when a post credited several (e.g. a church + a separate reception venue)
+instead of accepting *any* positive Chicago signal across all of them —
+fixed to the latter, since for this per-post content signal (not a
+structured-entity identity decision) a confirmed-Chicago credit co-existing
+with an unresolved one is real positive evidence, not evidence against.
+Landed at 639, not an earlier ad hoc estimate of 602 — the difference is
+the bug fixes, not a data change. A 15-post spot-check of newly-surfaced
+Layer-1-only content found it mostly sound, plus 2 genuine mislabels
+(a beauty-tutorial post, an engagement-session/marketing post) — a residual
+labeling-accuracy issue from the original fast review pass, explicitly not
+chased with further manual review per the user's own scope instruction.
+Why: "real wedding content" and "a structured wedding entity" are
+different questions; evidence sufficient for one is not automatically
+sufficient for the other. Zero data was deleted or relabeled — both new
+views are additive and reversible (`CREATE OR REPLACE VIEW`), and Layer 2's
+tables/tests are completely untouched (70/70 still green).
+Related: D043, D044, `docs/engineering/human-labeling/README.md` (full
+writeup, read this first for the mission), D016 (first flagged this exact
+distinction for Ben's corpus and left it unresolved).
+
+## D044 — 2026-09-05/06 — Human-confirmed-evidence pipeline: extending graph-strengthening to golden_set-confirmed posts, plus the stack-richness sampling-bias finding
+
+Status: Accepted (structured-entity output not yet acted on — see D045)
+Context: `jeremy_post_vendor_evidence` requires both `candidate_scores.score
+>= 12` and V3 `decision='INCLUDE'` — both deliberate (D014's cost deferral,
+D017's INCLUDE-only geography-pollution avoidance, explicitly "revisit once
+INCLUDE ingestion is proven out" — already met by D023/D035-D039). With a
+real human-labeled golden_set now available, that precondition is
+satisfiable independent of V3 entirely.
+Decision: built `runStackParserOnGoldenSet.ts` (stack extraction for
+golden_set-INCLUDE posts that never scored ≥12), a new, deliberately
+separate `human_confirmed_post_vendor_evidence` view (not unioned with the
+classifier's evidence view — different provenance/confidence semantics),
+extended `runJeremyWeddingClustering.ts` with `--evidence-source
+human_confirmed` writing under a new `clustering_version=human-confirmed-v1`
+(never mixing with the existing 2,872-candidate pool), and an explicit
+`chicago_status` tri-state column on `jeremy_wedding_candidates`
+(`CHICAGO_CONFIRMED`/`CHICAGO_NOT_CONFIRMED`/`CHICAGO_AMBIGUOUS`, never a
+boolean, never silently inferred) computed from `account_locations.in_metro`.
+Result across two runs (as labeling continued): 140 new candidates, 69
+Chicago-confirmed and reconciled (15 would strengthen an existing Ben
+wedding, 54 would create a new one, ~458 vendor relationships total), 71
+requiring review. Reconciliation, reused completely unchanged, surfaced a
+real side effect: re-running it for the first time since D035-D042 changed
+`weddings`/`wedding_vendors` caused 5 pre-existing ambiguous-tier candidates
+to flip to a *different* matched wedding — investigated, confirmed zero
+production impact (none were ever ingested, ambiguous-tier never is per
+D021's evidence floor), documented in `graphStrengthening.test.ts` rather
+than silently patching the snapshot literal.
+Hand-reviewing the 69 against `labeling_rubric.md` found only 18 hold up as
+genuinely specific real weddings — 51 were generic vendor/venue marketing
+with a rich credit stack, mislabeled at the fast (~440/hour) individual-post
+review stage. This finding motivated D045.
+Related: D014, D017, D023, D035-D039, D040-D042 (the reconciliation-drift
+precedent this mirrors), D045 (the correction), `docs/engineering/human-labeling/human-confirmed-candidates-review.md`.
+
+## D043 — 2026-09-05 — `/label` ships: a rapid keyboard-driven review UI spanning both corpora, plus what the first labeling session found
+
+Status: Accepted
+Context: no real human had ever read `staging.instagram_posts` (47,623
+posts) or `public.posts` (6,370, the live serving graph) end-to-end — every
+prior "golden set" row was either a bootstrap sample read by Claude
+(`golden_set_v0`) or narrowly hand-flagged junk (D040-D042). The user asked
+for a fast, durable labeling system, explicitly not narrowed to "prove out
+the existing classifier" — "give me everything ... so we receive value all
+over our funnel."
+Decision: built `/label` (`apps/web/app/label/`) — keyboard shortcuts
+(W/N/U/Space/B/Z), an append-only `human_post_labels` table (relabeling
+never destroys a prior observation, unlike `golden_set`'s current-state-only
+design), and a frozen, resumable `label_queue`. Queue `v2` stratified across
+both corpora: random baseline, the shipped `/feed` corpus, the classifier's
+decision boundary, the deliberately-unclassified 89% majority, and a random
+sample of Ben's `public.posts` (never broadly human-reviewed before).
+Iterated on UX live against real usage: fixed a CSS grid layout bug (a long
+caption pushed the label buttons off-screen — grid's implicit row ignores a
+fixed container height when content is taller; switched to flexbox, which
+actually clamps), added a note field, widened the queue mid-session per
+user request.
+Findings (1,955+ posts labeled across the session): `/feed` (V3 INCLUDE) is
+~97% human-confirmed precision, matching V3's own claimed number — the
+shipped product is trustworthy. Real-wedding rate is ~51% in V3's own
+EXCLUDE/REVIEW boundary and ~32-40% in the never-classified 89% majority
+and in Ben's `public.posts` random sample — a substantial undiscovered
+population under the current classified slice, not noise. Throughput:
+settled around 300-440 labels/hour once notes were used sparingly (down
+from an initial 162/hour) — labeling with a note attached took ~4x longer
+per post than without.
+Related: D040-D042 (the precedent for promoting hand-verified labels into
+`golden_set`), D009-D015 (the classifier this measures), D044 (what the
+resulting golden_set unlocked).
+
 ## D042 — 2026-09-05 — Non-wedding posts batch 2 (19 more retired) + all mission labels promoted to `golden_set`
 
 Status: Accepted

@@ -22,7 +22,10 @@
  * actual behavior, not prefilter.ts's.
  */
 
-export const STACK_PARSER_VERSION = "stack-parser-ts-v3";
+// v4 (D047 follow-on, 2026-09-06): "Venue Partners:"/"Preferred Venues:"/"Featured Venues:"
+// boilerplate lines no longer classify as role=venue -- see normRole()'s VENUE_LIST_MARKER
+// comment for the exact contamination this fixes.
+export const STACK_PARSER_VERSION = "stack-parser-ts-v4";
 
 // Identical to pipeline.py's LINE/HANDLE regexes (character-for-character).
 const LINE = /^\s*[•\-*]?\s*([A-Za-z][A-Za-z &+/'’]{1,35}?)\s*[:|\-–—/]+\s*(.*@.*)$/;
@@ -131,9 +134,22 @@ const EVENT_PHASE_VENUE_LABELS = new Set([
   "ceremony and reception",
 ]);
 
+// D047 follow-on (2026-09-06): found live, by hand-reading a suspicious 4-way "double-venue-tag"
+// cluster during the ambiguity-backlog cleanup -- a planner's boilerplate signature block reads
+// "Venue: @artinstitutechi" (the real, singular location claim) followed by "Venue Partners:
+// @thedrakechicago @artinstitutespecialevents @revelspace" (a cross-promo list of OTHER venues
+// the planner works with, pasted into every post regardless of where that wedding actually was).
+// The plain substring match on "venue" classified BOTH lines as role='venue', silently
+// contaminating the double-venue-tag-ambiguity backlog with false ambiguity for every post using
+// this common marketing pattern. A genuine single-venue credit is never phrased as a list
+// ("Partners", "Preferred", "Featured") -- those words specifically signal "other venues we
+// cross-promote," not "this wedding's location."
+const VENUE_LIST_MARKER = /\b(partner|preferred|featured)/;
+
 export function normRole(roleRaw: string): string {
   const r = roleRaw.toLowerCase();
   if (EVENT_PHASE_VENUE_LABELS.has(r.trim())) return "venue";
+  if (r.includes("venue") && VENUE_LIST_MARKER.test(r)) return "other";
   for (const [role, keys] of ROLE_MAP) {
     if (keys.some((k) => r.includes(k))) return role;
   }

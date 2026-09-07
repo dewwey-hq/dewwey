@@ -280,6 +280,7 @@ export default function InstagramEmbed({
   scrollIframe = false,
   mediaWidth,
   mediaHeight,
+  defaultCaptionExpanded = false,
 }: {
   postUrl: string;
   caption?: string | null;
@@ -295,6 +296,10 @@ export default function InstagramEmbed({
   scrollIframe?: boolean;
   mediaWidth?: number | null;
   mediaHeight?: number | null;
+  /** Show the full caption immediately instead of a "Show more"-truncated
+   * excerpt. Default false to preserve existing behavior everywhere this
+   * component is already used (/feed, /weddings). */
+  defaultCaptionExpanded?: boolean;
 }) {
   const [iframeLoaded, setIframeLoaded] = useState(false);
 
@@ -360,14 +365,22 @@ export default function InstagramEmbed({
         }}
       />
       {!compact && !lightbox && !lightboxMedia && text ? (
-        <InstagramCaption text={text} postUrl={postUrl} />
+        <InstagramCaption text={text} postUrl={postUrl} defaultExpanded={defaultCaptionExpanded} />
       ) : null}
     </div>
   );
 }
 
-function InstagramCaption({ text, postUrl }: { text: string; postUrl: string }) {
-  const [expanded, setExpanded] = useState(false);
+function InstagramCaption({
+  text,
+  postUrl,
+  defaultExpanded = false,
+}: {
+  text: string;
+  postUrl: string;
+  defaultExpanded?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const long = text.length > 120;
 
   return (

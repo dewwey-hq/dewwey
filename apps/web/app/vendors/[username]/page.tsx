@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { InstagramLogo } from "@phosphor-icons/react/dist/ssr";
 import { BRAND_NAME } from "@/lib/brand";
 import { getVendorProfile } from "@/lib/server/graph";
@@ -54,6 +54,12 @@ export default async function VendorPage({
     feedOffset: (page - 1) * PAGE_SIZE,
   });
   if (!data) notFound();
+  // account_aliases (D047 follow-on, 2026-09-06): getVendorProfile transparently resolves an
+  // alias handle (e.g. artinstitutespecialevents) to its canonical account's data -- redirect
+  // the URL to match so the address bar and the rendered profile never disagree.
+  if (data.profile.username.toLowerCase() !== decodeURIComponent(username).toLowerCase()) {
+    redirect(`/vendors/${data.profile.username}${page > 1 ? `?page=${page}` : ""}`);
+  }
   const { profile: p, partners, stacks, enrichment, feedTotal } = data;
   const totalPages = Math.max(1, Math.ceil(feedTotal / PAGE_SIZE));
 
