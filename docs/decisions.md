@@ -4,6 +4,55 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D054 — 2026-09-07 — venue_corpus_mining round 2: loosen the filter deliberately, scope to low-coverage venues
+
+Status: Accepted
+Context: D053 shipped `venue_corpus_mining_v1`'s first, tightly-filtered batch (379 posts, fixed
+down from a buggy 1,296 the same day). The user confirmed 379 as a good first batch, then pushed
+back on the filter itself: "47k to 379 is too exclusionary... im okay looking at some potential
+junk in our 47k to drive coverage... we want to have coverage." Round 1 required BOTH a
+stack-shaped credit line AND an explicit wedding keyword; that precision came at the cost of
+throwing away real content that doesn't happen to match that exact shape.
+
+Sized three options live before picking one: fully unfiltered across all 644 venue accounts
+(~12,500 posts — too much undifferentiated volume, most of it landing on venues that don't need
+help); a loosened filter (drop stack-shape + wedding-keyword requirements, keep only excluding
+confirmed non-wedding events) scoped to the 70 accounts with <=5 documented Chicago weddings —
+the same threshold `venue_coverage_v3` (D047) already established as "low coverage" — landing at
+**~4,670 posts (3,507 own-authored + 1,163 tagged), 34 of the 70 venues currently at zero**.
+Picked the scoped option: broad enough to stop being "too exclusionary," still targeted at
+venues that actually need it rather than volume for its own sake.
+
+**Shipped as round 2 inside the same script** (`buildVenueCorpusMiningQueue.ts`), appended at
+continued `rank` values after round 1's 379 (idempotent, `on conflict do nothing`, round 1's
+rows/ranks untouched), same `queue_version` (`venue_corpus_mining_v1`) so it's one continuous
+`/label` queue — finish the tight, high-confidence 379 first, then continue into the broader,
+lower-precision-but-coverage-focused round 2. Buckets suffixed `_r2_low_coverage` to keep the
+two rounds' eventual precision comparable.
+
+**Actual shipped count came in lower than sized, for a real reason worth recording**: sizing used
+a broad regex `@handle` scan for the "tagged" (mentioned-by-someone-else) pool (1,163 posts), but
+the query actually written for round 2 reused round 1's `jeremy_post_vendor_evidence`/
+`human_confirmed_post_vendor_evidence`-based tagged-post CTE verbatim — the same, much narrower,
+structured-evidence source. **Real result: 3,515 rows inserted (3,513 own-authored + only 9
+tagged)**, not the sized ~4,670. Own-authored alone still delivers the bulk of the value (queue
+total after round 2: 3,894). The regex-vs-structured-evidence gap for the tagged pool is a known,
+unresolved discrepancy — worth a round 3 specifically targeting it (broaden tagged-post matching
+to the regex approach, same as this session's original sizing) rather than assuming round 2
+covered it.
+
+**Explicit, accepted tradeoff**: round 2 will have a meaningfully lower WEDDING hit rate than
+round 1 — a venue's own feed includes real non-wedding content (venue tours, staff photos,
+generic marketing) that the loosened filter no longer screens out, only the non-wedding-*event*
+keyword exclusion remains. This was the user's own explicit call, not an oversight.
+
+**Confirmed live while this was being built**: the user was already labeling round 1 in real
+time — 36 posts done, 26 WEDDING / 10 NOT_WEDDING (~72% hit rate), a strong first signal for the
+tight filter's precision.
+Related: D052, D053, `apps/web/scripts/classify/buildVenueCorpusMiningQueue.ts`
+
+---
+
 ## D053 — 2026-09-07 — Mining the 47k corpus is now a standing process, not a one-off: `venue_corpus_mining_v1`
 
 Status: Accepted
