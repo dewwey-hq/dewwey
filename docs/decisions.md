@@ -32,10 +32,28 @@ content filter (stack-shaped credit line AND a specific wedding keyword AND no n
 keyword) than v3's looser phrase-or-stack-or-V3-decision check, since this pool never had a
 prior V3 score or stack extraction to lean on. Already excludes anything in `golden_set` or
 already human-labeled (so venue_coverage_v3's own prior labels are correctly skipped, not
-re-served). **1,296 qualifying, unlabeled posts** (20 tagged + 1 own-authored for genuinely
-zero-coverage venues; 939 tagged + 336 own-authored topping up already-covered venues).
-`CURRENT_QUEUE_VERSION` (`apps/web/lib/server/labeling.ts`) flipped to this queue —
+re-served). `CURRENT_QUEUE_VERSION` (`apps/web/lib/server/labeling.ts`) flipped to this queue —
 `beyond_include_v1` is fully complete, this is the natural next one.
+
+**A real bug, found the same day by the user asking a direct verification question ("did you
+check that these posts are net new")**: the first version shipped with 1,296 rows, but the
+query never excluded posts already sitting in `public.posts` — checked live and **917 of the
+1,296 (71%) already existed there, every single one already attached to a documented wedding via
+`wedding_posts`.** Not new content at all; labeling them would have been pure redundant
+re-confirmation of weddings already on file. Root cause: this session's own earlier *sizing*
+queries had the `not exists (select 1 from posts p where p.url = ...)` exclusion; it got dropped
+when the query was rewritten to mirror `buildVenueCoverageQueue.ts`'s shape, which doesn't have
+it either. Checked whether v3 has the same gap: **yes** — of its 380 staging-sourced rows, 171+
+already existed in `public.posts` at check time, and a meaningful number were already labeled
+under that flawed premise (not unwound — those labels already happened and the results were
+already verified/created as real weddings, so the redundancy cost some labeling time but didn't
+corrupt anything). Fixed by adding the missing exclusion; cleared the 1,296 bad `label_queue`
+rows (confirmed only one real label existed under this queue version, on an already-in-`posts`
+row that was correctly dropped by the fix — `human_post_labels` itself is untouched, append-only,
+independent of `label_queue`) and rebuilt. **Corrected count: 379 genuinely new, unlabeled
+posts** (6 tagged + 1 own-authored for zero-coverage venues; 163 tagged + 209 own-authored
+topping up already-covered venues) — spot-verified zero overlap with `public.posts` after the
+fix.
 
 **A design simplification found along the way, worth remembering**: no separate "import into
 `posts`" step is needed before labeling or parsing. `runStackParserOnGoldenSet.ts` already reads

@@ -95,6 +95,14 @@ async function main() {
        and sp.caption_raw !~* '${NON_WEDDING_KEYWORD}'
        and not exists (select 1 from golden_set gs where gs.post_url = ap.post_url)
        and not exists (select 1 from human_post_labels hpl where hpl.post_url = ap.post_url and hpl.labeled_by = 'jeremy')
+       -- Bug found 2026-09-07 (user asked "did you check these are net new"): without this,
+       -- 917 of 1,296 rows (71%) turned out to already exist in public.posts, every one of them
+       -- already attached to a documented wedding via wedding_posts -- not new content, pure
+       -- redundant re-labeling of weddings already on file. This exclusion was present in this
+       -- session's own sizing queries but got dropped when the query was rewritten to mirror
+       -- buildVenueCoverageQueue.ts's shape (which doesn't have it either -- unverified whether
+       -- that queue has the same gap, see docs/decisions.md D053 addendum).
+       and not exists (select 1 from posts p where p.url = ap.post_url)
      order by ap.n_weddings asc, ap.post_url asc`
   );
 
