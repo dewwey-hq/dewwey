@@ -4,6 +4,59 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D053 — 2026-09-07 — Mining the 47k corpus is now a standing process, not a one-off: `venue_corpus_mining_v1`
+
+Status: Accepted
+Context: D052's account-bridging work (3 venues) was a small identity-layer fix. The user pushed
+for the actually-big lever: "we should look at posts that exist in our 47k or posts that mention
+the venue or tag the venue so we can increase our documented weddings" — and asked explicitly
+whether this had already been done for all venues, or just the currently-invisible ones,
+expecting this pattern to be a recurring, first-class part of the coverage-improvement toolkit
+going forward (alongside web research and account-identity work), not a single mission.
+
+**Sizing.** Of 184 venues visible on `/vendors` with zero posts of their own in *our* `posts`
+table, 62 actually have posts authored by their own account sitting in Jeremy's raw
+`staging.instagram_posts` (47,623 posts, only 3,109 — 6.5% — ever imported into `posts` at all),
+and 101 more are mentioned/tagged in someone else's post there. Widened to all 644 venue-role
+accounts (not just the 184): 149 have unimported authored content, and **108 of those 149
+already have some documented coverage** — scoping to "zero-coverage only" would have missed most
+of the real opportunity. Checked for overlap with the already-completed `venue_coverage_v3`
+(D047, which mined the same two signals but capped at venues with <=5 weddings): ~24% of the
+raw qualifying pool was already labeled there; ~76% is genuinely new.
+
+**What shipped**: `apps/web/scripts/classify/buildVenueCorpusMiningQueue.ts`
+(`venue_corpus_mining_v1`), a generalization of `buildVenueCoverageQueue.ts`'s own query (same
+own-profile + `jeremy_post_vendor_evidence`/`human_confirmed_post_vendor_evidence`-tagged
+pattern) with the `<=5 weddings` cap removed — scoped to all venue-role accounts — and a tighter
+content filter (stack-shaped credit line AND a specific wedding keyword AND no non-wedding-event
+keyword) than v3's looser phrase-or-stack-or-V3-decision check, since this pool never had a
+prior V3 score or stack extraction to lean on. Already excludes anything in `golden_set` or
+already human-labeled (so venue_coverage_v3's own prior labels are correctly skipped, not
+re-served). **1,296 qualifying, unlabeled posts** (20 tagged + 1 own-authored for genuinely
+zero-coverage venues; 939 tagged + 336 own-authored topping up already-covered venues).
+`CURRENT_QUEUE_VERSION` (`apps/web/lib/server/labeling.ts`) flipped to this queue —
+`beyond_include_v1` is fully complete, this is the natural next one.
+
+**A design simplification found along the way, worth remembering**: no separate "import into
+`posts`" step is needed before labeling or parsing. `runStackParserOnGoldenSet.ts` already reads
+captions directly from `staging.instagram_posts` joined to `golden_set.post_url` — the entire
+`jeremy_wedding_candidates`/`jeremy_wedding_candidate_posts` pipeline was built from the start to
+work off staging-sourced evidence without ever requiring a `public.posts` row. The original plan
+for this round included a new import script; it turned out to be solving a problem the existing
+architecture doesn't have. `public.posts` only gets a new row, if ever, at actual wedding
+creation time via the existing pipeline — not as a prerequisite for labeling or parsing.
+
+**Standing takeaway (see also the `tail_end_venue_coverage` memory file)**: whenever documented-
+wedding coverage looks thin anywhere — a venue, and eventually other vendor roles — checking
+Jeremy's raw 47k corpus for that account's own posts and posts that tag/mention it is now a
+first-class, expected step, on the same tier as web research and account-identity work. It
+should be re-run periodically as more of the corpus gets attention, not treated as done after one
+pass.
+Related: D047 (`venue_coverage_v3`), D048, D052, `apps/web/scripts/classify/
+buildVenueCorpusMiningQueue.ts`
+
+---
+
 ## D052 — 2026-09-07 — Tail-end venue coverage: verified account bridging + aliasing, junk pool identified and excluded
 
 Status: Accepted

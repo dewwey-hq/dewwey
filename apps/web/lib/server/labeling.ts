@@ -52,7 +52,14 @@ import { getPool } from "./db";
 // accumulated) -- user asked for more to label in parallel while a separate coverage-gap mission
 // runs, and beyond_include_v1 still has 486 real unlabeled rows sitting there. Switch to
 // styled_shoot_v1 again if/when a round-2 pool is actually sized and non-empty.
-export const CURRENT_QUEUE_VERSION = "beyond_include_v1";
+// Switched to venue_corpus_mining_v1 (2026-09-07, same day, buildVenueCorpusMiningQueue.ts):
+// beyond_include_v1 is now fully complete (833/833, D051 addendum). New queue generalizes
+// venue_coverage_v3's (D047) own-profile + vendor-tagged staging.instagram_posts mining from
+// just <=5-wedding venues to ALL 644 venue-role accounts -- the "use the 47k corpus" standing
+// process (D052/D053, see tail_end_venue_coverage memory). 1,296 qualifying posts, already
+// excludes anything in golden_set/human_post_labels (including venue_coverage_v3's own prior
+// labels). beyond_include_v1's rows stay in place, not deleted.
+export const CURRENT_QUEUE_VERSION = "venue_corpus_mining_v1";
 // Single fixed labeler, no auth anywhere in this app today (see
 // CLAUDE.md — the old password gate was deliberately deleted). Revisit if a
 // second labeler is ever needed.
