@@ -4,6 +4,67 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D055 — 2026-09-08 — Squeeze the 47k: remove the gates first, extract the residue last, humans review at the wedding level
+
+Status: Accepted (in progress — Phase 0 landing; addenda appended below as phases complete)
+Context: the user's framing — "take a meaningful swing at that 47k posts and try to get it so we
+have squeezed as much juice as we can out of that 47k corpus and can move on," with venue coverage
+as the goal (400 venues, most with few or no documented weddings). Prior sessions had been
+"gradual and exclusionary": ~100-400 posts labeled per sitting, binary WEDDING/NOT_WEDDING.
+Full plan: `~/.claude/plans/i-have-a-prompt-flickering-creek.md` (approved 2026-09-08); this
+entry records the measured diagnosis and what shipped.
+
+**Diagnosis, measured end-to-end against live tables (not assumed):**
+- Every gate in the funnel is precision-tuned and they compound. `candidate_score >= 12` has 35%
+  recall on real weddings (its dominant term counts `@mentions` that resolve to accounts *already
+  in the graph with a role* — structurally circular; re-scoring all 42,398 below-cutoff posts
+  against today's 2.5x-larger graph lifts only 122 over the bar). V3: precision 94%, recall 51%.
+  Regex stack parser: fine as a parser, but gated on the score — venue-credit recall on
+  human-confirmed weddings 57%. Clustering floor ≥3 roles kills a venue's own two-credit post.
+- **The human was never the bottleneck: the pipeline drops 61% of what the human confirms.** Of
+  1,496 golden INCLUDE posts, 582 became a wedding row; 614 are blocked purely on venue
+  resolution (487 no venue credit, 127 clustered but unresolved), 242 sit in the hand-review
+  backlog, 58 fail the role floor. 314 of the 614 carry an Instagram location tag naming the venue.
+- Two structured signals nobody used: `location_tag` (27,529 posts; the top ~300 tags are venue
+  names) and author-is-venue (2,762 posts by 125 Places-bridged venues, never classified because
+  nobody else credited them so they score ~0).
+- The user pushed back on the first draft ("are we just throwing a more capable model at the same
+  data?"). Answered by measurement: the free fixes recover most of it, so the LLM runs last on the
+  residue. See memory `feedback-gates-before-models`.
+- Images (user's question): 12% of confirmed weddings are image-decided (no text signal), 65% of
+  those venue-anchored by tag/author anyway → an 8,367-post vision-only pool. But **every stored
+  CDN image URL is expired** (all 47,613; 0/150 fetchable); `/label` and the Feed only work
+  because they render IG's embed iframe browser-side. Vision is blocked on re-acquisition (Apify,
+  credits 09-11) and reels are excluded. See memory `corpus-images-are-dead`.
+
+**Decisions:** `candidate_score` retired as a gate (kept as ordering); the regex parser runs
+ungated over the whole corpus; venue anchors come from any of {credit line, author-is-venue,
+location tag, v8 inline/hashtag patterns}; a new `structural` evidence source with a venue-anchored
+eligibility floor replaces ≥3 roles for anchored posts only; human review moves to the candidate
+(wedding) level; LLM extraction (Haiku 4.5, text then vision) only on what structure can't parse,
+each slice behind a calibration gate on the golden set before corpus spend.
+
+**Phase 0 shipped so far (2026-09-08, all free, all additive):**
+- `runStackParserBaseline.ts --ungated` (+ `--dry-run`, and batched `unnest` writes — the per-post
+  loop was ~3 h at Supabase latency): parsed the 41,411 never-parsed posts. Corpus totals under v7
+  went from 7,101 parsed / 4,459 full stacks → **47,142 parsed / 8,451 full stacks / 7,151 posts
+  with a venue credit / 1,019 never-seen venue handles.**
+- `buildLocationTagVenueMap.ts` → `location_tag_venue_map`: 103 automatic (exact + normalized
+  name match, venue-role required, alias-canonicalized, generic city/neighborhood tags and
+  non-venue businesses excluded) + 40 hand-pass rows. **143 tags → 131 venues → 10,237 posts
+  anchored, 8,616 of them never touched by the pipeline; 175 stuck human-confirmed weddings now
+  have a venue.** Two ambiguous tags resolved by hand: "Old Post Office" surfaced a real alias
+  pair (`post433events` → `post433chicago`, alias round 4); "Four Seasons Hotel Chicago" exposed a
+  D050 placeholder mis-bridge — the Places row pointed at `@fourseasons` (the global brand handle,
+  0 weddings) instead of `@fschicago` (the property, 25 weddings). Re-pointed, brand-handle
+  frontier row skipped. **Brand-handle bridges (`trumphotels`, `noburestaurants`, `hilton`,
+  `marriottbonvoy`, `fairmonthotels`…) are a known class needing a cleanup pass.** Deliberately
+  left unresolved: "Lacuna Lofts" (4 distinct `lacuna*` venue accounts), "The Library Club".
+Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
+`feedback-gates-before-models`, `corpus-images-are-dead`.
+
+---
+
 ## D054 — 2026-09-07 — venue_corpus_mining round 2: loosen the filter deliberately, scope to low-coverage venues
 
 Status: Accepted

@@ -78,6 +78,11 @@ const ALIASES: AliasRow[] = [
   { aliasUsername: "thethompsonchicago", canonicalUsername: "thompsonchicago", note: "Thompson Chicago (Hyatt boutique hotel brand) -- 'the'-prefix handle variant, same pattern as thedawsonchi above" },
   { aliasUsername: "edgewoodvalleycc", canonicalUsername: "edgewoodvalley", note: "Edgewood Valley Country Club, La Grange IL -- 'cc'-suffix handle variant of a real country club" },
   { aliasUsername: "post433chicagophoto", canonicalUsername: "post433chicago", note: "Post 433's own bio confirms it as a Chicago Landmark event space; dedicated photo/portfolio sub-account, same pattern as other verified sub-accounts above" },
+  // Round 4 (D055 location-tag map hand-pass, 2026-09-08): surfaced because the Instagram
+  // location tag "Old Post Office" resolved to two venue accounts. Both are the same building's
+  // events program -- full_name "Events at The Old Post Office" (post433events) vs "The Old Post
+  // Office" (post433chicago, already the canonical for post433chicagophoto above).
+  { aliasUsername: "post433events", canonicalUsername: "post433chicago", note: "The Old Post Office events sub-account (full_name 'Events at The Old Post Office'); surfaced by the location_tag hand-pass, D055" },
 ];
 
 async function main() {
