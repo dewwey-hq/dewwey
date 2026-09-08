@@ -4,6 +4,221 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D051 — 2026-09-07 — Double-venue-tag systematic audit: a hotel-attribution check, and a session-wide orphaned-wedding bug found along the way
+
+Status: Accepted
+Context: the user pushed back on D050's hotel-anchoring fix directly: a hotel credited as
+"Venue: @hotelbrand" might genuinely be where the ceremony/reception happened, or might just be
+where guests stayed, with the real venue elsewhere or untagged — and asked for a systematic loop
+digging into the "multiple venue-role credits on one post" problem generally, not one-off fixes.
+
+**Sized the real scope first**: 324 already-created weddings have a source post with 2+
+`role='venue'` credits — the full universe of this ambiguity, much bigger than anything hand-
+checked in D050. 11 weddings (14 posts) specifically involve a known hotel-brand account.
+
+**Tried and reverted a parser fix** (`ROLE_MAP` checks `venue` before `hotel`, so a combined
+"Venue + Hotel" label resolved to venue): shipped as `stack-parser-ts-v6`, demoting these to
+`role=hotel` — then checked every one of the 5 corpus-wide instances against reality before
+trusting it, and found all 5 are the SOLE venue-shaped credit on a genuinely real, well-
+documented wedding (Whitney & Corey, Alex & John, Allie + Vig). Demoting would have stripped the
+only venue evidence from posts shaped exactly like these — reverted in `v7` (behaviorally
+identical to `v5`). The underlying concern is real but needs per-post context (is there a
+SEPARATE, more specific venue credit on the same post) a single-line classifier can't see —
+left as a hand-verification question, not solved by a parser heuristic.
+
+**Hand-read all 11 hotel-involved weddings**, not a sample. One was the exact D050 bug repeating
+on a different post (wedding 1565, `nobuchicago`→`thedalcy`, corrected) — proof the original fix
+was necessarily incomplete, found via specific known posts rather than a full sweep. Every other
+one checked out as a genuine, explicitly-labeled hotel use ("Reception Venue Hilton Chicago,"
+"VENUE - @saintclementparish"), not accommodation mistaken for venue. Direct, honest answer to
+the user's concern: verified, not assumed.
+
+**Systematic re-sweep of the remaining ~313**: bucketed by the distinct co-tagged-handle pair
+rather than reading every wedding individually. The two largest buckets (`bridgeportartcenter`/
+`venuelogic`, 89; `rockwellontheriver`/`venuelogic`, 79 — 168 of 313, 54%) are D047's already-
+verified-safe `venuelogic` pattern, and every single one already shows the correct venue
+currently anchored. Spot-checked ~15 more previously-unverified smaller buckets (distinct
+co-tag pairs) — all clean, all matching what the caption explicitly labels as the venue.
+
+**A serious, session-wide bug found along the way, unrelated to venue misattribution**: while
+investigating a handful of already-created weddings with `venue_id IS NULL` despite having a
+resolvable venue credit sitting right there, found that one of them (a post already checked in
+this session's Track 1 batch) had ALSO just been re-created as a brand-new, separate wedding
+today — a duplicate. Root cause: `createWeddingsFromJeremyEvidence.ts` created the `weddings`
+row and `wedding_vendors` credits BEFORE checking whether the candidate's source post already
+belonged to an existing wedding; `wedding_posts`' own `on conflict (post_id) do nothing` then
+silently no-op'd the post attachment when it did, leaving an orphan — a real wedding row with
+real vendor credits but zero posts. Sized session-wide (not just today): **17 orphaned weddings,
+dating back to the very first creation batch on 2026-09-05** — every single one confirmed a
+duplicate of an already-existing wedding, zero `jeremy_wedding_vendors_ingested` overlap (never
+reached production ingestion). This means every "weddings created" count reported across D035
+through D050 included some of these phantoms; the corrected picture is 17 lower than reported.
+
+Fixed the root cause (the already-documented check now runs before creating anything, not
+after). Logged full provenance to a new `orphaned_weddings_retired` table, then deleted all 17
+(zero posts — nothing to detach, matches the established "never leave an empty wedding" rule
+from D040/D041, same bar as a real DELETE elsewhere in this project: dry-run reasoning done by
+hand since these were pre-identified with certainty, human-confirmed before executing).
+`weddings` 3552→**3535**.
+
+**Also fixed while auditing**: 5 already-created weddings had `venue_id IS NULL` despite a
+resolvable, explicitly-labeled venue credit on their post (370, 493, 956, 1022, 1033) — each
+hand-verified and corrected directly to the explicitly-labeled reception venue (same convention
+as every ceremony+reception pick this session). Net for the whole audit: **weddings 3552→3535**
+(-17 orphans, +0 net from the venue corrections which don't change the count, only correct
+`venue_id`). Updated every pinned test literal touched, investigated each rather than blindly
+bumped. Full suite green (90/90 in isolation; two pre-existing, unrelated flaky timeouts under
+parallel-suite load confirmed clean alone).
+
+## D050 — 2026-09-07 — Secondary-venue-anchor bug found and fixed: "Getting Ready Venue" etc. were winning venue attribution over the real venue
+
+Status: Accepted
+Context: while starting the coverage-gap mission's Track 1 (hand-reading unmatched reconciliation
+candidates), the venue accounts several candidates resolved to looked wrong (photographer/planner
+personal handles, publication accounts). Investigating surfaced a real, already-shipped
+data-correctness bug, not just a pending-candidate quality issue — the user approved fixing it as
+its own loop/strategy before the coverage-gap work continued.
+
+The bug: the stack parser tagged any caption line matching a "venue"-shaped label with
+`role='venue'`, including secondary, adjacent-event locations that are NOT where the wedding
+itself happened — "Getting Ready Venue," "Rehearsal Dinner Venue," "Sangeet Venue," "Welcome
+Party Venue," and South-Asian-wedding pre-events (Mehndi/Haldi). When a post credited both the
+real venue and one of these, `runJeremyWeddingClustering.ts`'s venue-anchor resolution
+(`postEvidence.find((e) => e.role === "venue")`) picked whichever came first with zero preference
+for the actual venue. Confirmed real: `Venue: @thedalcy` / `Getting Ready Venue: @nobuchicago`
+produced 5 weddings anchored to nobuchicago instead of thedalcy.
+
+Fix, same shape as D048's `VENUE_LIST_MARKER` precedent: a targeted `SECONDARY_EVENT_VENUE_MARKER`
+regex in `stackParser.ts`'s `normRole()` reclassifies these specific labels from `venue` to
+`other` (`STACK_PARSER_VERSION` v4→v5). New unit tests lock in the exact real-world caption shape
+that produced the bug. Re-ran `runStackParserBaseline.ts` against the full 5,225-post scored
+corpus — 119 entries correctly reclassified, 0 remaining misclassifications.
+
+Because `runJeremyWeddingClustering.ts` writes `venue_account_id` with `coalesce(venue_account_id,
+...)` (never overwrites once set), the parser fix alone does NOT retroactively correct
+already-formed candidates or already-created weddings — two separate corrective passes were
+needed:
+
+1. **6 already-created weddings** hand-verified one at a time against their actual caption
+   (never a blind batch UPDATE): 4 (weddings 1542/1547/1550/1554, all nobuchicago→thedalcy,
+   the exact bug case) plus 2 more that the fix revealed as a *different*, pre-existing
+   ceremony+reception ambiguity once the secondary-location noise was removed (wedding 899:
+   `artinstitutechi`/ceremony + `theexchangechicago`/reception, was wrongly anchored to
+   `langhamchicago`/getting-ready; wedding 5513: `saintclementparish`/ceremony +
+   `universityclubofchicago`/reception, was wrongly anchored to `gibsonsitalia`/rehearsal-dinner)
+   — both corrected to their reception venue, a defensible tiebreak, at minimum strictly better
+   than the confirmed-wrong prior value. `weddings.venue_id` UPDATEd directly for all 6.
+2. **127 pending (not-yet-created) candidates** also carried the same wrong anchor — a new script,
+   `fixSecondaryVenueAnchors.ts`, re-resolves each one's real venue from its post's current (v5)
+   stack data: 112 had exactly one legitimate venue credit left (corrected automatically, safe
+   and unambiguous — a handful were harmless no-ops where the same account was, coincidentally,
+   also the genuinely correct venue on that specific post), 9 had zero other venue credit (set to
+   NULL, never guessed), 6 were a genuine ceremony+reception-style ambiguity left untouched for
+   hand review (one of the 6, candidate 1443, is the exact candidate behind wedding 5513 above,
+   already resolved there). Re-ran `runJeremyWeddingReconciliation.ts` afterward; found and
+   cleared 5 stale reconciliation rows left over from before the 9 candidates got nulled (the
+   reconciliation script's own `venue_account_id == null` skip never revisits an existing row) —
+   confirmed none of the 5 were ever ingested into production before deleting.
+
+Updated every pinned test literal this touched (`graphStrengthening.test.ts`) — investigated,
+not blindly bumped, each one (matches the standing discipline from D049's candidate-1691
+precedent). Full test suite green (89/89, two pre-existing unrelated flaky timeouts confirmed
+clean in isolation).
+
+**Track 1, zero-coverage batch (same day)**: re-derived the coverage-gap plan's unmatched-
+candidate pool fresh against the corrected data (55/55/43/242 across the 0/1-5/6-15/16+ buckets).
+Hand-read all 37 zero-coverage candidates with a resolved, correctly-categorized venue account.
+**11 kept, 26 excluded.** Most exclusions were the *same shape of bug just fixed above, but not
+caught by the parser regex* — a different, non-"secondary-event" account (a decor/rental/beverage
+company, or the post's own author) co-tagged on the same "Venue:" line, with the real venue
+plainly stated elsewhere in the caption (e.g. austinjamescreative excluded, real venue
+loewschicago; abarestaurant excluded, caption literally says "at The Dalcy"). A few more: known
+generic-marketing self-promotion ("Book now!" CTAs, no couple named), 2 explicitly non-Chicago
+(Kohler/Lake Geneva, WI), and one likely 4th Art Institute handle variant (`artinstituespecialevents`,
+missing a "t" — flagged for the `account_aliases` follow-up rather than created as a new venue).
+Kept: churches and campus venues treated as legitimate standalone venues (same precedent as
+fourthchurch/saintclementparish elsewhere this session), plus specific named-couple events at
+Cuneo Mansion, the Harold Washington Library, and North Shore Country Club (two different
+weddings a month apart, date-checked, not a duplicate). Full exclusion/keep reasoning in
+`createWeddingsFromJeremyEvidence.ts`'s own comment. **Net: 11 new weddings** (candidates
+295/542/1154/1250/1380/1384/1423/1462/1571/2673/2700 → weddings 5817-5827, 148 vendor credits).
+`weddings` 3527→**3538**. Pinned test literals updated again, full suite re-verified green.
+
+**Track 1, 1-5-documented-wedding bucket (same day)**: 55 candidates, deduped/filtered to ~50
+worth reading. Two large single-venue clusters dominated and were bulk-handled rather than
+read one by one: `thefultonwest` (22 candidates) — spot-checked 4 new ones against D048's
+already-established "self-marketing, no couple ever named" finding, confirmed the pattern holds
+(one explicitly a "farewell event," not even a wedding) — all excluded. `thegwenchicago` (6
+candidates) — a NEW finding: every one is either @chicagostyleweddings' "Designers' Challenge"
+(a styled planner competition, explicitly not a real wedding) or a direct marketing/booking
+offer ("book by March 31...") — all excluded. The rest hand-read individually: more of the same
+co-tagged-wrong-account bug shape as the zero-coverage batch, an ambiguous generic corporate
+handle (`stregischicago`, matching the established ritzcarlton/loewshotels precedent), and one
+outright wrong event type (a Bat Mitzvah, not a wedding). **14 kept** — real, dated, named-couple
+events, including three separate weddings at `hilton_chicago_hotel` (date-checked, 5+ months
+apart each) and two at Cantigny Park. **Net: 14 new weddings.** `weddings` 3538→**3552**. Pinned
+literals updated again, full suite re-verified green.
+
+**Track 2.1 (same day)**: re-checked the 4 originally-flagged "real credit, never anchoring"
+venues. 3 of 4 turned out to be non-issues: `msichicago`'s only venue-shaped credit was itself a
+Sangeet Venue (correctly excluded by this session's own fix, and the post is golden_set EXCLUDE
+anyway — a human already said not-real); `theoakbrookmanor`'s only credit is a real but thin
+2-role post below the 3-role clustering floor, structural not fixable here;
+`thehomestead1854`'s only credit is on a post naming **15 different venues** — the same
+"multi-wedding recap, structurally unusable" shape D048 already established, correctly left
+uncreated. **`naturemuseum` was a real, fixable case**: a genuine ceremony (already-covered
+`lincolnparkzoo`) + reception (`naturemuseum`, zero coverage) pair, arbitrarily anchored to the
+ceremony church — corrected the candidate's `venue_account_id` directly to the reception venue,
+this session's standing tiebreak convention. Net: **1 more wedding.** `weddings` 3552→**3553**.
+
+**Track 2.2 (same day)**: the 116 no-Instagram-account venues, sized properly. 101 of the 147
+zero-coverage venues actually had `vendors.instagram_handle` already populated from the original
+Google Places scrape — it was simply never matched to an `accounts` row. **53 of those matched an
+existing `accounts` row exactly (`account_matched_by='handle_exact'`, same trust level as the
+1,896 handle-exact matches from the original D006 merge)** — bridged directly, no WebSearch
+needed. **41 of the 53 already had real weddings (110 total)** — they were productive the whole
+session, just misidentified as "no venue" for display/coverage-counting purposes; this alone
+dropped the zero-coverage count from 147 to 105. WebSearched the 15 venues with no handle at all
+(`bridgeUnmatchedVenueAccounts.ts`'s dry-run first, then targeted searches): found 8 confirmed
+handles (independently verified, not guessed — one search for "Wrigley Field wedding instagram"
+surfaced Wrigley MANSION in Phoenix, AZ, a different venue entirely, correctly left unresolved
+rather than risk a wrong match; The Shapiro Ballroom confirmed permanently closed since 2020, not
+worth queuing; Gala Banquet Hall/Woman's Athletic Club/The Chicago Club/Stardust Banquet Hall
+left unresolved — genuinely ambiguous or no dedicated account found). 5 of the 8 found handles
+already had accounts too (34 more existing weddings surfaced this way). The remaining 51 known-
+handle, zero-posts-in-corpus venues (48 original + 3 newly WebSearched) got a bare placeholder
+`accounts` row and a `ops.crawl_frontier` entry each (`queueUnseenVenuesForCrawl.ts`) — genuinely
+impossible to document a wedding for without a real tagged-feed crawl this sandbox can't run.
+**Net effect: zero-coverage venue count 147→100**, `accounts` +51 (14366→14417, none from
+wedding creation — bare crawl-queue placeholders), zero new weddings from this track (the wins
+were all identity/coverage-counting corrections, not new documented events) — the eventual
+wedding-creation upside is downstream, contingent on a real Apify crawl.
+
+**Track 2.3 (same day)**: the ~27 known Chicago venue accounts with real activity but zero
+`role='venue'` credits ever extracted for themselves. A real, non-obvious parsing gap, not a
+content gap: several are highly active (100-200+ own posts each — `glessnerhouse`,
+`biagioevents`, `trumphotels`, `leloftchicago`, `roofonthewit`, `maggianoslittleitaly`,
+`raisedbarchicago`), and their own posts about their own real weddings never carry a formal
+"Venue: @handle" line (no reason for an account to self-tag) — so `venue_couple_signal_post_
+vendor_evidence` (D047), which only ever checks a post's couple-signal language AFTER confirming
+it already has SOME stack-extraction row, never even looks at these posts in the first place.
+Sized live: 170 untouched own-profile posts across these venues match the existing couple-signal
+regex. Hand-spot-checked two accounts before building anything: real signal exists (a genuine
+"Melanie & Eusebio... unforgettable day at Biagio's") but mixed with much heavier noise than the
+same regex sees on vendor-tagged posts — a venue's own feed mixes weddings with quinceañeras,
+corporate events, and generic self-marketing, all of which can trip a loose "any two capitalized
+words" pattern (one clear false-positive family: a history museum's own guest-lecturer
+announcements, e.g. "Darcy Evon" or "Carla Bruni and Phil Thompson," matched as if they were a
+couple). Given the noise, built a small, targeted `/label` queue rather than any automated
+creation — `venue_zero_credit_v1` (155 posts, `buildZeroCreditVenueQueue.ts`), bucketed by venue
+so results can show which of these 11 accounts' content is actually worth mining. **Not made the
+active queue** — `CURRENT_QUEUE_VERSION` still points at `beyond_include_v1` (user has real
+progress there); ready to switch whenever wanted.
+
+Remaining coverage-gap work: Track 1's 6-15/16+ buckets (low priority — piling onto
+already-well-covered venues barely moves the skew) is the only piece left genuinely open from
+this whole D050 arc.
+
 ## D049 — 2026-09-07 — Styled-shoot vs. real-wedding signal: flag, don't delete
 
 Status: Accepted, in progress

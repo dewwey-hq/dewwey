@@ -599,6 +599,129 @@ const CANDIDATE_IDS = [
   // New Year's Eve wedding recap with a rich, specific 9-vendor credit stack despite stylized
   // copy (langhamchicago, 3385).
   3377, 3380, 3381, 3385, 3392, 3395, 3401,
+  // D050 follow-on (2026-09-07): coverage-gap Track 1, zero-coverage-venue batch. After the
+  // secondary-venue-anchor bug fix (see D050), re-derived the unmatched-candidate pool fresh:
+  // 55 candidates land at a zero-documented-wedding venue. Hand-read all 37 that had a resolved,
+  // correctly-categorized venue account (18 were skipped up front: 4 already-decided in D049 for
+  // non-Chicago geography, 5 miscategorized as venue when `vendors.category` says
+  // planner/caterer/dj_music, 4 with a NULL venue post-fix, 1 known mixed-content publication
+  // account masquerading as venue in `vendors` itself, plus a few more excluded during the read
+  // for the same reasons below). Of the 37: **26 excluded, 11 kept**.
+  // Excluded for the SAME shape of bug D050 just fixed, but not caught by the parser regex
+  // (a different, non-"secondary-event" account co-tagged on the same "Venue:" line, not a real
+  // distinct venue): austinjamescreative/33 (real venue: loewschicago), abarestaurant/237 (real:
+  // thedalcy, caption literally says "at The Dalcy"), _bdarbs/567 (real: thecanvasvenue),
+  // nickpodraza/1252 (real: thewellsley, caption says "at The Wellsley"), alyssabudayyeh/1475
+  // (real: theexchangechicago, caption says "at The Exchange Chicago"), baravecchicago/1500
+  // (real: morgan.mfg, explicit "Venue: @morgan.mfg" on the post), figdrinks/1698 (real:
+  // thejoinerychicago), madhauscollective/2270 (real: theelleryvenue, explicit on all 3 posts),
+  // murphysbleachers/2319 (real: thewellsley, explicit "Venue: @thewellsley"), haisouschicago/2584
+  // (real: lincolnparkzoo's People's Gas Pavilion), alterbeer/2743 (real: mortonarb, explicit
+  // "venues: @mortonarb @eventsatmortonarboretum @alterbeer" -- alterbeer is the beverage
+  // vendor). loewshotels/1967 excluded per the already-established ritzcarlton/stregihotels
+  // precedent (caption says "@loewschicagohotel," resolved account is the ambiguous generic
+  // "loewshotels" corporate handle -- never guess which). artinstituespecialevents/1523 (note
+  // the missing 't' -- "institue") excluded as a likely 4th Art Institute handle variant, same
+  // entity as the 3 already in `account_aliases`, flagged for that follow-up rather than created
+  // as a new venue. chicagolinecruises/2101/2208 excluded -- genuinely ambiguous (the boat cruise
+  // itself vs. the land venue "Venue: @giltbar" explicitly labeled separately on the same posts),
+  // defaulted to exclude per "never guess." small.but.mighty15/1568 excluded (text-only "The
+  // Blackstone" mention, never resolved to an @handle). Excluded as generic self-marketing, no
+  // specific wedding (matches the "Book now!"/no-couple-named pattern established all session):
+  // floatingworldevents/1290/1756 (explicit "Book now!"/"book your bridal beauty session today!"
+  // CTAs -- floatingworldgallery/floatingworldevents ARE a real venue per other evidence, just
+  // not documented by these two specific posts), carloacutischi/2366 (beauty vendor brand
+  // philosophy, no venue), eventswcoe/2741 (planner brand philosophy, no venue),
+  // floatingworldgallery/1115 (generic aisle-anxiety copy, no specific event), chez.hotel/1166 and
+  // episcope.hospitality/923 (thin -- no venue credit visible at all in either caption),
+  // ariella.e/138 (thin -- no venue credit visible). Excluded for non-Chicago geography:
+  // golfkohler/2951 and destinationgn/2984 (both explicitly Kohler, WI / Lake Geneva, WI).
+  // Kept -- Chicago-confirmed (account_locations.in_metro=true, or a strong self-declared
+  // Chicago/suburb name for the 3 without a location row) AND a specific real event: churches
+  // and campus venues treated as legitimate standalone venues, same precedent as
+  // fourthchurch/saintclementparish/holynamecathedral elsewhere this session --
+  // stjosaphatparish/295, quadclub.uchicago/542 (Univ. of Chicago's Quadrangle Club), stsvo/1154,
+  // holynamechicago/1250, stbenschicago/1384, stgilesoakpark/2673 (Noah + Haley, named couple),
+  // assumptionchi/2700 (a church credit alongside an already-well-covered Field Museum reception
+  // -- kept as its own legitimate ceremony venue, same "both are real" reasoning as every
+  // ceremony+reception pair this session). Real, specific, named-event venues:
+  // cuneomansion/1380 (Vernon Hills, in_metro=true; named couple, dated 10/25/25),
+  // chicagopubliclibrary/1423 (Harold Washington Library, named couple Lexie + Jake),
+  // northshorecountryclub/1462+1571 (Glenview, in_metro=true; two different named-couple
+  // weddings a month apart, same recurring vendor team -- date-checked, not a duplicate).
+  295, 542, 1154, 1250, 1380, 1384, 1423, 1462, 1571, 2673, 2700,
+  // D050 follow-on (2026-09-07): coverage-gap Track 1, the 1-5-documented-wedding bucket.
+  // 55 candidates, deduped and filtered (already-created via the batch above, or already
+  // decided in D049's 3366-3404 range -- etrefarms/3367 excluded there for geography,
+  // meyerscastle/3402 left pending -- excluded again here, not re-litigated) to 23 distinct
+  // venues / ~50 candidates worth reading. Two large single-venue clusters dominated and were
+  // NOT individually hand-read one by one -- their pattern was already established/confirmed by
+  // sampling multiple posts each:
+  // - thefultonwest (22 candidates: 82, 169, 208(no -- see below), 496, 1379, 2886, 2889, 2891,
+  //   2893, 2894, 3039, 3057, 3060, 3133, 3137, 3143, 3150, 3154, 3155, 3165, 3172, 3179, 3194,
+  //   3196, 3206, 3210) -- ALL excluded. Same finding as D048's original 9-candidate read,
+  //   confirmed again on 4 new spot-checks (3039, 3133, 3172, 3206): every post is the venue's
+  //   own repeated self-marketing ("Perfect for your next dinner party!", "#EventVenue
+  //   #TablescapeInspo", one explicitly a "farewell event" -- not even a wedding), never a named
+  //   couple. Real content, just not a documented wedding by this project's own definition.
+  // - thegwenchicago (6 candidates: 3108, 3114, 3120, 3132, 3158, 3171) -- ALL excluded, a NEW
+  //   finding: every one is either @chicagostyleweddings' "Designers' Challenge" (a styled
+  //   competition between planners, explicitly not a real wedding -- "vote for...", "stay tuned
+  //   for the Designers' Challenge") or a direct marketing/booking offer ("book by March 31...",
+  //   "don't miss the Gwen Affair offer"). Zero real wedding content in this sample -- worth
+  //   remembering thegwenchicago skews heavily promotional if it resurfaces.
+  // Also excluded, same co-tagged-wrong-account bug shape as the zero-coverage batch above:
+  // art_imagination/208 (real venue: bridgeportartcenter, already covered). Excluded as
+  // ambiguous generic corporate handle (established ritzcarlton/loewshotels/stregihotels
+  // precedent): stregischicago/2150/2505/3211 (all pure venue-advertisement copy anyway, e.g.
+  // "Let The St. Regis Chicago become part of your forever story... discover"). Excluded as
+  // generic self-marketing/thin/wrong-event-type: anitadeeyachtcharters/1118 (no couple, no
+  // stack), 167greenstreet's second candidate/1191 (thin duplicate photographer-philosophy
+  // copy -- the venue itself IS real, confirmed via 868 below), schubas_tiedhouse/1386
+  // ("Book your bridal preview with us today!"), louloubylula/2143 (a florist review, not venue
+  // content), uccweddings/2633 (generic "reception inspo," no couple), celebrateatbloom/2906
+  // (caption explicitly says "so I could scratch the creative itch before wedding season kicks
+  // off" -- an admitted creative/promotional shoot, not a real wedding), venuewestchicago/3041
+  // (explicitly a "Glitz and Glam Bat Mitzvah," not a wedding at all).
+  // Kept -- real, specific, named-couple/dated events, Chicago-confirmed
+  // (account_locations.in_metro=true for all except 167greenstreet/amazingspacechicago/
+  // bottomlounge/rpmeventschicago, which have no location row but a strong self-declared
+  // Chicago signal -- a named downtown church, "chicago" in the account name, or common-knowledge
+  // real Chicago venues already treated this way elsewhere this session):
+  // hilton_chicago_hotel/217+481+2870 (three DIFFERENT weddings, date-checked 5+ months apart
+  // each -- Shapiros June 2024, a second Nov 2024, Sergum & Ryan Aug 2026; 217's post explicitly
+  // labels "Ceremony Venue Holy Name Cathedral" + "Reception Venue Hilton Chicago", a clean
+  // ceremony+reception pair), amazingspacechicago/849 (the established-safe venuelogic co-tag
+  // pattern from D047), 167greenstreet/868 (a real rainy-day wedding, "Getting Ready Venue:
+  // @thehoxtonhotel" correctly excluded by this session's own D050 parser fix), rpmeventschicago
+  // /1096 (Heather & Jimmy, explicit clean "Venue" role_raw on a full 10-vendor stack),
+  // bottomlounge/1344 (Joan & JT, "tied the knot Saturday at @bottomlounge"), oakbrookhillsresort
+  // /2112 (Oak Brook, in_metro=true; #DelgadoRodriguezWedding, the couple's own post),
+  // icsjparish/2404 (Bridget & Ryan, 3 posts of specific content, caption says "this city...
+  // Chicago"), lpconservancy/2539 (Simona & Garrett, ceremony in Lincoln Park -- reception at
+  // the already-covered universityclubofchicago, both real per this session's standing
+  // ceremony+reception reasoning), cafebrauer/2552 (Katie & Ned, explicit "Venue: @cafebrauer"),
+  // cantignypark/2579+2629 (Wheaton, in_metro=true; two different named couples, The Wiettings
+  // and Madeline+Chris), medinahcountryclub/3246 (named couple initials J+J, full ceremony+
+  // reception vendor stack).
+  217, 481, 849, 868, 1096, 1344, 2112, 2404, 2539, 2552, 2579, 2629, 2870, 3246,
+  // D050 follow-on (2026-09-07): Track 2.1, the double-venue-tag anchoring gap for the 4
+  // originally-flagged real-credit-but-not-anchoring venues. Resolved: msichicago's only "venue"
+  // credit was itself a Sangeet Venue (correctly excluded by this session's own parser fix, not
+  // a bug -- and the post is golden_set EXCLUDE anyway, a human already said not-real).
+  // theoakbrookmanor's only credit is a real, thin 2-role post below the 3-role clustering floor
+  // -- structural, not fixable here. thehomestead1854's only "venue" credit is on a 15-different-
+  // venues-on-one-post portfolio/roundup post (candidate 3362) -- the same "multi-wedding recap,
+  // structurally unusable" shape D048 already established, correctly left uncreated regardless
+  // of which of the 15 venues its arbitrary anchor picked; not touched here. naturemuseum WAS a
+  // real, fixable case: candidate 2541 is a genuine ceremony ("Ceremony Venue: @lincolnparkzoo",
+  // already well-covered) + reception ("Reception Venue: @naturemuseum", zero coverage) pair,
+  // arbitrarily anchored to the ceremony church by the same coalesce/no-tiebreak mechanism as
+  // D050's main fix -- corrected `venue_account_id` directly to naturemuseum (the reception
+  // venue, this session's standing tiebreak convention). Real, named-couple content ("L & A
+  // wanted their reception to feel like an elevated al fresco dinner..."), 14-vendor stack,
+  // golden_set INCLUDE.
+  2541,
 ];
 
 function shortcodeFromUrl(url: string): string | null {
@@ -664,13 +787,6 @@ async function main() {
         PHASE2_ACCOUNT_IDS.includes(venueAccountId) ||
         BATCH5_ACCOUNT_IDS.includes(venueAccountId);
 
-      const { rows: weddingRows } = await client.query<{ id: number }>(
-        `insert into weddings (venue_id, event_date_est, is_chicago) values ($1, $2, $3) returning id`,
-        [venueAccountId, eventDate, isChicago]
-      );
-      const weddingId = weddingRows[0].id;
-      weddingsCreated++;
-
       const { rows: posts } = await client.query<{
         post_url: string;
         caption_raw: string | null;
@@ -684,6 +800,36 @@ async function main() {
          where cp.candidate_id = $1`,
         [candidateId]
       );
+
+      // Bug found live (D050 double-venue-tag audit, 2026-09-07): the old flow created the
+      // `weddings` row FIRST, then tried to attach each post -- `wedding_posts`' own
+      // `on conflict (post_id) do nothing` silently no-ops when a post's shortcode already
+      // exists under a DIFFERENT, already-existing wedding (Ben's original crawl, or an earlier
+      // Jeremy-evidence batch), leaving a brand-new wedding row with real vendor credits but
+      // ZERO posts -- an orphan. Found 17 of these session-wide, dating back to 2026-09-05 (the
+      // very first creation batch), all confirmed duplicates of an already-existing wedding.
+      // Fix: check for this BEFORE creating anything. If ANY of this candidate's posts already
+      // has a `posts` row linked to an EXISTING wedding via `wedding_posts`, skip the whole
+      // candidate -- the event is already documented, creating a second wedding for it would
+      // just repeat the same bug.
+      const shortcodes = posts.map((p) => shortcodeFromUrl(p.post_url)).filter((s): s is string => s !== null);
+      const { rows: alreadyDocumented } = await client.query<{ wedding_id: number }>(
+        `select wp.wedding_id from posts p join wedding_posts wp on wp.post_id = p.id where p.shortcode = any($1::text[])`,
+        [shortcodes]
+      );
+      if (alreadyDocumented.length > 0) {
+        console.log(
+          `[create-weddings] candidate=${candidateId} -- its post(s) already belong to existing wedding=${alreadyDocumented[0].wedding_id}, skipping (not creating a duplicate)`
+        );
+        continue;
+      }
+
+      const { rows: weddingRows } = await client.query<{ id: number }>(
+        `insert into weddings (venue_id, event_date_est, is_chicago) values ($1, $2, $3) returning id`,
+        [venueAccountId, eventDate, isChicago]
+      );
+      const weddingId = weddingRows[0].id;
+      weddingsCreated++;
 
       for (const p of posts) {
         const shortcode = shortcodeFromUrl(p.post_url);

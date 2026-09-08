@@ -46,7 +46,13 @@ import { getPool } from "./db";
 // docs/decisions.md D049), not volume harvesting -- the corpus doesn't have a large untapped pool
 // here. beyond_include_v1's 833 rows are left in place, not deleted -- switch back by reverting
 // this one constant once styled_shoot_v1 is done.
-export const CURRENT_QUEUE_VERSION = "styled_shoot_v1";
+// Switched back to beyond_include_v1 (2026-09-07, same day): styled_shoot_v1 finished (80/80,
+// synced, 7 weddings created -- D049). A styled_shoot_v1 round-2 pool doesn't exist yet
+// (buildStyledShootQueue.ts --dry-run returned 0 new posts a few hours later -- nothing new
+// accumulated) -- user asked for more to label in parallel while a separate coverage-gap mission
+// runs, and beyond_include_v1 still has 486 real unlabeled rows sitting there. Switch to
+// styled_shoot_v1 again if/when a round-2 pool is actually sized and non-empty.
+export const CURRENT_QUEUE_VERSION = "beyond_include_v1";
 // Single fixed labeler, no auth anywhere in this app today (see
 // CLAUDE.md — the old password gate was deliberately deleted). Revisit if a
 // second labeler is ever needed.

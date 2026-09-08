@@ -161,6 +161,27 @@ describe("parseCaption v3 NOCOLON_LINE (unit, vendor-feed-gap Case A fixtures)",
       expect(stack.find((e) => e.handle === h)).toMatchObject({ role: "other" });
     }
   });
+
+  it("does NOT classify 'Getting Ready Venue:' as role=venue -- a secondary, adjacent-event location, not where the wedding happened (D049 follow-on, found live: this exact caption shape produced 5 real weddings anchored to the wrong account)", async () => {
+    const { stack } = await parse("Venue: @thedalcy\nGetting Ready Venue: @nobuchicago");
+    expect(stack.find((e) => e.handle === "thedalcy")).toMatchObject({ role: "venue" });
+    expect(stack.find((e) => e.handle === "nobuchicago")).toMatchObject({ role: "other" });
+  });
+
+  it("does NOT classify 'Rehearsal Dinner Venue:'/'Sangeet Venue:'/'Welcome Party Venue:' as role=venue (same fix, other secondary-event-location labels seen in the corpus)", async () => {
+    const { stack } = await parse(
+      "Venue: @revelspace\nRehearsal Dinner Venue: @someresto\nSangeet Venue: @otherhall\nWelcome Party Venue: @thirdplace"
+    );
+    expect(stack.find((e) => e.handle === "revelspace")).toMatchObject({ role: "venue" });
+    for (const h of ["someresto", "otherhall", "thirdplace"]) {
+      expect(stack.find((e) => e.handle === h)).toMatchObject({ role: "other" });
+    }
+  });
+
+  it("classifies a combined 'Venue + Hotel:' label as role=venue, same as a bare 'Venue:' label (D050 audit: tried demoting this to role=hotel in v6, reverted in v7 -- every real-world instance of this label is the ONLY venue-shaped credit on a genuinely real wedding post; demoting would strip the sole venue signal, see normRole()'s comment)", async () => {
+    const { stack } = await parse("Venue + Hotel: @somehotel");
+    expect(stack.find((e) => e.handle === "somehotel")).toMatchObject({ role: "venue" });
+  });
 });
 
 // --- Structural invariants against the live DB. Read-only. ---
@@ -445,11 +466,17 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // and the beyond_include_v1 first sync (85 weddings) absorbed more -- same signature.
     // DROPPED again to 348 (D049, 2026-09-07): the styled_shoot_v1 first sync (7 weddings)
     // absorbed more -- same signature.
+    // DROPPED again to 344 (D049 follow-on, 2026-09-07): the secondary-venue-anchor bug fix
+    // (getting-ready/rehearsal-dinner/etc. locations no longer winning venue_account_id --
+    // see stackParser.ts's SECONDARY_EVENT_VENUE_MARKER) re-anchored 112 candidates to their
+    // real venue and nulled 9 with no other venue credit -- some of the 112 landed in a
+    // DIFFERENT tier (a real venue with existing weddings reconciles differently than a
+    // secondary-location account that had none), a few shifted out of insufficient entirely.
     const { rows } = await pool.query(`
       select count(*) as n from jeremy_wedding_candidate_reconciliation
       where reconciliation_version = 'reconcile-v2' and match_confidence between 0.05 and 0.15
     `);
-    expect(Number(rows[0].n)).toBe(348);
+    expect(Number(rows[0].n)).toBe(344);
   }, 15000);
 
   it("weddings/wedding_posts are unaffected by the reconciliation rerun — reconciliation never writes to Ben's graph (wedding_vendors/edges are D023's separate, deliberate ingestion, asserted in its own describe block)", async () => {
@@ -498,13 +525,39 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // one post that literally admitted "this stunning editorial shoot we created", 1 pending
     // geography verification) -- see createWeddingsFromJeremyEvidence.ts's own comment for the
     // full breakdown.
+    // 3538/4061 (D050, 2026-09-07) reflects the secondary-venue-anchor bug fix's Track 1
+    // zero-coverage batch (+11 weddings/+11 posts): hand-read 37 candidates at zero-documented-
+    // wedding venues, 11 kept (Chicago-confirmed, specific real events), 26 excluded (mostly the
+    // same misresolved-co-tagged-account shape as the bug just fixed, a few generic-marketing
+    // and 2 non-Chicago) -- see createWeddingsFromJeremyEvidence.ts's own comment.
+    // 3552/4076 (D050, 2026-09-07) reflects Track 1's 1-5-documented-wedding bucket (+14
+    // weddings/+15 posts): 55 candidates deduped to ~50 worth reading; two large single-venue
+    // clusters (thefultonwest x22, thegwenchicago x6) bulk-excluded as self-marketing/styled-
+    // competition content, the rest hand-read individually -- 14 kept, the remainder excluded
+    // (same co-tagged-wrong-account shape, generic marketing, or wrong event type entirely, e.g.
+    // a Bat Mitzvah) -- see createWeddingsFromJeremyEvidence.ts's own comment.
     const { rows } = await pool.query(`
       select
         (select count(*) from weddings) as weddings,
         (select count(*) from wedding_posts) as wedding_posts
     `);
-    expect(Number(rows[0].weddings)).toBe(3527);
-    expect(Number(rows[0].wedding_posts)).toBe(4050);
+    // D050 Track 2.1 (2026-09-07, +1 wedding/+1 post): naturemuseum candidate 2541, a
+    // ceremony+reception pair wrongly anchored to the ceremony church, corrected directly.
+    // Double-venue-tag audit (2026-09-07, -1 wedding/-1 post): wedding 1253's only post was
+    // confirmed a baby shower, not a wedding ("Hire me after the wedding! This is the prettiest
+    // baby shower I photographed at @stregischicago") -- retired via retireNonWeddingPosts.ts,
+    // the same D040/D041 mechanism, human-confirmed before commit. 3553->3552, 4077->4076.
+    // Orphaned-wedding cleanup (2026-09-07, -17 weddings, 0 posts -- a real bug in
+    // createWeddingsFromJeremyEvidence.ts found live during the audit: `wedding_posts`'
+    // `on conflict (post_id) do nothing` silently no-op'd when a candidate's source post already
+    // belonged to a DIFFERENT existing wedding, but the new `weddings`/`wedding_vendors` rows
+    // still got created -- 17 orphans session-wide, dating back to the very first creation batch
+    // on 2026-09-05, all confirmed duplicates of an already-existing wedding, zero
+    // jeremy_wedding_vendors_ingested linkage. Deleted (logged to orphaned_weddings_retired for
+    // provenance), root cause fixed (the post-already-documented check now runs BEFORE creating
+    // anything). 3552->3535, wedding_posts unaffected (orphans had none to begin with).
+    expect(Number(rows[0].weddings)).toBe(3535);
+    expect(Number(rows[0].wedding_posts)).toBe(4076);
   });
 });
 
@@ -639,8 +692,17 @@ describe("graph ingestion — D023 (DB)", () => {
     // +67 more from the styled_shoot_v1 label queue's first sync round (D049, 2026-09-07, 7
     // weddings, same provenance table -- "ingested" count itself unchanged at 111, confirming
     // all 67 new rows land in "untouched" as expected).
-    expect(Number(rows[0].untouched)).toBe(32994);
-    expect(Number(rows[0].total)).toBe(33105);
+    // +148 more from D050's Track 1 zero-coverage batch (2026-09-07, 11 weddings, same
+    // provenance table). +131 more from Track 1's 1-5 bucket (2026-09-07, 14 weddings, same
+    // provenance table).
+    // +15 more from D050's Track 2.1 naturemuseum correction (2026-09-07, 1 wedding, same
+    // provenance table).
+    // -3 more from wedding 1253's retirement (2026-09-07, a confirmed non-wedding post -- baby
+    // shower content, not from D023's provenance table either).
+    // -179 more from the orphaned-wedding cleanup (2026-09-07, 17 phantom weddings' vendor
+    // credits removed with them -- confirmed zero jeremy_wedding_vendors_ingested overlap).
+    expect(Number(rows[0].untouched)).toBe(33106);
+    expect(Number(rows[0].total)).toBe(33217);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -663,15 +725,32 @@ describe("graph ingestion — D023 (DB)", () => {
     // double-venue-tag-ambiguity backlog round 2 (+38 weddings/+41 posts, same day) landed
     // 3435/3957, and the beyond_include_v1 label queue's first sync round (D048, +85
     // weddings/+86 posts, same day) landed 3520/4043. The styled_shoot_v1 label queue's first
-    // sync round (D049, 2026-09-07, +7 weddings/+7 posts) landed the current 3527/4050.
+    // sync round (D049, 2026-09-07, +7 weddings/+7 posts) landed 3527/4050. D050's Track 1
+    // zero-coverage batch (2026-09-07, +11 weddings/+11 posts) landed 3538/4061. Track 1's 1-5
+    // bucket (2026-09-07, +14 weddings/+15 posts) landed the current 3552/4076.
     const { rows } = await pool.query(`
       select
         (select count(*) from weddings) as weddings,
         (select count(*) from wedding_posts) as wedding_posts,
         (select count(*) from accounts) as accounts
     `);
-    expect(Number(rows[0].weddings)).toBe(3527);
-    expect(Number(rows[0].wedding_posts)).toBe(4050);
+    // D050 Track 2.1 (2026-09-07, +1 wedding/+1 post): naturemuseum candidate 2541, a
+    // ceremony+reception pair wrongly anchored to the ceremony church, corrected directly.
+    // Double-venue-tag audit (2026-09-07, -1 wedding/-1 post): wedding 1253's only post was
+    // confirmed a baby shower, not a wedding ("Hire me after the wedding! This is the prettiest
+    // baby shower I photographed at @stregischicago") -- retired via retireNonWeddingPosts.ts,
+    // the same D040/D041 mechanism, human-confirmed before commit. 3553->3552, 4077->4076.
+    // Orphaned-wedding cleanup (2026-09-07, -17 weddings, 0 posts -- a real bug in
+    // createWeddingsFromJeremyEvidence.ts found live during the audit: `wedding_posts`'
+    // `on conflict (post_id) do nothing` silently no-op'd when a candidate's source post already
+    // belonged to a DIFFERENT existing wedding, but the new `weddings`/`wedding_vendors` rows
+    // still got created -- 17 orphans session-wide, dating back to the very first creation batch
+    // on 2026-09-05, all confirmed duplicates of an already-existing wedding, zero
+    // jeremy_wedding_vendors_ingested linkage. Deleted (logged to orphaned_weddings_retired for
+    // provenance), root cause fixed (the post-already-documented check now runs BEFORE creating
+    // anything). 3552->3535, wedding_posts unaffected (orphans had none to begin with).
+    expect(Number(rows[0].weddings)).toBe(3535);
+    expect(Number(rows[0].wedding_posts)).toBe(4076);
     // accounts +6 (14334->14340): Tier 1's 159 candidates credited a few vendor handles never
     // seen before in `accounts` -- unlike Batch 5/6, whose venue accounts always pre-existed
     // (that's how they got tagged 'venue' in the first place), Tier 1 spans the FULL candidate
@@ -682,8 +761,13 @@ describe("graph ingestion — D023 (DB)", () => {
     // handle among the 53 newly-created weddings' secondary credits. +1 more
     // (14364->14365, beyond_include_v1 first sync, D048) -- same reason, one more
     // previously-unseen secondary vendor handle. Unchanged at 14365 (styled_shoot_v1 first sync,
-    // D049) -- all 67 new vendor credits resolved to already-existing accounts.
-    expect(Number(rows[0].accounts)).toBe(14365);
+    // D049) -- all 67 new vendor credits resolved to already-existing accounts. +1 more
+    // (14365->14366, D050's Track 1 zero-coverage batch) -- one previously-unseen secondary
+    // vendor handle among the 11 newly-created weddings' credits. +51 more (14366->14417,
+    // D050's Track 2.2, 2026-09-07) -- NOT from any wedding creation: bare placeholder
+    // `accounts` rows created for 51 known Chicago venues with zero posts in our corpus,
+    // queued in ops.crawl_frontier for the next real Apify run (queueUnseenVenuesForCrawl.ts).
+    expect(Number(rows[0].accounts)).toBe(14417);
   });
 
   it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {

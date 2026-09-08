@@ -25,7 +25,15 @@
 // v4 (D047 follow-on, 2026-09-06): "Venue Partners:"/"Preferred Venues:"/"Featured Venues:"
 // boilerplate lines no longer classify as role=venue -- see normRole()'s VENUE_LIST_MARKER
 // comment for the exact contamination this fixes.
-export const STACK_PARSER_VERSION = "stack-parser-ts-v4";
+// v5 (D049 follow-on, 2026-09-07): "Getting Ready Venue:"/"Rehearsal Dinner Venue:"/"Sangeet
+// Venue:" and similar secondary-event-location labels no longer classify as role=venue -- see
+// normRole()'s SECONDARY_EVENT_VENUE_MARKER comment for the confirmed wrong-venue-anchor bug
+// this fixes.
+// v6 (D050 double-venue-tag audit, 2026-09-07): tried classifying "Venue + Hotel:"/"Hotel +
+// Venue:" combined labels as role=hotel instead of venue -- REVERTED in v7, see normRole()'s
+// comment for why (every real-world instance is the sole venue signal on a genuinely real
+// wedding; demoting would have stripped it). v7 is behaviorally identical to v5.
+export const STACK_PARSER_VERSION = "stack-parser-ts-v7";
 
 // Identical to pipeline.py's LINE/HANDLE regexes (character-for-character).
 const LINE = /^\s*[•\-*]?\s*([A-Za-z][A-Za-z &+/'’]{1,35}?)\s*[:|\-–—/]+\s*(.*@.*)$/;
@@ -146,10 +154,38 @@ const EVENT_PHASE_VENUE_LABELS = new Set([
 // cross-promote," not "this wedding's location."
 const VENUE_LIST_MARKER = /\b(partner|preferred|featured)/;
 
+// D049 follow-on (2026-09-07): found live during a coverage-gap investigation -- a caption
+// crediting BOTH the real venue ("Venue: @thedalcy") and a secondary, adjacent-event location
+// ("Getting Ready Venue: @nobuchicago") got both lines classified role='venue', and
+// runJeremyWeddingClustering.ts's venue-anchor resolution has no tiebreak beyond "whichever
+// comes first" -- confirmed live, this produced 5 real weddings anchored to the getting-ready
+// location instead of the actual venue. These labels always name a DIFFERENT place from where
+// the wedding itself happened (prep, rehearsal, a pre-wedding cultural event), never the venue
+// itself -- same "whitelist, not substring, because a real venue credit is never phrased this
+// way" reasoning as VENUE_LIST_MARKER above. Sized live: 36 posts corpus-wide, every one of
+// which also carries a separate, legitimate venue credit -- this reclassification is lossless.
+const SECONDARY_EVENT_VENUE_MARKER = /(getting ready|rehearsal dinner|sangeet|welcome party|mehndi|haldi|bridal shower)/;
+
+// Tried and REVERTED (2026-09-07, double-venue-tag audit): the working theory was that
+// ROLE_MAP's `venue` entry being checked before `hotel` meant a combined "Venue + Hotel"/"Hotel +
+// Venue" label should demote to the more specific `hotel` role. Shipped as v6, then checked
+// against every real-world instance before trusting it: all 5 corpus-wide posts using this exact
+// combined label have ZERO other venue-shaped credit on the same post -- every one is the SOLE
+// venue signal for a genuinely real, well-documented wedding (Whitney & Corey, Alex & John, Allie
+// + Vig, ...). Demoting it to `hotel` would have stripped the only venue evidence from future
+// posts shaped exactly like these, the opposite of the intended fix. Reverted in v7 -- a combined
+// "Venue + Hotel" label goes back to classifying as `venue`, same as a bare "Venue" label. The
+// underlying concern (a hotel credited as venue when it was really just accommodation) is real
+// and still open -- it needs per-post context (is there a SEPARATE, more specific venue credit
+// elsewhere on the post) that a single-line classifier like normRole() can't see, not a
+// role_raw-text heuristic. Left as a hand-verification question for the audit itself, not a
+// parser fix.
+
 export function normRole(roleRaw: string): string {
   const r = roleRaw.toLowerCase();
   if (EVENT_PHASE_VENUE_LABELS.has(r.trim())) return "venue";
   if (r.includes("venue") && VENUE_LIST_MARKER.test(r)) return "other";
+  if (r.includes("venue") && SECONDARY_EVENT_VENUE_MARKER.test(r)) return "other";
   for (const [role, keys] of ROLE_MAP) {
     if (keys.some((k) => r.includes(k))) return role;
   }
