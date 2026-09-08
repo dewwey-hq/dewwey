@@ -50,6 +50,34 @@ const ALIASES: AliasRow[] = [
   // credit line on every post seen, same pattern as round 1's pairs above.
   { aliasUsername: "armourhouseweddings", canonicalUsername: "thearmourhousemansion", note: "Armour House Mansion & Gardens (Lake Forest Academy) -- confirmed via WebSearch" },
   { aliasUsername: "halimmuseumevents", canonicalUsername: "halimmuseum", note: "Halim Time & Glass Museum's dedicated events-booking account (jointly tagged as 'Venue & Catering: @halimmuseum @halimmuseumevents')" },
+  // Round 3 (tail-end coverage mission, 2026-09-07), found by scanning tail-end (1-15-wedding)
+  // Chicago venue accounts for substring-containment pairs not yet in this table. Each verified
+  // individually below -- two known false-positive patterns from this same method were excluded
+  // rather than added: thedrakeoakbrook/thedrake (two genuinely different Drake-branded hotels)
+  // and ravenswoodloftchicago/ftchicago (ftchicago is a coincidental substring of
+  // "ravenswoodloFTCHICAGO", not a real second handle). Also excluded this round, each for its
+  // own reason (see docs/decisions.md): riverroastchi/riverroastchicago (riverroastchi's own bio
+  // names a DIFFERENT events handle, @rreventschicago, contradicting the pairing),
+  // gooseislandchicago/gooseisland (gooseisland is the Goose Island beer brand's corporate
+  // account, not a wedding-venue-appropriate canonical), swissotelchi/swissotel (bare
+  // "swissotel" is a global hotel-chain handle, same genericity risk as thedrake),
+  // chicagofirehouserestaurant/chicagofire ("Chicago Fire" collides with the MLS soccer club),
+  // rpmeventschicago/rpmevents (RPM is a multi-venue restaurant group; scope of "rpmevents"
+  // unconfirmed), cafebrauer/patioatcafebrauer (may be two intentionally distinct bookable
+  // spaces at the same building, not confirmed same-identity), artinstitutechi/artinstitutechicago
+  // (unverified second handle for an account that already has 3 confirmed aliases above).
+  { aliasUsername: "thelytlehouse.", canonicalUsername: "thelytlehouse", note: "Trailing-dot scrape/parse artifact -- Instagram usernames can't end in '.', never independently profile-scraped (empty bio), same account as thelytlehouse" },
+  { aliasUsername: "ovationchicago.", canonicalUsername: "ovationchicago", note: "Trailing-dot scrape/parse artifact, same pattern as thelytlehouse." },
+  { aliasUsername: "rcchicago.", canonicalUsername: "rcchicago", note: "Trailing-dot scrape/parse artifact, same pattern as thelytlehouse." },
+  { aliasUsername: "osteriaviastato.", canonicalUsername: "osteriaviastato", note: "Trailing-dot scrape/parse artifact -- canonical's own bio confirms '#osteriaviastatowedding' Chicago venue" },
+  { aliasUsername: "eventsatmortonarboretum", canonicalUsername: "mortonarb", note: "Morton Arboretum's events-booking sub-account -- name matches 'Signature Events at The Morton Arboretum' (mortonarb.org), same pattern as other verified events sub-accounts above" },
+  { aliasUsername: "loewschicago", canonicalUsername: "loewschicagohotel", note: "loewschicagohotel is the WebSearch-confirmed official Loews Chicago Hotel handle; loewschicago's one wedding's own hashtags (#urbanwedding #citywedding #loewshotel) confirm the downtown property, not the separate Loews Chicago O'Hare hotel" },
+  { aliasUsername: "cuneomansion", canonicalUsername: "loyola_cuneomansion", note: "Loyola University Chicago owns and operates Cuneo Mansion & Gardens (public fact) -- same venue, two handles" },
+  { aliasUsername: "penthousehydepark", canonicalUsername: "thepenthousehydepark", note: "Canonical's bio confirms 'Restored ballroom and rooftop terrace venue... Hyde Park, Chicago'; 'the'-prefix handle variant, same pattern as thedawsonchi/thehegewisch above" },
+  { aliasUsername: "theateronthelake", canonicalUsername: "theateronthelakechicago", note: "Theater on the Lake, Chicago Park District venue (Lincoln Park) -- unambiguous name, 'chicago'-suffix handle variant" },
+  { aliasUsername: "thethompsonchicago", canonicalUsername: "thompsonchicago", note: "Thompson Chicago (Hyatt boutique hotel brand) -- 'the'-prefix handle variant, same pattern as thedawsonchi above" },
+  { aliasUsername: "edgewoodvalleycc", canonicalUsername: "edgewoodvalley", note: "Edgewood Valley Country Club, La Grange IL -- 'cc'-suffix handle variant of a real country club" },
+  { aliasUsername: "post433chicagophoto", canonicalUsername: "post433chicago", note: "Post 433's own bio confirms it as a Chicago Landmark event space; dedicated photo/portfolio sub-account, same pattern as other verified sub-accounts above" },
 ];
 
 async function main() {

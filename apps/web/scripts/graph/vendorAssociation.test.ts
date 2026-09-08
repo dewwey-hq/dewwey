@@ -68,8 +68,10 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
     // (user labeled 235, 111 new golden_set INCLUDE rows) -- same mechanism.
     // Jumped to 1073 (D049, 2026-09-07): the new styled_shoot_v1 queue's first sync round (user
     // labeled all 80, 37 WEDDING) -- same mechanism.
+    // Jumped to 1305 (2026-09-07, later same day): user finished the full beyond_include_v1
+    // queue (833/833), synced across two rounds (485 new labels total) -- same mechanism.
     const { rows } = await pool.query(`select count(*)::int as n from human_confirmed_chicago_wedding_content`);
-    expect(rows[0].n).toBe(1073);
+    expect(rows[0].n).toBe(1305);
   }, 15000);
 
   it(
@@ -81,7 +83,8 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
       // 731->732 sync round 3 bump. 861 (2026-09-06, later same day) -- tracks the 732->925
       // /label queue-completion sync jump above. 972 (D048, 2026-09-06) -- tracks the
       // 925->1036 beyond_include_v1 sync jump above. 1009 (D049, 2026-09-07) -- tracks the
-      // 1036->1073 styled_shoot_v1 sync jump above.
+      // 1036->1073 styled_shoot_v1 sync jump above. 1206 (2026-09-07, later same day) -- tracks
+      // the 1073->1305 beyond_include_v1 completion sync jump above.
       const { rows } = await pool.query(`
         select
           (select count(*)::int from human_confirmed_vendor_page_content) as vendor_page,
@@ -90,7 +93,7 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
              where va.has_vendor_association) as expected
       `);
       expect(rows[0].vendor_page).toBe(rows[0].expected);
-      expect(rows[0].vendor_page).toBe(1009);
+      expect(rows[0].vendor_page).toBe(1206);
     },
     30000
   );

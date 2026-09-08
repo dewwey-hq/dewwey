@@ -4,6 +4,94 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D052 — 2026-09-07 — Tail-end venue coverage: verified account bridging + aliasing, junk pool identified and excluded
+
+Status: Accepted
+Context: the user asked for better coverage for low-count ("tail end") venues, whether Jeremy's
+original vendor database has real venues missing from our system, and whether the 47k-post
+corpus has usable content for these venues under a different account — explicitly asking for a
+verified, non-blind strategy after two of my early theories were wrong.
+
+**The "missing venues" question, corrected twice.** First pass: checked whether Jeremy's staging
+vendor set was fully imported (it is — all 267 `venue`-category rows not linked by `place_id`
+still match by name; category mapping is 100% consistent). The user pushed back with two
+concrete examples (Diamond Garden Hall, Gala Banquet Hall) that were both, in fact, present in
+`vendors` — just **unconnected**: Gala Banquet Hall (`vendors.id=87`) had `account_id IS NULL` —
+no Instagram bridge at all, functionally invisible despite the row existing; Diamond Garden
+(`account_id`→`diamondgardenbanquet`) was bridged but sat `status='pending'` in `crawl_frontier`
+since D050, never crawled. That reframed the real question: not "is the row there" but "is it
+connected and populated."
+
+**Sizing found real junk exactly where the user warned it would be.** Of 84 `category='venue'`
+vendors with no account bridge, only **10 have genuine Google Places data** (review count,
+rating, a real street address) — the other 74 are raw `@handle`-only rows with no city
+verification, and cross-checking `city` against `address` confirmed 0 of the 70 non-Chicago-city
+ones are secretly local (Lake Geneva WI, Atlanta, Paris — real venues, just not Chicago ones,
+almost certainly destination weddings a Chicago vendor shot and got auto-created from the post
+credit). Correctly out of scope, not a gap. Same split in the crawl backlog: of 111 pending
+`crawl_frontier` venue rows, 50 have real Places data; the other 61 turned out, on inspection, to
+carry D050's own "known Chicago venue" verification notes already (`coverage-gap Track 2.2`) or
+self-evident Chicago-area names — not junk, just blocked on Track 3 below.
+
+**Track 1 — bridged the 10 verified-real unconnected venues, individually.** WebFetched each
+venue's own website for an Instagram link (works: Cotillion Banquets' footer had one; doesn't
+always: Gala Banquet Hall's site has none). WebSearch fallback + content cross-check for the
+rest. Net result: **3 confirmed and bridged** (`bridgeVerifiedVenueAccounts.ts`,
+`account_matched_by='verified_website_search'`) — Cotillion Banquets→`cotillion_banquets`,
+Orland Chateau→`orlandchateau`, Georgios Banquets→`georgiosbanquets`. The other 7 were
+investigated and excluded, each for a specific reason: Wrigley Field's found handles
+(`wrigleymansionevents` etc.) turned out to be **Wrigley Mansion in Phoenix, AZ** — an unrelated
+landmark, not Wrigley Field Chicago; The Shapiro Ballroom **permanently closed in 2020**
+(now an art gallery); The Chicago Club and Woman's Athletic Club have no confident handle found;
+Stardust Banquet Hall's best candidate (`stardustchicago`) is a nightlife venue at a different
+address, not the banquet hall; The Armour House turned out to already have full coverage (21
+weddings) under a pre-existing duplicate vendor row (`@armourhouseweddings`, already aliased to
+`thearmourhousemansion` per D048) — not a gap at all, just a duplicate Places-sourced row
+(`vendors.id=329`) worth a future consolidation pass, left untouched this round (additive-only).
+
+**Track 2 — verified and merged 12 more account-alias pairs** (round 3 in
+`applyAccountAliasesSchema.ts`), scoped to tail-end (1-15-wedding) venues, each checked via real
+bio/caption content or WebSearch before merging — never on name similarity alone:
+`thelytlehouse.`/`ovationchicago.`/`rcchicago.`/`osteriaviastato.` (trailing-dot scrape
+artifacts — Instagram usernames can't end in `.`), `eventsatmortonarboretum`→`mortonarb`,
+`loewschicago`→`loewschicagohotel` (disambiguated via the wedding's own hashtags —
+`#urbanwedding #citywedding #loewshotel` — confirming the downtown property, not the separate
+Loews Chicago O'Hare), `cuneomansion`→`loyola_cuneomansion` (Loyola University owns Cuneo
+Mansion & Gardens), `penthousehydepark`→`thepenthousehydepark`,
+`theateronthelake`→`theateronthelakechicago`, `thethompsonchicago`→`thompsonchicago`,
+`edgewoodvalleycc`→`edgewoodvalley`, `post433chicagophoto`→`post433chicago`. Combined wedding
+counts after merging range 11-22 per venue (was 1-19 pre-merge on the smaller side of each pair).
+**9 candidates from the same scan were investigated and excluded**, each for a specific reason
+(see the script's own comment): `thedrakeoakbrook`/`thedrake` (two different Drake-branded
+hotels), `ravenswoodloftchicago`/`ftchicago` (coincidental substring, not a real handle),
+`riverroastchi`/`riverroastchicago` (riverroastchi's own bio names a *different* events handle,
+contradicting the pairing), `gooseislandchicago`/`gooseisland` (the latter is the Goose Island
+beer brand's corporate account), `swissotelchi`/`swissotel` (bare "swissotel" is a global
+hotel-chain handle), `chicagofirehouserestaurant`/`chicagofire` (collides with the MLS soccer
+club), `rpmeventschicago`/`rpmevents` (RPM is a multi-venue restaurant group, scope unconfirmed),
+`cafebrauer`/`patioatcafebrauer` (may be two intentionally distinct bookable spaces),
+`artinstitutechi`/`artinstitutechicago` (unverified second handle for an account with 3 aliases
+already).
+
+**Track 3 — actual content crawling — deferred, notes only.** No Apify credits until
+2026-09-11. The existing Python crawler (`pipeline/pipeline.py`) can't run in this sandbox (no
+`psycopg2`/`instaloader`) and its `db()` targets the old local Docker rehearsal DB, not
+Supabase, so it wouldn't write to the right place even if it could run. When credits land: a
+small TS script calling Apify's REST API directly (token already live in `.env.local`,
+`$2.70/1000 results` per the Python pipeline's cost table) and writing to Supabase via the
+existing `getPool()` pattern, scoped to the 50 Places-verified pending venues (plus whatever
+Track 1 adds) — never the 61 unverified-but-plausible ones without a closer look first, and
+never the 74 confirmed-non-Chicago ones at all.
+
+Net this round: 3 accounts bridged, 12 aliases merged (29 total in `account_aliases`), `accounts`
+14417→14420. No new weddings created — this batch is entirely identity/connectivity work,
+prerequisite to future crawling.
+Related: D047, D048, D050, D051, docs/jeremy-ddl.sql,
+apps/web/scripts/graph/bridgeVerifiedVenueAccounts.ts,
+apps/web/scripts/graph/applyAccountAliasesSchema.ts
+
+---
+
 ## D051 — 2026-09-07 — Double-venue-tag systematic audit: a hotel-attribution check, and a session-wide orphaned-wedding bug found along the way
 
 Status: Accepted
@@ -215,9 +303,36 @@ so results can show which of these 11 accounts' content is actually worth mining
 active queue** — `CURRENT_QUEUE_VERSION` still points at `beyond_include_v1` (user has real
 progress there); ready to switch whenever wanted.
 
+**beyond_include_v1 completion (2026-09-07, same day)**: user finished the full 833-post queue.
+Synced across two rounds (485 new labels total) — Layer 1 (`human_confirmed_chicago_wedding_content`)
+1073→**1305**. Ran the full sync→stack-parse→cluster→reconcile→hand-read→create pipeline: 116
+new candidates, 34 creation-eligible after reconciliation. Hand-read every one (not a sample):
+**10 excluded for non-Chicago geography** (several already-known Wisconsin/Michigan/Indiana
+patterns resurfacing — Kohler WI, Lake Geneva/Fontana WI x5, Milwaukee, Saugatuck MI, Notre Dame
+IN — plus Rockford, IL, a separate city ~90mi from Chicago, not the metro), 2 excluded for the
+same unconfirmed-geography caution as an earlier `etrefarms` exclusion, and the rest excluded
+for misresolved co-tags or generic vendor marketing (a caterer's own ad miscredited to a
+cathedral, "book with us" CTAs, a planner's retrospective story with no couple named). **7
+kept** — real, specific, Chicago-confirmed, one accepted on explicit self-declared geography
+alone (the caption names Winnetka directly), matching this project's own established confidence
+tier. **Net: 6 new weddings.** `weddings` 3535→**3541**. All pinned test literals investigated
+and updated — one insufficient-evidence-tier literal broke its prior "consistently drops"
+pattern and rose instead (353, up from 344), investigated and confirmed as an expected
+consequence of this round's much larger candidate-to-creation ratio, not a regression. Full
+suite green (90/90 in isolation).
+
+**Separately, found and fixed a real production outage while confirming the D050/D051 deploy**:
+every Vercel deployment had been failing since `2e14589` (2 days earlier), because
+`tsconfig.json`'s `include: ["**/*.ts", ...]` swept every one-off script under
+`apps/web/scripts/` into the Next.js production build's type-check gate — a single type error in
+any of the 100+ analysis scripts broke deploys for everyone. Fixed by excluding `scripts/` from
+tsconfig's scope (a durable, structural fix, not a per-script patch) in commit `f19bcb6`.
+Verified live: the resulting deployment went `Ready`, production caught up from a 3-day-stale
+D038 snapshot to the full D043-D051 arc in one deploy.
+
 Remaining coverage-gap work: Track 1's 6-15/16+ buckets (low priority — piling onto
 already-well-covered venues barely moves the skew) is the only piece left genuinely open from
-this whole D050 arc.
+this whole D050/D051 arc.
 
 ## D049 — 2026-09-07 — Styled-shoot vs. real-wedding signal: flag, don't delete
 

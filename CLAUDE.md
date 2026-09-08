@@ -72,8 +72,12 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   `apps/web/scripts/venue-enrichment/` (not yet ported).
 - Ben's local Docker DB is migrated to Supabase (2026-08-22) — keep the
   local container as the migration-rehearsal copy, but **Supabase is now the
-  source of truth**. Jeremy's beta RDS (5,029 vendors, 47,623 posts) is NOT
-  imported; his DDL is captured in `docs/jeremy-ddl.sql`.
+  source of truth**. Jeremy's beta RDS data (5,029 vendors) IS loaded, verbatim,
+  in `staging.vendors`/`staging.instagram_posts` etc. (see the bullet above —
+  confirmed by count, D052, 2026-09-07); his DDL is captured separately in
+  `docs/jeremy-ddl.sql` for schema reference. His 47,623 posts are not all
+  re-parsed through our stack parser yet — that's the ongoing corpus-mining
+  work, not a data-import gap.
 
 ## Design decisions (carry over; don't relitigate without reason)
 

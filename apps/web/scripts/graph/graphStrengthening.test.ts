@@ -387,7 +387,9 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
         and v2.matched_wedding_id is not null
         and v2.match_confidence between 0.35 and 0.45
     `);
-    expect(Number(rows[0].n)).toBe(44);
+    // Now 45 (beyond_include_v1 completion sync, 2026-09-07): re-verified still zero of the 45
+    // are in jeremy_wedding_vendors_ingested.
+    expect(Number(rows[0].n)).toBe(45);
   });
 
   it("reconcile-v1 rows still exist untouched — the floor was shipped as a new version, not an overwrite", async () => {
@@ -427,7 +429,9 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     const before = await countManyToOne("reconcile-v1");
     const after = await countManyToOne("reconcile-v2");
     expect(before).toBe(322);
-    expect(after).toBe(334);
+    // 353 (beyond_include_v1 completion sync, 2026-09-07): more candidates converging on
+    // already-created weddings as the graph keeps growing -- same expected signature.
+    expect(after).toBe(353);
   });
 
   it("insufficient-evidence tier size matches the current reconcile-v2 state (1,909 as of 2026-09-05)", async () => {
@@ -476,7 +480,14 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
       select count(*) as n from jeremy_wedding_candidate_reconciliation
       where reconciliation_version = 'reconcile-v2' and match_confidence between 0.05 and 0.15
     `);
-    expect(Number(rows[0].n)).toBe(344);
+    // ROSE to 353 (beyond_include_v1 completion sync, 2026-09-07) -- breaks the prior
+    // consistent-drop pattern, but explainably: 116 new candidates clustered from this round's
+    // 485 synced labels, only 12 were created (the rest correctly excluded for non-Chicago
+    // geography, generic marketing, or misresolved co-tags -- see
+    // createWeddingsFromJeremyEvidence.ts), so most of the new candidates land here unmatched
+    // rather than being absorbed by a creation batch. Expected given this round's much lower
+    // creation rate, not a regression.
+    expect(Number(rows[0].n)).toBe(353);
   }, 15000);
 
   it("weddings/wedding_posts are unaffected by the reconciliation rerun — reconciliation never writes to Ben's graph (wedding_vendors/edges are D023's separate, deliberate ingestion, asserted in its own describe block)", async () => {
@@ -556,8 +567,14 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // jeremy_wedding_vendors_ingested linkage. Deleted (logged to orphaned_weddings_retired for
     // provenance), root cause fixed (the post-already-documented check now runs BEFORE creating
     // anything). 3552->3535, wedding_posts unaffected (orphans had none to begin with).
-    expect(Number(rows[0].weddings)).toBe(3535);
-    expect(Number(rows[0].wedding_posts)).toBe(4076);
+    // beyond_include_v1 round 2+3 sync (2026-09-07, +6 weddings/+6 posts): user finished the
+    // full 833-post queue, 485 more labels synced across two rounds, 116 new candidates
+    // clustered -- 6 kept (Chicago-confirmed, explicit venue tags or specific named-couple
+    // content), the rest excluded (mostly non-Chicago Wisconsin/Indiana/Michigan patterns
+    // resurfacing, generic marketing, or misresolved co-tags) -- see
+    // createWeddingsFromJeremyEvidence.ts's own comment.
+    expect(Number(rows[0].weddings)).toBe(3541);
+    expect(Number(rows[0].wedding_posts)).toBe(4082);
   });
 });
 
@@ -593,14 +610,14 @@ describe("clustering boundary-tie investigation — current (unfixed) state (DB)
     expect(Number(rows[0].n)).toBe(0);
   });
 
-  it("candidate/candidate_posts counts: 2,872/3,273 (D019/D021 baseline, Experiment B made zero writes) plus 140/144 from the human-confirmed-evidence pipeline (clustering_version='human-confirmed-v1', two runs as labeling continued) = 3,012/3,417, plus 212/229 from venue-couple-signal-v1 (D047 follow-on, abandoned but not deleted) = 3,224/3,646, plus 8/8 from human-confirmed-v1 round 3 (/label venue_coverage_v3 sync, 2026-09-06) = 3,232/3,654, plus 26/26 from venue-inline-mention-v1 round 1 (D047 follow-on, 2026-09-06) = 3,258/3,680, plus 1/2 from human-confirmed-v1 round 4 (/label queue-completion sync, 2026-09-06) = 3,259/3,682, plus 106/111 from human-confirmed-v1 round 5 (D048, beyond_include_v1 first sync, 2026-09-06) = 3,365/3,793, plus 39/42 from human-confirmed-v1 round 6 (D049, styled_shoot_v1 first sync, 2026-09-07) = 3,404/3,835", async () => {
+  it("candidate/candidate_posts counts: 2,872/3,273 (D019/D021 baseline, Experiment B made zero writes) plus 140/144 from the human-confirmed-evidence pipeline (clustering_version='human-confirmed-v1', two runs as labeling continued) = 3,012/3,417, plus 212/229 from venue-couple-signal-v1 (D047 follow-on, abandoned but not deleted) = 3,224/3,646, plus 8/8 from human-confirmed-v1 round 3 (/label venue_coverage_v3 sync, 2026-09-06) = 3,232/3,654, plus 26/26 from venue-inline-mention-v1 round 1 (D047 follow-on, 2026-09-06) = 3,258/3,680, plus 1/2 from human-confirmed-v1 round 4 (/label queue-completion sync, 2026-09-06) = 3,259/3,682, plus 106/111 from human-confirmed-v1 round 5 (D048, beyond_include_v1 first sync, 2026-09-06) = 3,365/3,793, plus 39/42 from human-confirmed-v1 round 6 (D049, styled_shoot_v1 first sync, 2026-09-07) = 3,404/3,835, plus 116/127 from human-confirmed-v1 round 7 (beyond_include_v1 completion sync, 2026-09-07) = 3,520/3,962", async () => {
     const { rows } = await pool.query(`
       select
         (select count(*) from jeremy_wedding_candidates) as candidates,
         (select count(*) from jeremy_wedding_candidate_posts) as candidate_posts
     `);
-    expect(Number(rows[0].candidates)).toBe(3404);
-    expect(Number(rows[0].candidate_posts)).toBe(3835);
+    expect(Number(rows[0].candidates)).toBe(3520);
+    expect(Number(rows[0].candidate_posts)).toBe(3962);
   });
 });
 
@@ -701,8 +718,10 @@ describe("graph ingestion — D023 (DB)", () => {
     // shower content, not from D023's provenance table either).
     // -179 more from the orphaned-wedding cleanup (2026-09-07, 17 phantom weddings' vendor
     // credits removed with them -- confirmed zero jeremy_wedding_vendors_ingested overlap).
-    expect(Number(rows[0].untouched)).toBe(33106);
-    expect(Number(rows[0].total)).toBe(33217);
+    // +46 more from the beyond_include_v1 round 2+3 sync (2026-09-07, 6 weddings, same
+    // provenance table).
+    expect(Number(rows[0].untouched)).toBe(33152);
+    expect(Number(rows[0].total)).toBe(33263);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -749,8 +768,14 @@ describe("graph ingestion — D023 (DB)", () => {
     // jeremy_wedding_vendors_ingested linkage. Deleted (logged to orphaned_weddings_retired for
     // provenance), root cause fixed (the post-already-documented check now runs BEFORE creating
     // anything). 3552->3535, wedding_posts unaffected (orphans had none to begin with).
-    expect(Number(rows[0].weddings)).toBe(3535);
-    expect(Number(rows[0].wedding_posts)).toBe(4076);
+    // beyond_include_v1 round 2+3 sync (2026-09-07, +6 weddings/+6 posts): user finished the
+    // full 833-post queue, 485 more labels synced across two rounds, 116 new candidates
+    // clustered -- 6 kept (Chicago-confirmed, explicit venue tags or specific named-couple
+    // content), the rest excluded (mostly non-Chicago Wisconsin/Indiana/Michigan patterns
+    // resurfacing, generic marketing, or misresolved co-tags) -- see
+    // createWeddingsFromJeremyEvidence.ts's own comment.
+    expect(Number(rows[0].weddings)).toBe(3541);
+    expect(Number(rows[0].wedding_posts)).toBe(4082);
     // accounts +6 (14334->14340): Tier 1's 159 candidates credited a few vendor handles never
     // seen before in `accounts` -- unlike Batch 5/6, whose venue accounts always pre-existed
     // (that's how they got tagged 'venue' in the first place), Tier 1 spans the FULL candidate
@@ -767,7 +792,13 @@ describe("graph ingestion — D023 (DB)", () => {
     // D050's Track 2.2, 2026-09-07) -- NOT from any wedding creation: bare placeholder
     // `accounts` rows created for 51 known Chicago venues with zero posts in our corpus,
     // queued in ops.crawl_frontier for the next real Apify run (queueUnseenVenuesForCrawl.ts).
-    expect(Number(rows[0].accounts)).toBe(14417);
+    // +3 more (14417->14420, tail-end coverage mission Track 1, 2026-09-07): 3 new `accounts`
+    // rows for real, Google-Places-verified Chicago venues (Cotillion Banquets, Orland Chateau,
+    // Georgios Banquets) that had zero Instagram bridge at all -- see
+    // bridgeVerifiedVenueAccounts.ts. Not a wedding-creation batch; these start with zero posts,
+    // queued in crawl_frontier same as D050's Track 2.2 batch, pending Track 3 (deferred, no
+    // Apify credits until 2026-09-11).
+    expect(Number(rows[0].accounts)).toBe(14420);
   });
 
   it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {

@@ -40,9 +40,11 @@ describe("post_styled_shoot_signal (DB)", () => {
     // 'EXCLUDE' and a "styl" signal in notes or exclusion_reason. Jumped to 141 (D049, same day,
     // later): the new styled_shoot_v1 queue's first sync round (user labeled all 80, 48
     // NOT_WEDDING) promoted new golden_set EXCLUDE rows carrying a "styled shoot" note -- a real
-    // ground-truth-growth increase, not a change in this view's own logic. Grows only when
-    // golden_set itself grows via new labeling -- update this literal (and the comment) if a
-    // future sync legitimately changes it.
+    // ground-truth-growth increase, not a change in this view's own logic. Jumped to 228
+    // (2026-09-07, later same day): the beyond_include_v1 completion sync (485 new labels
+    // across two rounds) promoted more EXCLUDE rows with a "styl" note -- same mechanism. Grows
+    // only when golden_set itself grows via new labeling -- update this literal (and the
+    // comment) if a future sync legitimately changes it.
     const [{ rows: viewRows }, { rows: gsRows }] = await Promise.all([
       pool.query(`select count(*)::int as n from post_styled_shoot_signal where confidence = 'CONFIRMED'`),
       pool.query(`
@@ -52,7 +54,7 @@ describe("post_styled_shoot_signal (DB)", () => {
       `),
     ]);
     expect(viewRows[0].n).toBe(gsRows[0].n);
-    expect(viewRows[0].n).toBe(141);
+    expect(viewRows[0].n).toBe(228);
   }, 30000);
 
   it("high-precision phrase/hashtag regex has a low false-positive rate against confirmed-real weddings", async () => {

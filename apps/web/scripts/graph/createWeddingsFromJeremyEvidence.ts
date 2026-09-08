@@ -722,6 +722,36 @@ const CANDIDATE_IDS = [
   // wanted their reception to feel like an elevated al fresco dinner..."), 14-vendor stack,
   // golden_set INCLUDE.
   2541,
+  // beyond_include_v1 round 2 sync (2026-09-07): user finished the queue (782->833, then all
+  // remaining), 435 new labels synced (source_note beyond_include_v1_sync_round2_2026-09-07,
+  // 451 total incl. leftovers), 110 new human-confirmed-v1 candidates clustered. Of the 34
+  // creation-eligible after reconciliation: **10 excluded for non-Chicago geography** --
+  // golfkohler/2951, lakeshoreresort_saugatuck/3482, destinationgn/3498, experience_nd/3506
+  // (all already-established non-Chicago patterns resurfacing), theatriummke/3449 (Milwaukee),
+  // grandgeneva/3512 and abbeyresort/3450+3465+3513+3514 (x4, all Lake Geneva/Fontana,
+  // Wisconsin), rockfordartmuseum/3493 (Rockford, IL -- a separate city ~90mi from Chicago,
+  // ceremony+reception pair otherwise looked real but geography disqualifies). **2 excluded,
+  // same unconfirmed-geography caution as D049's original etrefarms exclusion** (etrefarms/
+  // 3418+3445, `vendors.city` literally says "Southwest Michigan" -- real content, named
+  // couples, just not confirmed Chicago). **Excluded as misresolved co-tag or generic
+  // marketing**: annunciation_cathedral_chicago/3441 (the post is actually Blue Plate Chicago's
+  // own catering ad, `#BluePlateChicago`, not evidence of a wedding at the cathedral),
+  // peninsulachi/3433 (generic "National Wedding Planning Day" holiday post), weddings.oftheland
+  // /3430 (a feature-announcement repost, no confirmed venue-hood or geography), thedalcy/3417+
+  // 3420+3444+3470 (all explicit "inquire/book with us" marketing CTAs, not one specific
+  // wedding), tigerlilyevents/3416+3440 and fairliechicago/3409+3434 (seasonal/advice marketing,
+  // no couple), the.arbory/3481 ("Book your 2026 wedding now!"), bridgeportartcenter/3484 (a
+  // cake vendor's own promo post), adlerplanet/3491 (a planner's retrospective brand story, no
+  // couple named -- adlerplanet already well-covered regardless). **7 kept** -- real, specific,
+  // Chicago-confirmed: the.arbory/3405 (explicit "Venue: @the.arbory", already 89 weddings),
+  // cbgweddings/3415 (explicit primary venue tag, already 15 weddings), adlerplanet/3429
+  // (explicit venue tag + #ChicagoWeddings hashtags, already 54 weddings), lilbabareeba/3438
+  // (Mitch & Clyde, named couple, exact date 5.17.25, caption explicitly names Winnetka --
+  // trusted per this project's own "explicit Chicago mention" confidence tier, same as
+  // human_confirmed_post_geography's own design), universityclubofchicago/3446 (explicit venue
+  // tag, already 50 weddings), psbrewingco/3454 (Caroline & William, named couple, explicit
+  // venue tag).
+  3405, 3415, 3429, 3438, 3446, 3454,
 ];
 
 function shortcodeFromUrl(url: string): string | null {
