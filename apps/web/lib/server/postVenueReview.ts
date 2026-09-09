@@ -77,6 +77,12 @@ export interface PostReviewVenue {
   vendor_name: string | null;
   venue_anchor_source: string | null;
   venue_anchor_conflict: boolean;
+  // D050/D055: the anchor's own credit-line label ("Reception", "Venue", ...) when
+  // venue_anchor_source is 'credit_line' -- null for author/location_tag/inline_at/venue_hashtag
+  // anchors, which have no credit-line label of their own; the UI falls back to a human-readable
+  // form of venue_anchor_source itself in that case (see ANCHOR_SOURCE_LABEL in
+  // PostVenueReviewClient.tsx).
+  anchor_label: string | null;
   chicago_status: string | null;
   current_wedding_count: number;
 }
@@ -95,6 +101,10 @@ export interface PostReviewVendorCredit {
 export interface PostReviewOtherVenueCredit {
   account_id: number;
   username: string;
+  // The credit's own role_raw (e.g. "Ceremony", "Reception", "Venue") -- D050/D055, lets the UI
+  // tell a real ceremony+reception pair (not a conflict) apart from two competing plain-"Venue"
+  // credits (a real conflict). Null for a source (stack_extraction_entries) row with no role_raw.
+  label: string | null;
 }
 
 export interface PostReviewDuplicateHint {
@@ -199,9 +209,14 @@ export async function getPostReviewQueue(
      left join accounts a on a.id = cpz.venue_account_id
      left join venue_counts vc on vc.venue_account_id = cpz.venue_account_id
      where not exists (
+       -- Any reviewer's current verdict removes a post from the queue (D055): a bounded class of
+       -- structurally unambiguous posts is cleared under reviewed_by='fable-structured' on the
+       -- user's behalf, and those must not be served again. Progress/undo stay per-reviewer.
        select 1 from post_venue_verdicts_current pv
-       where pv.post_url = cpz.source_post_url and pv.reviewed_by = $2
+       where pv.post_url = cpz.source_post_url
      )
+       -- $2 (reviewer) is no longer used by the exclusion above; keep it typed so pg can plan.
+       and $2::text is not null
        -- D055 (user, mid-review 2026-09-08: "filter out the posts that say bar or bat mitzvah"):
        -- a post naming a non-wedding event with NO wedding language is never served -- 43 of
        -- 4,743 queued posts at the time. Same rule now lives in the structural clustering
@@ -254,13 +269,13 @@ export async function getPostReviewQueue(
   const { rows: otherVenueRows } = await pool.query(
     `with latest as (
        select distinct on (post_url, line_no, handle)
-         post_url, line_no, handle, role
+         post_url, line_no, handle, role, role_raw
        from stack_extraction_entries
        where post_url = any($1::text[])
        order by post_url, line_no, handle, extracted_at desc
      )
      select l.post_url, coalesce(al.canonical_account_id, a.id) as account_id,
-            a.username::text as username
+            a.username::text as username, l.role_raw
      from latest l
      join accounts a on a.username = l.handle::citext
      left join account_aliases al on al.alias_account_id = a.id
@@ -290,7 +305,7 @@ export async function getPostReviewQueue(
   const otherVenuesByPost = new Map<string, Map<number, PostReviewOtherVenueCredit>>();
   for (const r of otherVenueRows) {
     const m = otherVenuesByPost.get(r.post_url) ?? new Map();
-    m.set(r.account_id, { account_id: r.account_id, username: r.username });
+    m.set(r.account_id, { account_id: r.account_id, username: r.username, label: r.role_raw ?? null });
     otherVenuesByPost.set(r.post_url, m);
   }
 
@@ -309,9 +324,15 @@ export async function getPostReviewQueue(
 
   return rows.map((r) => {
     const venueAccountId: number | null = r.venue_account_id;
-    const otherVenues = [...(otherVenuesByPost.get(r.source_post_url)?.values() ?? [])].filter(
-      (v) => v.account_id !== venueAccountId
-    );
+    const postOtherVenues = otherVenuesByPost.get(r.source_post_url);
+    const otherVenues = [...(postOtherVenues?.values() ?? [])].filter((v) => v.account_id !== venueAccountId);
+    // D050/D055: the anchor's own role_raw only means anything when the anchor itself IS a
+    // credit-line row (author/location_tag/inline_at/venue_hashtag anchors have no credit-line
+    // label of their own -- the UI falls back to a human name for venue_anchor_source there).
+    const anchorLabel =
+      r.venue_anchor_source === "credit_line" && venueAccountId != null
+        ? (postOtherVenues?.get(venueAccountId)?.label ?? null)
+        : null;
     return {
       post: {
         post_url: r.source_post_url,
@@ -328,6 +349,7 @@ export async function getPostReviewQueue(
         vendor_name: r.vendor_name,
         venue_anchor_source: r.venue_anchor_source,
         venue_anchor_conflict: r.venue_anchor_conflict,
+        anchor_label: anchorLabel,
         chicago_status: r.chicago_status,
         current_wedding_count: Number(r.current_wedding_count),
       },

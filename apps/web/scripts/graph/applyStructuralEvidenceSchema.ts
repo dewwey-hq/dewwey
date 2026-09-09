@@ -49,11 +49,27 @@ const STATEMENTS: string[] = [
      join accounts a on lower(a.username::text) = l.handle
      left join account_aliases al on al.alias_account_id = a.id
    ),
+   -- D050/D055: when a post credits both a ceremony site and a reception venue, the RECEPTION
+   -- venue is the wedding's anchor (the ceremony site still gets a venue-role credit downstream,
+   -- see createWeddingsFromJeremyEvidence.ts's --from-confirmed-candidates path) -- matches the
+   -- 39 structural candidates the user re-anchored by hand and D050's own reception-tiebreak
+   -- precedent (weddings 899, 5513). Priority: reception (0) > plain "venue"-labeled, not
+   -- ceremony-ish (1) > ceremony/church/parish/etc (2) > anything else (3), then lowest line_no
+   -- within a tier. A label like "Ceremony Venue" matches both the venue and ceremony patterns --
+   -- the ceremony/church check deliberately requires excluding it from tier 1 so it lands in
+   -- tier 2, not 1.
    credit_line_venue as (
      select distinct on (source_post_url)
        source_post_url, account_id, line_no, role_raw
      from credit_line_accounts
-     order by source_post_url, line_no asc
+     order by source_post_url,
+       case
+         when role_raw ~* 'reception' then 0
+         when role_raw ~* 'venue' and role_raw !~* 'ceremony|church|parish|chapel|cathedral|temple|synagogue|mosque' then 1
+         when role_raw ~* 'ceremony|church|parish|chapel|cathedral|temple|synagogue|mosque' then 2
+         else 3
+       end,
+       line_no asc
    ),
    credit_line_conflict as (
      select source_post_url

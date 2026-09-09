@@ -992,7 +992,40 @@ async function runFromConfirmedCandidates(
       [includedUrls]
     );
 
-    let vendorsForPrint = nonVenueVendors.length + (displayVenueAccountId != null ? 1 : 0);
+    // D050/D055: a post can credit BOTH a ceremony site and a reception venue on separate
+    // "Venue:"-style lines -- structural_post_vendor_evidence's venue anchor now prefers the
+    // reception (see credit_line_venue's ORDER BY in pipeline/schema.sql), but the view still
+    // collapses to exactly one venue row per post (the anchor), so the losing venue credit (the
+    // ceremony site) never shows up in the nonVenueVendors query above (which excludes role =
+    // 'venue' entirely). Re-derive those other venue-role credits straight from
+    // stack_extraction_entries (latest per post/line/handle, same alias-canonicalization as
+    // credit_line_accounts), scoped to includedUrls, and give each its own venue-role
+    // wedding_vendors row -- the wedding's venue_id stays the anchor (reception); this only adds
+    // credit rows, same convention as any other role. Anchor account excluded via IS DISTINCT
+    // FROM (null-safe: if there's no resolved anchor yet, nothing is excluded).
+    const { rows: otherVenueVendors } = await client.query<{
+      account_id: number;
+      n_confirmations: number;
+    }>(
+      `select coalesce(al.canonical_account_id, a.id)::int as account_id,
+              count(distinct latest.post_url)::int as n_confirmations
+       from (
+         select distinct on (post_url, line_no, handle)
+           post_url, line_no, handle, role
+         from stack_extraction_entries
+         where post_url = any($1::text[])
+         order by post_url, line_no, handle, extracted_at desc
+       ) latest
+       join accounts a on lower(a.username::text) = latest.handle
+       left join account_aliases al on al.alias_account_id = a.id
+       where latest.role = 'venue'
+       group by coalesce(al.canonical_account_id, a.id)
+       having coalesce(al.canonical_account_id, a.id) is distinct from $2::int`,
+      [includedUrls, displayVenueAccountId]
+    );
+
+    let vendorsForPrint =
+      nonVenueVendors.length + otherVenueVendors.length + (displayVenueAccountId != null ? 1 : 0);
 
     if (gate.action === "CREATE") {
       // D050 duplicate-post guard, same check as the hardcoded-array loop: if any of this
@@ -1093,6 +1126,7 @@ async function runFromConfirmedCandidates(
       const vendorsToInsert = [
         { account_id: venueAccountId, role: "venue", n_confirmations: venueNConfirmations },
         ...nonVenueVendors,
+        ...otherVenueVendors.map((v) => ({ account_id: v.account_id, role: "venue", n_confirmations: v.n_confirmations })),
       ];
       for (const v of vendorsToInsert) {
         const { rows: inserted } = await client.query(

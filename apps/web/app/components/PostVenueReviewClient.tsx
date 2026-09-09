@@ -139,6 +139,16 @@ const ANCHOR_SOURCE_LABEL: Record<string, string> = {
   venue_hashtag: "venue hashtag",
 };
 
+// D050/D055: distinguishes a ceremony-site credit (church/parish/temple/etc, or a label that says
+// "Ceremony" outright) from a plain "Venue"-type label -- same regex as the reception-priority
+// ORDER BY in pipeline/schema.sql's credit_line_venue CTE, kept in sync deliberately. A post
+// crediting both a reception (the anchor, per D050) and a ceremony site is a real, expected
+// pair, not a conflict; two competing plain-"Venue" credits on one post still are.
+const CEREMONY_LABEL_RE = /ceremony|church|parish|chapel|cathedral|temple|synagogue|mosque/i;
+function isCeremonyLabel(label: string | null): boolean {
+  return !!label && CEREMONY_LABEL_RE.test(label);
+}
+
 const CHICAGO_BADGE: Record<string, { label: string; className: string }> = {
   CHICAGO_CONFIRMED: { label: "Chicago confirmed", className: "bg-emerald-100 text-emerald-800" },
   CHICAGO_AMBIGUOUS: { label: "Chicago ambiguous", className: "bg-amber-100 text-amber-800" },
@@ -500,6 +510,27 @@ export function PostVenueReviewClient({
     return acc;
   }, {});
 
+  // D050/D055: the anchor's own credit-line label ("Reception", "Venue", ...) when it has one,
+  // else a human name for whichever non-credit-line source anchored it (author / location tag /
+  // inline mention / hashtag) -- same fallback the existing anchor-source badge below uses.
+  const anchorLabelText =
+    venue.anchor_label ??
+    (venue.venue_anchor_source ? (ANCHOR_SOURCE_LABEL[venue.venue_anchor_source] ?? venue.venue_anchor_source) : null);
+
+  // A post can legitimately credit both a reception (the anchor, per D050) and a ceremony site --
+  // that's not a conflict, it's the expected shape. Only treat it as a real conflict when at least
+  // one of the OTHER credited venues is itself a plain "Venue"-type label (i.e. also ambiguous,
+  // not identifiably a ceremony site) -- two competing "Venue:" lines with no way to tell them
+  // apart.
+  const ceremonyCredits = current.other_venue_credits.filter((v) => isCeremonyLabel(v.label));
+  const nonCeremonyCredits = current.other_venue_credits.filter((v) => !isCeremonyLabel(v.label));
+  // Still shows the conflict badge (with its existing "no other resolved account found" fallback)
+  // when other_venue_credits came back empty entirely -- that's a handle-resolution miss, not a
+  // confirmed ceremony+reception pair, so it must not silently disappear.
+  const showConflictBadge =
+    venue.venue_anchor_conflict && (nonCeremonyCredits.length > 0 || current.other_venue_credits.length === 0);
+  const showAlsoCredited = !showConflictBadge && ceremonyCredits.length > 0;
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
@@ -529,8 +560,9 @@ export function PostVenueReviewClient({
       </div>
 
       <p className="mb-3 rounded-lg bg-black/[0.03] px-3 py-2 text-xs text-gray-600">
-        <strong className="font-medium text-gray-800">W</strong> = a real wedding at THIS venue
-        (Chicago). <strong className="font-medium text-gray-800">V</strong> = real wedding, other
+        <strong className="font-medium text-gray-800">W</strong> = real wedding; anchor is the
+        reception venue when both are listed — the ceremony site is credited automatically.{" "}
+        <strong className="font-medium text-gray-800">V</strong> = real wedding, other
         venue. <strong className="font-medium text-gray-800">D</strong> = already a documented
         wedding. <strong className="font-medium text-gray-800">N</strong> = shower / styled shoot /
         marketing / other event (opens an optional reason + note, Enter/Esc to submit).{" "}
@@ -542,7 +574,11 @@ export function PostVenueReviewClient({
       <div className="mb-3 rounded-2xl border border-black/[0.07] bg-white p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <span className="text-sm font-medium text-gray-900">{venueLabel}</span>
+            <span className="text-sm font-medium text-gray-900">
+              {anchorLabelText && <strong className="mr-1 font-semibold text-gray-900">{anchorLabelText}</strong>}
+              {venueLabel}
+              <span className="ml-1 text-xs font-normal text-gray-400">(anchor)</span>
+            </span>
             {venue.username && (
               <Link
                 href={`/vendors/${venue.username}`}
@@ -574,15 +610,20 @@ export function PostVenueReviewClient({
             {venue.current_wedding_count} documented wedding{venue.current_wedding_count === 1 ? "" : "s"} today
           </Badge>
         </div>
-        {venue.venue_anchor_conflict && (
+        {showConflictBadge && (
           <div className="mt-1.5 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-800">
             <div className="font-semibold">VENUE CONFLICT</div>
             <div className="mt-0.5">
               Also credited as venue on this post:{" "}
-              {current.other_venue_credits.length > 0
-                ? current.other_venue_credits.map((v) => `@${v.username}`).join(", ")
+              {nonCeremonyCredits.length > 0
+                ? nonCeremonyCredits.map((v) => (v.label ? `${v.label} @${v.username}` : `@${v.username}`)).join(", ")
                 : "(no other resolved account found)"}
             </div>
+          </div>
+        )}
+        {showAlsoCredited && (
+          <div className="mt-1.5 text-xs text-gray-600">
+            {ceremonyCredits.map((v) => `${v.label} @${v.username} — also credited`).join(" · ")}
           </div>
         )}
         {(current.couple_guess || Object.keys(vendorsByRole).length > 0) && (
