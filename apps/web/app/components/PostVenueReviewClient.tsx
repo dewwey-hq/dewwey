@@ -182,6 +182,15 @@ export function PostVenueReviewClient({
   // D055 addendum: the inline note box. "n" mode = the N-verdict reason-chip flow (opened by
   // pressing N, or clicking "Not a wedding"); "free" mode = the "/"-opened box that attaches to
   // whatever verdict is submitted next. Only one is ever open at a time.
+  //
+  // Isolation invariant (2026-09-08 fix): the N flow's reason/text state (noteReasonTag,
+  // noteText while noteUiMode === "n") is cleared both on cancel (Esc, in handleNoteKeyDown
+  // below) and after submit (in submit() itself) -- it never survives past the keystroke that
+  // closed the N box. It is also a wholly separate piece of state from the "/"-opened free note
+  // (noteUiMode === "free"): submit()'s pendingFreeNote fallback only reads noteText when
+  // noteUiMode is "free", so a W/V/D/U/Space fired after an N-cancel can only carry a note if the
+  // reviewer explicitly reopened one with "/" -- text typed and discarded under N can never leak
+  // onto a later, different verdict.
   const [noteUiOpen, setNoteUiOpen] = useState(false);
   const [noteUiMode, setNoteUiMode] = useState<"n" | "free">("n");
   const [noteReasonTag, setNoteReasonTag] = useState<ReasonTag | null>(null);
@@ -373,10 +382,12 @@ export function PostVenueReviewClient({
         return;
       }
 
-      // D055 addendum: N no longer submits immediately -- it opens the reason-chip note UI
-      // (Enter/Esc inside it are what actually submit; see the input's onKeyDown below). If a
-      // "/" free note was already pending, its text is inherited rather than thrown away --
-      // noteText is deliberately left untouched here.
+      // D055 addendum: N no longer submits immediately -- it opens the reason-chip note UI.
+      // Enter (in the input's onKeyDown below) submits NOT_WEDDING with whatever reason/text was
+      // entered; Esc cancels -- submits nothing and discards them (2026-09-08 fix: Esc used to
+      // submit NOT_WEDDING with no note, so there was no way to back out of N once opened --
+      // plain N is now "N, Enter" only). If a "/" free note was already pending, its text is
+      // inherited rather than thrown away -- noteText is deliberately left untouched here.
       if (action === "NOT_WEDDING") {
         setVenueInputOpen(false);
         setDupInputOpen(false);
@@ -455,8 +466,15 @@ export function PostVenueReviewClient({
           const notes = noteReasonTag ? noteReasonTag + (text ? `: ${text}` : "") : text || null;
           submit("NOT_WEDDING", undefined, notes);
         } else if (e.key === "Escape") {
+          // Esc cancels the N flow outright -- it must never submit NOT_WEDDING (mirrors
+          // venueInputRef/dupInputRef's own Esc-to-cancel below). Discards the reason tag and
+          // note text immediately rather than leaving them for the next open, so a verdict
+          // submitted right after (W/V/D/U/Space) can't inherit them -- see the isolation
+          // invariant on the noteUiOpen state declaration above.
           e.preventDefault();
-          submit("NOT_WEDDING", undefined, null);
+          setNoteUiOpen(false);
+          setNoteText("");
+          setNoteReasonTag(null);
         }
         return;
       }
@@ -565,7 +583,8 @@ export function PostVenueReviewClient({
         <strong className="font-medium text-gray-800">V</strong> = real wedding, other
         venue. <strong className="font-medium text-gray-800">D</strong> = already a documented
         wedding. <strong className="font-medium text-gray-800">N</strong> = shower / styled shoot /
-        marketing / other event (opens an optional reason + note, Enter/Esc to submit).{" "}
+        marketing / other event (opens an optional reason + note — Enter to submit, Esc to
+        cancel).{" "}
         <strong className="font-medium text-gray-800">/</strong> = add a note for the next verdict.
       </p>
 
@@ -694,25 +713,30 @@ export function PostVenueReviewClient({
             {noteUiOpen && (
               <div className="mb-2">
                 {noteUiMode === "n" && (
-                  <div className="mb-1.5 flex flex-wrap gap-1.5">
-                    {REASON_CHIPS.map((c) => (
-                      <button
-                        key={c.tag}
-                        type="button"
-                        onClick={() => {
-                          setNoteReasonTag(c.tag);
-                          noteInputRef.current?.focus();
-                        }}
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                          noteReasonTag === c.tag
-                            ? "bg-gray-900 text-white"
-                            : "bg-black/[0.06] text-gray-700 hover:bg-black/[0.1]"
-                        }`}
-                      >
-                        {c.hint} {c.label}
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <div className="mb-1.5 flex flex-wrap gap-1.5">
+                      {REASON_CHIPS.map((c) => (
+                        <button
+                          key={c.tag}
+                          type="button"
+                          onClick={() => {
+                            setNoteReasonTag(c.tag);
+                            noteInputRef.current?.focus();
+                          }}
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                            noteReasonTag === c.tag
+                              ? "bg-gray-900 text-white"
+                              : "bg-black/[0.06] text-gray-700 hover:bg-black/[0.1]"
+                          }`}
+                        >
+                          {c.hint} {c.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mb-1.5 text-[11px] text-gray-400">
+                      Enter = submit Not a wedding · Esc = cancel
+                    </p>
+                  </>
                 )}
                 <input
                   ref={noteInputRef}
@@ -722,7 +746,7 @@ export function PostVenueReviewClient({
                   onKeyDown={handleNoteKeyDown}
                   placeholder={
                     noteUiMode === "n"
-                      ? "optional note — Enter to submit N, Esc for plain N"
+                      ? "optional note — Enter to submit, Esc to cancel"
                       : "note for the next verdict — Enter to confirm, Esc to cancel"
                   }
                   className="w-full rounded-xl border border-black/[0.08] px-3 py-2 text-sm focus:border-black/20 focus:outline-none"
