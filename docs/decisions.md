@@ -201,6 +201,24 @@ each slice behind a calibration gate on the golden set before corpus spend.
   Michigan City IN, Apple River IL ×1 — every one a vendor-hashtag false positive). Two data
   notes: `lobapastry` is a bakery, not a venue (mis-anchored; the reviewer's V covers it);
   `saltshechicago` looks like a mis-captured handle for `saltshedchicago`.
+- **Ceremony + reception** (user: "we should have a way to handle reception and venue better"):
+  the structural view anchored on the FIRST venue-labeled line, and "Ceremony:" is usually
+  listed first — 39 candidates were anchored to the church. Applied the D050 convention:
+  reception is the anchor, the ceremony site keeps a venue-role credit (both venue pages show the
+  wedding). Re-anchored the 39 by SQL; view priority now reception > venue > ceremony/church;
+  creation credits every venue-role handle on the included posts; the UI shows "Reception …
+  (anchor) / Ceremony … also credited" instead of a conflict badge for that pair.
+- **Verdicts applied on the user's behalf, by explicit request** ("do you want to go through and
+  make those changes on my behalf?"): the 59 unreviewed posts carrying both a Ceremony and a
+  Reception credit, each hand-read by Fable. 56 THIS_VENUE, 2 NOT_WEDDING (a Milwaukee HMUA promo
+  and a venue's "in-house services" post). Written under `reviewed_by='fable-structured'` with
+  a note, and deliberately **without** `human_post_labels` rows so the golden set stays
+  human-labeled; the review queue now excludes any post with a verdict from any reviewer. The
+  same read settled 17 venues' geography (5 metro: White Eagle Naperville, Fairlie, Georgios,
+  Sofitel Chicago, Herrington Geneva; 12 not: Omaha, Atlanta, Notre Dame ×2, Milwaukee, Kansas
+  City, Nashville, St Augustine, Orlando, DC, Champaign, Ames). Precedent: a structurally
+  unambiguous class (labeled ceremony + reception credits + named couple) can be cleared by the
+  thinking agent with a distinct reviewer tag; everything else stays with the human.
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 
