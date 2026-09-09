@@ -239,6 +239,18 @@ each slice behind a calibration gate on the golden set before corpus spend.
   refused when the account's Places row names a non-venue category. The 9 affected unreviewed
   candidates re-anchored to their mapped tag where one existed, otherwise un-anchored to
   ambiguous (out of the confirmed queue).
+- **`vendors.city` is a schema DEFAULT, not evidence** (user-caught on DC Estate Winery, South
+  Beloit IL, ~90 miles out, reaching the Chicago-confirmed queue): Jeremy's DDL declares
+  `city varchar DEFAULT 'Chicago'`, so 4,647 of 4,925 "Chicago" vendor rows are mention/hashtag-
+  discovered accounts with no address. **343 structural-v2 candidates were Chicago-confirmed on
+  that default alone.** Demoted 324 (the rest already created) to ambiguous pending a web pass;
+  DC Estate Winery marked non-metro. Exposure in batches 1-2: 22 created weddings sat on such
+  venues — every one checked by hand (Loews O'Hare/Rosemont, Heritage Prairie Farm/Elburn,
+  Company 251/Aurora, Ashyana/Downers Grove, Arrowhead/Wheaton, Drury Lane/Oakbrook Terrace,
+  Makray/Lakemoor, Stonegate/Hoffman Estates, Labriola/Oak Brook, Chevy Chase/Wheeling, plus
+  Chicago-proper venues) and recorded as metro; two (`loft21events`, `fbbanquets`) left to the
+  web pass. **Rule, now in code: `vendors.city='Chicago'` is geography evidence only when
+  `discovery_source='google_places'`; `account_locations.in_metro` stays authoritative.**
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 
