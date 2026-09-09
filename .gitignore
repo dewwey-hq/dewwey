@@ -20,3 +20,7 @@ secrets/
 
 # playwright-mcp session artifacts
 .playwright-mcp/
+
+# D055 provenance snapshots (apps/web/scripts/graph/snapshotGraphTables.ts) -- large gzipped CSV
+# dumps of graph tables, local safety net only, never committed
+apps/web/scripts/graph/snapshots/

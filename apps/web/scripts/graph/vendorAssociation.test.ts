@@ -70,8 +70,12 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
     // labeled all 80, 37 WEDDING) -- same mechanism.
     // Jumped to 1305 (2026-09-07, later same day): user finished the full beyond_include_v1
     // queue (833/833), synced across two rounds (485 new labels total) -- same mechanism.
+    // 1308 (D055, 2026-09-08): stack parser v8 (ungated, plus inline `at @handle` / venue-hashtag
+    // patterns) put a role='venue' credit on 3 more golden INCLUDE posts whose venue is a
+    // confirmed-Chicago account, so human_confirmed_post_geography's venue_signals join flips
+    // them AMBIGUOUS/NO_SIGNAL -> CONFIRMED. Same non-gating mechanism as the D047 +1 above.
     const { rows } = await pool.query(`select count(*)::int as n from human_confirmed_chicago_wedding_content`);
-    expect(rows[0].n).toBe(1305);
+    expect(rows[0].n).toBe(1308);
   }, 15000);
 
   it(
@@ -84,7 +88,12 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
       // /label queue-completion sync jump above. 972 (D048, 2026-09-06) -- tracks the
       // 925->1036 beyond_include_v1 sync jump above. 1009 (D049, 2026-09-07) -- tracks the
       // 1036->1073 styled_shoot_v1 sync jump above. 1206 (2026-09-07, later same day) -- tracks
-      // the 1073->1305 beyond_include_v1 completion sync jump above.
+      // the 1073->1305 beyond_include_v1 completion sync jump above. 1211 (D055, 2026-09-08) --
+      // tracks the 1305->1308 v8-parser Layer-1 bump above plus 2 Layer-1 posts that gained
+      // their first tagged-vendor credit from the ungated parse (has_vendor_association flipped).
+      // 1217 (D055 step 5, same day): upsertAccountsForStackHandles.ts minted 8,434 never-seen
+      // handles as accounts, so 6 more Layer-1 posts' existing credits now resolve to a vendor
+      // account (Layer 1 itself unchanged at 1308 -- this is association, not geography).
       const { rows } = await pool.query(`
         select
           (select count(*)::int from human_confirmed_vendor_page_content) as vendor_page,
@@ -93,9 +102,11 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
              where va.has_vendor_association) as expected
       `);
       expect(rows[0].vendor_page).toBe(rows[0].expected);
-      expect(rows[0].vendor_page).toBe(1206);
+      expect(rows[0].vendor_page).toBe(1217);
     },
-    30000
+    // 120s, was 30s (D055): the view now scans 451k stack entries (was 362k) after the
+    // corpus-wide parse -- ~19s per evaluation, and this test evaluates it twice.
+    120000
   );
 
   it("author-is-vendor posts with no tagged vendor exist and are captured (the D046 discovery: a venue posting its own real wedding, crediting no one else, still counts)", async () => {

@@ -60,6 +60,75 @@ each slice behind a calibration gate on the golden set before corpus spend.
   frontier row skipped. **Brand-handle bridges (`trumphotels`, `noburestaurants`, `hilton`,
   `marriottbonvoy`, `fairmonthotels`…) are a known class needing a cleanup pass.** Deliberately
   left unresolved: "Lacuna Lofts" (4 distinct `lacuna*` venue accounts), "The Library Club".
+- **Stack parser v8** (`stackParser.ts`, Sonnet-implemented, Fable-reviewed): two additive venue
+  patterns, each entry tagged with a new `stack_extraction_entries.source` column
+  (`credit_line` | `inline_at` | `venue_hashtag`, default `credit_line`, backfilled 362k rows). A
+  labeled credit always wins over either pattern for the same handle. Before the first real run,
+  sized the prose pattern's context: **15% of `at @handle` lines are stays/afterparties/getting-
+  ready** ("2-Night Stay at @thegraychi", "afterparty at @dorothydownstairs") — the D051
+  wrong-venue trap in prose form — so a containing-line guard demotes those to `role='other'`
+  (kept, source-tagged). Full v8 run: **8,611 posts with a venue credit (was 7,151)**; 1,296
+  `inline_at` venue entries (+143 demoted), 373 `venue_hashtag`. **Hand-read 40 random
+  `inline_at` credits: venue attribution ~90% correct *when the post is a wedding*, but only ~1 in
+  3 is a wedding post at all** (bar promos, galas, expos, hotel-brand marketing, one 50th
+  birthday). So `inline_at` is a good venue *anchor* and a weak wedding *signal* — the structural
+  source's eligibility (anchor AND ≥1 other vendor credit, or wedding language + couple names)
+  is what keeps it honest, and anchor priority is credit line > author > location tag > inline >
+  hashtag. Reels excluded from nothing here (text only).
+- **Never-seen handles minted** (`upsertAccountsForStackHandles.ts`): the evidence views join
+  `accounts` by handle, so every credit to a handle the graph had never seen was silently
+  invisible. Inserted 8,434 bare `accounts` rows (1,283 venues, 939 photographers, 840 florists,
+  780 hair, 770 planners…) — `accounts` 14,420 → 22,854. Same mechanism as `pipeline.py`'s
+  `acct_id()`; geography for the new venues is unknown until verified (they cluster as
+  `CHICAGO_AMBIGUOUS`, never auto-created).
+- **`structural_post_vendor_evidence` + `--evidence-source structural`** (`structural-v1`, the
+  fifth provenance-separated candidate pool): one venue-anchor row per post chosen by priority
+  credit line → author-is-venue → location tag → inline `at @` → venue hashtag (alias-
+  canonicalized; 2+ distinct credit-line venues on one post → `venue_anchor_conflict=true`, the
+  D050/D051 flag), plus every non-venue credit. Eligibility (in the clustering script, this source
+  only): **venue anchor AND (≥1 other vendor credit OR wedding language + couple-name pattern)** —
+  replaces the ≥3-role floor for anchored posts. Candidates persist `venue_anchor_source` /
+  `venue_anchor_conflict`. View: 57,850 evidence rows over 22,669 posts.
+- **Step 6 sizing (dry-run, deterministic, before any write to candidates):** 6,402 eligible
+  posts (3,958 credit line / 1,216 location tag / 1,013 author / 180 inline / 35 hashtag; 456
+  with a venue conflict). Clustering: **4,646 new candidates + 774 posts attached to existing
+  ones; 2,735 `CHICAGO_CONFIRMED`, 1,806 `AMBIGUOUS`, 105 `NOT_CONFIRMED`.** Coverage impact: 974
+  posts at known venues with 1-5 documented weddings (153 venues), ~316 at known zero-coverage
+  venues, and **2,062 posts at 1,018 venue handles the graph had never seen** — the geography-
+  verification pile (expect a large non-Chicago share, per D052). For scale: 3,541 weddings exist
+  today. None of this is created until a human confirms it at the candidate level (Phase 1).
+- **Provenance before any creation** (user's question: "if we claim too many documented weddings
+  can we revert?"): `jeremy_weddings_created.batch_id` (now required by
+  `createWeddingsFromJeremyEvidence.ts --batch-id`), `revertWeddingBatch.ts` (dry-run default,
+  logs every row to `weddings_retired_batches` before FK-ordered deletes, only ever removes
+  `jeremy_evidence` posts, refreshes `edges`), and `snapshotGraphTables.ts` (gzipped CSV of the
+  six graph tables; `pre-d055-phase1` taken: 3,541 / 4,082 / 33,263 / 8,850 / 14,420 / 2,232).
+  Rule: **no create batch without a snapshot and a batch id.** The 1,326 weddings with no creation
+  log are Ben's original crawl — the floor — pinned in a test so it can never grow.
+- **Clustered `structural-v1` for real** (4,646 candidates; reconciliation: 0 of the 2,735
+  Chicago-confirmed match HIGH to an existing wedding, 184 ambiguous, 2,551 genuinely new) and
+  **hand-read 12 random Chicago-confirmed candidates at ≤5-wedding venues before letting a human
+  near them**: 6 clean real weddings at the right venue; 1 real but wrong venue (getting-ready
+  hotel anchored via inline `at @` — "morning moments at @ambassadorchicago… dance floor at
+  @galleriamarchetti"); 1 candidate merging two different couples (228 of 4,646, 5%, contain ≥2
+  distinct couple names — same-venue same-window Jaccard merges); 3 venue marketing posts ("Book
+  now!", "Inquire today") — all venue-*authored*, one vendor credit, no wedding language; 1
+  false couple signal ("Lido Banquets & Events" matched the couple regex). Roughly two-thirds
+  real, half clean as-is. **Three fixes → `structural-v2`**: non-credit-line anchors (author /
+  location tag / inline / hashtag) must also carry wedding language; the couple regex excludes
+  business words; clustering vetoes a merge when both posts name different couples. The
+  unreviewed v1 candidates (derived, regenerable, zero human decisions) are deleted and
+  re-clustered under v2 — the one deliberate delete in this mission, because
+  `jeremy_wedding_candidate_posts`' PK on `source_post_url` would otherwise block re-clustering.
+- **Candidate-review UI shipped** (`/label/candidates`, Sonnet-implemented): one decision per
+  wedding — Confirm / Wrong venue (+handle) / Not a wedding / Duplicate (+wedding id, prefilled
+  from reconciliation) / Unsure / Skip — written append-only to `candidate_review_decisions` and
+  fanned out to `human_post_labels` (`queue_version='candidate_review_v1'`) so
+  `syncHumanLabelsToGoldenSet.ts` needs no change. Queue order: Chicago-confirmed first, then the
+  venue's current documented-wedding count ascending. Shows anchor source, venue-conflict
+  badge with the other credited venues, vendor list, couple guess, duplicate hint, and every post
+  via the browser-side IG embed. Known V1 limitation: no "split" action for a multi-couple merge
+  (the v2 veto is the mitigation). Anti-anchoring preserved: no model scores reach the browser.
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 

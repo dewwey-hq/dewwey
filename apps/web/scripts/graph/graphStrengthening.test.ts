@@ -182,6 +182,83 @@ describe("parseCaption v3 NOCOLON_LINE (unit, vendor-feed-gap Case A fixtures)",
     const { stack } = await parse("Venue + Hotel: @somehotel");
     expect(stack.find((e) => e.handle === "somehotel")).toMatchObject({ role: "venue" });
   });
+
+  it("existing 'Venue: @handle' credit lines are tagged source='credit_line' (v8, D055 -- so per-pattern precision can be measured downstream)", async () => {
+    const { stack } = await parse("Venue: @galleriamarchetti");
+    expect(stack).toEqual([
+      expect.objectContaining({ handle: "galleriamarchetti", role: "venue", source: "credit_line" }),
+    ]);
+  });
+});
+
+describe("parseCaption v8 inline_at + venue_hashtag (unit, D055 Phase 0 step 2)", () => {
+  async function parse(caption: string, opts?: { venueHandles?: Set<string> }) {
+    const { parseCaption } = await import("./stackParser");
+    return parseCaption(caption, opts);
+  }
+
+  it("extracts 'at @handle' embedded in caption prose as a venue credit, source inline_at", async () => {
+    const { stack } = await parse("Congrats Sam & Alex who tied the knot at @thedalcy!");
+    expect(stack).toEqual([
+      expect.objectContaining({ handle: "thedalcy", role: "venue", role_raw: "at @", source: "inline_at" }),
+    ]);
+  });
+
+  it("demotes 'at @handle' to role=other (kept, source-tagged) when the containing line is a secondary-event or hospitality context -- the D051 wrong-venue-anchor trap, sized at 15% of inline matches before the first v8 run", async () => {
+    const cases = [
+      "Getting ready at @thegraychi before the big day 💄",
+      "The afterparty at @dorothydownstairs will begin at 7pm",
+      "- 2-Night Stay at @thegraychi (Chicago)",
+      "Few views compare to the Royal Suite at @intercontinental_madrid",
+    ];
+    for (const c of cases) {
+      const { stack } = await parse(c);
+      expect(stack).toHaveLength(1);
+      expect(stack[0]).toEqual(expect.objectContaining({ role: "other", role_raw: "at @ (secondary/stay)", source: "inline_at" }));
+    }
+    // ...but a genuine wedding-venue sentence on its own line is untouched.
+    const { stack: ok } = await parse("Anna & Matt's reception at @waldenchicago was unreal");
+    expect(ok[0]).toEqual(expect.objectContaining({ role: "venue", role_raw: "at @" }));
+  });
+
+  it("does NOT extract a venue_hashtag entry when no venueHandles set is passed -- the pattern requires an explicit lookup list, it never guesses", async () => {
+    const { stack } = await parse("Best day ever! #thedalcywedding");
+    expect(stack.find((e) => e.source === "venue_hashtag")).toBeUndefined();
+  });
+
+  it("extracts '#<handle>wedding' as a venue credit, source venue_hashtag, when the handle is in the passed venueHandles set", async () => {
+    const { stack } = await parse("Best day ever! #thedalcywedding", { venueHandles: new Set(["thedalcy"]) });
+    expect(stack).toEqual([
+      expect.objectContaining({ handle: "thedalcy", role: "venue", role_raw: "#hashtag", source: "venue_hashtag" }),
+    ]);
+  });
+
+  it("does NOT extract a venue_hashtag entry for a hashtag whose handle isn't in the venueHandles set", async () => {
+    const { stack } = await parse("Best day ever! #chicagowedding", { venueHandles: new Set(["thedalcy"]) });
+    expect(stack.find((e) => e.source === "venue_hashtag")).toBeUndefined();
+  });
+
+  it("emits exactly ONE venue entry, source credit_line, when a caption has both a labeled 'Venue: @handle' line AND the same handle again as inline prose ('at @handle') -- the labeled credit wins, no duplicate", async () => {
+    const { stack } = await parse("Venue: @thedalcy\nSo grateful we got married at @thedalcy, it was perfect.");
+    const venueEntries = stack.filter((e) => e.handle === "thedalcy");
+    expect(venueEntries).toHaveLength(1);
+    expect(venueEntries[0]).toMatchObject({ role: "venue", source: "credit_line" });
+  });
+
+  it("emits exactly ONE venue entry, source credit_line, when a caption has both a labeled 'Venue: @handle' line AND the same handle again as a venue_hashtag", async () => {
+    const { stack } = await parse("Venue: @thedalcy\n#thedalcywedding", { venueHandles: new Set(["thedalcy"]) });
+    const venueEntries = stack.filter((e) => e.handle === "thedalcy");
+    expect(venueEntries).toHaveLength(1);
+    expect(venueEntries[0]).toMatchObject({ role: "venue", source: "credit_line" });
+  });
+
+  it("both new patterns can still contribute toward has_stack (>=3 distinct roles), same as credit_line entries", async () => {
+    const { stack, has_stack } = await parse(
+      "Planner: @someplanner\nPhoto: @somephoto\nWe got married at @thedalcy!"
+    );
+    expect(stack.find((e) => e.handle === "thedalcy")).toMatchObject({ role: "venue", source: "inline_at" });
+    expect(has_stack).toBe(true);
+  });
 });
 
 // --- Structural invariants against the live DB. Read-only. ---
@@ -431,7 +508,12 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     expect(before).toBe(322);
     // 353 (beyond_include_v1 completion sync, 2026-09-07): more candidates converging on
     // already-created weddings as the graph keeps growing -- same expected signature.
-    expect(after).toBe(353);
+    // 427 (D055 structural-v2, 2026-09-08): +4,355 venue-anchored candidates from the
+    // ungated/v8 parser + location tags + author-is-venue; several hundred are additional posts
+    // about weddings already on file (the ambiguous 0.4 tier -- the review UI's "Duplicate"
+    // path), so many-to-one convergence rises as expected. Zero ingestion-safety impact: only
+    // the 0.75-0.85 band is ever auto-applied.
+    expect(after).toBe(427);
   });
 
   it("insufficient-evidence tier size matches the current reconcile-v2 state (1,909 as of 2026-09-05)", async () => {
@@ -487,7 +569,13 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // createWeddingsFromJeremyEvidence.ts), so most of the new candidates land here unmatched
     // rather than being absorbed by a creation batch. Expected given this round's much lower
     // creation rate, not a regression.
-    expect(Number(rows[0].n)).toBe(353);
+    // 2,657 (D055 structural-v2, 2026-09-08): the structural source deliberately clusters posts
+    // NOT already documented as weddings at venues that mostly DO have some existing weddings,
+    // so the reconciler finds a venue-mate for most of them but below the ambiguous floor --
+    // exactly the "insufficient" tier by design (matched_wedding_id stays null, metrics kept for
+    // inspection). These are the candidates the /label/candidates review decides on; none are
+    // created without a human CONFIRM.
+    expect(Number(rows[0].n)).toBe(2657);
   }, 15000);
 
   it("weddings/wedding_posts are unaffected by the reconciliation rerun — reconciliation never writes to Ben's graph (wedding_vendors/edges are D023's separate, deliberate ingestion, asserted in its own describe block)", async () => {
@@ -616,8 +704,13 @@ describe("clustering boundary-tie investigation — current (unfixed) state (DB)
         (select count(*) from jeremy_wedding_candidates) as candidates,
         (select count(*) from jeremy_wedding_candidate_posts) as candidate_posts
     `);
-    expect(Number(rows[0].candidates)).toBe(3520);
-    expect(Number(rows[0].candidate_posts)).toBe(3962);
+    // plus 4,355/4,743 from structural-v2 (D055, 2026-09-08: venue-anchored source over the
+    // ungated v8 parser + location_tag_venue_map + author-is-venue; 388 of its posts attached to
+    // existing candidates rather than minting new ones -- 4,355 new candidates + 4,743 new
+    // candidate_posts rows) = 7,875/8,705. structural-v1's 4,646/5,420 were deleted and
+    // re-clustered as v2 (zero human decisions, zero creations -- see decisions.md D055).
+    expect(Number(rows[0].candidates)).toBe(7875);
+    expect(Number(rows[0].candidate_posts)).toBe(8705);
   });
 });
 
@@ -798,7 +891,13 @@ describe("graph ingestion — D023 (DB)", () => {
     // bridgeVerifiedVenueAccounts.ts. Not a wedding-creation batch; these start with zero posts,
     // queued in crawl_frontier same as D050's Track 2.2 batch, pending Track 3 (deferred, no
     // Apify credits until 2026-09-11).
-    expect(Number(rows[0].accounts)).toBe(14420);
+    // +8434 (14420->22854, D055 Phase 0 step 5, 2026-09-08): upsertAccountsForStackHandles.ts
+    // minted bare `accounts` rows for every handle the (now ungated, v8) stack parser credited
+    // that the graph had never seen -- 1,283 venues, 939 photographers, 840 florists, ... The
+    // evidence views join accounts by handle, so without these rows ~1k venue credits and
+    // thousands of vendor credits were silently invisible (the candidate_score circularity in
+    // one number). Same mechanism as pipeline.py's acct_id() and D050 Track 2.2's placeholders.
+    expect(Number(rows[0].accounts)).toBe(22854);
   });
 
   it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {
@@ -904,9 +1003,9 @@ describe("non-wedding-posts role_shape_v1 gate — D040 (DB)", () => {
 
 describe("vendor feed count invariant (DB)", () => {
   const pool = getPool();
-  afterAll(async () => {
-    await closePool();
-  });
+  // No afterAll(closePool) here -- this is no longer the last describe block in the file
+  // (D055's batch-provenance block below now is). Moved there, same "exactly one closePool()
+  // call for the whole file" rule as the D023 block's comment above establishes.
 
   it("galleriamarchetti Feed equals wedding_vendors rows (still 15 after Case A/B — D027/D031)", async () => {
     const { rows } = await pool.query(`
@@ -925,5 +1024,49 @@ describe("vendor feed count invariant (DB)", () => {
       where a.username = 'ulcchicago' and wv.wedding_id = 1352
     `);
     expect(rows.map((r) => r.role)).toContain("venue");
+  });
+});
+
+// --- D055 (2026-09-08): provenance/reversibility -- batch identity on jeremy_weddings_created,
+// the weddings_retired_batches revert-log table, and the "no orphaned-provenance weddings" floor.
+// See pipeline/schema.sql's D055 entries, applyWeddingBatchProvenanceSchema.ts,
+// revertWeddingBatch.ts, and createWeddingsFromJeremyEvidence.ts's now-required --batch-id. ---
+describe("D055 batch provenance/reversibility (DB)", () => {
+  const pool = getPool();
+  // Exactly one closePool() call for the whole file, in this LAST describe block (see the
+  // D023 block's and "vendor feed count invariant" block's own comments above).
+  afterAll(async () => {
+    await closePool();
+  });
+
+  it("jeremy_weddings_created.batch_id column exists (applied via applyWeddingBatchProvenanceSchema.ts)", async () => {
+    const { rows } = await pool.query(`
+      select column_name, data_type from information_schema.columns
+      where table_name = 'jeremy_weddings_created' and column_name = 'batch_id'
+    `);
+    expect(rows.length).toBe(1);
+    expect(rows[0].data_type).toBe("text");
+  });
+
+  it("weddings_retired_batches table exists and is empty (no batch has been reverted yet)", async () => {
+    const { rows } = await pool.query(`select count(*)::int as n from weddings_retired_batches`);
+    expect(rows[0].n).toBe(0);
+  });
+
+  it("every weddings row without a jeremy_weddings_created row is one of Ben's original-crawl weddings -- this floor must never grow", async () => {
+    // Measured live 2026-09-08 (same day as the D050 orphaned-wedding bug fix that made this
+    // number stable, 2026-09-07): 1,326 weddings have no jeremy_weddings_created row at all.
+    // These are Ben's original crawl, created before this whole Jeremy-evidence workstream
+    // existed -- createWeddingsFromJeremyEvidence.ts is the ONLY script that has ever created a
+    // `weddings` row from Jeremy's corpus, and it has always logged to jeremy_weddings_created
+    // (D023 onward) -- so every NEW wedding from here on comes with a log row, and this number
+    // is a floor, not a snapshot: it must never increase. If it does, something created a
+    // weddings row outside the logged path (the same class of bug the D050 orphaned-wedding
+    // cleanup fixed) and needs auditing before this mission's revert tooling can be trusted.
+    const { rows } = await pool.query(`
+      select count(*)::int as n from weddings w
+      where not exists (select 1 from jeremy_weddings_created j where j.wedding_id = w.id)
+    `);
+    expect(rows[0].n).toBe(1326);
   });
 });

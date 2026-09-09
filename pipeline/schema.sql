@@ -1255,3 +1255,307 @@ group by wedding_id
 having max(rank) > 0;
 
 comment on view wedding_styled_shoot_flag is 'DERIVED (D049): rolls post_styled_shoot_signal up to the wedding level -- only weddings with >=1 flagged post appear. Never touches weddings/wedding_posts; a future UI reads this to tag/separate styled-shoot content from real weddings.';
+
+-- "Squeeze the 47k" mission, D055 (2026-09-08), Phase 0 step 5. Measured against golden_set
+-- ground truth: 41% of human-confirmed real weddings are blocked from clustering purely on
+-- venue resolution -- every existing evidence view (jeremy_post_vendor_evidence,
+-- human_confirmed_post_vendor_evidence, venue_couple_signal_post_vendor_evidence,
+-- venue_inline_mention_post_vendor_evidence) requires a `Role: @handle` credit line naming the
+-- venue AND clustering's own >=3-distinct-role eligibility floor. This is a fifth, separate
+-- provenance pool (same non-mixing rule as every source above -- see runJeremyWeddingClustering.ts)
+-- that anchors the venue from ANY of four structural signals instead of requiring a labeled
+-- credit line, and lowers the eligibility floor for venue-anchored posts only (enforced in
+-- runJeremyWeddingClustering.ts's --evidence-source structural branch, NOT in this view -- kept a
+-- plain evidence view like its predecessors).
+--
+-- Venue anchor priority, exactly one row per post with role='venue':
+--   1. credit_line   -- a latest stack-parser entry with role='venue' (same "latest per
+--                        (post_url,line_no,handle) by extracted_at" resolution as
+--                        jeremy_post_vendor_evidence -- no parser-version filter, a fixed
+--                        ROLE_MAP bug fix should correct a row, not require a rerun). If 2+
+--                        DISTINCT (alias-resolved) venue accounts are credited on one post --
+--                        the double-venue-tag case D050/D051 already burned us on once -- still
+--                        emit exactly one row (lowest line_no wins) but set
+--                        venue_anchor_conflict=true so a human sees it instead of it being
+--                        silently picked.
+--   2. author        -- only tried when no credit-line venue exists: the post's own
+--                        `owner_username` resolves to an account that is independently known as
+--                        a venue (v_account_role.role='venue' OR a `vendors` row with
+--                        category='venue') -- same "author is a known venue" trust already used
+--                        by venue_couple_signal/venue_portfolio_content, just without also
+--                        requiring city='Chicago' here (chicago_status is resolved downstream).
+--   3. location_tag  -- only tried when neither of the above resolves: `location_tag_venue_map`
+--                        (built by buildLocationTagVenueMap.ts) on the post's IG location tag.
+-- Every venue account is resolved through account_aliases to its canonical id before either the
+-- conflict check or the emitted account_id -- two handles that alias to the SAME real venue must
+-- never register as a conflict (D052-D054's account-aliasing lesson).
+--
+-- Non-venue evidence rows are just the post's own latest non-'other'/non-'venue' stack credits
+-- (venue_anchor_source is null on these rows -- they aren't anchor candidates, just supporting
+-- evidence). has_couple_signal reuses the exact couple-name regex already validated at
+-- ~100% precision for venue_couple_signal_post_vendor_evidence; has_wedding_keyword is a
+-- broader generic-language backstop, only meaningful in combination with has_couple_signal (see
+-- the eligibility rule in runJeremyWeddingClustering.ts).
+--
+-- Universe: staging.instagram_posts (all 47k), excluding posts already promoted to a documented
+-- wedding (wedding_posts via posts.url) and posts a human has explicitly EXCLUDEd
+-- (golden_set.expected_decision='EXCLUDE') -- golden_set INCLUDE rows and never-labeled posts
+-- both stay in-universe; sizing (D055 Phase 0) reports the split.
+create view structural_post_vendor_evidence as
+with latest as (
+  select distinct on (post_url, line_no, handle)
+    post_url as source_post_url, line_no, handle, role, role_raw, source, stack_parser_version as parser_version
+  from stack_extraction_entries
+  order by post_url, line_no, handle, extracted_at desc
+),
+universe as (
+  select sp.post_url, sp.caption_raw, sp.post_timestamp, sp.location_tag, sp.owner_username
+  from staging.instagram_posts sp
+  where not exists (
+      select 1 from wedding_posts wp join posts p on p.id = wp.post_id where p.url = sp.post_url
+    )
+    and not exists (
+      select 1 from golden_set gs where gs.post_url = sp.post_url and gs.expected_decision = 'EXCLUDE'
+    )
+),
+-- Priority 1: labeled "Venue:"-style credit line, alias-resolved, one row per (post, canonical
+-- venue account) so a same-account double-credit at two lines never looks like a conflict.
+credit_line_accounts as (
+  select distinct
+    u.post_url as source_post_url,
+    coalesce(al.canonical_account_id, a.id) as account_id,
+    l.line_no,
+    l.role_raw
+  from universe u
+  -- D055 parser v8: only LABELED credit lines anchor at this (highest) priority. The v8 prose
+  -- (`inline_at`) and hashtag (`venue_hashtag`) venue credits are real anchors but weaker --
+  -- hand-read 40 inline_at credits: venue correct ~90% when the post IS a wedding, but only
+  -- ~1 in 3 is a wedding post at all -- so they rank BELOW author and location tag (see the
+  -- inline_venue / hashtag_venue CTEs).
+  join latest l on l.source_post_url = u.post_url and l.role = 'venue' and l.source = 'credit_line'
+  join accounts a on lower(a.username::text) = l.handle
+  left join account_aliases al on al.alias_account_id = a.id
+),
+credit_line_venue as (
+  select distinct on (source_post_url)
+    source_post_url, account_id, line_no, role_raw
+  from credit_line_accounts
+  order by source_post_url, line_no asc
+),
+credit_line_conflict as (
+  select source_post_url
+  from credit_line_accounts
+  group by source_post_url
+  having count(distinct account_id) > 1
+),
+-- Priority 2: author is an independently-known venue account (only for posts priority 1 missed).
+author_venue as (
+  select
+    u.post_url as source_post_url,
+    coalesce(al.canonical_account_id, va.id) as account_id
+  from universe u
+  join accounts va on lower(va.username::text) = lower(u.owner_username)
+  left join account_aliases al on al.alias_account_id = va.id
+  where not exists (select 1 from credit_line_venue clv where clv.source_post_url = u.post_url)
+    and (
+      exists (select 1 from v_account_role r where r.account_id = va.id and r.role = 'venue')
+      or exists (select 1 from vendors v where v.account_id = va.id and v.category = 'venue')
+    )
+),
+-- Priority 3: IG structured location tag resolves to a known venue (only for posts 1 and 2 missed).
+location_venue as (
+  select
+    u.post_url as source_post_url,
+    coalesce(al.canonical_account_id, ltm.venue_account_id) as account_id
+  from universe u
+  join location_tag_venue_map ltm on ltm.location_tag = u.location_tag
+  left join account_aliases al on al.alias_account_id = ltm.venue_account_id
+  where not exists (select 1 from credit_line_venue clv where clv.source_post_url = u.post_url)
+    and not exists (select 1 from author_venue av where av.source_post_url = u.post_url)
+),
+-- v8 prose pattern ("tied the knot at @venue"), 4th priority. One row per post (lowest line).
+inline_venue as (
+  select distinct on (u.post_url)
+    u.post_url as source_post_url,
+    coalesce(al.canonical_account_id, a.id) as account_id,
+    l.line_no, l.role_raw
+  from universe u
+  join latest l on l.source_post_url = u.post_url and l.role = 'venue' and l.source = 'inline_at'
+  join accounts a on lower(a.username::text) = l.handle
+  left join account_aliases al on al.alias_account_id = a.id
+  where not exists (select 1 from credit_line_venue clv where clv.source_post_url = u.post_url)
+    and not exists (select 1 from author_venue av where av.source_post_url = u.post_url)
+    and not exists (select 1 from location_venue lv where lv.source_post_url = u.post_url)
+  order by u.post_url, l.line_no asc
+),
+-- v8 venue-branded hashtag ("#thedalcywedding"), 5th priority.
+hashtag_venue as (
+  select distinct on (u.post_url)
+    u.post_url as source_post_url,
+    coalesce(al.canonical_account_id, a.id) as account_id,
+    l.line_no, l.role_raw
+  from universe u
+  join latest l on l.source_post_url = u.post_url and l.role = 'venue' and l.source = 'venue_hashtag'
+  join accounts a on lower(a.username::text) = l.handle
+  left join account_aliases al on al.alias_account_id = a.id
+  where not exists (select 1 from credit_line_venue clv where clv.source_post_url = u.post_url)
+    and not exists (select 1 from author_venue av where av.source_post_url = u.post_url)
+    and not exists (select 1 from location_venue lv where lv.source_post_url = u.post_url)
+    and not exists (select 1 from inline_venue iv where iv.source_post_url = u.post_url)
+  order by u.post_url, l.line_no asc
+),
+venue_anchor as (
+  select
+    source_post_url, account_id, 'venue'::text as role, role_raw, line_no,
+    'credit_line'::text as venue_anchor_source,
+    exists (select 1 from credit_line_conflict cc where cc.source_post_url = clv.source_post_url) as venue_anchor_conflict
+  from credit_line_venue clv
+  union all
+  select source_post_url, account_id, 'venue', null, null, 'author', false
+  from author_venue
+  union all
+  select source_post_url, account_id, 'venue', null, null, 'location_tag', false
+  from location_venue
+  union all
+  select source_post_url, account_id, 'venue', role_raw, line_no, 'inline_at', false
+  from inline_venue
+  union all
+  select source_post_url, account_id, 'venue', role_raw, line_no, 'venue_hashtag', false
+  from hashtag_venue
+),
+non_venue_evidence as (
+  select
+    u.post_url as source_post_url,
+    a.id as account_id,
+    l.role,
+    l.role_raw,
+    l.line_no,
+    null::text as venue_anchor_source,
+    null::boolean as venue_anchor_conflict
+  from universe u
+  join latest l on l.source_post_url = u.post_url
+  join accounts a on lower(a.username::text) = l.handle
+  where l.role not in ('other', 'venue')
+),
+combined as (
+  select * from venue_anchor
+  union all
+  select * from non_venue_evidence
+),
+-- D055 precision fix (2026-09-08): the couple-name alternative of the regex below
+-- ([A-Z][a-z]+ *(&|+|and) *[A-Z][a-z]+) also matches two business words back-to-back --
+-- "Lido Banquets & Events" hand-read as a false couple signal. Extract the match ONCE here
+-- (whichever alternative fired) and veto it -- for has_couple_signal AND couple_guess alike --
+-- when it contains a business word. couple_guess is the same extraction, lowercased, exposed so
+-- runJeremyWeddingClustering.ts's structural branch can veto a Jaccard/date merge across two
+-- posts that name two different couples, without re-parsing captions itself.
+couple_extract as (
+  select
+    post_url,
+    raw_match,
+    (raw_match is not null and raw_match !~* '\y(Events|Event|Catering|Photography|Photo|Films|Film|Designs|Design|Florals|Floral|Flowers|Banquets|Banquet|Studio|Studios|Co|Company|Weddings|Wedding|Hall|Room|Bar|Grill|Rentals|Decor|Beauty|Hair|Makeup|Music|Sound|Booth|Bridal|Boutique|Group|Team|Cakes|Bakery|Planning|Entertainment|Lounge|Rooftop|Club|Hotel|Venue)\y') as couple_signal_ok
+  from (
+    select
+      u.post_url,
+      substring(u.caption_raw from '(Mr\.? *& *Mrs\.?|Couple: *@|Bride: *@|[A-Z][a-z]+ *(&|\+|and) *[A-Z][a-z]+)') as raw_match
+    from universe u
+  ) x
+)
+select
+  c.source_post_url,
+  c.account_id,
+  c.role,
+  c.role_raw,
+  c.line_no,
+  c.venue_anchor_source,
+  c.venue_anchor_conflict,
+  coalesce(ce.couple_signal_ok, false) as has_couple_signal,
+  coalesce(u.caption_raw ~* '\y(wedding|bride|groom|reception|ceremony|newlywed|married|mr\.? *& *mrs|i do|tied the knot|big day|vows?)\y', false) as has_wedding_keyword,
+  u.post_timestamp::date as event_date,
+  -- Appended last, not next to has_couple_signal: `create or replace view` only allows new
+  -- columns at the end of the select list -- it errors ("cannot change name of view column") if
+  -- an existing column's position shifts, even when the name/type at that position is otherwise
+  -- identical. Verified directly against the already-applied structural-v1 view.
+  case when ce.couple_signal_ok then lower(ce.raw_match) else null end as couple_guess
+from combined c
+join universe u on u.post_url = c.source_post_url
+join couple_extract ce on ce.post_url = c.source_post_url;
+
+comment on view structural_post_vendor_evidence is 'DERIVED (D055 "squeeze the 47k" Phase 0, precision fixes for structural-v2 2026-09-08): venue-anchors a post from credit-line, author-is-known-venue, or IG location-tag (priority order, alias-resolved, conflict-flagged), plus the post''s own non-venue stack credits. has_couple_signal/couple_guess veto business-word false matches (e.g. "Lido Banquets & Events"). Eligibility (venue anchor + supporting evidence, anchor-source-dependent) and the couple-guess merge veto are enforced in runJeremyWeddingClustering.ts --evidence-source structural, not here. See docs/decisions.md D055.';
+
+-- v8 (D055, 2026-09-08 -- Phase 0 step 2): stack_extraction_entries gets a `source` column so
+-- per-pattern precision can be measured before anything downstream trusts a new pattern the same
+-- as a labeled credit line. Three values: 'credit_line' (the original LINE/NOCOLON_LINE "Label:
+-- @handle" match, v1-v7 behavior, unchanged -- the default, so every pre-v8 row backfills
+-- correctly with no re-parse), 'inline_at' (v8: "at @handle"/"at the @handle"/"@ @handle" matched
+-- against caption prose, not a labeled line -- see stackParser.ts's INLINE_AT), and
+-- 'venue_hashtag' (v8: "#<venuehandle>wedding"/"...bride"/"...couple"/etc. against a known-venue
+-- username lookup -- see stackParser.ts's buildVenueHashtagRegex). Additive, defaulted, backfills
+-- existing rows for free -- applied via apps/web/scripts/graph/applyStackEntrySourceColumn.ts.
+alter table stack_extraction_entries add column if not exists source text not null default 'credit_line';
+comment on column stack_extraction_entries.source is 'D055: which pattern produced this entry -- credit_line (labeled "Label: @handle" line, v1-v7 behavior), inline_at (v8, caption-prose "at @handle"), or venue_hashtag (v8, known-venue "#handlewedding"-shaped hashtag). Lets precision be measured per pattern before it is trusted like a labeled credit.';
+
+-- D055 (2026-09-08) -- provenance/reversibility follow-up to Ben's question "if we claim too
+-- many documented weddings, can we revert to what we had before?" `jeremy_weddings_created`
+-- already logs which candidate created which wedding, but had no notion of WHICH SCRIPT RUN did
+-- it -- so a bad ingestion batch could only be undone by hand-picking individual wedding ids out
+-- of a live query, never as a unit. `batch_id` makes every future creation run (each one now
+-- requires `--batch-id <id>`, see createWeddingsFromJeremyEvidence.ts) independently identifiable
+-- and revertable via revertWeddingBatch.ts. Additive; rows created before D055 are left NULL --
+-- they predate batch identity and stay covered by the existing per-candidate audit trail, just
+-- not revertable as a batch.
+alter table jeremy_weddings_created add column if not exists batch_id text;
+comment on column jeremy_weddings_created.batch_id is 'D055: which createWeddingsFromJeremyEvidence.ts invocation created this row (required on every run from 2026-09-08 onward; suggested format d055-<source>-<YYYY-MM-DD>-<n>). NULL on rows created before batch identity existed. Lets revertWeddingBatch.ts undo one creation run as a unit.';
+create index if not exists idx_jeremy_weddings_created_batch_id on jeremy_weddings_created(batch_id);
+
+-- D055: provenance log for revertWeddingBatch.ts, mirroring orphaned_weddings_retired's shape
+-- (the 2026-09-07 orphaned-wedding cleanup's ad hoc table) -- one row per wedding a batch revert
+-- removed, capturing everything needed to understand and, if truly necessary, hand-reconstruct
+-- what was undone without re-deriving it from a live query. This table (plus the snapshot CSVs
+-- from snapshotGraphTables.ts) is the safety net Supabase's free tier doesn't give us for free --
+-- no point-in-time recovery on this plan, so "can we revert" has to be answered in application
+-- code, not by the platform.
+create table if not exists weddings_retired_batches (
+  id                     bigint generated always as identity primary key,
+  batch_id               text not null,
+  wedding_id             bigint not null,
+  venue_id               bigint,
+  event_date_est         date,
+  is_chicago             boolean,
+  wedding_created_at     timestamptz,
+  candidate_id           bigint,
+  post_ids               bigint[],
+  vendor_account_ids     bigint[],
+  removed_posts_imported bigint[], -- posts rows deleted because no other wedding referenced them
+  reason                 text not null,
+  retired_at             timestamptz not null default now()
+);
+comment on table weddings_retired_batches is 'D055: one row per wedding removed by revertWeddingBatch.ts, mirroring orphaned_weddings_retired''s provenance-on-delete shape. removed_posts_imported is the subset of post_ids whose posts row (source=jeremy_evidence) was deleted because no other wedding_posts row referenced it after this wedding was removed.';
+create index if not exists idx_weddings_retired_batches_batch_id on weddings_retired_batches(batch_id);
+
+-- D055 Phase 1 step 8 (2026-09-08): human review moves from the POST level (/label,
+-- human_post_labels) to the wedding-CANDIDATE level (/label/candidates) -- the structural-v1
+-- clustering source (Phase 0) produced thousands of venue-anchored jeremy_wedding_candidates
+-- from signals weaker than a labeled credit line (author-is-venue, location tag, inline prose),
+-- so the review question is no longer "is this one post a wedding" but "is this whole cluster of
+-- posts the right venue, in Chicago, a real wedding, and not already documented" -- exactly one
+-- decision per candidate instead of one per post. Same append-only, latest-wins discipline as
+-- human_post_labels/human_post_labels_current (see docs/engineering/human-labeling/README.md):
+-- relabeling a candidate never overwrites, it just inserts another row; this view resolves the
+-- current state. The existing /label post-level flow is unchanged and stays live for calibration
+-- -- this is a second, independent review surface, not a replacement.
+create table if not exists candidate_review_decisions (
+  id bigint generated always as identity primary key,
+  candidate_id bigint not null references jeremy_wedding_candidates(id),
+  decision text not null check (decision in ('CONFIRM','WRONG_VENUE','NOT_WEDDING','DUPLICATE','UNSURE','SKIP')),
+  corrected_venue_account_id bigint references accounts(id),   -- WRONG_VENUE: the right venue, if the reviewer names one
+  duplicate_of_wedding_id bigint references weddings(id),      -- DUPLICATE: which existing wedding
+  notes text,
+  reviewed_by text not null,
+  client_ms integer,
+  reviewed_at timestamptz not null default now()
+);
+create index if not exists idx_candidate_review_decisions_candidate on candidate_review_decisions(candidate_id);
+create view candidate_review_decisions_current as select distinct on (candidate_id) * from candidate_review_decisions order by candidate_id, reviewed_at desc;
+comment on table candidate_review_decisions is 'RAW (append-only, D055 Phase 1 step 8): every wedding-candidate-level human review action from /label/candidates -- never overwritten on relabel. Confirmed candidates flow into golden_set (WEDDING) via the existing syncHumanLabelsToGoldenSet.ts, unchanged, because recordCandidateDecision() also writes human_post_labels rows (queue_version=''candidate_review_v1'') for every post in the candidate.';
+comment on view candidate_review_decisions_current is 'DERIVED: latest candidate review decision per candidate_id, same DISTINCT ON convention as human_post_labels_current.';

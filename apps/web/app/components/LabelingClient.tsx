@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { embedUrl } from "./InstagramEmbed";
 import { matchKeyToAction, type LabelAction } from "@/lib/labelKeyboard";
 import type { QueueItem, HumanLabelDecision } from "@/lib/server/labeling";
@@ -200,6 +201,11 @@ export function LabelingClient({
               {failedCount} failed to save
             </span>
           )}
+          {/* D055 Phase 1 step 8: the new wedding-candidate-level review surface, a separate
+              queue/decision log from this post-level one -- linked, not merged. */}
+          <Link href="/label/candidates" className="text-gray-500 underline hover:text-gray-900">
+            Candidate review →
+          </Link>
         </span>
       </div>
 

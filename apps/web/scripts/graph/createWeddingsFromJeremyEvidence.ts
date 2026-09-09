@@ -35,9 +35,18 @@
  *   EXISTING weddings (checkExistingDuplicatesForCreation.ts) — both clean for all 447,
  *   this pilot's 15 included.
  *
+ * `--batch-id <id>` is required (D055, 2026-09-08) — provenance/reversibility follow-up to
+ * Ben's question "if we claim too many weddings, can we revert?". `jeremy_weddings_created`
+ * previously logged WHICH candidate created WHICH wedding but not which script invocation did
+ * it, so there was no way to isolate and undo just one ingestion run. Every row this script
+ * inserts now carries the caller-supplied batch_id, and revertWeddingBatch.ts undoes one batch
+ * as a unit. Suggested format: `d055-<source>-<YYYY-MM-DD>-<n>` (source = a short label for
+ * the candidate set, e.g. `beyond-include`, `styled-shoot`; n = a small counter if the same
+ * source runs more than once in a day). No other behavior changes.
+ *
  * Usage (from apps/web):
- *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --dry-run
- *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts
+ *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --batch-id <id> --dry-run
+ *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --batch-id <id>
  */
 import { getPool, closePool } from "../classify/db";
 
@@ -761,6 +770,17 @@ function shortcodeFromUrl(url: string): string | null {
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
+  const batchIdFlagIndex = process.argv.indexOf("--batch-id");
+  const batchId = batchIdFlagIndex !== -1 ? process.argv[batchIdFlagIndex + 1] : undefined;
+  if (!batchId || batchId.startsWith("--")) {
+    console.error(
+      "[create-weddings] --batch-id <id> is required (D055 — every creation run must be individually revertable via revertWeddingBatch.ts).\n" +
+        "Usage: bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --batch-id <id> [--dry-run]\n" +
+        "Suggested format: d055-<source>-<YYYY-MM-DD>-<n> (e.g. d055-beyond-include-2026-09-08-1)"
+    );
+    process.exit(1);
+  }
+
   const pool = getPool();
   const client = await pool.connect();
 
@@ -906,15 +926,15 @@ async function main() {
       }
 
       await client.query(
-        `insert into jeremy_weddings_created (candidate_id, wedding_id) values ($1, $2) on conflict (candidate_id) do nothing`,
-        [candidateId, weddingId]
+        `insert into jeremy_weddings_created (candidate_id, wedding_id, batch_id) values ($1, $2, $3) on conflict (candidate_id) do nothing`,
+        [candidateId, weddingId, batchId]
       );
 
       console.log(`[create-weddings] candidate=${candidateId} -> wedding=${weddingId} posts=${posts.length} vendors=${candVendors.length}`);
     }
 
     console.log(
-      `[create-weddings] ${dryRun ? "DRY RUN — " : ""}weddings_created=${weddingsCreated} posts_imported=${postsImported} vendors_inserted=${vendorsInserted}`
+      `[create-weddings] ${dryRun ? "DRY RUN — " : ""}batch_id=${batchId} weddings_created=${weddingsCreated} posts_imported=${postsImported} vendors_inserted=${vendorsInserted}`
     );
 
     if (!dryRun) {

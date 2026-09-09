@@ -33,7 +33,19 @@
 // Venue:" combined labels as role=hotel instead of venue -- REVERTED in v7, see normRole()'s
 // comment for why (every real-world instance is the sole venue signal on a genuinely real
 // wedding; demoting would have stripped it). v7 is behaviorally identical to v5.
-export const STACK_PARSER_VERSION = "stack-parser-ts-v7";
+// v8 (D055, 2026-09-08): two additive venue-credit patterns the "Label: @handle"-shaped
+// credit-line regexes (LINE/NOCOLON_LINE) structurally can't see, because they're not a labeled
+// line at all -- they're a venue named in caption PROSE ("...tied the knot at @thedalcy!") or via
+// a branded hashtag ("#thedalcywedding"). WHY now: a SQL approximation of both shapes, run before
+// touching this file, found 637 wedding-keyword posts corpus-wide with the untouched "at @handle"
+// shape and 247 with a known-venue hashtag -- both currently produce ZERO venue credit under v7.
+// Each new pattern is stamped with its own `source` (`inline_at`/`venue_hashtag`, vs. the existing
+// lines' `credit_line`) so precision can be measured PER PATTERN against real posts before
+// runJeremyWeddingClustering.ts (or anything downstream) is trusted to treat them the same as a
+// labeled credit line -- same "measure before you trust a new signal" discipline as every other
+// addition to this file. See the INLINE_AT / buildVenueHashtagRegex comments below for the two
+// patterns and their shared duplicate/non-venue-line guards.
+export const STACK_PARSER_VERSION = "stack-parser-ts-v8";
 
 // Identical to pipeline.py's LINE/HANDLE regexes (character-for-character).
 const LINE = /^\s*[•\-*]?\s*([A-Za-z][A-Za-z &+/'’]{1,35}?)\s*[:|\-–—/]+\s*(.*@.*)$/;
@@ -192,11 +204,18 @@ export function normRole(roleRaw: string): string {
   return "other";
 }
 
+// v8 (D055): where a stack entry came from -- 'credit_line' is the original, LINE/NOCOLON_LINE-
+// matched "Label: @handle" behavior (v1-v7, unchanged); 'inline_at'/'venue_hashtag' are the two
+// new patterns below. Kept as a real field (not inferred later from role_raw) so a downstream
+// precision measurement can group by it without re-parsing role_raw text.
+export type StackEntrySource = "credit_line" | "inline_at" | "venue_hashtag";
+
 export interface StackEntry {
   role_raw: string;
   role: string;
   handle: string;
   line_no: number;
+  source: StackEntrySource;
 }
 
 export interface ParsedStack {
@@ -204,9 +223,46 @@ export interface ParsedStack {
   has_stack: boolean; // >=3 DISTINCT normalized roles, matching pipeline.py exactly
 }
 
-export function parseCaption(caption: string | null): ParsedStack {
+// v8 (D055): "at @handle" / "at the @handle" / "@ @handle" -- a venue named in caption PROSE, not
+// a structured credit line. Matched against the WHOLE caption (not per-line, unlike LINE/
+// NOCOLON_LINE above) because this shape is embedded mid-sentence, never its own line. See the
+// STACK_PARSER_VERSION v8 comment above for the measured sizing (637 posts).
+const INLINE_AT = /\b(?:at|@)\s+(?:the\s+)?@([A-Za-z0-9._]{2,30})\b/gi;
+// Containing-line context that means the "at @handle" is NOT the wedding venue (see the guard in
+// parseCaption). Secondary wedding events + hospitality/stay language + non-wedding gatherings.
+const INLINE_AT_SECONDARY_CONTEXT =
+  /\b(getting ready|got ready|rehearsal|after[- ]?party|welcome party|brunch|bachelor(ette)?|first look|stay(ed|ing)?|night stay|hotel room|suite|room block|happy hour|drinks at|dinner at|lunch at|sangeet|mehndi|haldi|bridal shower|baby shower)\b/i;
+
+// v8 (D055): "#<venuehandle>wedding"/"...weddings"/"...bride"/"...brides"/"...couple"/
+// "...couples"/"...event(s)" -- a venue named only via its own branded hashtag. Unlike INLINE_AT,
+// there's no structural way to tell a venue hashtag from any other hashtag ("#chicagowedding" is
+// not a venue), so this pattern REQUIRES a caller-supplied lookup list of known venue usernames
+// (parseCaption's `opts.venueHandles`, lowercased) and does nothing without one. The regex itself
+// is built from that set (one alternation, longest-first so a short handle that's a prefix of a
+// longer one can't shadow it, each username escaped) and cached per-Set via the WeakMap below so
+// the runner's one-time `venueHandles` build (see runStackParserBaseline.ts) only compiles the
+// regex once, not once per caption. See the STACK_PARSER_VERSION v8 comment above for the
+// measured sizing (247 posts).
+const venueHashtagRegexCache = new WeakMap<Set<string>, RegExp>();
+function buildVenueHashtagRegex(venueHandles: Set<string>): RegExp {
+  const cached = venueHashtagRegexCache.get(venueHandles);
+  if (cached) return cached;
+  const handles = Array.from(venueHandles)
+    .filter((h) => h.length > 0)
+    .sort((a, b) => b.length - a.length)
+    .map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const re =
+    handles.length === 0
+      ? /(?!)/g // never matches -- empty venue-handle set
+      : new RegExp(`#(${handles.join("|")})(?:wedding|weddings|bride|brides|couple|couples|events?)`, "gi");
+  venueHashtagRegexCache.set(venueHandles, re);
+  return re;
+}
+
+export function parseCaption(caption: string | null, opts?: { venueHandles?: Set<string> }): ParsedStack {
+  const text = caption ?? "";
   const stack: StackEntry[] = [];
-  const lines = (caption ?? "").split("\n");
+  const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     const m = LINE.exec(line) ?? NOCOLON_LINE.exec(line);
@@ -214,9 +270,57 @@ export function parseCaption(caption: string | null): ParsedStack {
     const roleRaw = m[1].trim();
     const rest = m[2];
     for (const hm of rest.matchAll(HANDLE)) {
-      stack.push({ role_raw: roleRaw, role: normRole(roleRaw), handle: hm[1].toLowerCase(), line_no: i });
+      stack.push({ role_raw: roleRaw, role: normRole(roleRaw), handle: hm[1].toLowerCase(), line_no: i, source: "credit_line" });
     }
   }
+
+  // v8 (D055): the two additive patterns below never override a labeled credit -- a "Label:
+  // @handle" line always wins, on ANY role, not just venue (e.g. a "Photographer: @studio" line
+  // means @studio should not also show up as an inline/hashtag venue guess).
+  const creditedHandles = new Set(stack.map((s) => s.handle));
+  const lineNoAt = (idx: number): number => (text.slice(0, idx).match(/\n/g) ?? []).length;
+  // True when the match's containing line is itself a LINE-shaped credit line for a DIFFERENT,
+  // non-venue role (e.g. "Photo at @studio") -- rare (NOCOLON_LINE usually catches these first,
+  // which the creditedHandles check above already handles), but guards the case where the
+  // containing line has its own colon-shaped label that disagrees with "venue".
+  const lineHasNonVenueLabel = (lineIdx: number): boolean => {
+    const lm = LINE.exec((lines[lineIdx] ?? "").trim());
+    return lm ? normRole(lm[1].trim()) !== "venue" : false;
+  };
+
+  for (const hm of text.matchAll(INLINE_AT)) {
+    const handle = hm[1].toLowerCase();
+    if (creditedHandles.has(handle)) continue;
+    const lineIdx = lineNoAt(hm.index ?? 0);
+    if (lineHasNonVenueLabel(lineIdx)) continue;
+    // Sized before the first real v8 run (D055): 268 of 1,844 inline "at @handle" lines (15%) sit
+    // in a secondary-event or hospitality context -- "getting ready at @hotel", "afterparty at
+    // @bar", "2-Night Stay at @hotel", "the Royal Suite at @..." -- which is exactly the
+    // wrong-venue-anchor trap SECONDARY_EVENT_VENUE_MARKER guards for labeled lines (D051).
+    // Prose has no label to inspect, so the guard here is the containing line's own words:
+    // demote to 'other' (kept, source-tagged, so precision can still be measured), never 'venue'.
+    const lineText = lines[lineIdx] ?? "";
+    const secondaryContext = INLINE_AT_SECONDARY_CONTEXT.test(lineText);
+    stack.push({
+      role_raw: secondaryContext ? "at @ (secondary/stay)" : "at @",
+      role: secondaryContext ? "other" : "venue",
+      handle,
+      line_no: lineIdx,
+      source: "inline_at",
+    });
+  }
+
+  if (opts?.venueHandles && opts.venueHandles.size > 0) {
+    const venueHashtag = buildVenueHashtagRegex(opts.venueHandles);
+    for (const hm of text.matchAll(venueHashtag)) {
+      const handle = hm[1].toLowerCase();
+      if (creditedHandles.has(handle)) continue;
+      const lineIdx = lineNoAt(hm.index ?? 0);
+      if (lineHasNonVenueLabel(lineIdx)) continue;
+      stack.push({ role_raw: "#hashtag", role: "venue", handle, line_no: lineIdx, source: "venue_hashtag" });
+    }
+  }
+
   const distinctRoles = new Set(stack.map((s) => s.role));
   return { stack, has_stack: distinctRoles.size >= 3 };
 }
