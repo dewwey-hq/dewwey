@@ -781,8 +781,10 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // content), the rest excluded (mostly non-Chicago Wisconsin/Indiana/Michigan patterns
     // resurfacing, generic marketing, or misresolved co-tags) -- see
     // createWeddingsFromJeremyEvidence.ts's own comment.
-    expect(Number(rows[0].weddings)).toBe(3541);
-    expect(Number(rows[0].wedding_posts)).toBe(4082);
+    // D055 batch 1 (2026-09-08 late, +13 weddings/+16 posts): first creation from the per-post
+    // venue review (candidate_review_derived), batch_id d055-structural-v2-batch1.
+    expect(Number(rows[0].weddings)).toBe(3554);
+    expect(Number(rows[0].wedding_posts)).toBe(4098);
   });
 });
 
@@ -833,7 +835,10 @@ describe("clustering boundary-tie investigation — current (unfixed) state (DB)
     // candidates absorbed into 199 survivors (same venue + same normalized couple name within
     // 400 days -- one wedding's posts spread across vendors and months). Posts unchanged (they
     // move, they don't disappear); logged in structural_candidate_merges.
-    expect(Number(rows[0].candidates)).toBe(7646);
+    // 7,645: one more hand-merge before batch 1 (candidate 8534 -> 8520, Warwick Allerton, same
+    // photographer next day with no couple name in the caption; logged in
+    // structural_candidate_merges with reason 'manual').
+    expect(Number(rows[0].candidates)).toBe(7645);
     expect(Number(rows[0].candidate_posts)).toBe(8705);
   });
 });
@@ -937,8 +942,10 @@ describe("graph ingestion — D023 (DB)", () => {
     // credits removed with them -- confirmed zero jeremy_wedding_vendors_ingested overlap).
     // +46 more from the beyond_include_v1 round 2+3 sync (2026-09-07, 6 weddings, same
     // provenance table).
-    expect(Number(rows[0].untouched)).toBe(33152);
-    expect(Number(rows[0].total)).toBe(33263);
+    // +68 more from D055 batch 1 (2026-09-08 late, 13 weddings from the per-post venue review;
+    // provenance is jeremy_weddings_created.batch_id, not this table, so all 68 are "untouched").
+    expect(Number(rows[0].untouched)).toBe(33220);
+    expect(Number(rows[0].total)).toBe(33331);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -991,8 +998,11 @@ describe("graph ingestion — D023 (DB)", () => {
     // content), the rest excluded (mostly non-Chicago Wisconsin/Indiana/Michigan patterns
     // resurfacing, generic marketing, or misresolved co-tags) -- see
     // createWeddingsFromJeremyEvidence.ts's own comment.
-    expect(Number(rows[0].weddings)).toBe(3541);
-    expect(Number(rows[0].wedding_posts)).toBe(4082);
+    // 3554/4098 (D055 batch 1, 2026-09-08 late): first creation from the per-post review --
+    // 13 weddings / 16 posts, batch_id d055-structural-v2-batch1, snapshot taken first,
+    // revertable via revertWeddingBatch.ts.
+    expect(Number(rows[0].weddings)).toBe(3554);
+    expect(Number(rows[0].wedding_posts)).toBe(4098);
     // accounts +6 (14334->14340): Tier 1's 159 candidates credited a few vendor handles never
     // seen before in `accounts` -- unlike Batch 5/6, whose venue accounts always pre-existed
     // (that's how they got tagged 'venue' in the first place), Tier 1 spans the FULL candidate

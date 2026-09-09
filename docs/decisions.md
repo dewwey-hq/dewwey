@@ -173,6 +173,29 @@ each slice behind a calibration gate on the golden set before corpus spend.
   with a blank handle records "real wedding, venue unknown," creation skips it; not worth
   engineering. Queue perf: 6-26 s → <0.5 s per page (venue counts in one CTE; entries filtered
   by post_url before any DISTINCT ON; citext-indexed handle join).
+- **Batch 1 created** (`d055-structural-v2-batch1`, snapshot taken first, user said "create"):
+  **13 weddings / 16 posts / 68 vendor credits** from the user's first ~30 verdicts, every one
+  verified to have its posts and vendors attached — Loews O'Hare, Heritage Prairie Farm, Hilton
+  Northbrook, Providence Vineyard, Sunset Ridge CC, Company 251, Hotel Zachary, Ashyana
+  Banquets, Arrowhead Wheaton, Woman's Athletic Club, Warwick Allerton (Melissa & Matthew, 4
+  posts — one hand-merged from a second candidate the couple-name pass couldn't see: same
+  photographer, next day, no couple name in the caption), Fishermen's Inn, Meyer's Castle
+  (Dyer IN — NW Indiana is in the Chicago MSA, unlike the destination-Indiana cases). 2 skipped
+  as wrong-venue-no-correction, by design. weddings 3,541 → 3,554. Revertable via
+  `revertWeddingBatch.ts --batch-id d055-structural-v2-batch1`.
+- **Geography-pass flaw, caught by the user on a San Miguel de Allende styled shoot** that
+  reached the Chicago-confirmed queue: `lotel_casaarca` had been marked metro from three
+  "chicago" mentions that were all the *florist's* market hashtags (`#chicagoweddingflorist`,
+  `#chicagobride`), and "San Miguel" wasn't in the non-Chicago list. **Rule: a "chicago" inside a
+  hashtag is a vendor's market, never a venue's location.** Re-scored all 63 caption-only metro
+  verdicts with hashtags stripped and location-tag / "in Chicago" / suburb-name evidence only: 31
+  kept, **31 reverted to unverified (87 candidates back to ambiguous; confirmed 2,683 → 2,492)**
+  pending a web check — several are obviously Chicago landmarks whose posts just never say
+  "Chicago" in prose (Garfield Park Conservatory, Wrigley Building, Cheney Mansion, Salt Shed)
+  and will return; a few are obviously not (Canoe Place → Hamptons, Tudor Arms → Cleveland).
+  Also worth noting from the same session: the standing "vendor's market ≠ wedding's market"
+  rule cuts both ways — a Dallas photographer's `#dallaswedding` hashtags on a Fishermen's Inn
+  (Elburn IL) wedding are noise, exactly like the Chicago florist's hashtags in Mexico.
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 
