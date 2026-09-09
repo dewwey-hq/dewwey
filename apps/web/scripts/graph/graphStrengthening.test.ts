@@ -783,8 +783,9 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // createWeddingsFromJeremyEvidence.ts's own comment.
     // D055 batch 1 (2026-09-08 late, +13 weddings/+16 posts): first creation from the per-post
     // venue review (candidate_review_derived), batch_id d055-structural-v2-batch1.
-    expect(Number(rows[0].weddings)).toBe(3554);
-    expect(Number(rows[0].wedding_posts)).toBe(4098);
+    // D055 batch 2 (same night, +60 weddings/+66 posts): 3614/4164.
+    expect(Number(rows[0].weddings)).toBe(3614);
+    expect(Number(rows[0].wedding_posts)).toBe(4164);
   });
 });
 
@@ -944,8 +945,10 @@ describe("graph ingestion — D023 (DB)", () => {
     // provenance table).
     // +68 more from D055 batch 1 (2026-09-08 late, 13 weddings from the per-post venue review;
     // provenance is jeremy_weddings_created.batch_id, not this table, so all 68 are "untouched").
-    expect(Number(rows[0].untouched)).toBe(33220);
-    expect(Number(rows[0].total)).toBe(33331);
+    // +337 more from D055 batch 2 (60 weddings; includes second venue-role rows for ceremony
+    // sites -- same provenance via jeremy_weddings_created.batch_id, so all land in "untouched").
+    expect(Number(rows[0].untouched)).toBe(33557);
+    expect(Number(rows[0].total)).toBe(33668);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -1001,8 +1004,12 @@ describe("graph ingestion — D023 (DB)", () => {
     // 3554/4098 (D055 batch 1, 2026-09-08 late): first creation from the per-post review --
     // 13 weddings / 16 posts, batch_id d055-structural-v2-batch1, snapshot taken first,
     // revertable via revertWeddingBatch.ts.
-    expect(Number(rows[0].weddings)).toBe(3554);
-    expect(Number(rows[0].wedding_posts)).toBe(4098);
+    // 3614/4164 (D055 batch 2, 2026-09-08 late): +60 weddings / +66 posts, batch_id
+    // d055-structural-v2-batch2 -- the user's verdicts plus 56 ceremony+reception posts cleared
+    // under reviewed_by='fable-structured'; 14 weddings carry both ceremony and reception venue
+    // credits (D050 convention: reception anchors, ceremony site credited).
+    expect(Number(rows[0].weddings)).toBe(3614);
+    expect(Number(rows[0].wedding_posts)).toBe(4164);
     // accounts +6 (14334->14340): Tier 1's 159 candidates credited a few vendor handles never
     // seen before in `accounts` -- unlike Batch 5/6, whose venue accounts always pre-existed
     // (that's how they got tagged 'venue' in the first place), Tier 1 spans the FULL candidate

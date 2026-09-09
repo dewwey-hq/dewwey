@@ -219,6 +219,26 @@ each slice behind a calibration gate on the golden set before corpus spend.
   City, Nashville, St Augustine, Orlando, DC, Champaign, Ames). Precedent: a structurally
   unambiguous class (labeled ceremony + reception credits + named couple) can be cleared by the
   thinking agent with a distinct reviewer tag; everything else stays with the human.
+- **Creation path perf**: with ~96 eligible candidates the dry-run hit the DB's 2-minute
+  statement timeout — each candidate's vendor lookup read `structural_post_vendor_evidence`,
+  whose CTEs recompute over the whole corpus per call. Replaced with one direct
+  `stack_extraction_entries` query per candidate scoped by `post_url` first and joined on the
+  citext-indexed `accounts.username` (the same fix that took the review queue from 26 s to
+  0.3 s): 96 candidates in 33 s. **Rule for anything per-candidate: never read the corpus-wide
+  evidence views; scope the entries table by post_url first.**
+- **Batch 2 created** (`d055-structural-v2-batch2`, snapshot first, user said "create"): **60
+  weddings / 66 posts / 337 vendor credits**; 30 skipped as not-Chicago (the out-of-market
+  ceremony/reception weddings — recorded as real, never created here), 6 wrong-venue-no-
+  correction, 1 no-included-posts. Two venues crossed from 1-5 into 6+. Verified: 60/60 have
+  posts and a venue credit, 14 carry both ceremony and reception. weddings 3,554 → 3,614
+  (**+73 tonight from the two batches**, all human-confirmed at the post level).
+- **Author-anchor flaw** (user: "still seeing this error path" — `wsphotography.us` shown as the
+  venue of a wedding whose real venue, Lindy's Landing, was in the location tag): a photographer
+  with a stray `venue` role vote qualified as an author-venue, and author ranked above the
+  location tag. Fixed in the view: author anchoring now ranks below the location tag and is
+  refused when the account's Places row names a non-venue category. The 9 affected unreviewed
+  candidates re-anchored to their mapped tag where one existed, otherwise un-anchored to
+  ambiguous (out of the confirmed queue).
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 

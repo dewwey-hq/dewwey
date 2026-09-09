@@ -972,42 +972,32 @@ async function runFromConfirmedCandidates(
       venueUsername = unameRows[0]?.username ?? "?";
     }
 
-    // Vendors straight from structural_post_vendor_evidence, scoped to includedUrls ONLY (the
-    // THIS_VENUE posts) -- NOT jeremy_wedding_candidate_vendors (that view only unions
-    // jeremy_post_vendor_evidence + human_confirmed_post_vendor_evidence and doesn't cover this
-    // evidence source; confirmed by reading pipeline/schema.sql -- see the script's final-report
-    // note for the proposed, unapplied view extension) and NOT every post the candidate ever had
-    // (that would leak OTHER_VENUE vendor credits into this wedding). role<>'venue' since the
-    // venue role is handled explicitly below (and, for WRONG_VENUE, must be the CORRECTED
-    // account, not whatever the evidence view anchored).
-    const { rows: nonVenueVendors } = await client.query<{
+    // D055 perf fix (statement-timeout root cause, ~96 eligible candidates): structural_post_
+    // vendor_evidence's CTEs (a DISTINCT ON over all 451k stack_extraction_entries, a
+    // couple_extract over all 47k staging posts) are evaluated CORPUS-WIDE on every call --
+    // Postgres cannot push a post_url filter applied to the view's OUTPUT down into those CTEs,
+    // so each call was ~10-15s and 96 candidates blew statement_timeout. Fixed by reading
+    // stack_extraction_entries DIRECTLY, with the post_url filter scoped FIRST (inside the
+    // DISTINCT ON subquery, using the leading column of the (post_url, stack_parser_version)
+    // index) -- ONE query, ONE round trip, replacing what used to be three: a
+    // structural_post_vendor_evidence read for non-venue roles, a separate stack_extraction_entries
+    // read (already scoped this way) for other venue-role credits, and a THIRD
+    // structural_post_vendor_evidence read just for the anchor venue's own confirmation count.
+    // Joins accounts via `a.username = latest.handle::citext` -- accounts.username is `citext
+    // unique not null` (pipeline/schema.sql), so this uses that unique index directly;
+    // `lower(a.username::text) = handle` (the old form) casts+lowers every row and forces a seq
+    // scan instead. role<>'other' keeps both venue and non-venue credits in one pass; venue-role
+    // rows are used below both for the wedding's own venue confirmation count AND for the
+    // double-venue-tag "other venue credited on the same post" case (D050/D055 -- a post can
+    // credit BOTH a ceremony site and a reception venue on separate "Venue:" lines; the view's
+    // own venue anchor collapses to one per post, so the losing credit needs re-deriving here
+    // regardless).
+    const { rows: allCredits } = await client.query<{
       account_id: number;
       role: string;
       n_confirmations: number;
     }>(
-      `select spve.account_id::int as account_id, spve.role, count(distinct spve.source_post_url)::int as n_confirmations
-       from structural_post_vendor_evidence spve
-       where spve.source_post_url = any($1::text[]) and spve.role <> 'venue'
-       group by spve.account_id, spve.role`,
-      [includedUrls]
-    );
-
-    // D050/D055: a post can credit BOTH a ceremony site and a reception venue on separate
-    // "Venue:"-style lines -- structural_post_vendor_evidence's venue anchor now prefers the
-    // reception (see credit_line_venue's ORDER BY in pipeline/schema.sql), but the view still
-    // collapses to exactly one venue row per post (the anchor), so the losing venue credit (the
-    // ceremony site) never shows up in the nonVenueVendors query above (which excludes role =
-    // 'venue' entirely). Re-derive those other venue-role credits straight from
-    // stack_extraction_entries (latest per post/line/handle, same alias-canonicalization as
-    // credit_line_accounts), scoped to includedUrls, and give each its own venue-role
-    // wedding_vendors row -- the wedding's venue_id stays the anchor (reception); this only adds
-    // credit rows, same convention as any other role. Anchor account excluded via IS DISTINCT
-    // FROM (null-safe: if there's no resolved anchor yet, nothing is excluded).
-    const { rows: otherVenueVendors } = await client.query<{
-      account_id: number;
-      n_confirmations: number;
-    }>(
-      `select coalesce(al.canonical_account_id, a.id)::int as account_id,
+      `select coalesce(al.canonical_account_id, a.id)::int as account_id, latest.role,
               count(distinct latest.post_url)::int as n_confirmations
        from (
          select distinct on (post_url, line_no, handle)
@@ -1016,12 +1006,20 @@ async function runFromConfirmedCandidates(
          where post_url = any($1::text[])
          order by post_url, line_no, handle, extracted_at desc
        ) latest
-       join accounts a on lower(a.username::text) = latest.handle
+       join accounts a on a.username = latest.handle::citext
        left join account_aliases al on al.alias_account_id = a.id
-       where latest.role = 'venue'
-       group by coalesce(al.canonical_account_id, a.id)
-       having coalesce(al.canonical_account_id, a.id) is distinct from $2::int`,
-      [includedUrls, displayVenueAccountId]
+       where latest.role <> 'other'
+       group by coalesce(al.canonical_account_id, a.id), latest.role`,
+      [includedUrls]
+    );
+
+    const nonVenueVendors = allCredits.filter((v) => v.role !== "venue");
+    // Every OTHER venue-role account credited on these posts, excluding the anchor account this
+    // wedding is being created for (null-safe: if there's no resolved anchor, nothing is
+    // excluded) -- each gets its own venue-role wedding_vendors row alongside the anchor, same
+    // "both are real, additive" convention as every other double-venue-tag case this mission.
+    const otherVenueVendors = allCredits.filter(
+      (v) => v.role === "venue" && (displayVenueAccountId == null || v.account_id !== displayVenueAccountId)
     );
 
     let vendorsForPrint =
@@ -1106,22 +1104,15 @@ async function runFromConfirmedCandidates(
         ]);
       }
 
-      // Venue-role n_confirmations: how many of the INCLUDED posts actually anchored on the
-      // ORIGINAL venue_account_id via structural_post_vendor_evidence. For WRONG_VENUE this is
-      // always 0 in practice (candidate_review_derived only sets WRONG_VENUE when there are zero
-      // THIS_VENUE posts to begin with, so includedUrls would be empty and the gate would already
-      // have skipped as no_included_posts) -- 1 confirmation, standing for the human review
-      // itself, same as every other reviewer-supplied-fact convention in this pipeline.
-      let venueNConfirmations = 1;
-      if (cand.decision === "CONFIRM" && cand.venue_account_id != null) {
-        const { rows: vc } = await client.query<{ n: string }>(
-          `select count(distinct spve.source_post_url)::text as n
-           from structural_post_vendor_evidence spve
-           where spve.source_post_url = any($1::text[]) and spve.role = 'venue' and spve.account_id = $2`,
-          [includedUrls, cand.venue_account_id]
-        );
-        venueNConfirmations = Math.max(1, Number(vc[0]?.n ?? "0"));
-      }
+      // Venue-role n_confirmations: how many of the INCLUDED posts actually anchored on
+      // venueAccountId, from allCredits (already fetched above -- no extra query). For
+      // WRONG_VENUE this is always 0 in practice (candidate_review_derived only sets WRONG_VENUE
+      // when there are zero THIS_VENUE posts to begin with, so includedUrls would be empty and
+      // the gate would already have skipped as no_included_posts) -- falls back to 1 confirmation,
+      // standing for the human review itself, same as every other reviewer-supplied-fact
+      // convention in this pipeline.
+      const venueCredit = allCredits.find((v) => v.role === "venue" && v.account_id === venueAccountId);
+      const venueNConfirmations = Math.max(1, venueCredit?.n_confirmations ?? 0);
 
       const vendorsToInsert = [
         { account_id: venueAccountId, role: "venue", n_confirmations: venueNConfirmations },
@@ -1187,6 +1178,13 @@ async function runFromConfirmedCandidates(
     );
     const existingMap = new Map(existingRows.map((r) => [r.venue_account_id, Number(r.n)]));
 
+    // ONE batched lookup for all canonical venue usernames in this batch, not one per venue.
+    const { rows: canonUnameRows } = await client.query<{ id: number; username: string }>(
+      `select id::int as id, username::text as username from accounts where id = any($1::bigint[])`,
+      [canonicalIds]
+    );
+    const canonUsernameMap = new Map(canonUnameRows.map((r) => [r.id, r.username]));
+
     let zeroToOnePlus = 0;
     let oneToFiveToSixPlus = 0;
     console.log(`\n[create-weddings] coverage-bucket delta (this batch, alias-aware, is_chicago only):`);
@@ -1202,11 +1200,7 @@ async function runFromConfirmedCandidates(
         movement = " [1-5->6+]";
         oneToFiveToSixPlus++;
       }
-      const { rows: unameRows } = await client.query<{ username: string }>(
-        `select username::text as username from accounts where id = $1`,
-        [canon]
-      );
-      console.log(`  venue=@${unameRows[0]?.username ?? canon} before=${before} +${added} after=${after}${movement}`);
+      console.log(`  venue=@${canonUsernameMap.get(canon) ?? canon} before=${before} +${added} after=${after}${movement}`);
     }
     console.log(`[create-weddings] venues moving 0->1+: ${zeroToOnePlus}, venues moving 1-5->6+: ${oneToFiveToSixPlus}`);
   } else {

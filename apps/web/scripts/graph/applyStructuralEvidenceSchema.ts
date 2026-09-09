@@ -77,19 +77,6 @@ const STATEMENTS: string[] = [
      group by source_post_url
      having count(distinct account_id) > 1
    ),
-   author_venue as (
-     select
-       u.post_url as source_post_url,
-       coalesce(al.canonical_account_id, va.id) as account_id
-     from universe u
-     join accounts va on lower(va.username::text) = lower(u.owner_username)
-     left join account_aliases al on al.alias_account_id = va.id
-     where not exists (select 1 from credit_line_venue clv where clv.source_post_url = u.post_url)
-       and (
-         exists (select 1 from v_account_role r where r.account_id = va.id and r.role = 'venue')
-         or exists (select 1 from vendors v where v.account_id = va.id and v.category = 'venue')
-       )
-   ),
    location_venue as (
      select
        u.post_url as source_post_url,
@@ -98,7 +85,23 @@ const STATEMENTS: string[] = [
      join location_tag_venue_map ltm on ltm.location_tag = u.location_tag
      left join account_aliases al on al.alias_account_id = ltm.venue_account_id
      where not exists (select 1 from credit_line_venue clv where clv.source_post_url = u.post_url)
-       and not exists (select 1 from author_venue av where av.source_post_url = u.post_url)
+   ),
+   author_venue as (
+     select
+       u.post_url as source_post_url,
+       coalesce(al.canonical_account_id, va.id) as account_id
+     from universe u
+     join accounts va on lower(va.username::text) = lower(u.owner_username)
+     left join account_aliases al on al.alias_account_id = va.id
+     where not exists (select 1 from credit_line_venue clv where clv.source_post_url = u.post_url)
+       -- D055: author anchoring ranks BELOW the location tag and is refused when the account's
+       -- Places row says it is some other kind of vendor (wsphotography.us x7).
+       and not exists (select 1 from location_venue lv where lv.source_post_url = u.post_url)
+       and not exists (select 1 from vendors v where v.account_id = va.id and v.category is not null and v.category <> 'venue')
+       and (
+         exists (select 1 from v_account_role r where r.account_id = va.id and r.role = 'venue')
+         or exists (select 1 from vendors v where v.account_id = va.id and v.category = 'venue')
+       )
    ),
    inline_venue as (
      select distinct on (u.post_url)
