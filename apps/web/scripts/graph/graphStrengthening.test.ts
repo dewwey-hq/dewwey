@@ -1038,7 +1038,9 @@ describe("graph ingestion — D023 (DB)", () => {
     // evidence views join accounts by handle, so without these rows ~1k venue credits and
     // thousands of vendor credits were silently invisible (the candidate_score circularity in
     // one number). Same mechanism as pipeline.py's acct_id() and D050 Track 2.2's placeholders.
-    expect(Number(rows[0].accounts)).toBe(22854);
+    // +1 (22854->22855, D055 batch 2): one imported post's author had no accounts row yet --
+    // createWeddingsFromJeremyEvidence.ts mints it on import, same as every prior batch.
+    expect(Number(rows[0].accounts)).toBe(22855);
   });
 
   it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {
@@ -1154,7 +1156,9 @@ describe("vendor feed count invariant (DB)", () => {
       join accounts a on a.id = wv.account_id
       where a.username = 'galleriamarchetti'
     `);
-    expect(rows[0].n).toBe(45);
+    // 46 (D055 batch 2, 2026-09-08): Lisa & Daniel's wedding, confirmed at the post level in the
+    // per-post venue review, created in batch d055-structural-v2-batch2.
+    expect(rows[0].n).toBe(46);
   });
 
   it("ulcchicago has a venue credit on wedding 1352 (the Case A index bug, D027)", async () => {
