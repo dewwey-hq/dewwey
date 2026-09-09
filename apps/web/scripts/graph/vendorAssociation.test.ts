@@ -74,8 +74,11 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
     // patterns) put a role='venue' credit on 3 more golden INCLUDE posts whose venue is a
     // confirmed-Chicago account, so human_confirmed_post_geography's venue_signals join flips
     // them AMBIGUOUS/NO_SIGNAL -> CONFIRMED. Same non-gating mechanism as the D047 +1 above.
+    // 1310 (D055 geography pass, same day): 351 `account_locations` verdicts for never-seen venue
+    // handles (71 in_metro=true) let human_confirmed_post_geography confirm 2 more golden INCLUDE
+    // posts as Chicago via their venue. Same venue_signals mechanism as the D047 +1.
     const { rows } = await pool.query(`select count(*)::int as n from human_confirmed_chicago_wedding_content`);
-    expect(rows[0].n).toBe(1308);
+    expect(rows[0].n).toBe(1310);
   }, 15000);
 
   it(
@@ -102,7 +105,8 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
              where va.has_vendor_association) as expected
       `);
       expect(rows[0].vendor_page).toBe(rows[0].expected);
-      expect(rows[0].vendor_page).toBe(1217);
+      // 1219 (D055 geography pass, same day) -- tracks the 1308->1310 Layer-1 bump above.
+      expect(rows[0].vendor_page).toBe(1219);
     },
     // 120s, was 30s (D055): the view now scans 451k stack entries (was 362k) after the
     // corpus-wide parse -- ~19s per evaluation, and this test evaluates it twice.

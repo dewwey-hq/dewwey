@@ -129,6 +129,50 @@ each slice behind a calibration gate on the golden set before corpus spend.
   badge with the other credited venues, vendor list, couple guess, duplicate hint, and every post
   via the browser-side IG embed. Known V1 limitation: no "split" action for a multi-couple merge
   (the v2 veto is the mitigation). Anti-anchoring preserved: no model scores reach the browser.
+- **Review design corrected after first use** (user: "this ui is confusing"): with 1.09 posts
+  per candidate, bundling saved nothing and created the confusing case (a wedding mixed with the
+  venue's marketing). Replaced by **one post per screen with venue context** — W (wedding at this
+  venue) / N / V (other venue) / D (duplicate) / U / Space / B — verdicts in `post_venue_verdicts`
+  (append-only), the wedding assembled server-side from the W posts via `candidate_review_derived`
+  (same shape as the candidate-level view, plus `included_post_urls`, so the creation path reads
+  one thing). `candidate_review_decisions` stays but is unused going forward (0 rows written).
+- **Geography pass on the never-seen venues** (`reportNeverSeenVenueGeography.ts`, read-only
+  report; verdicts then applied): 987 venue handles behind 1,837 `CHICAGO_AMBIGUOUS` candidates.
+  Caption signals alone: 63 confidently metro, 229 confidently not, 136 mixed, 559 unknown. Web
+  pass on the top 60 unclear: 8 metro (Morton Arboretum — 72 candidates, Lisle IL; Providence
+  Vineyard; Meyer's Castle; Fishermen's Inn; Cotillion Banquets…), 51 not (Milwaukee, Door
+  County, Michigan, California, Vermont…). 351 verdicts written to `account_locations`
+  (`source='manual'`, note in `address`, 71 metro / 280 not); 1,060 candidates re-resolved:
+  **confirmed 2,417 → 2,683, not-confirmed 101 → 895, ambiguous 1,837 → 777.** Policy notes
+  worth keeping: "1 hr from Chicago" / "serves Chicago and beyond" venues in WI/MI are NOT metro;
+  Rockford is Illinois but not the MSA; the `mixed` tier (136 venues, 443 candidates) is mostly
+  real Chicago venues with a few stray out-of-area captions and deserves its own web pass.
+- **First live review session — what the user's own decisions taught us, same night:**
+  (1) *Every verdict was rejected with a 400 for the first ~10 minutes* — pg serializes bigint as
+  a string, the queue echoed `candidate_id: "8211"`, the API demanded a number. Fixed to accept
+  both; the user redid ~5. Lesson recorded in the route. (2) *"filter out bar/bat mitzvah"* → a
+  non-wedding-event keyword rule (mitzvah, quinceañera, sweet 16, gala, networking, corporate,
+  showers, graduation, conference, expo…) with no wedding language: 43 posts removed from the
+  queue immediately, 671 posts corpus-wide excluded from structural eligibility going forward.
+  (3) *"I want to leave a comment on N"* → N now opens a reason picker (S styled shoot / M
+  marketing / E other event / O other + free text); the reason lands on the verdict AND on the
+  `human_post_labels` row, so a styled-shoot N feeds D049's CONFIRMED tier on the next sync. `/`
+  attaches a note to any verdict. (4) *"seeing a lot of duplicates"* → sized: 564 queued posts
+  were the same couple at the same venue split across candidates (vendor-set Jaccard never
+  merges two vendors' posts of one wedding with few shared handles). `mergeStructuralCandidatesByCouple.ts`:
+  normalized couple key (sorted first names, `\band\b` connector so Andrew/Amanda survive),
+  business-word + venue-substring veto (56 fake "couples" like "cake + sweets" rejected), 400-day
+  window (60 rejected 125 of 210 real groups — one wedding's content spans sneak peek → gallery →
+  anniversary), survivor = lowest id, verdicts follow posts, logged to `structural_candidate_merges`.
+  **199 groups, 229 candidates absorbed, 254 posts consolidated; candidates 7,875 → 7,646.**
+  Plus Shift+W / Shift+X to clear the rest of a group in one key. (5) *"are these truly
+  incremental?"* — verified: every W so far has no reconciler match and no existing wedding at
+  that venue within 14 days; the 16 W's collapse to ~12 weddings after the merge, at venues that
+  had 0-2 documented weddings this morning. (6) 29 candidates (18 accounts) have a "venue" that is
+  really a photographer/florist/DJ mis-categorized upstream (`wsphotography.us` ×7) — the V key
+  with a blank handle records "real wedding, venue unknown," creation skips it; not worth
+  engineering. Queue perf: 6-26 s → <0.5 s per page (venue counts in one CTE; entries filtered
+  by post_url before any DISTINCT ON; citext-indexed handle join).
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 

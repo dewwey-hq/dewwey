@@ -1,15 +1,16 @@
-import { getCandidateQueue, getCandidateProgress } from "@/lib/server/candidateReview";
-import { CandidateReviewClient } from "@/app/components/CandidateReviewClient";
+import { getPostReviewQueue, getPostReviewProgress } from "@/lib/server/postVenueReview";
+import { PostVenueReviewClient } from "@/app/components/PostVenueReviewClient";
 
-// D055 Phase 1 step 8: wedding-CANDIDATE-level review, one decision covering all of a
-// structural-v1 candidate's posts (venue right? Chicago? real wedding? duplicate?) -- the
-// existing post-level /label flow (app/label/page.tsx) is unchanged and stays live for
-// calibration; this is a second, independent review surface. Same "no auth" posture as /label
-// (see CLAUDE.md -- the old password gate was deliberately deleted).
+// D055 (2026-09-08): post-per-screen wedding-venue review, replacing the wedding-CANDIDATE-level
+// review that used to live here (0 decisions ever recorded -- the user tried it and said "this ui
+// is confusing... lets design something better for labeling"). One post per screen, venue context
+// attached, wedding assembled server-side from per-post verdicts (see
+// lib/server/postVenueReview.ts / pipeline/schema.sql's post_venue_verdicts). Same "no auth"
+// posture as /label (see CLAUDE.md -- the old password gate was deliberately deleted).
 export const dynamic = "force-dynamic";
 
-export default async function CandidateReviewPage() {
-  const [items, progress] = await Promise.all([getCandidateQueue(5), getCandidateProgress()]);
+export default async function PostVenueReviewPage() {
+  const [items, progress] = await Promise.all([getPostReviewQueue(5), getPostReviewProgress()]);
 
-  return <CandidateReviewClient initialItems={items} initialProgress={progress} />;
+  return <PostVenueReviewClient initialItems={items} initialProgress={progress} />;
 }

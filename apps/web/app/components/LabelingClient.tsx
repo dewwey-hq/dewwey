@@ -201,10 +201,11 @@ export function LabelingClient({
               {failedCount} failed to save
             </span>
           )}
-          {/* D055 Phase 1 step 8: the new wedding-candidate-level review surface, a separate
-              queue/decision log from this post-level one -- linked, not merged. */}
+          {/* D055: the venue-anchored post review surface (post-per-screen, same flow as this
+              page, but with venue context attached) -- a separate queue/decision log from this
+              one, linked not merged. */}
           <Link href="/label/candidates" className="text-gray-500 underline hover:text-gray-900">
-            Candidate review →
+            Venue review →
           </Link>
         </span>
       </div>

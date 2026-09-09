@@ -47,8 +47,47 @@
  * Usage (from apps/web):
  *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --batch-id <id> --dry-run
  *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --batch-id <id>
+ *
+ * `--from-confirmed-candidates` (D055 Phase 1 step 9, 2026-09-08; revised 2026-09-08 for the
+ * post-per-screen review redesign) is a SECOND, independent candidate source alongside the
+ * hardcoded CANDIDATE_IDS arrays above (that mode is completely unchanged) -- it reads
+ * /label/candidates' human review, assembled candidate-level by `candidate_review_derived`
+ * (built from post-level `post_venue_verdicts`, see pipeline/schema.sql) instead of a
+ * hand-verified array literal. Only candidates with decision CONFIRM or WRONG_VENUE, COMPLETE
+ * (posts_decided = posts_total -- every post has a non-SKIP verdict, not just some), clustered
+ * under clustering_version=STRUCTURAL_CLUSTERING_VERSION (structural-v2, see
+ * lib/server/structuralVersion.ts), not already in `jeremy_weddings_created`, are eligible.
+ * WRONG_VENUE creates at `corrected_venue_account_id` instead of the candidate's own
+ * `venue_account_id` (SKIPped if the reviewer didn't name a correction -- "the venue is wrong"
+ * alone isn't creatable). Only `included_post_urls` (the THIS_VENUE-verdict posts) are ever
+ * attached -- `other_venue_post_urls` (OTHER_VENUE-verdict posts) belong to a different venue's
+ * wedding, never this one; SKIPped as `no_included_posts` if there are none (the realistic
+ * WRONG_VENUE case, since candidate_review_derived only assigns that decision when a candidate
+ * has zero THIS_VENUE posts to begin with). Chicago gate is separate from the human decision on
+ * principle (a CONFIRM says "real wedding", not "this venue is in Chicago" -- same discipline as
+ * the chicago_status column's own doc comment in pipeline/schema.sql): eligible only if
+ * chicago_status=CHICAGO_CONFIRMED OR the (corrected) venue resolves Chicago via
+ * vendors.city='Chicago' OR account_locations.in_metro=true. Vendors come straight from
+ * `structural_post_vendor_evidence`, scoped to the included posts only (non-venue roles) rather
+ * than the `jeremy_wedding_candidate_vendors` view -- that view only unions
+ * jeremy_post_vendor_evidence + human_confirmed_post_vendor_evidence and does not cover this
+ * (structural) evidence source yet; see the script's final-report note for the proposed
+ * (unapplied) view extension. `--since <ISO>` and `--limit N` batch a large eligible set; both
+ * optional.
+ *
+ * Usage:
+ *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --from-confirmed-candidates --batch-id <id> --dry-run
+ *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --from-confirmed-candidates --batch-id <id> --since 2026-09-08T00:00:00Z --limit 50 --dry-run
  */
+import { readdirSync, statSync } from "node:fs";
 import { getPool, closePool } from "../classify/db";
+import type { PoolClient } from "pg";
+import { STRUCTURAL_CLUSTERING_VERSION } from "../../lib/server/structuralVersion";
+import {
+  decideStructuralCandidateCreation,
+  type StructuralReviewDecision,
+  type ChicagoStatus,
+} from "./structuralCandidateGating";
 
 // The 15 candidates read end-to-end by hand (mission doc, "Pilot" section, 2026-09-05) —
 // all confirmed genuinely real, distinct weddings; the two multi-venue risk cases in this
@@ -768,8 +807,385 @@ function shortcodeFromUrl(url: string): string | null {
   return m ? m[1] : null;
 }
 
+// D055 preflight refusal (Phase 1 step 9): the provenance rule is "no create batch without a
+// snapshot + batch id" (snapshotGraphTables.ts / revertWeddingBatch.ts's own doc comments) --
+// batch-id is already enforced above; this enforces the snapshot half for real (non-dry-run)
+// writes. A snapshot directory's NAME embeds an ISO timestamp, but mtime is simpler/robust to
+// check directly and is what "took a snapshot recently" actually means on disk.
+function hasRecentSnapshot(): boolean {
+  const dir = new URL("./snapshots", import.meta.url).pathname;
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return false; // no snapshots/ directory at all
+  }
+  const dayMs = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  for (const entry of entries) {
+    try {
+      const stat = statSync(`${dir}/${entry}`);
+      if (stat.isDirectory() && now - stat.mtimeMs < dayMs) return true;
+    } catch {
+      continue;
+    }
+  }
+  return false;
+}
+
+interface FromConfirmedCandidatesOptions {
+  since?: string;
+  limit?: number;
+}
+
+interface FromConfirmedCandidatesResult {
+  weddingsCreated: number;
+  postsImported: number;
+  vendorsInserted: number;
+}
+
+/**
+ * `--from-confirmed-candidates` mode (D055 Phase 1 step 9, revised for the post-per-screen
+ * review redesign). Reads eligible candidates from `candidate_review_derived` (assembled from
+ * `post_venue_verdicts` -- see pipeline/schema.sql) + `jeremy_wedding_candidates`
+ * (structural-v2 only, not already created), requires the candidate to be COMPLETE
+ * (posts_decided = posts_total -- every one of its posts has a non-SKIP verdict, not just some),
+ * gates each one (wrong-venue-no-correction, then no-included-posts, then the Chicago gate --
+ * see structuralCandidateGating.ts), and for CREATE candidates attaches ONLY
+ * `included_post_urls` (the THIS_VENUE-verdict posts) -- never `other_venue_post_urls`, which
+ * belong to a different venue's wedding entirely, not this one. Runs the same insert shape as
+ * the hardcoded-array loop above (weddings / accounts / posts / wedding_posts / wedding_vendors /
+ * jeremy_weddings_created), reusing the identical D050 duplicate-post guard, scoped throughout to
+ * the included posts only (wedding_vendors is derived from structural_post_vendor_evidence rows
+ * for those posts only, not the candidate's full post set). Everything here runs inside the
+ * caller's existing transaction -- dry-run rollback and --batch-id are handled once, by main(),
+ * for both modes.
+ */
+async function runFromConfirmedCandidates(
+  client: PoolClient,
+  batchId: string,
+  opts: FromConfirmedCandidatesOptions
+): Promise<FromConfirmedCandidatesResult> {
+  let weddingsCreated = 0;
+  let postsImported = 0;
+  let vendorsInserted = 0;
+
+  const { rows: eligible } = await client.query<{
+    candidate_id: number;
+    venue_account_id: number | null;
+    event_date_est: string | null;
+    chicago_status: ChicagoStatus;
+    decision: StructuralReviewDecision;
+    corrected_venue_account_id: number | null;
+    included_post_urls: string[] | null;
+  }>(
+    `select
+       jwc.id as candidate_id,
+       jwc.venue_account_id::int as venue_account_id,
+       jwc.event_date_est::text as event_date_est,
+       jwc.chicago_status,
+       crd.decision,
+       crd.corrected_venue_account_id::int as corrected_venue_account_id,
+       crd.included_post_urls
+     from candidate_review_derived crd
+     join jeremy_wedding_candidates jwc on jwc.id = crd.candidate_id
+     where crd.decision in ('CONFIRM', 'WRONG_VENUE')
+       and crd.posts_decided = crd.posts_total
+       and jwc.clustering_version = $1
+       and not exists (select 1 from jeremy_weddings_created jc where jc.candidate_id = jwc.id)
+       and ($2::timestamptz is null or crd.reviewed_at >= $2::timestamptz)
+     order by crd.reviewed_at asc`,
+    [STRUCTURAL_CLUSTERING_VERSION, opts.since ?? null]
+  );
+
+  const scoped = opts.limit != null ? eligible.slice(0, opts.limit) : eligible;
+
+  console.log(
+    `[create-weddings] --from-confirmed-candidates: clustering_version=${STRUCTURAL_CLUSTERING_VERSION} ` +
+      `eligible=${eligible.length}${opts.since ? ` since=${opts.since}` : ""} ` +
+      `processing=${scoped.length}${opts.limit != null ? ` (--limit ${opts.limit})` : ""}`
+  );
+
+  const outcomeCounts: Record<string, number> = {};
+  const bump = (label: string) => {
+    outcomeCounts[label] = (outcomeCounts[label] ?? 0) + 1;
+  };
+
+  // venueAccountId (canonical, pre-alias-resolution — resolved below) -> # new weddings this
+  // batch would add there, for the coverage-bucket delta.
+  const newWeddingsByVenue = new Map<number, number>();
+
+  for (const cand of scoped) {
+    // Race guard (the eligibility query already excludes these — this only matters if another
+    // invocation of this same script is running concurrently against the same batch window).
+    const { rows: existingCreated } = await client.query<{ wedding_id: number }>(
+      `select wedding_id from jeremy_weddings_created where candidate_id = $1`,
+      [cand.candidate_id]
+    );
+    if (existingCreated.length > 0) {
+      console.log(
+        `[create-weddings] candidate=${cand.candidate_id} already created as wedding=${existingCreated[0].wedding_id}, skipping`
+      );
+      bump("SKIP(already_created)");
+      continue;
+    }
+
+    // Only the THIS_VENUE-verdict posts are ever attached — never other_venue_post_urls (a
+    // different venue's wedding entirely).
+    const includedUrls = cand.included_post_urls ?? [];
+
+    // Geography is resolved against the EFFECTIVE venue (corrected, for WRONG_VENUE) — never
+    // the original wrong one.
+    const geoTargetAccountId =
+      cand.decision === "WRONG_VENUE" ? cand.corrected_venue_account_id : cand.venue_account_id;
+
+    let venueCityIsChicago = false;
+    let venueInMetro = false;
+    if (geoTargetAccountId != null) {
+      const { rows: geoRows } = await client.query<{ city_chicago: boolean; in_metro: boolean }>(
+        `select
+           exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago') as city_chicago,
+           coalesce((select al.in_metro from account_locations al where al.account_id = $1), false) as in_metro`,
+        [geoTargetAccountId]
+      );
+      venueCityIsChicago = geoRows[0].city_chicago;
+      venueInMetro = geoRows[0].in_metro;
+    }
+
+    const gate = decideStructuralCandidateCreation({
+      decision: cand.decision,
+      originalVenueAccountId: cand.venue_account_id,
+      correctedVenueAccountId: cand.corrected_venue_account_id,
+      chicagoStatus: cand.chicago_status,
+      venueCityIsChicago,
+      venueInMetro,
+      includedPostUrls: cand.included_post_urls,
+    });
+
+    const displayVenueAccountId = gate.action === "CREATE" ? gate.venueAccountId : geoTargetAccountId;
+    let venueUsername = "?";
+    if (displayVenueAccountId != null) {
+      const { rows: unameRows } = await client.query<{ username: string }>(
+        `select username::text as username from accounts where id = $1`,
+        [displayVenueAccountId]
+      );
+      venueUsername = unameRows[0]?.username ?? "?";
+    }
+
+    // Vendors straight from structural_post_vendor_evidence, scoped to includedUrls ONLY (the
+    // THIS_VENUE posts) -- NOT jeremy_wedding_candidate_vendors (that view only unions
+    // jeremy_post_vendor_evidence + human_confirmed_post_vendor_evidence and doesn't cover this
+    // evidence source; confirmed by reading pipeline/schema.sql -- see the script's final-report
+    // note for the proposed, unapplied view extension) and NOT every post the candidate ever had
+    // (that would leak OTHER_VENUE vendor credits into this wedding). role<>'venue' since the
+    // venue role is handled explicitly below (and, for WRONG_VENUE, must be the CORRECTED
+    // account, not whatever the evidence view anchored).
+    const { rows: nonVenueVendors } = await client.query<{
+      account_id: number;
+      role: string;
+      n_confirmations: number;
+    }>(
+      `select spve.account_id::int as account_id, spve.role, count(distinct spve.source_post_url)::int as n_confirmations
+       from structural_post_vendor_evidence spve
+       where spve.source_post_url = any($1::text[]) and spve.role <> 'venue'
+       group by spve.account_id, spve.role`,
+      [includedUrls]
+    );
+
+    let vendorsForPrint = nonVenueVendors.length + (displayVenueAccountId != null ? 1 : 0);
+
+    if (gate.action === "CREATE") {
+      // D050 duplicate-post guard, same check as the hardcoded-array loop: if any of this
+      // candidate's INCLUDED posts already belongs to an EXISTING wedding's wedding_posts, the
+      // event is already documented — creating a second wedding would repeat the exact
+      // orphaned-wedding bug D050 fixed. Shortcodes derived straight from the URLs -- no need to
+      // fetch full post rows just to check this.
+      const shortcodes = includedUrls.map((u) => shortcodeFromUrl(u)).filter((s): s is string => s !== null);
+      const { rows: alreadyDocumented } = await client.query<{ wedding_id: number }>(
+        `select wp.wedding_id from posts p join wedding_posts wp on wp.post_id = p.id where p.shortcode = any($1::text[])`,
+        [shortcodes]
+      );
+
+      if (alreadyDocumented.length > 0) {
+        console.log(
+          `[create-weddings] candidate=${cand.candidate_id} venue=@${venueUsername} decision=${cand.decision} posts=${includedUrls.length} vendors=${vendorsForPrint} -> SKIP(duplicate_post) — already belongs to wedding=${alreadyDocumented[0].wedding_id}`
+        );
+        bump("SKIP(duplicate_post)");
+        continue;
+      }
+
+      console.log(
+        `[create-weddings] candidate=${cand.candidate_id} venue=@${venueUsername} decision=${cand.decision} posts=${includedUrls.length} vendors=${vendorsForPrint} -> CREATE`
+      );
+      bump("CREATE");
+
+      const venueAccountId = gate.venueAccountId;
+
+      const { rows: weddingRows } = await client.query<{ id: number }>(
+        `insert into weddings (venue_id, event_date_est, is_chicago) values ($1, $2, $3) returning id`,
+        [venueAccountId, cand.event_date_est, true]
+      );
+      const weddingId = weddingRows[0].id;
+      weddingsCreated++;
+      newWeddingsByVenue.set(venueAccountId, (newWeddingsByVenue.get(venueAccountId) ?? 0) + 1);
+
+      // Full post rows, fetched ONLY for the included (THIS_VENUE) urls -- never
+      // other_venue_post_urls.
+      const { rows: posts } = await client.query<{
+        post_url: string;
+        caption_raw: string | null;
+        post_timestamp: string;
+        owner_username: string;
+        likes_count: number | null;
+      }>(
+        `select post_url, caption_raw, post_timestamp::text, owner_username, likes_count
+         from staging.instagram_posts
+         where post_url = any($1::text[])`,
+        [includedUrls]
+      );
+
+      for (const p of posts) {
+        const shortcode = shortcodeFromUrl(p.post_url);
+        if (!shortcode) continue;
+
+        const { rows: ownerRows } = await client.query<{ id: number }>(
+          `insert into accounts (username) values ($1)
+           on conflict (username) do update set username = excluded.username
+           returning id`,
+          [p.owner_username.toLowerCase()]
+        );
+        const ownerId = ownerRows[0].id;
+
+        const { rows: postRows } = await client.query<{ id: number }>(
+          `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, source, raw)
+           values ($1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7)
+           on conflict (shortcode) do nothing
+           returning id`,
+          [shortcode, p.post_url, ownerId, p.caption_raw, p.post_timestamp, p.likes_count, JSON.stringify(p)]
+        );
+        if (postRows.length === 0) continue;
+        postsImported++;
+        const postId = postRows[0].id;
+
+        await client.query(`insert into wedding_posts (wedding_id, post_id) values ($1, $2) on conflict (post_id) do nothing`, [
+          weddingId,
+          postId,
+        ]);
+      }
+
+      // Venue-role n_confirmations: how many of the INCLUDED posts actually anchored on the
+      // ORIGINAL venue_account_id via structural_post_vendor_evidence. For WRONG_VENUE this is
+      // always 0 in practice (candidate_review_derived only sets WRONG_VENUE when there are zero
+      // THIS_VENUE posts to begin with, so includedUrls would be empty and the gate would already
+      // have skipped as no_included_posts) -- 1 confirmation, standing for the human review
+      // itself, same as every other reviewer-supplied-fact convention in this pipeline.
+      let venueNConfirmations = 1;
+      if (cand.decision === "CONFIRM" && cand.venue_account_id != null) {
+        const { rows: vc } = await client.query<{ n: string }>(
+          `select count(distinct spve.source_post_url)::text as n
+           from structural_post_vendor_evidence spve
+           where spve.source_post_url = any($1::text[]) and spve.role = 'venue' and spve.account_id = $2`,
+          [includedUrls, cand.venue_account_id]
+        );
+        venueNConfirmations = Math.max(1, Number(vc[0]?.n ?? "0"));
+      }
+
+      const vendorsToInsert = [
+        { account_id: venueAccountId, role: "venue", n_confirmations: venueNConfirmations },
+        ...nonVenueVendors,
+      ];
+      for (const v of vendorsToInsert) {
+        const { rows: inserted } = await client.query(
+          `insert into wedding_vendors (wedding_id, account_id, role, n_confirmations)
+           values ($1, $2, $3::vendor_role, $4)
+           on conflict (wedding_id, account_id, role) do nothing
+           returning wedding_id`,
+          [weddingId, v.account_id, v.role, v.n_confirmations]
+        );
+        if (inserted.length > 0) vendorsInserted++;
+      }
+
+      await client.query(
+        `insert into jeremy_weddings_created (candidate_id, wedding_id, batch_id) values ($1, $2, $3) on conflict (candidate_id) do nothing`,
+        [cand.candidate_id, weddingId, batchId]
+      );
+    } else {
+      console.log(
+        `[create-weddings] candidate=${cand.candidate_id} venue=@${venueUsername} decision=${cand.decision} posts=${includedUrls.length} vendors=${vendorsForPrint} -> SKIP(${gate.reason})`
+      );
+      bump(`SKIP(${gate.reason})`);
+    }
+  }
+
+  console.log(`\n[create-weddings] --from-confirmed-candidates totals by outcome:`);
+  for (const [label, n] of Object.entries(outcomeCounts)) {
+    console.log(`  ${label}: ${n}`);
+  }
+
+  // Coverage-bucket delta this batch WOULD produce — alias-aware (two IG handles for the same
+  // real venue must count as one), weddings.is_chicago only (same discipline as
+  // candidateReview.ts's venue_counts CTE, which this mirrors).
+  if (newWeddingsByVenue.size > 0) {
+    const venueIds = [...newWeddingsByVenue.keys()];
+    const { rows: aliasRows } = await client.query<{ alias_account_id: number; canonical_account_id: number }>(
+      `select alias_account_id::int as alias_account_id, canonical_account_id::int as canonical_account_id
+       from account_aliases where alias_account_id = any($1::bigint[])`,
+      [venueIds]
+    );
+    const aliasMap = new Map(aliasRows.map((r) => [r.alias_account_id, r.canonical_account_id]));
+
+    const addedByCanonical = new Map<number, number>();
+    for (const [vid, n] of newWeddingsByVenue) {
+      const canon = aliasMap.get(vid) ?? vid;
+      addedByCanonical.set(canon, (addedByCanonical.get(canon) ?? 0) + n);
+    }
+
+    const canonicalIds = [...addedByCanonical.keys()];
+    const { rows: existingRows } = await client.query<{ venue_account_id: number; n: string }>(
+      `select coalesce(al.canonical_account_id, wv.account_id)::int as venue_account_id,
+              count(distinct wv.wedding_id)::text as n
+       from wedding_vendors wv
+       join weddings w on w.id = wv.wedding_id and w.is_chicago = true
+       left join account_aliases al on al.alias_account_id = wv.account_id
+       where wv.role = 'venue' and coalesce(al.canonical_account_id, wv.account_id) = any($1::bigint[])
+       group by 1`,
+      [canonicalIds]
+    );
+    const existingMap = new Map(existingRows.map((r) => [r.venue_account_id, Number(r.n)]));
+
+    let zeroToOnePlus = 0;
+    let oneToFiveToSixPlus = 0;
+    console.log(`\n[create-weddings] coverage-bucket delta (this batch, alias-aware, is_chicago only):`);
+    for (const canon of canonicalIds) {
+      const before = existingMap.get(canon) ?? 0;
+      const added = addedByCanonical.get(canon)!;
+      const after = before + added;
+      let movement = "";
+      if (before === 0 && after >= 1) {
+        movement = " [0->1+]";
+        zeroToOnePlus++;
+      } else if (before >= 1 && before <= 5 && after >= 6) {
+        movement = " [1-5->6+]";
+        oneToFiveToSixPlus++;
+      }
+      const { rows: unameRows } = await client.query<{ username: string }>(
+        `select username::text as username from accounts where id = $1`,
+        [canon]
+      );
+      console.log(`  venue=@${unameRows[0]?.username ?? canon} before=${before} +${added} after=${after}${movement}`);
+    }
+    console.log(`[create-weddings] venues moving 0->1+: ${zeroToOnePlus}, venues moving 1-5->6+: ${oneToFiveToSixPlus}`);
+  } else {
+    console.log(`\n[create-weddings] coverage-bucket delta: nothing would be created, no delta.`);
+  }
+
+  return { weddingsCreated, postsImported, vendorsInserted };
+}
+
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
+  const fromConfirmedCandidates = process.argv.includes("--from-confirmed-candidates");
+
   const batchIdFlagIndex = process.argv.indexOf("--batch-id");
   const batchId = batchIdFlagIndex !== -1 ? process.argv[batchIdFlagIndex + 1] : undefined;
   if (!batchId || batchId.startsWith("--")) {
@@ -777,6 +1193,34 @@ async function main() {
       "[create-weddings] --batch-id <id> is required (D055 — every creation run must be individually revertable via revertWeddingBatch.ts).\n" +
         "Usage: bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --batch-id <id> [--dry-run]\n" +
         "Suggested format: d055-<source>-<YYYY-MM-DD>-<n> (e.g. d055-beyond-include-2026-09-08-1)"
+    );
+    process.exit(1);
+  }
+
+  const sinceFlagIndex = process.argv.indexOf("--since");
+  const since = sinceFlagIndex !== -1 ? process.argv[sinceFlagIndex + 1] : undefined;
+  if (since !== undefined && (since.startsWith("--") || isNaN(Date.parse(since)))) {
+    console.error(`[create-weddings] --since must be a valid ISO timestamp, got "${since}"`);
+    process.exit(1);
+  }
+
+  const limitFlagIndex = process.argv.indexOf("--limit");
+  const limitRaw = limitFlagIndex !== -1 ? process.argv[limitFlagIndex + 1] : undefined;
+  let limit: number | undefined;
+  if (limitRaw !== undefined) {
+    limit = Number(limitRaw);
+    if (!Number.isInteger(limit) || limit <= 0) {
+      console.error(`[create-weddings] --limit must be a positive integer, got "${limitRaw}"`);
+      process.exit(1);
+    }
+  }
+
+  // D055 provenance rule, enforced: no real (non-dry-run) create batch without a recent
+  // snapshot. Dry runs are exempt (nothing to protect against yet).
+  if (!dryRun && !hasRecentSnapshot()) {
+    console.error(
+      "[create-weddings] REFUSING: no snapshot directory under scripts/graph/snapshots/ has an mtime within the last 24h.\n" +
+        "take a snapshot first: bun run scripts/graph/snapshotGraphTables.ts --label <batch-id>"
     );
     process.exit(1);
   }
@@ -800,6 +1244,15 @@ async function main() {
     let postsImported = 0;
     let vendorsInserted = 0;
 
+    if (fromConfirmedCandidates) {
+      // --from-confirmed-candidates mode (D055 Phase 1 step 9) -- entirely separate candidate
+      // source and gating logic, see runFromConfirmedCandidates above. The hardcoded-array mode
+      // below (CANDIDATE_IDS loop) is completely unchanged.
+      const result = await runFromConfirmedCandidates(client, batchId, { since, limit });
+      weddingsCreated = result.weddingsCreated;
+      postsImported = result.postsImported;
+      vendorsInserted = result.vendorsInserted;
+    } else {
     for (const candidateId of CANDIDATE_IDS) {
       const { rows: candRows } = await client.query<{
         venue_account_id: number;
@@ -931,6 +1384,7 @@ async function main() {
       );
 
       console.log(`[create-weddings] candidate=${candidateId} -> wedding=${weddingId} posts=${posts.length} vendors=${candVendors.length}`);
+    }
     }
 
     console.log(

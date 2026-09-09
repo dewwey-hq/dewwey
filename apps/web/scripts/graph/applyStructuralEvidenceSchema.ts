@@ -184,7 +184,13 @@ const STATEMENTS: string[] = [
      -- Appended last, not next to has_couple_signal: create or replace view only allows new
      -- columns at the end of the select list (errors otherwise, verified against the
      -- already-applied structural-v1 view: "cannot change name of view column").
-     case when ce.couple_signal_ok then lower(ce.raw_match) else null end as couple_guess
+     case when ce.couple_signal_ok then lower(ce.raw_match) else null end as couple_guess,
+     -- D055 addendum (2026-09-08, user mid-review: "consider filtering out the posts that say
+     -- bar or bat mitzvah. that's almost always not a wedding"): flags a post that names a
+     -- non-wedding event outright. Sized in the current queue at 43 posts naming one of these
+     -- with NO wedding language at all. Appended last for the same create-or-replace-view
+     -- reason as couple_guess above -- do not move it earlier in the list.
+     coalesce(u.caption_raw ~* '\\y(mitzvah|quincea|sweet\\s*16|birthday|corporate|baby shower|bridal shower|graduation|anniversary party|retirement|gala|networking|fundraiser|holiday party|prom|conference|expo|trade show|open house)\\y', false) as has_non_wedding_event_keyword
    from combined c
    join universe u on u.post_url = c.source_post_url
    join couple_extract ce on ce.post_url = c.source_post_url;`,

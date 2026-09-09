@@ -7,6 +7,7 @@
  */
 import { describe, it, expect, afterAll } from "vitest";
 import { parseEventDate, jaccard, daysBetween } from "./clusteringUtils";
+import { decideStructuralCandidateCreation } from "./structuralCandidateGating";
 
 // vitest doesn't get Bun's automatic .env.local loading that `bun run <script>` does — load it
 // explicitly before importing anything that calls getPool() at module scope.
@@ -115,6 +116,124 @@ describe("daysBetween (unit)", () => {
     const b = new Date("2025-01-15T00:00:00Z");
     expect(daysBetween(a, b)).toBe(14);
     expect(daysBetween(b, a)).toBe(14);
+  });
+});
+
+describe("decideStructuralCandidateCreation (unit, D055 Phase 1 step 9, revised for candidate_review_derived)", () => {
+  it("creates at the original venue on CONFIRM when chicago_status is already CHICAGO_CONFIRMED", () => {
+    const result = decideStructuralCandidateCreation({
+      decision: "CONFIRM",
+      originalVenueAccountId: 101,
+      correctedVenueAccountId: null,
+      chicagoStatus: "CHICAGO_CONFIRMED",
+      venueCityIsChicago: false,
+      venueInMetro: false,
+      includedPostUrls: ["https://instagram.com/p/abc123/"],
+    });
+    expect(result).toEqual({ action: "CREATE", venueAccountId: 101 });
+  });
+
+  it("creates on CONFIRM when chicago_status is null/ambiguous but vendors.city='Chicago' or account_locations.in_metro backs the venue", () => {
+    const viaCity = decideStructuralCandidateCreation({
+      decision: "CONFIRM",
+      originalVenueAccountId: 202,
+      correctedVenueAccountId: null,
+      chicagoStatus: "CHICAGO_AMBIGUOUS",
+      venueCityIsChicago: true,
+      venueInMetro: false,
+      includedPostUrls: ["https://instagram.com/p/aaa/"],
+    });
+    expect(viaCity).toEqual({ action: "CREATE", venueAccountId: 202 });
+
+    const viaMetro = decideStructuralCandidateCreation({
+      decision: "CONFIRM",
+      originalVenueAccountId: 303,
+      correctedVenueAccountId: null,
+      chicagoStatus: null,
+      venueCityIsChicago: false,
+      venueInMetro: true,
+      includedPostUrls: ["https://instagram.com/p/bbb/"],
+    });
+    expect(viaMetro).toEqual({ action: "CREATE", venueAccountId: 303 });
+  });
+
+  it("skips chicago_unconfirmed when a human CONFIRM has no geography backing it — a content confirmation is not a geography confirmation", () => {
+    const result = decideStructuralCandidateCreation({
+      decision: "CONFIRM",
+      originalVenueAccountId: 404,
+      correctedVenueAccountId: null,
+      chicagoStatus: "CHICAGO_NOT_CONFIRMED",
+      venueCityIsChicago: false,
+      venueInMetro: false,
+      includedPostUrls: ["https://instagram.com/p/ccc/"],
+    });
+    expect(result).toEqual({ action: "SKIP", reason: "chicago_unconfirmed" });
+  });
+
+  it("skips wrong_venue_no_correction when WRONG_VENUE has no corrected_venue_account_id, regardless of geography or included posts", () => {
+    const result = decideStructuralCandidateCreation({
+      decision: "WRONG_VENUE",
+      originalVenueAccountId: 505,
+      correctedVenueAccountId: null,
+      chicagoStatus: "CHICAGO_CONFIRMED",
+      venueCityIsChicago: true,
+      venueInMetro: true,
+      includedPostUrls: null,
+    });
+    expect(result).toEqual({ action: "SKIP", reason: "wrong_venue_no_correction" });
+  });
+
+  it("creates at the CORRECTED venue on WRONG_VENUE, gating geography on the corrected venue not the original", () => {
+    const result = decideStructuralCandidateCreation({
+      decision: "WRONG_VENUE",
+      originalVenueAccountId: 606, // the wrong venue -- must never be used
+      correctedVenueAccountId: 707,
+      chicagoStatus: null,
+      venueCityIsChicago: true, // resolved by the CALLER against account 707, not 606
+      venueInMetro: false,
+      // Not realistic given candidate_review_derived's own CASE (WRONG_VENUE implies zero
+      // THIS_VENUE posts, see the no_included_posts test below) -- this exercises the pure
+      // function's own mechanism in isolation, decoupled from that view-level correlation.
+      includedPostUrls: ["https://instagram.com/p/ddd/"],
+    });
+    expect(result).toEqual({ action: "CREATE", venueAccountId: 707 });
+  });
+
+  it("skips no_venue_account defensively when a CONFIRM candidate somehow has a null venue_account_id", () => {
+    const result = decideStructuralCandidateCreation({
+      decision: "CONFIRM",
+      originalVenueAccountId: null,
+      correctedVenueAccountId: null,
+      chicagoStatus: "CHICAGO_CONFIRMED",
+      venueCityIsChicago: false,
+      venueInMetro: false,
+      includedPostUrls: ["https://instagram.com/p/eee/"],
+    });
+    expect(result).toEqual({ action: "SKIP", reason: "no_venue_account" });
+  });
+
+  it("skips no_included_posts when included_post_urls is null or empty, even with a resolvable venue and confirmed geography — the realistic WRONG_VENUE case, since candidate_review_derived only sets decision=WRONG_VENUE when the candidate has zero THIS_VENUE posts", () => {
+    const nullCase = decideStructuralCandidateCreation({
+      decision: "WRONG_VENUE",
+      originalVenueAccountId: 808,
+      correctedVenueAccountId: 909,
+      chicagoStatus: "CHICAGO_CONFIRMED",
+      venueCityIsChicago: true,
+      venueInMetro: true,
+      includedPostUrls: null,
+    });
+    expect(nullCase).toEqual({ action: "SKIP", reason: "no_included_posts" });
+
+    const emptyArrayCase = decideStructuralCandidateCreation({
+      decision: "CONFIRM",
+      originalVenueAccountId: 1010,
+      correctedVenueAccountId: null,
+      chicagoStatus: "CHICAGO_CONFIRMED",
+      venueCityIsChicago: true,
+      venueInMetro: true,
+      includedPostUrls: [],
+    });
+    expect(emptyArrayCase).toEqual({ action: "SKIP", reason: "no_included_posts" });
   });
 });
 
@@ -512,8 +631,8 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // ungated/v8 parser + location tags + author-is-venue; several hundred are additional posts
     // about weddings already on file (the ambiguous 0.4 tier -- the review UI's "Duplicate"
     // path), so many-to-one convergence rises as expected. Zero ingestion-safety impact: only
-    // the 0.75-0.85 band is ever auto-applied.
-    expect(after).toBe(427);
+    // the 0.75-0.85 band is ever auto-applied. 426 after the couple-name merge pass.
+    expect(after).toBe(426);
   });
 
   it("insufficient-evidence tier size matches the current reconcile-v2 state (1,909 as of 2026-09-05)", async () => {
@@ -574,8 +693,9 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // so the reconciler finds a venue-mate for most of them but below the ambiguous floor --
     // exactly the "insufficient" tier by design (matched_wedding_id stays null, metrics kept for
     // inspection). These are the candidates the /label/candidates review decides on; none are
-    // created without a human CONFIRM.
-    expect(Number(rows[0].n)).toBe(2657);
+    // created without a human CONFIRM. 2,568 after the couple-name merge pass (229 candidates
+    // absorbed, reconciliation re-run).
+    expect(Number(rows[0].n)).toBe(2568);
   }, 15000);
 
   it("weddings/wedding_posts are unaffected by the reconciliation rerun — reconciliation never writes to Ben's graph (wedding_vendors/edges are D023's separate, deliberate ingestion, asserted in its own describe block)", async () => {
@@ -709,7 +829,11 @@ describe("clustering boundary-tie investigation — current (unfixed) state (DB)
     // existing candidates rather than minting new ones -- 4,355 new candidates + 4,743 new
     // candidate_posts rows) = 7,875/8,705. structural-v1's 4,646/5,420 were deleted and
     // re-clustered as v2 (zero human decisions, zero creations -- see decisions.md D055).
-    expect(Number(rows[0].candidates)).toBe(7875);
+    // 7,646/8,705 after mergeStructuralCandidatesByCouple.ts (D055, same day): 229 structural-v2
+    // candidates absorbed into 199 survivors (same venue + same normalized couple name within
+    // 400 days -- one wedding's posts spread across vendors and months). Posts unchanged (they
+    // move, they don't disappear); logged in structural_candidate_merges.
+    expect(Number(rows[0].candidates)).toBe(7646);
     expect(Number(rows[0].candidate_posts)).toBe(8705);
   });
 });

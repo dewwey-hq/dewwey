@@ -146,6 +146,7 @@ interface EvidenceRow {
   has_couple_signal: boolean | null;
   has_wedding_keyword: boolean | null;
   couple_guess: string | null;
+  has_non_wedding_event_keyword: boolean | null;
 }
 
 interface CandidateState {
@@ -223,8 +224,8 @@ async function main() {
   // four views don't have those columns, so the select list is source-specific.
   const evidenceColumns =
     evidenceSource === "structural"
-      ? "source_post_url, account_id, role, venue_anchor_source, venue_anchor_conflict, has_couple_signal, has_wedding_keyword, couple_guess"
-      : "source_post_url, account_id, role, null as venue_anchor_source, null as venue_anchor_conflict, null as has_couple_signal, null as has_wedding_keyword, null as couple_guess";
+      ? "source_post_url, account_id, role, venue_anchor_source, venue_anchor_conflict, has_couple_signal, has_wedding_keyword, couple_guess, has_non_wedding_event_keyword"
+      : "source_post_url, account_id, role, null as venue_anchor_source, null as venue_anchor_conflict, null as has_couple_signal, null as has_wedding_keyword, null as couple_guess, null as has_non_wedding_event_keyword";
   const { rows: evidence } = await pool.query<EvidenceRow>(`select ${evidenceColumns} from ${evidenceView}`);
   const evidenceByPost = new Map<string, EvidenceRow[]>();
   for (const e of evidence) {
@@ -245,14 +246,24 @@ async function main() {
   //     wedding-language (has_wedding_keyword) AND (a real non-venue credit OR a named couple).
   // Deliberately NOT >=3 roles here: that floor is exactly what structural_post_vendor_evidence
   // exists to route around.
+  // D055 addendum (2026-09-08, user mid-review: "consider filtering out the posts that say bar
+  // or bat mitzvah. that's almost always not a wedding"): a post naming a non-wedding event with
+  // no wedding language at all is excluded regardless of anchor source -- this fires BEFORE the
+  // anchor-source-dependent rules below, not as an alternative bar within them.
+  let nonWeddingEventExcludedCount = 0;
   const eligiblePostUrls =
     evidenceSource === "structural"
       ? [...evidenceByPost.entries()]
           .filter(([, rows]) => {
+            const hasWeddingKeyword = rows.some((r) => r.has_wedding_keyword);
+            const hasNonWeddingEventKeyword = rows.some((r) => r.has_non_wedding_event_keyword);
+            if (hasNonWeddingEventKeyword && !hasWeddingKeyword) {
+              nonWeddingEventExcludedCount++;
+              return false;
+            }
             const anchorRow = rows.find((r) => r.role === "venue" && r.venue_anchor_source != null);
             if (!anchorRow) return false;
             const hasNonVenueEvidence = rows.some((r) => r.role !== "venue");
-            const hasWeddingKeyword = rows.some((r) => r.has_wedding_keyword);
             const hasCoupleSignal = rows.some((r) => r.has_couple_signal);
             if (anchorRow.venue_anchor_source === "credit_line") {
               return hasNonVenueEvidence || (hasWeddingKeyword && hasCoupleSignal);
@@ -334,7 +345,9 @@ async function main() {
     });
 
   console.log(
-    `[jeremy-cluster] ${dryRun ? "DRY RUN — " : ""}evidence-source=${evidenceSource} version=${clusteringVersion} clustering-eligible=${eligiblePostUrls.length} already-clustered=${alreadyClusteredSet.size}${ignoreExistingCandidates ? " (IGNORED for to-process via --ignore-existing-candidates)" : ""} to-process=${sortable.length}`
+    `[jeremy-cluster] ${dryRun ? "DRY RUN — " : ""}evidence-source=${evidenceSource} version=${clusteringVersion} clustering-eligible=${eligiblePostUrls.length} already-clustered=${alreadyClusteredSet.size}${ignoreExistingCandidates ? " (IGNORED for to-process via --ignore-existing-candidates)" : ""} to-process=${sortable.length}${
+      evidenceSource === "structural" ? ` non-wedding-event-excluded=${nonWeddingEventExcludedCount}` : ""
+    }`
   );
 
   // Load existing candidates fresh (match-upsert target).

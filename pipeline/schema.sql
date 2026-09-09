@@ -1476,7 +1476,13 @@ select
   -- columns at the end of the select list -- it errors ("cannot change name of view column") if
   -- an existing column's position shifts, even when the name/type at that position is otherwise
   -- identical. Verified directly against the already-applied structural-v1 view.
-  case when ce.couple_signal_ok then lower(ce.raw_match) else null end as couple_guess
+  case when ce.couple_signal_ok then lower(ce.raw_match) else null end as couple_guess,
+  -- D055 addendum (2026-09-08, user mid-review: "consider filtering out the posts that say bar
+  -- or bat mitzvah. that's almost always not a wedding"): flags a post that names a non-wedding
+  -- event outright. Sized in the current queue at 43 posts naming one of these with NO wedding
+  -- language at all. Appended last for the same create-or-replace-view reason as couple_guess
+  -- above -- do not move it earlier in the list.
+  coalesce(u.caption_raw ~* '\y(mitzvah|quincea|sweet\s*16|birthday|corporate|baby shower|bridal shower|graduation|anniversary party|retirement|gala|networking|fundraiser|holiday party|prom|conference|expo|trade show|open house)\y', false) as has_non_wedding_event_keyword
 from combined c
 join universe u on u.post_url = c.source_post_url
 join couple_extract ce on ce.post_url = c.source_post_url;
@@ -1559,3 +1565,98 @@ create index if not exists idx_candidate_review_decisions_candidate on candidate
 create view candidate_review_decisions_current as select distinct on (candidate_id) * from candidate_review_decisions order by candidate_id, reviewed_at desc;
 comment on table candidate_review_decisions is 'RAW (append-only, D055 Phase 1 step 8): every wedding-candidate-level human review action from /label/candidates -- never overwritten on relabel. Confirmed candidates flow into golden_set (WEDDING) via the existing syncHumanLabelsToGoldenSet.ts, unchanged, because recordCandidateDecision() also writes human_post_labels rows (queue_version=''candidate_review_v1'') for every post in the candidate.';
 comment on view candidate_review_decisions_current is 'DERIVED: latest candidate review decision per candidate_id, same DISTINCT ON convention as human_post_labels_current.';
+
+-- D055 Phase 1 step 8, revised (2026-09-08): candidate_review_decisions/_current above was NEVER
+-- used -- 0 rows -- before this replacement, per the user's own reaction to /label/candidates:
+-- "this ui is confusing... lets design something better for labeling." 4,743 posts across 4,355
+-- structural-v2 candidates is 1.09 posts/candidate, so candidate-level bundling saved almost
+-- nothing and created exactly the confusing case (a bundle mixing a real wedding with the venue's
+-- own marketing in the same review screen). Review moves back to the POST level -- the flow
+-- already proven at /label -- but each post now carries its venue's context (chicago_status,
+-- documented-wedding count, anchor conflict) so the reviewer isn't reviewing blind the way plain
+-- /label is, and the resulting wedding is assembled server-side from per-post verdicts rather than
+-- one bundled decision. candidate_review_decisions is left in place, unused going forward -- not
+-- dropped, since it's a real (if empty) append-only log and dropping tables is not this change's
+-- job.
+create table if not exists post_venue_verdicts (
+  id bigint generated always as identity primary key,
+  post_url text not null,
+  candidate_id bigint not null references jeremy_wedding_candidates(id),
+  venue_account_id bigint references accounts(id),          -- the venue shown at review time
+  verdict text not null check (verdict in ('THIS_VENUE','OTHER_VENUE','NOT_WEDDING','DUPLICATE','UNSURE','SKIP')),
+  corrected_venue_account_id bigint references accounts(id), -- OTHER_VENUE, optional
+  duplicate_of_wedding_id bigint references weddings(id),    -- DUPLICATE, optional
+  reviewed_by text not null,
+  client_ms integer,
+  reviewed_at timestamptz not null default now()
+);
+create index if not exists idx_post_venue_verdicts_candidate on post_venue_verdicts(candidate_id);
+create index if not exists idx_post_venue_verdicts_post on post_venue_verdicts(post_url);
+create view post_venue_verdicts_current as select distinct on (post_url) * from post_venue_verdicts order by post_url, reviewed_at desc;
+-- Derived candidate-level decision, SAME SHAPE as candidate_review_decisions_current plus included_post_urls,
+-- so the creation path can read one thing:
+create or replace view candidate_review_derived as
+  select c.id as candidate_id,
+    case when bool_or(v.verdict='THIS_VENUE') then 'CONFIRM'
+         when bool_or(v.verdict='OTHER_VENUE') then 'WRONG_VENUE'
+         when bool_or(v.verdict='DUPLICATE') then 'DUPLICATE'
+         when bool_and(v.verdict='NOT_WEDDING') then 'NOT_WEDDING'
+         else 'UNSURE' end as decision,
+    (array_agg(v.corrected_venue_account_id) filter (where v.verdict='OTHER_VENUE'))[1] as corrected_venue_account_id,
+    (array_agg(v.duplicate_of_wedding_id) filter (where v.verdict='DUPLICATE'))[1] as duplicate_of_wedding_id,
+    array_agg(v.post_url) filter (where v.verdict='THIS_VENUE') as included_post_urls,
+    array_agg(v.post_url) filter (where v.verdict='OTHER_VENUE') as other_venue_post_urls,
+    count(*) filter (where v.verdict not in ('SKIP')) as posts_decided,
+    (select count(*) from jeremy_wedding_candidate_posts cp where cp.candidate_id=c.id) as posts_total,
+    max(v.reviewed_by) as reviewed_by, max(v.reviewed_at) as reviewed_at
+  from jeremy_wedding_candidates c
+  join post_venue_verdicts_current v on v.candidate_id=c.id
+  group by c.id;
+comment on table post_venue_verdicts is 'RAW (append-only, D055 post-per-screen review, 2026-09-08): every post-level venue-verdict human review action from /label/candidates (replaces candidate_review_decisions as the active review surface) -- never overwritten on relabel. venue_account_id is a snapshot of the candidate''s venue_account_id AT REVIEW TIME (provenance -- the candidate row itself can be recomputed later). recordPostVerdict() (lib/server/postVenueReview.ts) also writes ONE human_post_labels row per verdict (queue_version=''post_venue_review_v1'', THIS_VENUE/OTHER_VENUE/DUPLICATE->WEDDING, NOT_WEDDING->NOT_WEDDING, UNSURE->UNSURE, SKIP->none) so golden_set sync (syncHumanLabelsToGoldenSet.ts, unchanged) keeps working unmodified.';
+comment on view post_venue_verdicts_current is 'DERIVED: latest verdict per post_url, same DISTINCT ON convention as human_post_labels_current/candidate_review_decisions_current.';
+comment on view candidate_review_derived is 'DERIVED (D055): assembles a candidate-level decision from its posts'' per-post verdicts, same shape as candidate_review_decisions_current plus included_post_urls -- this is what createWeddingsFromJeremyEvidence.ts --from-confirmed-candidates reads now instead of candidate_review_decisions_current. A candidate is complete when posts_decided = posts_total (every non-SKIP post has a verdict); eligible for graph creation when decision in (''CONFIRM'',''WRONG_VENUE'') and posts_decided = posts_total, attaching only included_post_urls (the THIS_VENUE posts -- OTHER_VENUE posts belong to a different venue''s wedding, not this one, so they are surfaced separately as other_venue_post_urls but never attached here).';
+
+-- D055 addendum (2026-09-08): mid-review the user hit a post at Morgan Mfg that was a styled
+-- shoot and had no way to say so -- "what if i want to leave a comment on n. like i just passed
+-- morgan mfg and it had styled wedding but i couldn't enter that." post_venue_verdicts had nowhere
+-- to put that; human_post_labels already had a notes column (see above, ~line 751) but
+-- recordPostVerdict() never populated it. This adds notes to the verdict row itself (so the raw
+-- per-post log carries the reviewer's reason, not just human_post_labels) and the UI now passes
+-- the same text into both inserts in the one transaction. Structured N reasons are written as
+-- `<reason_tag>[: free text]` (reason_tag in styled_shoot/marketing/other_event/other) -- writing
+-- "styled_shoot" into notes is exactly the 'styl' substring D049's styled-shoot CONFIRMED bucket
+-- already matches on (golden_styled CTE, ~line 1187: `notes ~* 'styl'`), so this feeds that ground
+-- truth for free once synced via syncHumanLabelsToGoldenSet.ts (unchanged). Purely additive.
+alter table post_venue_verdicts add column if not exists notes text;
+comment on column post_venue_verdicts.notes is 'D055 addendum: optional reviewer note, e.g. a structured N reason (styled_shoot/marketing/other_event/other, optionally ": free text") or a free note attached via the / key. Carries through to human_post_labels.notes -> golden_set.notes on sync.';
+
+-- D055 post-hoc merge pass (2026-09-08) -- the user, mid-review at /label/candidates: "im seeing
+-- a lot of duplicates." Sized: 564 of 4,743 queued structural-v2 posts are the same couple name
+-- at the same venue, split across 213+ separate jeremy_wedding_candidates rows --
+-- runJeremyWeddingClustering.ts clusters on vendor-set Jaccard > 0.5 within 21 days, and
+-- different vendors' posts about the SAME wedding (a photographer's post crediting only the
+-- photographer + venue, a florist's post crediting only the florist + venue) often share too few
+-- credited handles to Jaccard-match each other. The couple-name veto added to that script only
+-- SPLITS mismatches within one clustering pass; nothing MERGES same-couple candidates clustering
+-- never even compared. mergeStructuralCandidatesByCouple.ts is the merge half: groups
+-- structural-v2 candidates by (venue_account_id, most-common couple_guess across their posts),
+-- merges groups whose combined post-date span is <= 60 days (lowest candidate id survives),
+-- skipping any group where a member already has a jeremy_weddings_created row. This table is the
+-- provenance log for that merge, one row per absorbed candidate -- mirrors
+-- weddings_retired_batches' log-before-delete shape (see above). survivor_candidate_id/
+-- absorbed_candidate_id/venue_account_id are deliberately NOT foreign keys to
+-- jeremy_wedding_candidates/accounts: the absorbed row is deleted as part of the same merge this
+-- table is logging (a FK would make the log un-writable at the moment it matters), and this
+-- mirrors jeremy_weddings_created.wedding_id / weddings_retired_batches.wedding_id's existing
+-- "not stable across a future rebuild, log the value not the reference" reasoning.
+create table if not exists structural_candidate_merges (
+  id                    bigint generated always as identity primary key,
+  survivor_candidate_id bigint not null,
+  absorbed_candidate_id bigint not null,
+  venue_account_id      bigint not null,
+  couple                text not null,
+  post_urls             text[] not null,
+  reason                text not null,
+  merged_at             timestamptz not null default now()
+);
+comment on table structural_candidate_merges is 'D055 (2026-09-08): provenance log for mergeStructuralCandidatesByCouple.ts -- one row per structural-v2 jeremy_wedding_candidates row absorbed into a same-venue+same-couple survivor candidate (posts and post_venue_verdicts reassigned to the survivor, the absorbed candidate row then deleted). Not FK-linked to jeremy_wedding_candidates -- the absorbed id no longer exists after the merge that wrote this row.';
