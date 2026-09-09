@@ -5,8 +5,8 @@ working session; history lives in `decisions.md`, preferences in Claude's memory
 detail nowhere else. If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-09 ~01:00 CT** (end of the D055 overnight session; the latest commit on local
-`main` is this hand-off — **not pushed**; run `git log --oneline -3`).
+Last rewritten: **2026-09-09 ~01:00 CT** (end of the D055 overnight session). **Pushed** to `origin/main` 2026-09-09 afternoon on the
+user's word (`f62abdb`); run `git log --oneline -3` to confirm..
 
 ## Mission in flight
 
@@ -42,11 +42,10 @@ extraction; the user labels at `/label/candidates` and says "create" for every b
    `167greenstreet/167eventschicago`, `totlspecialevents/theateronthelakechicago`; plus an
    `account_locations` row for `empireburgerbar` (Naperville). Raise
    `CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION` or verify by hand.
-2. **Push** local `main` (two commits ahead of `origin/main`: batch 3 + this hand-off) — never pushed without the user's word.
-3. **OpenRouter top-up** before Phase 2 calibration (~$8 text + ~$3 vision).
-4. **Apify credits (2026-09-11)** before the vision slice — every stored CDN image URL is dead;
+2. **OpenRouter top-up** before Phase 2 calibration (~$8 text + ~$3 vision).
+3. **Apify credits (2026-09-11)** before the vision slice — every stored CDN image URL is dead;
    images must be re-acquired and persisted to R2 first (`corpus-images-are-dead` memory).
-5. **Labeling**: the 1,769-post queue. Location-tag anchors are where the 12 zero-coverage
+4. **Labeling**: the 1,769-post queue. Location-tag anchors are where the 12 zero-coverage
    venues move; Fable has NOT been approved to read that class on the user's behalf.
 
 ## Next actions (in order, when unblocked)
