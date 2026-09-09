@@ -2,48 +2,19 @@
 
 Check "Now" before starting a thread — two sessions colliding on the same
 in-flight work is what this section prevents. Full history/reasoning for
-anything below: `docs/decisions.md` (D001–D042 so far).
+anything below: `docs/decisions.md` (D001–D055 so far).
 
 ## Now
 
-- **Shipped 2026-09-06**: "v1 data completion, venues-first" (D043-D047,
-  `docs/decisions.md`, full narrative), then its direct follow-on "beyond
-  INCLUDE mining + account aliases" (D048, same day — the user pushed
-  back again: "I still don't believe that's enough documented weddings
-  per venue"). Combined result as of D048: **weddings more than doubled,
-  1,567→3,435**, Feed coverage (`measureFeedCoverage.ts`) **19.3%→63.3%**.
-  Named reference venues, directly verifiable on `/vendors` today:
-  bridgeportartcenter 23→150, rockwellontheriver →116, venuelogic 26→185,
-  the.arbory 22→74, fairliechicago 19→49, sarabandechicago 17→37,
-  thewellsley 21→26, gpconservatory 16→18, the_carter_fultonmarket 18→18.
-  D047's mechanism: 2,030 trustworthy unmatched/uncreated candidates
-  across 253 already-known venues, tiered by risk and processed with a
-  systematic venue-identity filter (double-venue-tag ambiguity,
-  bio-redirect mislabels) — including a mid-mission discovery that
-  `venuelogic` is a hospitality company co-tagged on ~160 candidates at
-  two popular venues, wrongly excluded as "ambiguous" until verified
-  otherwise. D048 added three more things once the user judged D047
-  still under-counting: (1) a new `/label` queue (`beyond_include_v1`,
-  833 posts) mining specifically V3's own unreviewed REVIEW tier + EXCLUDE
-  posts with a real vendor stack + score-6-11 posts V3 never even scored —
-  not blind full-corpus review; (2) `account_aliases` (new table +
-  `apps/web/lib/server/graph.ts` changes) so a venue running multiple
-  Instagram handles (Art Institute of Chicago has three) merges onto one
-  `/vendors` page instead of fragmenting coverage — 15 pairs verified and
-  live; (3) a stack-parser precision fix (`stackParser.ts` v3→v4) for a
-  "Venue Partners:" boilerplate line that was silently matching the same
-  regex as a real "Venue:" credit, contaminating the ambiguity backlog.
-  Explicitly deferred, not forgotten: the double-venue-tag-ambiguity
-  backlog's remaining ~113 fragmented candidates, `fourthchurch`/
-  `thefultonwest` (already untangled in D047, see decisions.md),
-  Track C (non-gating portfolio content view — shipped in D047 as
-  `venue_portfolio_content`, not yet wired into any page), any
-  vendor-page UI work to surface Layer-1/Layer-2 distinctly (still
-  data-only), and non-venue vendor categories (explicitly out of scope
-  all session). `/label`'s `beyond_include_v1` queue is the active
-  in-flight thread — sync its results through the same
-  golden_set→stack-parse→cluster→reconcile→create pipeline once the user
-  makes progress on it.
+**Current status lives in `docs/STATE.md`** — one page, rewritten at the end of every session
+(mission, live numbers, what's blocked on a human, next actions, landmines). This section only
+lists the threads that aren't part of the active mission. Protocol for working across
+sessions: `docs/engineering/working-across-sessions.md`.
+
+- **Active mission: D055 "squeeze the 47k"** (2026-09-08 →). Phase 0 done, Phase 1 (human
+  review at `/label/candidates` + batched creation) running — weddings 3,541 → 4,265 across
+  three batches as of 2026-09-09. Phase 2 blocked on OpenRouter credit and Apify credits
+  (2026-09-11). Full picture: `docs/STATE.md`; narrative: `docs/decisions.md` D055.
 - Ben ↔ Jeremy merge conversation (`docs/merge-eval.md` is the case). Data
   import already done on Ben's authorization (2026-08-22); the conversation
   is now about the merge itself and rotating his RDS/API credentials.
@@ -51,59 +22,10 @@ anything below: `docs/decisions.md` (D001–D042 so far).
   2026-08-22), add a custom domain for R2 to replace the r2.dev URL, and
   check the Google Maps browser key's referrer allowlist covers the new
   domains (it may be restricted to Jeremy's old ones).
-- **Done 2026-09-05**: PR #3 (`dewwey-hq/dewwey#3`, D026–D031, Cursor +
-  two follow-up fixes) merged to `main` — two test bugs fixed first (a
-  stale `wedding_vendors` row-count snapshot, a pool-lifecycle ordering
-  bug that broke 2 new tests), 47/47 tests green, production deploy
-  confirmed live (`/vendors/galleriamarchetti` returns 200, Feed tab
-  renders).
-- **Done 2026-09-05**: 369 venue-less Jeremy candidates — 131 got a
-  correct venue anchor via Instagram `location_tag`, hand-verified,
-  but 0 new `wedding_vendors` rows (the one safe match was fully
-  redundant, the ambiguous tier repeated D030's false-merge pattern).
-  D033, `docs/engineering/graph-strengthening/venueless-candidates.md`.
-- Added `apps/web/scripts/graph/measureFeedCoverage.ts` — a re-runnable
-  coverage metric. Reading as of 2026-09-05: of 4,033 `/feed` posts,
-  only 63 distinct Ben weddings (4.6%) have a confirmed vendor credit.
-- **Done 2026-09-05**: acted on the coverage gap above — reconciliation
-  only ever matches a candidate to an *existing* Ben wedding, never
-  creates one. Built identity-creation (first ever in this workstream),
-  scoped to the 447 unmatched candidates with zero existing Ben weddings
-  at their venue. Two duplicate checks (intra-batch + secondary-account)
-  clean throughout. 15-candidate hand-read pilot **committed**: 15 new
-  weddings (D035). `is_chicago` was hand-verified for those 15 — scoped
-  the fix (D036) and shipped **Phase 1** (D037): 100 more weddings after
-  a bio cross-check caught 2 mislabeled "venues." **Phase 2** (208
-  candidates / 130 venue accounts with zero location signal) pivoted from
-  the paid Google Places API to free `WebSearch` after the user asked
-  whether it could do better (D038): 99/130 confirmed real Chicago-metro
-  locations across 4 batches, duplicate checks clean, a new
-  church-vs-reception-venue ambiguity pattern found and excluded (44 of
-  169 candidates), **125 more weddings created** from the clean pool
-  (D039). **Total from this workstream: 240 weddings created; 303 of
-  1,624 documented weddings (18.7%, up from 4.6% at the start of this
-  arc) now trace to `/feed`** (`measureFeedCoverage.ts`). Both missions
-  (`jeremy-wedding-creation.md`, `is-chicago-for-new-venues.md`) are
-  closed. D034-D039.
-- **Done 2026-09-05**: non-wedding posts on serving-graph feeds (D040–D042)
-  — 11 user-flagged concerts/galas/marketing posts, run as a `/loop`
-  eval mission rather than a URL-delete. Confirmed *not* Jeremy
-  wedding-creation: all 11 were Ben `venue_tagged` single-post "weddings"
-  that `phase_dedup()` formed on a 3+ role credit stack, with no
-  `is_wedding` gate. Locked one narrow rule (`role_shape_v1`: wedding's
-  role set ⊆ {venue, band, musician}, 100% precision / 0 false-EXCLUDEs
-  across tune, known-good, and heldout) plus a hand-labeled review list;
-  retired 46 posts / 40 weddings (`weddings` 1,624→1,584, `wedding_vendors`
-  14,918→14,664, `edges` 63,229→61,848). Rule locked into
-  `graphStrengthening.test.ts`; the crawler-side `is_wedding` gap is
-  documented in `pipeline.py` but not yet wired up (low recall by design).
-  **Batch 2** (D042, same day): user hand-flagged 17 more, verified and
-  retired the same way (+ 2 same-event siblings) — 19 posts / 17 weddings
-  (`weddings` 1,584→1,567, `wedding_vendors` 14,664→14,591, `edges`
-  61,848→61,727); caught and fixed a same-batch multi-post retirement bug
-  first. All 105 hand-labeled posts from both batches promoted into
-  `golden_set` (551→656 rows, first `venue_tagged` slice — see Next).
-  `docs/engineering/graph-strengthening/non-wedding-posts.md`.
+- Shipped 2026-09-05 → 09-07 and fully narrated in `docs/decisions.md`: D033–D042 (venue-less
+  candidates, identity creation, non-wedding retirements), D043–D049 (v1 data completion,
+  /label, beyond-INCLUDE mining, aliases, styled shoots), D050–D054 (venue-anchor bug, orphaned
+  weddings, tail-end coverage, corpus mining as a standing process). Not restated here.
 
 ## Shipped, on `main` (compressed — see `docs/decisions.md` for full detail)
 

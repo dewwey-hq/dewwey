@@ -6,7 +6,12 @@ at the repo root with a "Now" section.
 
 ## Live
 
-- [decisions.md](decisions.md) — append-only decision log (D001–…)
+- [STATE.md](STATE.md) — **read first**: the one living status page, rewritten at the end of
+  every session (mission, live numbers, blocked-on-user, next actions, landmines)
+- [engineering/working-across-sessions.md](engineering/working-across-sessions.md) — the
+  protocol for daily work across context windows (three tiers of state, session shape, batch
+  and on-behalf-review protocols)
+- [decisions.md](decisions.md) — append-only decision log (D001–…); D055 is the active mission
 - [merge-eval.md](merge-eval.md) — evaluation of Jeremy's wedding-app and the
   case for the merge; the schema/scraping analysis behind D006
 - [jeremy-ddl.sql](jeremy-ddl.sql) — schema-only dump of his beta RDS tables
@@ -25,6 +30,9 @@ at the repo root with a "Now" section.
   `venue_tagged` posts on serving feeds: 65 retired across two batches,
   `role_shape_v1` locked as a regression test, all 105 hand labels promoted
   into `golden_set` (656 rows) (D040–D042, `graph-strengthening/non-wedding-posts.md`)
+- [engineering/human-labeling/](engineering/human-labeling/) — `/label` queues and, since D055,
+  the per-post venue review at `/label/candidates` (verdicts → `post_venue_verdicts` →
+  `candidate_review_derived` → batched creation with snapshot/revert provenance)
 - [engineering/vendor-feed-gap/](engineering/vendor-feed-gap/) — applying the
   parser to Ben's own `posts` (Case A committed D027; Case B declined D031)
 - [engineering/places-photos.md](engineering/places-photos.md) — Places photo
