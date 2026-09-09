@@ -196,6 +196,11 @@ each slice behind a calibration gate on the golden set before corpus spend.
   Also worth noting from the same session: the standing "vendor's market ≠ wedding's market"
   rule cuts both ways — a Dallas photographer's `#dallaswedding` hashtags on a Fishermen's Inn
   (Elburn IL) wedding are noise, exactly like the Chicago florist's hashtags in Mexico.
+  **Web-verified all 31 the same night: 22 metro (restored to the confirmed queue), 9 not**
+  (Sevierville TN, Orange Beach AL, Hampton Bays NY, Cleveland OH, St. Paul MN, Pike Road AL,
+  Michigan City IN, Apple River IL ×1 — every one a vendor-hashtag false positive). Two data
+  notes: `lobapastry` is a bakery, not a venue (mis-anchored; the reviewer's V covers it);
+  `saltshechicago` looks like a mis-captured handle for `saltshedchicago`.
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 
