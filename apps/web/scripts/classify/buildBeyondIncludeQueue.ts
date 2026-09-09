@@ -87,18 +87,21 @@ async function main() {
      venue_signals as (
        select
          p.post_url,
-         bool_or(al.in_metro = true or v.city = 'Chicago') as any_confirmed,
+         -- D055 (2026-09-08): vendors.city defaults to 'Chicago' on every row
+         -- (docs/jeremy-ddl.sql) -- only trust it as geography evidence when
+         -- discovery_source='google_places'; account_locations.in_metro stays authoritative.
+         bool_or(al.in_metro = true or (v.city = 'Chicago' and v.discovery_source = 'google_places')) as any_confirmed,
          bool_or(al.in_metro = false) as any_not_confirmed,
          count(*) > 0 as has_any_venue,
          min(coalesce((select count(distinct wv.wedding_id) from wedding_vendors wv where wv.account_id = a.id), 0))
-           filter (where al.in_metro = true or v.city = 'Chicago') as n_weddings_min
+           filter (where al.in_metro = true or (v.city = 'Chicago' and v.discovery_source = 'google_places')) as n_weddings_min
        from pool p
        join stack_extraction_entries se on se.post_url = p.post_url
          and se.stack_parser_version = (select max(stack_parser_version) from stack_extraction_runs)
          and se.role = 'venue'
        join accounts a on lower(a.username::text) = se.handle
        left join account_locations al on al.account_id = a.id
-       left join lateral (select city from vendors where account_id = a.id order by id limit 1) v on true
+       left join lateral (select city, discovery_source from vendors where account_id = a.id order by id limit 1) v on true
        group by p.post_url
      )
      select p.post_url, p.bucket,

@@ -32,7 +32,7 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
       where has_vendor_association <> (author_is_vendor or tagged_vendor_count > 0)
     `);
     expect(rows[0].n).toBe(0);
-  }, 15000);
+  }, 120000);
 
   it("vendor_association_type is consistent with the two underlying signals in all four cases", async () => {
     const { rows } = await pool.query(`
@@ -47,7 +47,10 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
       )
     `);
     expect(rows[0].n).toBe(0);
-  }, 15000);
+    // 15s -> 120s (D055, 2026-09-09): the association view now scans the corpus-wide parse
+    // (451k stack entries); measured 15-20s per evaluation on a quiet DB, same drift already
+    // documented on the Layer-1 tests below.
+  }, 120000);
 
   it("does not gate Layer 1 — human_confirmed_chicago_wedding_content is unchanged by this addition", async () => {
     // 640, not 639 -- a legitimate, separate-cause drift, not this view gating anything: the
@@ -77,9 +80,25 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
     // 1310 (D055 geography pass, same day): 351 `account_locations` verdicts for never-seen venue
     // handles (71 in_metro=true) let human_confirmed_post_geography confirm 2 more golden INCLUDE
     // posts as Chicago via their venue. Same venue_signals mechanism as the D047 +1.
+    // DROPPED to 1299 (D055 "vendors.city is a schema DEFAULT, not evidence" fix, same day,
+    // docs/decisions.md D055): human_confirmed_post_geography's venue_signals CTE now only
+    // trusts vendors.city='Chicago' when discovery_source='google_places' (city defaults to
+    // 'Chicago' on every row, docs/jeremy-ddl.sql). Measured before/after against the live DB
+    // (not re-pinned blindly): 11 golden INCLUDE posts whose ONLY positive Chicago signal was a
+    // mention/hashtag-discovered venue's default city flipped from CONFIRMED to
+    // AMBIGUOUS/NOT_CONFIRMED/NO_SIGNAL -- a real precision fix, not a regression.
+    // BACK to 1310 (D055 default-city geography pass, 2026-09-09): the 11 posts the fix demoted
+    // were re-confirmed through the authoritative path -- reportDefaultCityVenueGeography.ts
+    // web-verified the 70 previously-defaulted venues and wrote account_locations.in_metro
+    // (67 metro / 3 not), so venue_signals now confirms them via in_metro=true, not via the
+    // schema default. Same number, opposite provenance; measured live, not re-pinned blindly.
     const { rows } = await pool.query(`select count(*)::int as n from human_confirmed_chicago_wedding_content`);
     expect(rows[0].n).toBe(1310);
-  }, 15000);
+    // Timeout bumped 15000 -> 120000 (D055, 2026-09-08): human_confirmed_post_geography's
+    // venue_signals CTE now joins vendors for discovery_source too; measured live at ~21.6s
+    // per evaluation post-fix (was passing under the old 15s budget beforehand) -- same
+    // corpus-wide-scan cost already documented on the sibling test below.
+  }, 120000);
 
   it(
     "human_confirmed_vendor_page_content is exactly the Layer-1 subset with has_vendor_association",
@@ -106,6 +125,11 @@ describe("human_confirmed_post_vendor_association (DB)", () => {
       `);
       expect(rows[0].vendor_page).toBe(rows[0].expected);
       // 1219 (D055 geography pass, same day) -- tracks the 1308->1310 Layer-1 bump above.
+      // DROPPED to 1208 (D055 "vendors.city is a schema DEFAULT" fix, same day): tracks the
+      // 1310->1299 Layer-1 drop above 1-for-1 (all 11 dropped posts already had vendor
+      // association, measured against the live DB, not re-pinned blindly).
+      // BACK to 1219 (D055 default-city geography pass, 2026-09-09) -- tracks the 1299->1310
+      // Layer-1 recovery above 1-for-1 (in_metro rows for the web-verified venues).
       expect(rows[0].vendor_page).toBe(1219);
     },
     // 120s, was 30s (D055): the view now scans 451k stack entries (was 362k) after the

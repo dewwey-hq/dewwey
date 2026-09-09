@@ -50,8 +50,9 @@
  * already-parsed non-venue vendor credits unioned in. Writes under
  * clustering_version='venue-inline-mention-v1' — a fourth, separate provenance pool. Date
  * evidence and chicago_status resolution follow the same pattern as venue_couple_signal (trust
- * vendors.city='Chicago' as a real signal, since this source's venue_account_id is always
- * resolved from that same table by construction).
+ * vendors.city='Chicago' as a real signal ONLY when discovery_source='google_places' -- D055,
+ * 2026-09-08: city defaults to 'Chicago' on every row, docs/jeremy-ddl.sql -- since this
+ * source's venue_account_id is always resolved from that same table by construction).
  *
  * --evidence-source structural reads structural_post_vendor_evidence (D055 "squeeze the 47k"
  * Phase 0, 2026-09-08): posts venue-anchored from credit-line, author-is-known-venue, or IG
@@ -534,8 +535,10 @@ async function main() {
   ) {
     // Explicit tri-state Chicago check -- a human confirming "real wedding" (or a venue's own
     // couple-signal post) says nothing on its own about geography. Only
-    // account_locations.in_metro=true OR vendors.city='Chicago' (real, verified signals) counts
-    // as confirmed; an explicit in_metro=false is a real negative; anything else (no row, null,
+    // account_locations.in_metro=true OR vendors.city='Chicago' WITH discovery_source=
+    // 'google_places' (real, verified signals -- D055, 2026-09-08: city defaults to 'Chicago'
+    // on every row regardless of discovery_source, docs/jeremy-ddl.sql) counts as confirmed;
+    // an explicit in_metro=false is a real negative; anything else (no row, null,
     // no venue resolved at all) is AMBIGUOUS, never guessed either direction. vendors.city is
     // included here (unlike the human_confirmed-only version of this check) because
     // venue_couple_signal/venue_inline_mention/structural all resolve venue_account_id via paths
@@ -562,7 +565,7 @@ async function main() {
       evidenceSource === "structural"
     ) {
       const { rows: cityRows } = await pool.query<{ account_id: number }>(
-        `select distinct account_id from vendors where account_id = any($1::bigint[]) and city = 'Chicago'`,
+        `select distinct account_id from vendors where account_id = any($1::bigint[]) and city = 'Chicago' and discovery_source = 'google_places'`,
         [venueIds]
       );
       for (const r of cityRows) if (!inMetroByAccount.has(r.account_id)) inMetroByAccount.set(r.account_id, true);

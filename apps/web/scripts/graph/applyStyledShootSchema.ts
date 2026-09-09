@@ -1,15 +1,20 @@
 /**
  * One-off, idempotent apply of the styled-shoot-vs-real-wedding signal
- * schema addition (pipeline/schema.sql, D049) directly to Supabase. Two new
- * views, both derived/read-only -- no table changes, no data written. Safe
- * to re-run: CREATE OR REPLACE VIEW.
+ * schema addition (pipeline/schema.sql, D049; regex extended D056) directly
+ * to Supabase. Two new views, both derived/read-only -- no table changes, no
+ * data written. Safe to re-run: CREATE OR REPLACE VIEW.
+ *
+ * Same dry-run/commit shape as applyPostVenueVerdictSchema.ts /
+ * applyCandidateReviewSchema.ts: everything runs inside one transaction,
+ * rolled back under --dry-run, committed otherwise.
  *
  * Usage (from apps/web):
+ *   bun run scripts/graph/applyStyledShootSchema.ts --dry-run
  *   bun run scripts/graph/applyStyledShootSchema.ts
  */
 import { getPool, closePool } from "../classify/db";
 
-const STATEMENTS: string[] = [
+export const STATEMENTS: string[] = [
   `create or replace view post_styled_shoot_signal as
    with post_universe as (
      select sp.post_url, sp.caption_raw as caption, lower(sp.owner_username) as author_username
@@ -46,7 +51,34 @@ const STATEMENTS: string[] = [
      (gsty.post_url is not null) as golden_set_confirmed_styled,
      coalesce(
        s.caption ~* '(styled shoot|styled editorial|this styled|editorial shoot|stylized shoot|style.?d wedding)'
-       or s.caption ~* '#(styledshoot|stylizedshoot|editorialwedding|editorialshoot|weddingflatlay|flatlaystyling|designerschallenge)\y',
+       or s.caption ~* '#(styledshoot|stylizedshoot|editorialshoot|flatlaystyling)\\y'
+       -- D056 addendum (2026-09-08): extends the phrase/hashtag regex per the user's own read of
+       -- a specific POSSIBLE-rated post ("This opulent Chicago style shoot... Models:
+       -- @dr.king_speaks & @mike6691") -- a "style shoot" (no d) phrase and a "Models:" credit
+       -- line, neither of which the original regex caught. Same \\y word-boundary discipline as
+       -- the original build (the #editorialweddingphotography false-positive lesson) applied to
+       -- every new clause. NOTE: every \\y/\\s/\\m below is deliberately DOUBLE-backslashed --
+       -- this file's SQL lives inside JS template literals, where an unrecognized single-backslash
+       -- escape (e.g. \\y) is silently stripped down to the bare letter before it ever reaches
+       -- Postgres, which would silently defeat the word-boundary anchors it's supposed to add.
+       --
+       -- Two things were DROPPED after empirical testing against golden_set (matches
+       -- pipeline/schema.sql's own comment verbatim -- see there for the full numbers): (1)
+       -- "inspiration|inspo|bridal" from the adjective+shoot phrase group and
+       -- "#weddinginspiration"/"#bridalinspo" from the hashtag family -- #weddinginspiration alone
+       -- is 6.85% FP against confirmed-real golden INCLUDEs. (2) the bare "Models:"/"Model:"
+       -- credit line is gated to co-occur with shoot/styled/editorial/session elsewhere in the
+       -- caption -- ungated it alone is 0.89% FP. (3) three of the ORIGINAL D049 hashtags
+       -- (#editorialwedding, #weddingflatlay, #designerschallenge) are also dropped: this
+       -- addendum is what first made \\y actually take effect in the deployed view (the previous
+       -- single-backslash \\y was silently stripped to a bare "y" by JS/Bun template-literal
+       -- parsing, so the hashtag clause never really ran), and once it did, those three turned out
+       -- to have real FP contact with golden INCLUDEs that the original 0.16% figure never caught.
+       -- Final combined FP: 7/1576 = 0.44%.
+       or s.caption ~* '\\y(styled?|editorial|concept)\\s+(shoot|session|editorial)\\y'
+       or (s.caption ~* '\\ymodels?\\s*[:|]' and s.caption ~* '\\y(shoot|styled|editorial|session)\\y')
+       or s.caption ~* '#(styledshoot|styledshoots|stylizedshoot|editorialshoot|inspirationshoot|styledweddingshoot)\\y'
+       or (s.caption ~* '\\ystyled by\\y' and s.caption ~* '\\yshoot\\y'),
        false
      ) as phrase_or_hashtag_signal,
      coalesce(s.author_username in (select username from known_network_accounts), false) as known_network_account,
@@ -55,7 +87,11 @@ const STATEMENTS: string[] = [
      case
        when gsty.post_url is not null then 'CONFIRMED'
        when s.caption ~* '(styled shoot|styled editorial|this styled|editorial shoot|stylized shoot|style.?d wedding)'
-         or s.caption ~* '#(styledshoot|stylizedshoot|editorialwedding|editorialshoot|weddingflatlay|flatlaystyling|designerschallenge)\y'
+         or s.caption ~* '#(styledshoot|stylizedshoot|editorialshoot|flatlaystyling)\\y'
+         or s.caption ~* '\\y(styled?|editorial|concept)\\s+(shoot|session|editorial)\\y'
+         or (s.caption ~* '\\ymodels?\\s*[:|]' and s.caption ~* '\\y(shoot|styled|editorial|session)\\y')
+         or s.caption ~* '#(styledshoot|styledshoots|stylizedshoot|editorialshoot|inspirationshoot|styledweddingshoot)\\y'
+         or (s.caption ~* '\\ystyled by\\y' and s.caption ~* '\\yshoot\\y')
          then 'LIKELY'
        when gsa.author_username is not null
          or s.author_username in (select username from known_network_accounts)
@@ -89,13 +125,40 @@ const STATEMENTS: string[] = [
 ];
 
 async function main() {
+  const dryRun = process.argv.includes("--dry-run");
   const pool = getPool();
-  for (const [i, sql] of STATEMENTS.entries()) {
-    await pool.query(sql);
-    console.log(`[apply-schema] statement ${i + 1}/${STATEMENTS.length} ok`);
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    for (const [i, sql] of STATEMENTS.entries()) {
+      await client.query(sql);
+      console.log(`[apply-schema] statement ${i + 1}/${STATEMENTS.length} ok`);
+    }
+
+    const { rows: confirmedRows } = await client.query<{ n: string }>(
+      `select count(*) as n from post_styled_shoot_signal where confidence = 'CONFIRMED'`
+    );
+    const { rows: likelyRows } = await client.query<{ n: string }>(
+      `select count(*) as n from post_styled_shoot_signal where confidence = 'LIKELY'`
+    );
+    console.log(
+      `[apply-schema] ${dryRun ? "DRY RUN — " : ""}post_styled_shoot_signal: CONFIRMED=${confirmedRows[0].n}, LIKELY=${likelyRows[0].n}`
+    );
+
+    if (dryRun) {
+      await client.query("rollback");
+      console.log("[apply-schema] DRY RUN — rolled back, no changes committed");
+    } else {
+      await client.query("commit");
+      console.log("[apply-schema] COMMITTED");
+    }
+  } catch (e) {
+    await client.query("rollback");
+    throw e;
+  } finally {
+    client.release();
+    await closePool();
   }
-  console.log("[apply-schema] done");
-  await closePool();
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

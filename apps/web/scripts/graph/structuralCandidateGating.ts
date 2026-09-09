@@ -16,11 +16,12 @@
  *      wedding from.
  *   3. A human CONFIRM/WRONG_VENUE means "this is a real wedding [at this venue]" — it says
  *      NOTHING about Chicago relevance. That's a separate fact, resolved the same way the
- *      hardcoded-array mode already resolves it (vendors.city='Chicago' OR
- *      account_locations.in_metro=true), OR trusted outright when the candidate's own
- *      chicago_status is already CHICAGO_CONFIRMED (set by clustering from
- *      human_confirmed_post_geography, independent of this review). Never inferred from the
- *      content label itself.
+ *      hardcoded-array mode already resolves it (vendors.city='Chicago' -- only when
+ *      discovery_source='google_places', D055 2026-09-08: city defaults to 'Chicago' on every
+ *      row, docs/jeremy-ddl.sql -- OR account_locations.in_metro=true), OR trusted outright
+ *      when the candidate's own chicago_status is already CHICAGO_CONFIRMED (set by clustering
+ *      from human_confirmed_post_geography, independent of this review). Never inferred from
+ *      the content label itself.
  *
  * All DB lookups (city/in_metro on the effective venue) happen in the caller; this function
  * only combines already-resolved values, so it's trivially unit-testable.
@@ -38,7 +39,13 @@ export interface StructuralCandidateGateInput {
   correctedVenueAccountId: number | null;
   /** jeremy_wedding_candidates.chicago_status. */
   chicagoStatus: ChicagoStatus;
-  /** vendors.city = 'Chicago' for the EFFECTIVE (possibly corrected) venue account. */
+  /**
+   * vendors.city = 'Chicago' AND vendors.discovery_source = 'google_places' for the EFFECTIVE
+   * (possibly corrected) venue account -- D055 (2026-09-08): city defaults to 'Chicago' on
+   * every row (docs/jeremy-ddl.sql), so it's only real geography evidence with a verified
+   * Places lookup. Caller's responsibility to apply the discovery_source condition before
+   * passing this in -- see createWeddingsFromJeremyEvidence.ts's two call sites.
+   */
   venueCityIsChicago: boolean;
   /** account_locations.in_metro = true for the EFFECTIVE (possibly corrected) venue account. */
   venueInMetro: boolean;

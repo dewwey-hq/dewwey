@@ -54,7 +54,10 @@ async function main() {
          coalesce((select count(distinct wedding_id) from wedding_vendors wv where wv.account_id = v.account_id), 0) as n_weddings
        from vendors v
        join accounts a on a.id = v.account_id
-       where v.city = 'Chicago' and v.category = 'venue' and v.account_id is not null
+       -- D055 (2026-09-08): vendors.city defaults to 'Chicago' on every row
+       -- (docs/jeremy-ddl.sql) -- only trust it as "known Chicago venue" evidence when
+       -- discovery_source='google_places'.
+       where v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue' and v.account_id is not null
          and coalesce((select count(distinct wedding_id) from wedding_vendors wv where wv.account_id = v.account_id), 0) <= $1
      ),
      own_posts as (

@@ -21,17 +21,17 @@ describe("venue_portfolio_content (DB)", () => {
       ) dup
     `);
     expect(rows[0].n).toBe(0);
-  }, 15000);
+  }, 120000); // 15s -> 120s (D055, 2026-09-09): view scans the corpus-wide parse; ~15-20s per evaluation
 
-  it("every row's venue_account_id is a Chicago venue in `vendors`", async () => {
+  it("every row's venue_account_id is a Chicago venue in `vendors`, verified via a real Places lookup (D055: city defaults to 'Chicago' on every row, docs/jeremy-ddl.sql)", async () => {
     const { rows } = await pool.query(`
       select count(*)::int as n from venue_portfolio_content vpc
       where not exists (
-        select 1 from vendors v where v.account_id = vpc.venue_account_id and v.city = 'Chicago' and v.category = 'venue'
+        select 1 from vendors v where v.account_id = vpc.venue_account_id and v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
       )
     `);
     expect(rows[0].n).toBe(0);
-  }, 15000);
+  }, 120000); // 15s -> 120s (D055, 2026-09-09): view scans the corpus-wide parse; ~15-20s per evaluation
 
   it("is_documented_wedding rows genuinely trace to wedding_posts (not a stale/mistaken flag)", async () => {
     const { rows } = await pool.query(`
@@ -42,7 +42,7 @@ describe("venue_portfolio_content (DB)", () => {
         )
     `);
     expect(rows[0].n).toBe(0);
-  }, 15000);
+  }, 120000); // 15s -> 120s (D055, 2026-09-09): view scans the corpus-wide parse; ~15-20s per evaluation
 
   it("is a non-gating, additive view — does not change human_confirmed_chicago_wedding_content's row count", async () => {
     const { rows } = await pool.query(`
@@ -52,5 +52,5 @@ describe("venue_portfolio_content (DB)", () => {
     // this view (see the view's own comment) — this just confirms golden_set wasn't touched by
     // applying the new view (still >0, unaffected).
     expect(rows[0].n).toBeGreaterThan(0);
-  }, 15000);
+  }, 120000); // 15s -> 120s (D055, 2026-09-09): view scans the corpus-wide parse; ~15-20s per evaluation
 });

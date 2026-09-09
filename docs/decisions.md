@@ -251,6 +251,96 @@ each slice behind a calibration gate on the golden set before corpus spend.
   Chicago-proper venues) and recorded as metro; two (`loft21events`, `fbbanquets`) left to the
   web pass. **Rule, now in code: `vendors.city='Chicago'` is geography evidence only when
   `discovery_source='google_places'`; `account_locations.in_metro` stays authoritative.**
+- **Parser v9** (user-caught: `Venue: @thegraychi - Photo: @… - Planner: @…` on ONE line gave
+  all three handles the venue role): a line holding 2+ `Label: @handle` credits is split into
+  segments on ` - `/` | `/` • `/` · `/` // `/` / `/`;` before matching. 292 posts / 343 lines
+  affected corpus-wide; 6 structural anchors were wrong and every vendor role on those posts
+  was wrong. Re-parsed the corpus under v9.
+- **Styled shoots cleared on the user's behalf** (user: "don't you have scripts on style and
+  model attributes?"): D049's `post_styled_shoot_signal` existed but (a) its regex lacked "style
+  shoot" (no *d*) and any `Models:` credit-line signal, and (b) it wasn't wired into the review
+  queue at all. Extended the signal (models/hosts credit lines, styled/style/editorial/concept
+  shoot phrases, the styled-shoot hashtags — word-boundary-guarded per D049's own false-positive
+  lesson), surfaced it in the queue as an amber badge with S pre-selected on N, and — with
+  explicit approval, after hand-reading a sample (~15/18 not-a-wedding on the looser phrasing) —
+  **cleared 161 posts matching the tight rule** (a `Models:`/`Hosts:` line or an explicit
+  styled/editorial-shoot phrase) as NOT_WEDDING/`styled_shoot` under `fable-structured`. Only 24
+  were Chicago-confirmed; most were destination workshop shoots (Tuscany, Sonoma, Naples). The
+  looser "inspiration/session" phrasing stays with the human, badged.
+- **Two classes read on the user's behalf** (2026-09-09; user: "this is a slower label process,
+  just thought partner on this one" → approved "take both classes"): Fable hand-read every
+  post, wrote verdicts under `reviewed_by='fable-structured'`, never touched `human_post_labels`,
+  and left anything ambiguous for the human. Every batch is a saved SQL file
+  (`apps/web/scripts/graph/tmp_analysis/d055_{strong,author}_batchN_verdicts.sql`) applied with
+  `psql -f`, so the on-behalf work is replayable and greppable. (1) **Strong class** — credit-
+  line anchor + a named couple + wedding language, 426 posts: 391 THIS_VENUE / 40 NOT_WEDDING /
+  10 OTHER_VENUE, 5 left (a pre-wedding teaser, a possible styled stack, three unnamed
+  musings). NOT_WEDDING reasons were vendor pitches, industry gatherings, an engagement session
+  at the Art Institute, two multi-wedding roundups, and one magazine editorial with `Female
+  model / Male model` credits. OTHER_VENUE corrections were the same few shapes every time:
+  `@tigerlilyevents` (the in-house caterer/venue-sales team, per its own bio) standing in for
+  Cafe Brauer; `@lmcateringchi` for LM Studio; `@chicagoparks` for South Shore Cultural Center;
+  `@uchicago` for the Quadrangle Club; a rehearsal dinner at Gibsons for a CIC wedding; a Morton
+  Arboretum ceremony whose reception "moved into Empire" (Empire Burger Bar, Naperville — no
+  `account_locations` row yet, so not creatable until the geography pass reaches it).
+  (2) **Author-anchored class** — the venue's own posts, 417 posts, the user's own confirm rate
+  on it was ~27%, so the rule was stricter: THIS_VENUE only when the venue names the couple or
+  posts a ≥3-vendor stack for a specific wedding; NOT_WEDDING for pitches/packages/tours/
+  exhibits/concerts/galas/giveaways; a venue's "Photos by @x" of an unnamed wedding LEFT for the
+  human. 209 THIS_VENUE / 256 NOT_WEDDING / 1 OTHER_VENUE, **107 left** (Stan Mansion, City Hall
+  Events, The Penthouse Hyde Park, Salvatore's quote-posts, and similar photo-credit-only venue
+  posts). Totals under `fable-structured` after both classes: **600 THIS_VENUE / 296
+  NOT_WEDDING / 11 OTHER_VENUE**; the user's own tag stands at 224 / 74 / 14. Remaining
+  confirmed queue for the human: 1,769 posts (821 location-tag, 771 credit-line, 107 author, 52
+  inline, 18 hashtag).
+- **Ten duplicate candidates hand-merged while reading** (identical vendor stacks, or the same
+  couple handles where only one post carried a name, so the normalized-name merge missed them):
+  The Dalcy, The Langham, Pendry, The Haight, Gather, Salvatore's ×3, The Arbory. Same shape as
+  `mergeStructuralCandidatesByCouple.ts` (log to `structural_candidate_merges` with reason
+  `manual (Fable, D055 … review)`, move posts + verdicts, delete reconciliation, delete the
+  candidate last). Candidates 7,645 → 7,636; the insufficient tier 2,568 → 2,561.
+- **WRONG_VENUE candidates never created anything — fixed.** `candidate_review_derived` puts
+  only THIS_VENUE posts in `included_post_urls`, and a WRONG_VENUE decision exists precisely
+  when a candidate has zero of those, so every "wrong venue, here's the right one" verdict
+  (the reviewer's most valuable correction) was skipped as `no_included_posts` — the earlier
+  ceremony/reception batch only worked because those candidates were re-anchored by direct
+  update. `createWeddingsFromJeremyEvidence.ts` now attaches, for WRONG_VENUE, the OTHER_VENUE
+  posts whose correction points at the corrected venue, and drops the original anchor's venue-
+  role credit (a caterer, a Park District, a university, a rehearsal-dinner restaurant should
+  not collect a venue wedding). Known cost, stated in code: a church anchor corrected to its
+  reception loses the ceremony credit; D050's dual credit survives only on CONFIRM.
+- **D049's styled-shoot regex had been silently inert since it shipped** (found by the agent
+  extending it): `applyStyledShootSchema.ts` builds its SQL inside a JS template literal, where
+  `\y` and `\s` collapse to bare letters before Postgres sees them, so the word-boundary guard
+  the `#editorialweddingphotography` lesson was supposed to enforce never ran. Fixed (double-
+  escaped), the regex extended for `style shoot` / `Models:` lines, three original hashtags
+  dropped once the boundary actually worked and showed real golden-INCLUDE contact; final false-
+  positive rate 7/1,576 = 0.44%. Author-anchored and styled-flagged posts now sort last in the
+  queue.
+- **Test literals**: Layer 1 went 1,299 → 1,310 and vendor-page 1,208 → 1,219 — back to the
+  pre-fix numbers with the opposite provenance (the default-city web pass wrote `in_metro` for
+  67 venues, re-confirming the 11 posts through the authoritative path); five DB tests that
+  hard-coded 15 s timeouts now allow 120 s (the views scan the corpus-wide parse; ~15-20 s each
+  on a quiet DB).
+- **Batch 3 CREATED** (`d055-structural-v2-batch3`, snapshot `2026-09-09T05-27-45`, user:
+  "please add them"): **651 weddings / 706 posts / 2,716 vendor credits**; 33 skipped as not-
+  Chicago (real weddings the user confirmed in Milwaukee, Omaha, Gainesville, Duluth, Champaign
+  …), 9 wrong-venue-with-no-correction. 16 of the 651 are WRONG_VENUE corrections created at
+  their corrected venue (5 at Cafe Brauer alone). 33 venues crossed from 1-5 into 6+; none from
+  0 (the zero-coverage venues have no confirmed candidates yet — that's the location-tag queue
+  the human still holds). weddings 3,614 → **4,265**; wedding_posts 4,870; wedding_vendors
+  36,384. Verified: 651/651 have a venue credit matching the wedding's venue; **8 were created
+  with zero posts** — their one post already existed in `posts` from Ben's venue_tagged crawl,
+  unlinked to any wedding, and the script's `on conflict do nothing` skipped the link (the D050
+  orphan shape again, from a new direction). Linked by hand the same night
+  (`tmp_analysis/d055_batch3_orphan_links.sql`); the script now links an existing post instead
+  of skipping it. Coverage by venue after batch 3: 12 metro Places venues at 0, 111 at 1-5, 50
+  at 6-15, 57 at 16+. Alias round 6 is queued, not applied — the session's web-search budget is
+  exhausted, and the D052 rule is no alias without an independent web check:
+  `cbgweddings→chicagobotanic` (16 venue weddings already accumulating on the unverified handle),
+  `artinstituteweddingsevents→artinstitutechi`, `rpmeventsandcatering↔rpmeventschicago`,
+  `167greenstreet/167eventschicago`, `totlspecialevents/theateronthelakechicago`; plus an
+  `account_locations` row for `empireburgerbar` (Naperville).
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 

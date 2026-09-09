@@ -15,21 +15,24 @@ const STATEMENTS: string[] = [
      from staging.instagram_posts sp
      join accounts va on lower(va.username::text) = lower(sp.owner_username)
      join vendors v on v.account_id = va.id
-     where v.city = 'Chicago' and v.category = 'venue'
+     -- D055: v.city='Chicago' is a geography claim here (this view's whole scope is "a
+     -- Chicago venue's own portfolio content") -- only trust it with
+     -- discovery_source='google_places' (docs/jeremy-ddl.sql defaults city to 'Chicago').
+     where v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
      union
      select e.source_post_url as post_url, sp.caption_raw, va.id as venue_account_id, 'tagged' as connection
      from jeremy_post_vendor_evidence e
      join accounts va on va.id = e.account_id
      join vendors v on v.account_id = va.id
      join staging.instagram_posts sp on sp.post_url = e.source_post_url
-     where e.role = 'venue' and v.city = 'Chicago' and v.category = 'venue'
+     where e.role = 'venue' and v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
      union
      select e.source_post_url as post_url, sp.caption_raw, va.id as venue_account_id, 'tagged' as connection
      from human_confirmed_post_vendor_evidence e
      join accounts va on va.id = e.account_id
      join vendors v on v.account_id = va.id
      join staging.instagram_posts sp on sp.post_url = e.source_post_url
-     where e.role = 'venue' and v.city = 'Chicago' and v.category = 'venue'
+     where e.role = 'venue' and v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
    )
    select distinct on (post_url)
      post_url,

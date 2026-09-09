@@ -380,6 +380,53 @@ describe("parseCaption v8 inline_at + venue_hashtag (unit, D055 Phase 0 step 2)"
   });
 });
 
+describe("parseCaption v9 multi-credit line splitting (unit, D055 -- user-caught wrong-venue-anchor bug)", () => {
+  async function parse(caption: string) {
+    const { parseCaption } = await import("./stackParser");
+    return parseCaption(caption);
+  }
+
+  it("splits 'Venue: @a - Photo: @b - Planner: @c' (one line, three credits) into three correctly-roled entries -- the exact user-reported line", async () => {
+    const { stack } = await parse(
+      "Venue: @thegraychi - Photo: @_teresawilliams - Planner: @fivegrainevents"
+    );
+    expect(stack).toEqual([
+      expect.objectContaining({ handle: "thegraychi", role: "venue", role_raw: "Venue", source: "credit_line" }),
+      expect.objectContaining({ handle: "_teresawilliams", role: "photographer", role_raw: "Photo", source: "credit_line" }),
+      expect.objectContaining({ handle: "fivegrainevents", role: "planner", role_raw: "Planner", source: "credit_line" }),
+    ]);
+    // all three entries share the same line_no -- provenance stays per caption LINE, not per segment.
+    expect(new Set(stack.map((e) => e.line_no)).size).toBe(1);
+  });
+
+  it("splits 'Photo: @aa @bb - Venue: @cc' so @aa/@bb stay photographer and @cc is venue (not all three venue)", async () => {
+    const { stack } = await parse("Photo: @aa @bb - Venue: @cc");
+    expect(stack).toEqual([
+      expect.objectContaining({ handle: "aa", role: "photographer" }),
+      expect.objectContaining({ handle: "bb", role: "photographer" }),
+      expect.objectContaining({ handle: "cc", role: "venue" }),
+    ]);
+  });
+
+  it("a normal single-credit 'Venue: @xx' line is unchanged", async () => {
+    const { stack } = await parse("Venue: @xx");
+    expect(stack).toEqual([expect.objectContaining({ handle: "xx", role: "venue", role_raw: "Venue" })]);
+  });
+
+  it("does NOT split 'Venue: @xx @yy' -- one label, two handles under it, no second label to split on", async () => {
+    const { stack } = await parse("Venue: @xx @yy");
+    expect(stack).toEqual([
+      expect.objectContaining({ handle: "xx", role: "venue" }),
+      expect.objectContaining({ handle: "yy", role: "venue" }),
+    ]);
+  });
+
+  it("'Hair + makeup: @zz' (label containing '+') is unchanged -- a single credit, not touched by the splitter", async () => {
+    const { stack } = await parse("Hair + makeup: @zz");
+    expect(stack).toEqual([expect.objectContaining({ handle: "zz", role_raw: "Hair + makeup" })]);
+  });
+});
+
 // --- Structural invariants against the live DB. Read-only. ---
 describe("graph-strengthening invariants (DB)", () => {
   const pool = getPool();
@@ -389,7 +436,7 @@ describe("graph-strengthening invariants (DB)", () => {
   it("evidence view never includes role='other'", async () => {
     const { rows } = await pool.query(`select count(*) as n from jeremy_post_vendor_evidence where role = 'other'`);
     expect(Number(rows[0].n)).toBe(0);
-  }, 15000);
+  }, 120000); // 15s -> 120s (D055, 2026-09-09): evidence view scans the corpus-wide parse; ~15-20s per evaluation
 
   it("every evidence row's source post is currently V3 INCLUDE (the view's own filter, tested not assumed)", async () => {
     const { rows } = await pool.query(`
@@ -406,7 +453,7 @@ describe("graph-strengthening invariants (DB)", () => {
       ) <> 'INCLUDE'
     `);
     expect(Number(rows[0].n)).toBe(0);
-  }, 15000);
+  }, 120000); // 15s -> 120s (D055, 2026-09-09): evidence view scans the corpus-wide parse; ~15-20s per evaluation
 
   it("a source post belongs to at most one Jeremy wedding candidate (DB-level PK, tested explicitly)", async () => {
     const { rows } = await pool.query(
@@ -694,8 +741,13 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // exactly the "insufficient" tier by design (matched_wedding_id stays null, metrics kept for
     // inspection). These are the candidates the /label/candidates review decides on; none are
     // created without a human CONFIRM. 2,568 after the couple-name merge pass (229 candidates
-    // absorbed, reconciliation re-run).
-    expect(Number(rows[0].n)).toBe(2568);
+    // absorbed, reconciliation re-run). 2,565 (D055 on-behalf review, 2026-09-09): Fable's
+    // hand-read of the strong class found 5 more duplicate candidates (identical vendor stacks
+    // or same couple handles that the normalized-name merge missed) and hand-merged them; each
+    // absorbed candidate's reconciliation row is deleted with it (structural_candidate_merges
+    // reason 'manual (Fable, D055 batch-N review)'). 2,561 once the author-anchored class was
+    // read too (10 hand-merges in all; 7 of them sat in this tier).
+    expect(Number(rows[0].n)).toBe(2561);
   }, 15000);
 
   it("weddings/wedding_posts are unaffected by the reconciliation rerun — reconciliation never writes to Ben's graph (wedding_vendors/edges are D023's separate, deliberate ingestion, asserted in its own describe block)", async () => {
@@ -784,8 +836,14 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // D055 batch 1 (2026-09-08 late, +13 weddings/+16 posts): first creation from the per-post
     // venue review (candidate_review_derived), batch_id d055-structural-v2-batch1.
     // D055 batch 2 (same night, +60 weddings/+66 posts): 3614/4164.
-    expect(Number(rows[0].weddings)).toBe(3614);
-    expect(Number(rows[0].wedding_posts)).toBe(4164);
+        // +651 weddings / +706 posts from D055 batch 3 (2026-09-09, user: "please add them"): the
+    // first batch after Fable's on-behalf read of the strong + venue-authored classes (D055
+    // addendum), plus 16 WRONG_VENUE candidates that could finally create at their corrected
+    // venue. 8 of the 651 were created with zero posts (their post already existed in `posts`
+    // from the venue_tagged crawl, unlinked) and were linked by hand the same night; the script
+    // now links an existing post instead of skipping it.
+    expect(Number(rows[0].weddings)).toBe(4265);
+    expect(Number(rows[0].wedding_posts)).toBe(4870);
   });
 });
 
@@ -839,7 +897,13 @@ describe("clustering boundary-tie investigation — current (unfixed) state (DB)
     // 7,645: one more hand-merge before batch 1 (candidate 8534 -> 8520, Warwick Allerton, same
     // photographer next day with no couple name in the caption; logged in
     // structural_candidate_merges with reason 'manual').
-    expect(Number(rows[0].candidates)).toBe(7645);
+    // 7,640 (D055 on-behalf review, 2026-09-09): five more hand-merges during Fable's strong-class
+    // read (8982->8862 The Dalcy, 8330->8769 The Langham, 11038->10951 Pendry, 11787->11720 The
+    // Haight, 12145->11513 Gather) -- identical vendor stacks / same couple handles the automatic
+    // couple-name merge missed. Posts unchanged (they move). 7,636 after the author-anchored
+    // class (4 more: 8182->8176 and 8181/8212->8178 Salvatore's, 8497->8203 The Arbory) --
+    // 10 manual merges in all, every one logged in structural_candidate_merges.
+    expect(Number(rows[0].candidates)).toBe(7636);
     expect(Number(rows[0].candidate_posts)).toBe(8705);
   });
 });
@@ -947,8 +1011,10 @@ describe("graph ingestion — D023 (DB)", () => {
     // provenance is jeremy_weddings_created.batch_id, not this table, so all 68 are "untouched").
     // +337 more from D055 batch 2 (60 weddings; includes second venue-role rows for ceremony
     // sites -- same provenance via jeremy_weddings_created.batch_id, so all land in "untouched").
-    expect(Number(rows[0].untouched)).toBe(33557);
-    expect(Number(rows[0].total)).toBe(33668);
+    // +2716 more from D055 batch 3 (651 weddings, 2026-09-09; same batch_id provenance, all
+    // "untouched").
+    expect(Number(rows[0].untouched)).toBe(36273);
+    expect(Number(rows[0].total)).toBe(36384);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -1008,8 +1074,14 @@ describe("graph ingestion — D023 (DB)", () => {
     // d055-structural-v2-batch2 -- the user's verdicts plus 56 ceremony+reception posts cleared
     // under reviewed_by='fable-structured'; 14 weddings carry both ceremony and reception venue
     // credits (D050 convention: reception anchors, ceremony site credited).
-    expect(Number(rows[0].weddings)).toBe(3614);
-    expect(Number(rows[0].wedding_posts)).toBe(4164);
+        // +651 weddings / +706 posts from D055 batch 3 (2026-09-09, user: "please add them"): the
+    // first batch after Fable's on-behalf read of the strong + venue-authored classes (D055
+    // addendum), plus 16 WRONG_VENUE candidates that could finally create at their corrected
+    // venue. 8 of the 651 were created with zero posts (their post already existed in `posts`
+    // from the venue_tagged crawl, unlinked) and were linked by hand the same night; the script
+    // now links an existing post instead of skipping it.
+    expect(Number(rows[0].weddings)).toBe(4265);
+    expect(Number(rows[0].wedding_posts)).toBe(4870);
     // accounts +6 (14334->14340): Tier 1's 159 candidates credited a few vendor handles never
     // seen before in `accounts` -- unlike Batch 5/6, whose venue accounts always pre-existed
     // (that's how they got tagged 'venue' in the first place), Tier 1 spans the FULL candidate
@@ -1040,7 +1112,8 @@ describe("graph ingestion — D023 (DB)", () => {
     // one number). Same mechanism as pipeline.py's acct_id() and D050 Track 2.2's placeholders.
     // +1 (22854->22855, D055 batch 2): one imported post's author had no accounts row yet --
     // createWeddingsFromJeremyEvidence.ts mints it on import, same as every prior batch.
-    expect(Number(rows[0].accounts)).toBe(22855);
+    // +16 (22855->22871, D055 batch 3): imported posts' authors minted on import, as above.
+    expect(Number(rows[0].accounts)).toBe(22871);
   });
 
   it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {
@@ -1158,7 +1231,10 @@ describe("vendor feed count invariant (DB)", () => {
     `);
     // 46 (D055 batch 2, 2026-09-08): Lisa & Daniel's wedding, confirmed at the post level in the
     // per-post venue review, created in batch d055-structural-v2-batch2.
-    expect(rows[0].n).toBe(46);
+    // 59 (D055 batch 3, 2026-09-09): 13 more Galleria Marchetti weddings from the on-behalf
+    // strong/author-class read (named couples on credit-line and venue-authored posts) plus one
+    // WRONG_VENUE correction created at Galleria.
+    expect(rows[0].n).toBe(59);
   });
 
   it("ulcchicago has a venue credit on wedding 1352 (the Case A index bug, D027)", async () => {
@@ -1178,11 +1254,6 @@ describe("vendor feed count invariant (DB)", () => {
 // revertWeddingBatch.ts, and createWeddingsFromJeremyEvidence.ts's now-required --batch-id. ---
 describe("D055 batch provenance/reversibility (DB)", () => {
   const pool = getPool();
-  // Exactly one closePool() call for the whole file, in this LAST describe block (see the
-  // D023 block's and "vendor feed count invariant" block's own comments above).
-  afterAll(async () => {
-    await closePool();
-  });
 
   it("jeremy_weddings_created.batch_id column exists (applied via applyWeddingBatchProvenanceSchema.ts)", async () => {
     const { rows } = await pool.query(`
@@ -1213,5 +1284,115 @@ describe("D055 batch provenance/reversibility (DB)", () => {
       where not exists (select 1 from jeremy_weddings_created j where j.wedding_id = w.id)
     `);
     expect(rows[0].n).toBe(1326);
+  });
+});
+
+// D055 (2026-09-08, "vendors.city is a schema DEFAULT, not evidence", docs/decisions.md D055):
+// Jeremy's DDL declares `city varchar DEFAULT 'Chicago'` (docs/jeremy-ddl.sql), so a `vendors`
+// row with city='Chicago' but discovery_source <> 'google_places' (minted from an @mention or
+// #hashtag, never address-verified) carries NO real geographic evidence -- DC Estate Winery
+// (South Beloit IL, ~90 miles out) reached the Chicago-confirmed review queue this way. Rule,
+// now applied everywhere vendors.city is read as geography evidence (createWeddingsFromJeremy
+// Evidence.ts, runJeremyWeddingClustering.ts, the human_confirmed_post_geography /
+// venue_couple_signal_post_vendor_evidence / venue_inline_mention_post_vendor_evidence /
+// venue_portfolio_content views, and the venue-discovery scripts): vendors.city='Chicago' only
+// counts when discovery_source='google_places'; account_locations.in_metro stays authoritative.
+//
+// decideStructuralCandidateCreation itself takes an already-resolved `venueCityIsChicago`
+// boolean (its callers own the discovery_source condition -- see structuralCandidateGating.ts's
+// own doc comment on that field) -- so this isn't a test of a discovery_source parameter on the
+// helper itself, it's a live-DB regression test that the CALLER'S convention (only ever pass
+// true when discovery_source='google_places') is what the helper is exercised against, using
+// real `vendors` rows from both populations rather than a hand-picked fixture.
+describe("decideStructuralCandidateCreation x vendors.discovery_source (D055 regression, DB)", () => {
+  const pool = getPool();
+  // Exactly one closePool() call for the whole file, in this LAST describe block (see the
+  // D023 block's and "vendor feed count invariant" block's own comments above).
+  afterAll(async () => {
+    await closePool();
+  });
+
+  it("SKIPs chicago_unconfirmed when the only Chicago signal is a vendors.city='Chicago' row with a non-Places discovery_source", async () => {
+    // A real vendor row whose city='Chicago' is the schema default (discovery_source is
+    // 'instagram_mention'/'instagram_hashtag', never a verified Places address) AND has no
+    // account_locations.in_metro=true row -- isolates the default-city signal as the ONLY
+    // positive geography evidence, exactly the DC Estate Winery failure mode.
+    const { rows } = await pool.query<{ account_id: number }>(`
+      select v.account_id from vendors v
+      left join account_locations al on al.account_id = v.account_id
+      where v.city = 'Chicago' and v.discovery_source <> 'google_places'
+        and coalesce(al.in_metro, false) is not true
+      order by v.account_id
+      limit 1
+    `);
+    expect(rows.length).toBe(1); // sanity: this population must exist for the test to mean anything
+    const accountId = rows[0].account_id;
+
+    // Same query shape as createWeddingsFromJeremyEvidence.ts's two (fixed) call sites --
+    // city_chicago only true with discovery_source='google_places'.
+    const { rows: geo } = await pool.query<{ city_chicago: boolean; in_metro: boolean }>(
+      `select
+         exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago' and v.discovery_source = 'google_places') as city_chicago,
+         coalesce((select al.in_metro from account_locations al where al.account_id = $1), false) as in_metro`,
+      [accountId]
+    );
+    expect(geo[0].city_chicago).toBe(false); // the fixed query correctly refuses the default-city signal
+    expect(geo[0].in_metro).toBe(false);
+
+    const result = decideStructuralCandidateCreation({
+      decision: "CONFIRM",
+      originalVenueAccountId: accountId,
+      correctedVenueAccountId: null,
+      chicagoStatus: null,
+      venueCityIsChicago: geo[0].city_chicago,
+      venueInMetro: geo[0].in_metro,
+      includedPostUrls: ["https://instagram.com/p/d055test/"],
+    });
+    expect(result).toEqual({ action: "SKIP", reason: "chicago_unconfirmed" });
+  });
+
+  it("CREATEs when vendors.city='Chicago' has discovery_source='google_places' (a real Places lookup)", async () => {
+    const { rows } = await pool.query<{ account_id: number }>(`
+      select v.account_id from vendors v
+      where v.city = 'Chicago' and v.discovery_source = 'google_places'
+      order by v.account_id
+      limit 1
+    `);
+    expect(rows.length).toBe(1); // sanity: this population must exist for the test to mean anything
+    const accountId = rows[0].account_id;
+
+    const { rows: geo } = await pool.query<{ city_chicago: boolean; in_metro: boolean }>(
+      `select
+         exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago' and v.discovery_source = 'google_places') as city_chicago,
+         coalesce((select al.in_metro from account_locations al where al.account_id = $1), false) as in_metro`,
+      [accountId]
+    );
+    expect(geo[0].city_chicago).toBe(true);
+
+    const result = decideStructuralCandidateCreation({
+      decision: "CONFIRM",
+      originalVenueAccountId: accountId,
+      correctedVenueAccountId: null,
+      chicagoStatus: null,
+      venueCityIsChicago: geo[0].city_chicago,
+      venueInMetro: geo[0].in_metro,
+      includedPostUrls: ["https://instagram.com/p/d055test2/"],
+    });
+    expect(result).toEqual({ action: "CREATE", venueAccountId: accountId });
+  });
+
+  it("CREATEs on account_locations.in_metro=true alone, even with no vendors.city signal at all -- in_metro stays authoritative independent of vendors.discovery_source", () => {
+    // Pure-function case (no DB row needed): in_metro is the authoritative signal regardless of
+    // vendors.city/discovery_source, so this is deterministic without a live lookup.
+    const result = decideStructuralCandidateCreation({
+      decision: "CONFIRM",
+      originalVenueAccountId: 999999101,
+      correctedVenueAccountId: null,
+      chicagoStatus: null,
+      venueCityIsChicago: false,
+      venueInMetro: true,
+      includedPostUrls: ["https://instagram.com/p/d055test3/"],
+    });
+    expect(result).toEqual({ action: "CREATE", venueAccountId: 999999101 });
   });
 });

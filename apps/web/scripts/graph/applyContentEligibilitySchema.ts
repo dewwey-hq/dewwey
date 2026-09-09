@@ -27,13 +27,16 @@ const STATEMENTS: string[] = [
    join staging.instagram_posts sp on sp.post_url = gs.post_url
    left join lateral (
      select
-       bool_or(al.in_metro = true or v.city = 'Chicago') as any_confirmed,
+       -- D055: vendors.city defaults to 'Chicago' on every row (docs/jeremy-ddl.sql) -- only
+       -- trust it as geography evidence when discovery_source='google_places' (a real address
+       -- lookup); account_locations.in_metro stays authoritative.
+       bool_or(al.in_metro = true or (v.city = 'Chicago' and v.discovery_source = 'google_places')) as any_confirmed,
        bool_or(al.in_metro = false) as any_not_confirmed,
        count(*) > 0 as has_any_venue
      from human_confirmed_post_vendor_evidence e
      left join account_locations al on al.account_id = e.account_id
      left join lateral (
-       select city from vendors where account_id = e.account_id order by id limit 1
+       select city, discovery_source from vendors where account_id = e.account_id order by id limit 1
      ) v on true
      where e.source_post_url = gs.post_url and e.role = 'venue'
    ) venue_signals on true

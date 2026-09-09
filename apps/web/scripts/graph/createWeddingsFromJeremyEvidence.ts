@@ -59,15 +59,17 @@
  * lib/server/structuralVersion.ts), not already in `jeremy_weddings_created`, are eligible.
  * WRONG_VENUE creates at `corrected_venue_account_id` instead of the candidate's own
  * `venue_account_id` (SKIPped if the reviewer didn't name a correction -- "the venue is wrong"
- * alone isn't creatable). Only `included_post_urls` (the THIS_VENUE-verdict posts) are ever
+ * alone isn't creatable). For CONFIRM only `included_post_urls` (the THIS_VENUE-verdict posts) are
  * attached -- `other_venue_post_urls` (OTHER_VENUE-verdict posts) belong to a different venue's
- * wedding, never this one; SKIPped as `no_included_posts` if there are none (the realistic
- * WRONG_VENUE case, since candidate_review_derived only assigns that decision when a candidate
+ * wedding, never this one. For WRONG_VENUE (D055 fix, 2026-09-09) the OTHER_VENUE posts whose
+ * correction points at the corrected venue ARE the wedding's posts and are attached; SKIPped as
+ * `no_included_posts` only if none resolve (candidate_review_derived only assigns WRONG_VENUE when a candidate
  * has zero THIS_VENUE posts to begin with). Chicago gate is separate from the human decision on
  * principle (a CONFIRM says "real wedding", not "this venue is in Chicago" -- same discipline as
  * the chicago_status column's own doc comment in pipeline/schema.sql): eligible only if
  * chicago_status=CHICAGO_CONFIRMED OR the (corrected) venue resolves Chicago via
- * vendors.city='Chicago' OR account_locations.in_metro=true. Vendors come straight from
+ * vendors.city='Chicago' (only when discovery_source='google_places' -- D055, city defaults to
+ * 'Chicago' on every row, docs/jeremy-ddl.sql) OR account_locations.in_metro=true. Vendors come straight from
  * `structural_post_vendor_evidence`, scoped to the included posts only (non-venue roles) rather
  * than the `jeremy_wedding_candidate_vendors` view -- that view only unions
  * jeremy_post_vendor_evidence + human_confirmed_post_vendor_evidence and does not cover this
@@ -98,7 +100,11 @@ const D035_PILOT_CANDIDATE_IDS = [158, 351, 396, 540, 624, 662, 701, 1158, 1222,
 
 // is-chicago-for-new-venues mission (D036), Phase 1: candidates whose venue resolves via
 // existing vendors.city='Chicago' data AND has a corroborating account_tags role in
-// venue/hotel/catering/rentals. Both duplicate checks clean (checkIntraBatchDuplicates.ts
+// venue/hotel/catering/rentals. Historical note (D055, 2026-09-08): this hardcoded, already
+// hand-verified array predates the discovery_source='google_places' tightening applied
+// elsewhere in this file -- not re-derived here, since every id below was independently
+// vetted (account_tags corroboration + a 15-candidate hand-read sample), not resting on the
+// vendors.city default alone. Both duplicate checks clean (checkIntraBatchDuplicates.ts
 // --phase1, checkExistingDuplicatesForCreation.ts --phase1), 15-candidate hand-read sample
 // all genuine real weddings. 102 passed the filter; 2 explicitly excluded after further
 // verification (2026-09-05):
@@ -878,6 +884,7 @@ async function runFromConfirmedCandidates(
     decision: StructuralReviewDecision;
     corrected_venue_account_id: number | null;
     included_post_urls: string[] | null;
+    other_venue_post_urls: string[] | null;
   }>(
     `select
        jwc.id as candidate_id,
@@ -886,7 +893,8 @@ async function runFromConfirmedCandidates(
        jwc.chicago_status,
        crd.decision,
        crd.corrected_venue_account_id::int as corrected_venue_account_id,
-       crd.included_post_urls
+       crd.included_post_urls,
+       crd.other_venue_post_urls
      from candidate_review_derived crd
      join jeremy_wedding_candidates jwc on jwc.id = crd.candidate_id
      where crd.decision in ('CONFIRM', 'WRONG_VENUE')
@@ -930,9 +938,27 @@ async function runFromConfirmedCandidates(
       continue;
     }
 
-    // Only the THIS_VENUE-verdict posts are ever attached — never other_venue_post_urls (a
-    // different venue's wedding entirely).
-    const includedUrls = cand.included_post_urls ?? [];
+    // CONFIRM: only the THIS_VENUE-verdict posts are attached -- an OTHER_VENUE post on a
+    // CONFIRMed candidate is a different venue's wedding entirely.
+    // WRONG_VENUE (D055 fix, 2026-09-09): the candidate has ZERO THIS_VENUE posts by
+    // construction (candidate_review_derived only assigns WRONG_VENUE then), so the posts that
+    // document the wedding at the CORRECTED venue are exactly its OTHER_VENUE-verdict posts whose
+    // correction points at that venue. Before this fix every WRONG_VENUE candidate was skipped as
+    // no_included_posts, so "wrong venue, here's the right one" verdicts (a ceremony/church
+    // anchor whose reception venue is named, a caterer/sales-team handle credited as the venue,
+    // a Park District or university account standing in for the actual room) never created
+    // anything. Posts corrected to a DIFFERENT venue than the candidate's first correction stay
+    // excluded (they'd be yet another wedding).
+    let includedUrls = cand.included_post_urls ?? [];
+    if (cand.decision === "WRONG_VENUE" && includedUrls.length === 0 && cand.corrected_venue_account_id != null) {
+      const { rows: correctedRows } = await client.query<{ post_url: string }>(
+        `select v.post_url
+         from post_venue_verdicts_current v
+         where v.candidate_id = $1 and v.verdict = 'OTHER_VENUE' and v.corrected_venue_account_id = $2`,
+        [cand.candidate_id, cand.corrected_venue_account_id]
+      );
+      includedUrls = correctedRows.map((r) => r.post_url);
+    }
 
     // Geography is resolved against the EFFECTIVE venue (corrected, for WRONG_VENUE) — never
     // the original wrong one.
@@ -942,9 +968,12 @@ async function runFromConfirmedCandidates(
     let venueCityIsChicago = false;
     let venueInMetro = false;
     if (geoTargetAccountId != null) {
+      // D055: vendors.city defaults to 'Chicago' on every row (docs/jeremy-ddl.sql) -- only
+      // trust it as geography evidence when discovery_source='google_places' (a real address
+      // lookup); account_locations.in_metro stays authoritative.
       const { rows: geoRows } = await client.query<{ city_chicago: boolean; in_metro: boolean }>(
         `select
-           exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago') as city_chicago,
+           exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago' and v.discovery_source = 'google_places') as city_chicago,
            coalesce((select al.in_metro from account_locations al where al.account_id = $1), false) as in_metro`,
         [geoTargetAccountId]
       );
@@ -959,7 +988,7 @@ async function runFromConfirmedCandidates(
       chicagoStatus: cand.chicago_status,
       venueCityIsChicago,
       venueInMetro,
-      includedPostUrls: cand.included_post_urls,
+      includedPostUrls: includedUrls,
     });
 
     const displayVenueAccountId = gate.action === "CREATE" ? gate.venueAccountId : geoTargetAccountId;
@@ -1018,8 +1047,17 @@ async function runFromConfirmedCandidates(
     // wedding is being created for (null-safe: if there's no resolved anchor, nothing is
     // excluded) -- each gets its own venue-role wedding_vendors row alongside the anchor, same
     // "both are real, additive" convention as every other double-venue-tag case this mission.
+    // For WRONG_VENUE the candidate's ORIGINAL anchor is, by the reviewer's verdict, not this
+    // wedding's venue (a caterer, a sales-team handle, a parent institution, a rehearsal-dinner
+    // spot), so its venue-role credit is dropped too -- otherwise every corrected wedding would
+    // still hand the wrong account a venue wedding. Known cost: when the original anchor was a
+    // real ceremony site (church) and the correction is the reception, the ceremony credit is
+    // lost here; the D050 dual-credit convention only survives for CONFIRMed candidates.
     const otherVenueVendors = allCredits.filter(
-      (v) => v.role === "venue" && (displayVenueAccountId == null || v.account_id !== displayVenueAccountId)
+      (v) =>
+        v.role === "venue" &&
+        (displayVenueAccountId == null || v.account_id !== displayVenueAccountId) &&
+        !(cand.decision === "WRONG_VENUE" && v.account_id === cand.venue_account_id)
     );
 
     let vendorsForPrint =
@@ -1094,9 +1132,22 @@ async function runFromConfirmedCandidates(
            returning id`,
           [shortcode, p.post_url, ownerId, p.caption_raw, p.post_timestamp, p.likes_count, JSON.stringify(p)]
         );
-        if (postRows.length === 0) continue;
-        postsImported++;
-        const postId = postRows[0].id;
+        let postId: number;
+        if (postRows.length === 0) {
+          // D055 batch-3 lesson (2026-09-09): the post already exists in `posts` (Ben's
+          // venue_tagged crawl imported it, but no wedding ever claimed it -- the D050 guard
+          // above already proved it isn't in wedding_posts). Skipping here orphaned 8 weddings
+          // in batch 3 (created with zero posts). Link the EXISTING row instead.
+          const { rows: existingRows } = await client.query<{ id: number }>(
+            `select id from posts where shortcode = $1`,
+            [shortcode]
+          );
+          if (existingRows.length === 0) continue;
+          postId = existingRows[0].id;
+        } else {
+          postsImported++;
+          postId = postRows[0].id;
+        }
 
         await client.query(`insert into wedding_posts (wedding_id, post_id) values ($1, $2) on conflict (post_id) do nothing`, [
           weddingId,
@@ -1308,8 +1359,12 @@ async function main() {
       // not a static default) for candidates scoped that way. D035's original 15 were
       // hand-verified directly (no vendors.city dependency) -- OR here covers both without
       // re-deriving which path each candidate came from.
+      // D055: vendors.city defaults to 'Chicago' on every row (docs/jeremy-ddl.sql) -- only
+      // trust it as geography evidence when discovery_source='google_places' (a real address
+      // lookup); the hardcoded ID lists below (D035_PILOT/PHASE2/BATCH5) are the independently
+      // hand-verified fallback for candidates this tighter check no longer covers.
       const { rows: cityRows } = await client.query<{ is_chicago: boolean }>(
-        `select exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago') as is_chicago`,
+        `select exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago' and v.discovery_source = 'google_places') as is_chicago`,
         [venueAccountId]
       );
       const isChicago =
@@ -1381,9 +1436,22 @@ async function main() {
            returning id`,
           [shortcode, p.post_url, ownerId, p.caption_raw, p.post_timestamp, p.likes_count, JSON.stringify(p)]
         );
-        if (postRows.length === 0) continue;
-        postsImported++;
-        const postId = postRows[0].id;
+        let postId: number;
+        if (postRows.length === 0) {
+          // D055 batch-3 lesson (2026-09-09): the post already exists in `posts` (Ben's
+          // venue_tagged crawl imported it, but no wedding ever claimed it -- the D050 guard
+          // above already proved it isn't in wedding_posts). Skipping here orphaned 8 weddings
+          // in batch 3 (created with zero posts). Link the EXISTING row instead.
+          const { rows: existingRows } = await client.query<{ id: number }>(
+            `select id from posts where shortcode = $1`,
+            [shortcode]
+          );
+          if (existingRows.length === 0) continue;
+          postId = existingRows[0].id;
+        } else {
+          postsImported++;
+          postId = postRows[0].id;
+        }
 
         await client.query(`insert into wedding_posts (wedding_id, post_id) values ($1, $2) on conflict (post_id) do nothing`, [
           weddingId,

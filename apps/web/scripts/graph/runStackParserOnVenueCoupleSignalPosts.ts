@@ -1,7 +1,9 @@
 /**
  * Third leg of the "v1 data completion, venues-first" mission (D047 follow-on): stack
  * extraction for posts authored by a KNOWN Chicago venue vendor (`vendors.city='Chicago'
- * and category='venue'`) whose caption matches an explicit couple-name signal (Mr./Mrs.,
+ * and category='venue'`, and, as of D055 2026-09-08, `discovery_source='google_places'` --
+ * city defaults to 'Chicago' on every row, docs/jeremy-ddl.sql) whose caption matches an
+ * explicit couple-name signal (Mr./Mrs.,
  * "Couple:", "Bride:", or "Name & Name") — regardless of V3's decision (most of this
  * population was never scored ≥12, so V3 never ran on it at all; this is deliberately NOT
  * the golden_set/human-labeled population, see runStackParserOnGoldenSet.ts for that).
@@ -42,7 +44,9 @@ async function main() {
      join accounts a on lower(a.username::text) = lower(sp.owner_username)
      join vendors v on v.account_id = a.id
      left join golden_set gs on gs.post_url = sp.post_url
-     where v.city = 'Chicago' and v.category = 'venue'
+     -- D055 (2026-09-08): vendors.city defaults to 'Chicago' on every row (docs/jeremy-ddl.sql)
+     -- -- only trust it as "known Chicago venue" evidence when discovery_source='google_places'.
+     where v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
        and sp.caption_raw ~ $2
        and gs.post_url is null
        and not exists (

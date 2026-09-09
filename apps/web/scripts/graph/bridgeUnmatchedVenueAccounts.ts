@@ -24,11 +24,13 @@ async function main() {
   const dryRun = process.argv.includes("--dry-run");
   const pool = getPool();
 
+  // D055 (2026-09-08): vendors.city defaults to 'Chicago' on every row (docs/jeremy-ddl.sql)
+  // -- only trust it as "known Chicago venue" evidence when discovery_source='google_places'.
   const { rows } = await pool.query<{ vendor_id: number; name: string; handle: string; account_id: number }>(
     `select v.id as vendor_id, v.name, v.instagram_handle::text as handle, a.id as account_id
      from vendors v
      join accounts a on lower(a.username::text) = lower(v.instagram_handle::text)
-     where v.category = 'venue' and v.city = 'Chicago'
+     where v.category = 'venue' and v.city = 'Chicago' and v.discovery_source = 'google_places'
        and v.account_id is null and v.instagram_handle is not null`
   );
 

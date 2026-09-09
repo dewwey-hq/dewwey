@@ -83,6 +83,12 @@ const ALIASES: AliasRow[] = [
   // events program -- full_name "Events at The Old Post Office" (post433events) vs "The Old Post
   // Office" (post433chicago, already the canonical for post433chicagophoto above).
   { aliasUsername: "post433events", canonicalUsername: "post433chicago", note: "The Old Post Office events sub-account (full_name 'Events at The Old Post Office'); surfaced by the location_tag hand-pass, D055" },
+  // Round 5 (D055 review, 2026-09-08, user-caught: "Venue: @threetoplounge / @saltshechicago --
+  // same spot?"). Three Top Lounge is the rooftop bar at The Salt Shed (1357 N Elston); and
+  // `saltshechicago` is a mis-captured handle (no such Instagram account; the venue is
+  // @saltshedchicago, which already has a documented wedding). Both roll up to the real handle.
+  { aliasUsername: "threetoplounge", canonicalUsername: "saltshedchicago", note: "Three Top Lounge = the rooftop at The Salt Shed; user-caught in review, D055" },
+  { aliasUsername: "saltshechicago", canonicalUsername: "saltshedchicago", note: "mis-captured handle for @saltshedchicago (D055 geography pass flagged it; user confirmed the venue)" },
 ];
 
 async function main() {

@@ -15,7 +15,10 @@ const STATEMENTS: string[] = [
      from staging.instagram_posts sp
      cross join lateral regexp_matches(sp.caption_raw, '@([a-zA-Z0-9_.]+)', 'g') as m(handle_arr)
      join accounts va on lower(va.username::text) = lower(m.handle_arr[1])
-     join vendors v on v.account_id = va.id and v.city = 'Chicago' and v.category = 'venue'
+     -- D055: v.city='Chicago' is a geography claim here (this view's whole scope is "known
+     -- Chicago venue"), not just venue identity -- only trust it with
+     -- discovery_source='google_places' (docs/jeremy-ddl.sql defaults city to 'Chicago').
+     join vendors v on v.account_id = va.id and v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
      where sp.caption_raw ~* '(wedding day|.s wedding|their wedding|wedding at |wedding weekend|wedding celebration|wedding reception|wedding ceremony|congrat.*wedding|bride|groom|mr\\.? *& *mrs\\.?)'
        and not exists (select 1 from jeremy_post_vendor_evidence e where e.source_post_url = sp.post_url and e.role = 'venue')
        and not exists (select 1 from human_confirmed_post_vendor_evidence e where e.source_post_url = sp.post_url and e.role = 'venue')

@@ -35,10 +35,12 @@ async function main() {
   // musician, a mislabeled planner) has a corroborating account_tags role in
   // venue/hotel/catering/rentals -- real venues are legitimately often also tagged
   // hotel/catering/rentals (a hotel or restaurant-group venue), so this isn't requiring an
-  // exact 'venue' tag, just some venue-shaped evidence.
+  // exact 'venue' tag, just some venue-shaped evidence. D055 (2026-09-08): vendors.city
+  // defaults to 'Chicago' on every row (docs/jeremy-ddl.sql) -- only trust it here when
+  // discovery_source='google_places'.
   const phase1 = process.argv.includes("--phase1");
   const PHASE1_FILTER = `
-    and exists (select 1 from vendors v where v.account_id = c.venue_account_id and v.city = 'Chicago')
+    and exists (select 1 from vendors v where v.account_id = c.venue_account_id and v.city = 'Chicago' and v.discovery_source = 'google_places')
     and exists (select 1 from account_tags at2 where at2.account_id = c.venue_account_id and at2.role in ('venue','hotel','catering','rentals'))
   `;
 

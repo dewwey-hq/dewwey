@@ -49,11 +49,13 @@ async function main() {
   }
 
   // Every known Chicago venue with a handle but still no linked account, after the direct-match
-  // bridge already ran (includes the 3 just backfilled above).
+  // bridge already ran (includes the 3 just backfilled above). D055 (2026-09-08): vendors.city
+  // defaults to 'Chicago' on every row (docs/jeremy-ddl.sql) -- only trust it as "known
+  // Chicago venue" evidence when discovery_source='google_places'.
   const { rows } = await pool.query<{ vendor_id: number; name: string; handle: string }>(
     `select v.id as vendor_id, v.name, v.instagram_handle::text as handle
      from vendors v
-     where v.category = 'venue' and v.city = 'Chicago'
+     where v.category = 'venue' and v.city = 'Chicago' and v.discovery_source = 'google_places'
        and v.account_id is null and v.instagram_handle is not null`
   );
 

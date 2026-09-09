@@ -37,7 +37,10 @@ async function main() {
        select a.username
        from vendors v
        join accounts a on a.id = v.account_id
-       where v.category = 'venue' and v.city = 'Chicago' and a.id < 27387
+       -- D055 (2026-09-08): vendors.city defaults to 'Chicago' on every row
+       -- (docs/jeremy-ddl.sql) -- only trust it as "known Chicago venue" evidence when
+       -- discovery_source='google_places'.
+       where v.category = 'venue' and v.city = 'Chicago' and v.discovery_source = 'google_places' and a.id < 27387
          and not exists (select 1 from weddings w where w.venue_id = a.id)
          and not exists (
            select 1 from stack_extraction_entries se

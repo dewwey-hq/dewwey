@@ -388,12 +388,19 @@ export function PostVenueReviewClient({
       // submit NOT_WEDDING with no note, so there was no way to back out of N once opened --
       // plain N is now "N, Enter" only). If a "/" free note was already pending, its text is
       // inherited rather than thrown away -- noteText is deliberately left untouched here.
+      //
+      // D056 addendum: when the current post carries the styled-shoot signal (Models credit or a
+      // styled/style-shoot phrase -- see the amber badge above the caption), the S ("Styled
+      // shoot") reason chip is pre-selected rather than starting from no reason -- the user's own
+      // motivating example for this signal was exactly this flow ("clearly this is styled shoot"
+      // on an N-bound post). Still just a pre-selection: any other chip, or plain typing, still
+      // overrides it before Enter submits.
       if (action === "NOT_WEDDING") {
         setVenueInputOpen(false);
         setDupInputOpen(false);
         setNoteUiMode("n");
         setNoteUiOpen(true);
-        setNoteReasonTag(null);
+        setNoteReasonTag(current.styled_signal === "LIKELY" ? "styled_shoot" : null);
         return;
       }
 
@@ -704,6 +711,15 @@ export function PostVenueReviewClient({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+            {/* D056: a Models-credit or styled/style-shoot phrase in this post's own caption
+                (pipeline/schema.sql's post_styled_shoot_signal view, computed inline here -- see
+                styledSignalSql in lib/server/postVenueReview.ts). Shown above the caption, not
+                just implied by an N-flow chip, so the reviewer sees it before deciding at all. */}
+            {current.styled_signal === "LIKELY" && (
+              <div className="mb-2 rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-900">
+                STYLED-SHOOT SIGNAL — Models credited / styled shoot phrase
+              </div>
+            )}
             {current.post.caption && (
               <p className="whitespace-pre-line text-sm text-gray-800">{current.post.caption}</p>
             )}

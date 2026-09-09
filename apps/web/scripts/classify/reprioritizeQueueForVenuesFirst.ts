@@ -33,7 +33,9 @@ async function main() {
     join staging.instagram_posts sp on sp.post_url = lq.post_url
     join accounts a on lower(a.username::text) = lower(sp.owner_username)
     join vendors v on v.account_id = a.id
-    where lq.queue_version = 'v2' and v.city = 'Chicago' and v.category = 'venue'
+    -- D055 (2026-09-08): vendors.city defaults to 'Chicago' on every row (docs/jeremy-ddl.sql)
+    -- -- only trust it as "known Chicago venue" evidence when discovery_source='google_places'.
+    where lq.queue_version = 'v2' and v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
       and not exists (
         select 1 from human_post_labels hpl where hpl.post_url = lq.post_url and hpl.labeled_by = 'jeremy'
       )

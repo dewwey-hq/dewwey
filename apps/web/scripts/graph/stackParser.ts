@@ -45,7 +45,20 @@
 // labeled credit line -- same "measure before you trust a new signal" discipline as every other
 // addition to this file. See the INLINE_AT / buildVenueHashtagRegex comments below for the two
 // patterns and their shared duplicate/non-venue-line guards.
-export const STACK_PARSER_VERSION = "stack-parser-ts-v8";
+// v9 (D055, 2026-09-08): fixes a structural bug in LINE itself, found by hand (user-caught, not
+// mined) in the caption line "Venue: @thegraychi - Photo: @_teresawilliams - Planner:
+// @fivegrainevents" -- ONE line, three separate credits. LINE matches the line's LEADING label
+// ("Venue") and then its greedy `(.*@.*)$` rest-of-line capture swallows every `@handle` for the
+// REST of the line, so the photographer and planner handles were both misattributed to
+// role='venue' too -- and on the reverse case (a non-venue label leading), the real venue handle
+// got misattributed to whatever label came first. Sized before this fix: 292 posts (343 lines)
+// corpus-wide have 2+ "Label: @handle" credits on one physical line, separated by " - "/" | "/
+// " • "/" · "/" // "/" / "/";" or similar; 21 of those lines start with a venue label; 6 structural
+// candidates got a wrong venue anchor from this; all 292 posts' non-venue roles were also wrong.
+// Fix: split a multi-credit line into per-credit SEGMENTS before LINE/NOCOLON_LINE ever see it --
+// see splitCreditSegments() below. A line with only one "Label: @handle" credit is completely
+// unaffected (same LINE/NOCOLON_LINE match as v1-v8).
+export const STACK_PARSER_VERSION = "stack-parser-ts-v9";
 
 // Identical to pipeline.py's LINE/HANDLE regexes (character-for-character).
 const LINE = /^\s*[•\-*]?\s*([A-Za-z][A-Za-z &+/'’]{1,35}?)\s*[:|\-–—/]+\s*(.*@.*)$/;
@@ -259,18 +272,52 @@ function buildVenueHashtagRegex(venueHandles: Set<string>): RegExp {
   return re;
 }
 
+// v9 (D055): detects "<label>: @" / "<label>| @" occurring 2+ times on one physical line -- the
+// structural signal that the line is actually multiple credits jammed together, not one label
+// with a multi-handle list (e.g. "Venue: @x @y" has exactly ONE such occurrence -- it must NOT
+// split, see the test for it). Same label character class as LINE's capture group
+// ([A-Za-z &+/'’]) so this agrees with what LINE itself would call a "label".
+const LABEL_AT_COUNT = /[A-Za-z][A-Za-z &+/'’]{0,35}?\s*[:|]\s*@/g;
+
+// v9 (D055): the delimiter itself, but ONLY when what follows it is another "label: @handle" --
+// enforced with a lookahead so a bare dash/slash/pipe inside a handle list or inside prose never
+// splits ("never split inside a handle list like `@a @b`"). `\s*` after the delimiter (consumed,
+// not part of the lookahead) absorbs any whitespace before the next label -- the space-padded
+// delimiters (" - ", " | ", ...) already include it, and the bare ";" delimiter (spec'd without
+// surrounding spaces, since it appears both padded and unpadded in the corpus) needs it. Longest
+// alternatives first (" // " before " / ") so the shorter one can never shadow the longer one.
+const SEGMENT_SEPARATOR =
+  /(?: - | – | — | \| | • | · | \/\/ | \/ |;)\s*(?=[A-Za-z][A-Za-z &+/'’]{0,35}?\s*[:|]\s*@)/g;
+
+// v9 (D055): split ONE caption line into its per-credit segments when (and only when) it's
+// structurally carrying 2+ "Label: @handle" credits -- see the STACK_PARSER_VERSION v9 comment
+// above for the bug this fixes and its sizing. A line with a single label (including a single
+// label crediting multiple handles, e.g. "Venue: @x @y") is returned unchanged as a 1-element
+// array -- LINE/NOCOLON_LINE then see exactly what they always saw pre-v9.
+function splitCreditSegments(line: string): string[] {
+  const count = (line.match(LABEL_AT_COUNT) ?? []).length;
+  if (count < 2) return [line];
+  return line
+    .split(SEGMENT_SEPARATOR)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
 export function parseCaption(caption: string | null, opts?: { venueHandles?: Set<string> }): ParsedStack {
   const text = caption ?? "";
   const stack: StackEntry[] = [];
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    const m = LINE.exec(line) ?? NOCOLON_LINE.exec(line);
-    if (!m) continue;
-    const roleRaw = m[1].trim();
-    const rest = m[2];
-    for (const hm of rest.matchAll(HANDLE)) {
-      stack.push({ role_raw: roleRaw, role: normRole(roleRaw), handle: hm[1].toLowerCase(), line_no: i, source: "credit_line" });
+    const segments = splitCreditSegments(line);
+    for (const segment of segments) {
+      const m = LINE.exec(segment) ?? NOCOLON_LINE.exec(segment);
+      if (!m) continue;
+      const roleRaw = m[1].trim();
+      const rest = m[2];
+      for (const hm of rest.matchAll(HANDLE)) {
+        stack.push({ role_raw: roleRaw, role: normRole(roleRaw), handle: hm[1].toLowerCase(), line_no: i, source: "credit_line" });
+      }
     }
   }
 

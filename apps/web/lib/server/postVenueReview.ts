@@ -124,6 +124,38 @@ export interface PostReviewQueueItem {
   vendors: PostReviewVendorCredit[];
   other_venue_credits: PostReviewOtherVenueCredit[];
   duplicate_hint: PostReviewDuplicateHint | null;
+  // D056: styled-shoot-vs-real-wedding phrase/credit signal (pipeline/schema.sql's
+  // post_styled_shoot_signal view, D049/D056) computed inline on this post's own caption -- see
+  // STYLED_SIGNAL_SQL below for why inline rather than a JOIN. 'LIKELY' or null, never a bare
+  // boolean, so the UI's copy ("STYLED-SHOOT SIGNAL") reads the same vocabulary as the view.
+  styled_signal: "LIKELY" | null;
+}
+
+// D056: the same high-precision phrase/hashtag regex as pipeline/schema.sql's
+// post_styled_shoot_signal view's phrase_or_hashtag_signal column (applied there via
+// applyStyledShootSchema.ts) -- kept as ONE shared TS constant so the queue's inline check can
+// never drift from the view's. Computed inline on sp.caption_raw here (not a JOIN to the view)
+// because the view unions across the full ~50k-post corpus (staging + posts) on every row, while
+// this queue query already has the post's own caption in scope per-row for free -- same "filter
+// by post_url FIRST" performance discipline the rest of this file's doc comment describes.
+//
+// NOTE: every \\y/\\s below is deliberately DOUBLE-backslashed, exactly like
+// applyStyledShootSchema.ts -- this string is itself a JS/Bun template literal, where a single
+// backslash escape (e.g. \y) is silently stripped to the bare letter before it ever reaches
+// Postgres, which would silently defeat the word-boundary anchors. See that file's own comment
+// for the full story (and pipeline/schema.sql's comment for why "inspiration|inspo|bridal",
+// "#weddinginspiration"/"#bridalinspo", and three of the original D049 hashtags were dropped, and
+// why the bare Models:/Model: credit line is gated on co-occurring shoot/styled/editorial/session
+// context -- all empirically required to keep this under golden_set's 1% false-positive bar).
+function styledSignalSql(captionCol: string): string {
+  return `(
+    ${captionCol} ~* '(styled shoot|styled editorial|this styled|editorial shoot|stylized shoot|style.?d wedding)'
+    or ${captionCol} ~* '#(styledshoot|stylizedshoot|editorialshoot|flatlaystyling)\\y'
+    or ${captionCol} ~* '\\y(styled?|editorial|concept)\\s+(shoot|session|editorial)\\y'
+    or (${captionCol} ~* '\\ymodels?\\s*[:|]' and ${captionCol} ~* '\\y(shoot|styled|editorial|session)\\y')
+    or ${captionCol} ~* '#(styledshoot|styledshoots|stylizedshoot|editorialshoot|inspirationshoot|styledweddingshoot)\\y'
+    or (${captionCol} ~* '\\ystyled by\\y' and ${captionCol} ~* '\\yshoot\\y')
+  )`;
 }
 
 function arr(x: unknown): string[] {
@@ -191,7 +223,8 @@ export async function getPostReviewQueue(
          sp.post_timestamp as posted_at,
          sp.location_tag,
          sp.owner_username,
-         sp.mentions
+         sp.mentions,
+         ${styledSignalSql("sp.caption_raw")} as styled_signal_raw
        from jeremy_wedding_candidate_posts cp
        join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
        join staging.instagram_posts sp on sp.post_url = cp.source_post_url
@@ -201,6 +234,7 @@ export async function getPostReviewQueue(
        cpz.source_post_url, cpz.candidate_id, cpz.venue_account_id, cpz.chicago_status,
        cpz.venue_anchor_source, cpz.venue_anchor_conflict, cpz.group_index, cpz.group_size,
        cpz.caption, cpz.posted_at, cpz.location_tag, cpz.owner_username, cpz.mentions,
+       cpz.styled_signal_raw,
        a.username::text as venue_username,
        a.full_name as venue_full_name,
        (select v.name from vendors v where v.account_id = cpz.venue_account_id limit 1) as vendor_name,
@@ -233,6 +267,16 @@ export async function getPostReviewQueue(
          when 'CHICAGO_NOT_CONFIRMED' then 2
          else 3
        end,
+       -- D056 (user, mid-review 2026-09-08): author-anchored posts confirm as a real wedding only
+       -- 27% of the time vs. 72-75% for every other anchor source -- mostly the venue's own
+       -- marketing, not a documented wedding -- so they're pushed to the back of the queue rather
+       -- than reviewed at the same priority as a credit-line/location-tag/hashtag anchor.
+       (cpz.venue_anchor_source = 'author') asc,
+       -- D056: a post carrying the styled-shoot signal (Models credit or a styled/style-shoot
+       -- phrase -- see styledSignalSql above) is pushed to the back too, same reasoning: it's
+       -- more likely to resolve NOT_WEDDING/styled_shoot than a clean post, so clean posts get
+       -- reviewed first.
+       (cpz.styled_signal_raw) asc,
        coalesce(vc.n, 0) asc,
        cpz.candidate_id asc,
        cpz.posted_at asc nulls last,
@@ -362,6 +406,7 @@ export async function getPostReviewQueue(
       vendors: vendorsByPost.get(r.source_post_url) ?? [],
       other_venue_credits: otherVenues,
       duplicate_hint: reconByCandidate.get(r.candidate_id) ?? null,
+      styled_signal: r.styled_signal_raw ? ("LIKELY" as const) : null,
     };
   });
 }

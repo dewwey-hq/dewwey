@@ -909,7 +909,10 @@ from golden_set gs
 join staging.instagram_posts sp on sp.post_url = gs.post_url
 left join lateral (
   select
-    bool_or(al.in_metro = true or v.city = 'Chicago') as any_confirmed,
+    -- D055: vendors.city defaults to 'Chicago' on every row (docs/jeremy-ddl.sql) -- only
+    -- trust it as geography evidence when discovery_source='google_places' (a real address
+    -- lookup); account_locations.in_metro stays authoritative.
+    bool_or(al.in_metro = true or (v.city = 'Chicago' and v.discovery_source = 'google_places')) as any_confirmed,
     bool_or(al.in_metro = false) as any_not_confirmed,
     count(*) > 0 as has_any_venue
   from human_confirmed_post_vendor_evidence e
@@ -920,7 +923,7 @@ left join lateral (
   -- pattern already used elsewhere in this codebase for the same reason
   -- (e.g. apps/web/app/api/vendors/for-team/route.ts).
   left join lateral (
-    select city from vendors where account_id = e.account_id order by id limit 1
+    select city, discovery_source from vendors where account_id = e.account_id order by id limit 1
   ) v on true
   where e.source_post_url = gs.post_url and e.role = 'venue'
 ) venue_signals on true
@@ -1051,7 +1054,10 @@ where latest.role <> 'other'
     join accounts va on lower(va.username::text) = lower(sp.owner_username)
     join vendors v on v.account_id = va.id
     where sp.post_url = latest.source_post_url
-      and v.city = 'Chicago' and v.category = 'venue'
+      -- D055: v.city='Chicago' is a geography claim here (this view's whole scope is
+      -- "known Chicago venue"), not just venue identity -- only trust it with
+      -- discovery_source='google_places' (docs/jeremy-ddl.sql defaults city to 'Chicago').
+      and v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
       and sp.caption_raw ~ '(Mr\.? *& *Mrs\.?|Couple: *@|Bride: *@|[A-Z][a-z]+ *(&|\+|and) *[A-Z][a-z]+)'
       and not exists (select 1 from golden_set gs where gs.post_url = sp.post_url)
   );
@@ -1083,7 +1089,10 @@ with recovered_venue as (
   from staging.instagram_posts sp
   cross join lateral regexp_matches(sp.caption_raw, '@([a-zA-Z0-9_.]+)', 'g') as m(handle_arr)
   join accounts va on lower(va.username::text) = lower(m.handle_arr[1])
-  join vendors v on v.account_id = va.id and v.city = 'Chicago' and v.category = 'venue'
+  -- D055: v.city='Chicago' is a geography claim here (this view's whole scope is "known
+  -- Chicago venue"), not just venue identity -- only trust it with
+  -- discovery_source='google_places' (docs/jeremy-ddl.sql defaults city to 'Chicago').
+  join vendors v on v.account_id = va.id and v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
   where sp.caption_raw ~* '(wedding day|.s wedding|their wedding|wedding at |wedding weekend|wedding celebration|wedding reception|wedding ceremony|congrat.*wedding|bride|groom|mr\.? *& *mrs\.?)'
     and not exists (select 1 from jeremy_post_vendor_evidence e where e.source_post_url = sp.post_url and e.role = 'venue')
     and not exists (select 1 from human_confirmed_post_vendor_evidence e where e.source_post_url = sp.post_url and e.role = 'venue')
@@ -1120,21 +1129,24 @@ with venue_posts as (
   from staging.instagram_posts sp
   join accounts va on lower(va.username::text) = lower(sp.owner_username)
   join vendors v on v.account_id = va.id
-  where v.city = 'Chicago' and v.category = 'venue'
+  -- D055: v.city='Chicago' is a geography claim here (this view's whole scope is "a
+  -- Chicago venue's own portfolio content") -- only trust it with
+  -- discovery_source='google_places' (docs/jeremy-ddl.sql defaults city to 'Chicago').
+  where v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
   union
   select e.source_post_url as post_url, sp.caption_raw, va.id as venue_account_id, 'tagged' as connection
   from jeremy_post_vendor_evidence e
   join accounts va on va.id = e.account_id
   join vendors v on v.account_id = va.id
   join staging.instagram_posts sp on sp.post_url = e.source_post_url
-  where e.role = 'venue' and v.city = 'Chicago' and v.category = 'venue'
+  where e.role = 'venue' and v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
   union
   select e.source_post_url as post_url, sp.caption_raw, va.id as venue_account_id, 'tagged' as connection
   from human_confirmed_post_vendor_evidence e
   join accounts va on va.id = e.account_id
   join vendors v on v.account_id = va.id
   join staging.instagram_posts sp on sp.post_url = e.source_post_url
-  where e.role = 'venue' and v.city = 'Chicago' and v.category = 'venue'
+  where e.role = 'venue' and v.city = 'Chicago' and v.discovery_source = 'google_places' and v.category = 'venue'
 )
 select distinct on (post_url)
   post_url,
@@ -1203,7 +1215,33 @@ select
   (gsty.post_url is not null) as golden_set_confirmed_styled,
   coalesce(
     s.caption ~* '(styled shoot|styled editorial|this styled|editorial shoot|stylized shoot|style.?d wedding)'
-    or s.caption ~* '#(styledshoot|stylizedshoot|editorialwedding|editorialshoot|weddingflatlay|flatlaystyling|designerschallenge)\y',
+    or s.caption ~* '#(styledshoot|stylizedshoot|editorialshoot|flatlaystyling)\y'
+    -- D056 addendum (2026-09-08): extends the phrase/hashtag regex per the user's own read of a
+    -- specific POSSIBLE-rated post ("This opulent Chicago style shoot... Models: @dr.king_speaks
+    -- & @mike6691") -- a "style shoot" (no d) phrase and a "Models:" credit line, neither of which
+    -- the original regex caught. Same \y word-boundary discipline as the original build (the
+    -- #editorialweddingphotography false-positive lesson) applied to every new clause.
+    --
+    -- Two things were DROPPED after empirical testing against golden_set (see the vitest FP test
+    -- below): (1) "inspiration|inspo|bridal" from the adjective+shoot phrase group, and
+    -- "#weddinginspiration"/"#bridalinspo" from the hashtag family -- #weddinginspiration alone is
+    -- 6.85% FP against confirmed-real golden INCLUDEs (108/1576), a hashtag real wedding vendors
+    -- use constantly for inspiration boards, not just for styled shoots. (2) the bare
+    -- "Models:"/"Model:" credit line is gated to co-occur with shoot/styled/editorial/session
+    -- elsewhere in the caption -- ungated it alone is 0.89% FP (many real, golden-INCLUDE weddings
+    -- credit a "Model:" for a bridal-boutique or trial-makeup feature within an otherwise-real
+    -- wedding post), which combined with everything else pushed the total over the 1% bar.
+    -- (3) three of the ORIGINAL D049 hashtags (#editorialwedding, #weddingflatlay,
+    -- #designerschallenge) are also dropped here: this addendum is what first made \y (the
+    -- Postgres word-boundary the #editorialweddingphotography lesson was supposed to guarantee)
+    -- actually take effect in the deployed view -- see applyStyledShootSchema.ts's own comment --
+    -- and once the hashtag clause actually ran, those three turned out to have real FP contact
+    -- with golden INCLUDEs (7+3+1 = 11 posts) that the original 0.16% figure never caught because
+    -- the clause was silently inert. Final combined FP: 7/1576 = 0.44%.
+    or s.caption ~* '\y(styled?|editorial|concept)\s+(shoot|session|editorial)\y'
+    or (s.caption ~* '\ymodels?\s*[:|]' and s.caption ~* '\y(shoot|styled|editorial|session)\y')
+    or s.caption ~* '#(styledshoot|styledshoots|stylizedshoot|editorialshoot|inspirationshoot|styledweddingshoot)\y'
+    or (s.caption ~* '\ystyled by\y' and s.caption ~* '\yshoot\y'),
     false
   ) as phrase_or_hashtag_signal,
   coalesce(s.author_username in (select username from known_network_accounts), false) as known_network_account,
@@ -1212,7 +1250,11 @@ select
   case
     when gsty.post_url is not null then 'CONFIRMED'
     when s.caption ~* '(styled shoot|styled editorial|this styled|editorial shoot|stylized shoot|style.?d wedding)'
-      or s.caption ~* '#(styledshoot|stylizedshoot|editorialwedding|editorialshoot|weddingflatlay|flatlaystyling|designerschallenge)\y'
+      or s.caption ~* '#(styledshoot|stylizedshoot|editorialshoot|flatlaystyling)\y'
+      or s.caption ~* '\y(styled?|editorial|concept)\s+(shoot|session|editorial)\y'
+      or (s.caption ~* '\ymodels?\s*[:|]' and s.caption ~* '\y(shoot|styled|editorial|session)\y')
+      or s.caption ~* '#(styledshoot|styledshoots|stylizedshoot|editorialshoot|inspirationshoot|styledweddingshoot)\y'
+      or (s.caption ~* '\ystyled by\y' and s.caption ~* '\yshoot\y')
       then 'LIKELY'
     -- known_network_account is deliberately NOT in the LIKELY tier: hand-verification found
     -- chicagostyleweddings (one of the 3 known accounts) also authors real, golden_set-CONFIRMED
