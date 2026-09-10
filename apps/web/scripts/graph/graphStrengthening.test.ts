@@ -1045,8 +1045,11 @@ describe("graph ingestion — D023 (DB)", () => {
     // +761 more from the golden-legacy rescue (72 weddings, 2026-09-10; same provenance).
     // +400 more from D055 batch 6 (172 weddings, 2026-09-09 late) and +237 from the A1 batch
     // (228 weddings, 2026-09-10); same provenance.
-    expect(Number(rows[0].untouched)).toBe(40563);
-    expect(Number(rows[0].total)).toBe(40674);
+    // +1 from the venuelogic recredit (d055-venuelogic-recredit, 2026-09-10): wedding 2586 re-anchored
+    // to Bridgeport Art Center via its location tag gained a venue credit row; 189 rows changed role
+    // venue->other in place (no count change). Provenance in wedding_vendor_recredits.
+    expect(Number(rows[0].untouched)).toBe(40564);
+    expect(Number(rows[0].total)).toBe(40675);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {

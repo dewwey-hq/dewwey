@@ -117,7 +117,15 @@ export async function searchVendors(params: VendorSearchParams) {
     `SELECT ${CARD_SELECT},
        COUNT(*) OVER() AS total_count
      ${CARD_JOINS}
-     WHERE ($1::text IS NULL OR var.role = $1::vendor_role)
+     WHERE (
+         $1::text IS NULL
+         OR var.role = $1::vendor_role
+         -- Product rule (user, 2026-09-10): a hotel belongs under "venue" when it was
+         -- used as one, i.e. it is the venue of at least one documented wedding. Its top
+         -- role tag stays 'hotel' (that is what the credit lines say); the wedding count
+         -- is the evidence. See D055 "count honestly" in docs/decisions.md.
+         OR ($1::text = 'venue' AND var.role = 'hotel' AND COALESCE(wc.n_weddings, 0) > 0)
+       )
        AND al.in_metro
        AND (
          $4::text IS NULL

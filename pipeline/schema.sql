@@ -11,7 +11,16 @@ create type vendor_role as enum (
   'beauty_other','other'
 );
 
-create type tag_source as enum ('stack_regex','stack_llm','profile_bio','manual');
+-- 'wedding_credit' added 2026-09-10 (D055 follow-up, refreshAccountRoleTagsFromWeddings.ts):
+-- the wedding_vendors vote (documented weddings a `wedding_id, account_id, role` credit) as
+-- its own tag source, alongside the stack/profile/manual evidence sources -- see
+-- accountRoleTags.ts and that script's header comment for why account_tags needed a fifth
+-- source at all (the D055 batches wrote wedding_vendors directly and never touched
+-- account_tags, so v_account_role went stale). Applied live via
+-- `alter type tag_source add value if not exists 'wedding_credit'` (must run as its own
+-- committed statement, outside any transaction -- Postgres won't let a transaction use an
+-- enum value it just added itself).
+create type tag_source as enum ('stack_regex','stack_llm','profile_bio','manual','wedding_credit');
 create type crawl_status as enum ('pending','crawled','skipped','error');
 
 -- ============================================================

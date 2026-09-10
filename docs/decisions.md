@@ -490,6 +490,34 @@ each slice behind a calibration gate on the golden set before corpus spend.
   honestly → finish the corpus for thin venues → Apify own+tagged crawl of thin venues after
   09-11 → wedding-likelihood ranking → web-sourced coverage for no-IG venues) is in the plan
   file, not yet approved. Pool-B read still in flight (2,000 posts, cap $14).
+- **Count honestly — coverage item 1, part done** (2026-09-10 ~01:00 CT, user: "aligned with
+  item 1 now"). Corrected premise: `/venues` lists accounts by `v_account_role` (top
+  `account_tags` row) + `account_locations.in_metro`, not by Places rows, and the D055
+  batches never wrote `account_tags` — so 195 venue accounts (704 weddings) had no tag and
+  318 had a stale top role (user-caught: `sprouthomechicago`, a florist on 17 weddings, shown
+  as "venue" from 3 old credits; `fschicago` shown as "other", `totlspecialevents` as
+  "planner"). Built: `refreshAccountRoleTagsFromWeddings.ts` (new `tag_source` value
+  `wedding_credit`, evidence = distinct weddings per (account, role), Ben's confidence
+  formula; dry-run: 3,543 accounts newly tagged, 318 top-role changes, 171 venues newly
+  visible, 259 venue-top accounts still hidden for no location row, 35 for not-metro) —
+  **apply blocked by the auto-mode classifier (the `alter type` DDL); needs the user's
+  explicit go next session.** `recreditManagementCompany.ts --handle venuelogic` **applied**:
+  189 credits venue→other, 16 weddings re-anchored (Bridgeport Art Center +11, Rockwell +5,
+  via the other venue credit or the location tag), 3 unresolved (898, 2785, 2910), provenance
+  in the new `wedding_vendor_recredits` table with a printed revert. `reportVenueCoverage.ts`
+  is the standing metric over what the page lists: 417 venues / 4,178 weddings; hidden
+  classes B no-location 207 accounts (354 weddings), C not-metro 33 (36), E mis-tagged
+  anchors 246 (876 weddings — the refresh fixes these). **Product rule (user):** a hotel-tagged
+  account lists under `/venues` when it is the venue of ≥1 documented wedding
+  (`lib/server/vendors.ts`; +13 hotels / 73 weddings today, e.g. Congress Plaza Hotel with 3
+  photographer-credited weddings). Open product questions raised by Congress Plaza: the venue
+  card should show "weddings hosted" (anchored) separately from the any-role feed count (3 vs
+  6 there), and weddings anchored on a ceremony church with a reception venue credited should
+  anchor on the reception venue (size in the report next). **Duplicates, measured:** on the
+  1,230 weddings whose posts carry a reader-extracted couple name, 16 same-couple-same-venue
+  pairs exist (1.3%, exact-string; true rate likely 1-3% → ~60-170 of 5,749). Same-venue-
+  same-day pairs (363) are NOT duplicates — `event_date_est` is the post date. Planned: a
+  couple-name merge pass (normalize &/+/and, first names), batch-provenanced, $0.
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 
