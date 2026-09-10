@@ -395,6 +395,25 @@ each slice behind a calibration gate on the golden set before corpus spend.
   from the model's event type, and can open specific posts (`?post=a,b,c`) so the human can
   correct earlier verdicts — the 27 answer-key posts above were handed over that way. The user
   then approved reading the remaining ~1,170 Chicago-confirmed posts (~$5.20).
+- **Corpus pass + batch 5** (2026-09-09 night). The reader read the remaining queue (1,300
+  posts, $5.60; the last ~130 were the ambiguous-geography tail, an overshoot of the confirmed
+  pool): 922 THIS_VENUE (820 written at ≥0.8), 239 NOT_WEDDING, 102 UNSURE, 37 OTHER_VENUE —
+  1,001 model verdicts in all. **Spot-check, after the user caught venue concentration**
+  ("most of the 20+ I've been spot checking are from similar venues" — Morton Arboretum was 15
+  of the first 27): the sampler now draws one post per venue before repeating any, and the
+  report breaks out confidence band and top venues. 122 venue-spread blind checks: **96.7%**
+  overall, 98.0% at model confidence ≥0.9, 90.9% at 0.8-0.9, location-tag anchors 97.8%,
+  Morton Arboretum the only venue under 90% (89.5%). **Batch 5 CREATED**
+  (`d055-structural-v2-batch5`, snapshot `2026-09-10T01-59-15`, user: "create"): **641
+  weddings / 667 posts / 1,721 vendor credits**, zero orphans; 144 skipped as ambiguous
+  geography, 13 wrong-venue-no-correction; no coverage-bucket moves (all depth at documented
+  venues). weddings 4,636 → **5,277**. Since D055 began: 3,541 → 5,277 (+1,736), the human's
+  hand on ~700 verdicts + 122 spot-checks, total model spend ~$12. Human queue: 534 Chicago-
+  confirmed posts the model would not commit to (badged with its reasoning) + 636 ambiguous-
+  geography posts. Logged, not acted on (user: "just letting you know, don't do anything now"):
+  a Giraffe Manor (Kenya) wedding reached the spot-check because the sampler ignores
+  `chicago_status`; the fix and the bigger idea — let the reader state each wedding's location
+  so the 593 ambiguous venues resolve from their own captions — are in the plan file.
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 

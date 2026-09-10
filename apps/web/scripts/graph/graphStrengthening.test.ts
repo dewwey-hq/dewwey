@@ -846,8 +846,11 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // batch that includes the Haiku reader's verdicts (extract-v1.1, 181 THIS_VENUE at >=0.8
     // confidence, spot-checked blind by the user at 92.6% agreement) alongside the human's.
     // Zero orphans -- the batch-3 link-existing-post fix held.
-    expect(Number(rows[0].weddings)).toBe(4636);
-    expect(Number(rows[0].wedding_posts)).toBe(5296);
+        // +641 weddings / +685 posts from D055 batch 5 (2026-09-09 night, user: "create"): the first
+    // batch drawn mostly from the Haiku reader's corpus pass (820 THIS_VENUE verdicts at >=0.8 over
+    // 1,300 posts; user spot-checked 122 venue-spread posts blind at 96.7%). Zero orphans.
+    expect(Number(rows[0].weddings)).toBe(5277);
+    expect(Number(rows[0].wedding_posts)).toBe(5981);
   });
 });
 
@@ -1018,8 +1021,9 @@ describe("graph ingestion — D023 (DB)", () => {
     // +2716 more from D055 batch 3 (651 weddings, 2026-09-09; same batch_id provenance, all
     // "untouched").
     // +1171 more from D055 batch 4 (371 weddings, 2026-09-09 evening; same provenance).
-    expect(Number(rows[0].untouched)).toBe(37444);
-    expect(Number(rows[0].total)).toBe(37555);
+    // +1721 more from D055 batch 5 (641 weddings, 2026-09-09 night; same provenance).
+    expect(Number(rows[0].untouched)).toBe(39165);
+    expect(Number(rows[0].total)).toBe(39276);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -1089,8 +1093,11 @@ describe("graph ingestion — D023 (DB)", () => {
     // batch that includes the Haiku reader's verdicts (extract-v1.1, 181 THIS_VENUE at >=0.8
     // confidence, spot-checked blind by the user at 92.6% agreement) alongside the human's.
     // Zero orphans -- the batch-3 link-existing-post fix held.
-    expect(Number(rows[0].weddings)).toBe(4636);
-    expect(Number(rows[0].wedding_posts)).toBe(5296);
+        // +641 weddings / +685 posts from D055 batch 5 (2026-09-09 night, user: "create"): the first
+    // batch drawn mostly from the Haiku reader's corpus pass (820 THIS_VENUE verdicts at >=0.8 over
+    // 1,300 posts; user spot-checked 122 venue-spread posts blind at 96.7%). Zero orphans.
+    expect(Number(rows[0].weddings)).toBe(5277);
+    expect(Number(rows[0].wedding_posts)).toBe(5981);
     // accounts +6 (14334->14340): Tier 1's 159 candidates credited a few vendor handles never
     // seen before in `accounts` -- unlike Batch 5/6, whose venue accounts always pre-existed
     // (that's how they got tagged 'venue' in the first place), Tier 1 spans the FULL candidate
@@ -1123,7 +1130,8 @@ describe("graph ingestion — D023 (DB)", () => {
     // createWeddingsFromJeremyEvidence.ts mints it on import, same as every prior batch.
     // +16 (22855->22871, D055 batch 3): imported posts' authors minted on import, as above.
     // +19 (22871->22890, D055 batch 4): imported posts' authors minted on import, as above.
-    expect(Number(rows[0].accounts)).toBe(22890);
+    // +21 (22890->22911, D055 batch 5): imported posts' authors minted on import, as above.
+    expect(Number(rows[0].accounts)).toBe(22911);
   });
 
   it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {
@@ -1244,7 +1252,9 @@ describe("vendor feed count invariant (DB)", () => {
     // 59 (D055 batch 3, 2026-09-09): 13 more Galleria Marchetti weddings from the on-behalf
     // strong/author-class read (named couples on credit-line and venue-authored posts) plus one
     // WRONG_VENUE correction created at Galleria.
-    expect(rows[0].n).toBe(59);
+    // 80 (D055 batches 4-5, 2026-09-09): 21 more Galleria Marchetti weddings, mostly from the
+    // Haiku reader's verdicts on the venue's own posts and credit-line stacks.
+    expect(rows[0].n).toBe(80);
   });
 
   it("ulcchicago has a venue credit on wedding 1352 (the Case A index bug, D027)", async () => {

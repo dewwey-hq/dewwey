@@ -738,7 +738,14 @@ export async function getSpotCheckQueue(
        select 1 from post_venue_verdicts pv
        where pv.post_url = cpz.source_post_url and pv.reviewed_by = $3
      )
-     order by random()
+     -- D055 (user-caught 2026-09-09: "most of the 20+ I've been spot checking are from similar
+     -- venues"): a uniform random draw over verdicts inherits the corpus run's coverage-first
+     -- ordering, so one venue (Morton Arboretum, 52 of the pilot's 181 verdicts) dominated the
+     -- sample. Stratify instead: one post per venue until every eligible venue has one (window
+     -- rank), non-credit-line anchors interleaved ahead of credit-line within a rank, then random.
+     order by row_number() over (partition by cpz.venue_account_id order by random()),
+              (cpz.venue_anchor_source = 'credit_line') asc,
+              random()
      limit $4`,
     [STRUCTURAL_CLUSTERING_VERSION, targetReviewer, humanReviewer, n]
   );
@@ -766,8 +773,20 @@ export interface SpotCheckReport {
   agreement_pct: number | null;
   confusion: SpotCheckConfusionCell[];
   by_anchor_source: SpotCheckAnchorAgreement[];
+  // D055: agreement by the target reviewer's own confidence band (haiku only; 'n/a' for fable/
+  // human) and by venue (top 10 by paired count) -- so sample concentration is visible in the
+  // panel itself, not just the headline number.
+  by_confidence_band: SpotCheckStratumAgreement[];
+  by_venue_top10: SpotCheckStratumAgreement[];
   // Plain-text rendering of the above, ready to drop into a <pre> block or a terminal.
   text: string;
+}
+
+export interface SpotCheckStratumAgreement {
+  key: string;
+  total: number;
+  agree: number;
+  agreement_pct: number;
 }
 
 function formatSpotCheckReportText(args: {
@@ -778,8 +797,10 @@ function formatSpotCheckReportText(args: {
   agreementPct: number | null;
   confusion: SpotCheckConfusionCell[];
   byAnchor: SpotCheckAnchorAgreement[];
+  byBand: SpotCheckStratumAgreement[];
+  byVenue: SpotCheckStratumAgreement[];
 }): string {
-  const { reviewer, humanReviewer, total, agree, agreementPct, confusion, byAnchor } = args;
+  const { reviewer, humanReviewer, total, agree, agreementPct, confusion, byAnchor, byBand, byVenue } = args;
   const lines: string[] = [];
   lines.push(`Spot-check agreement: ${reviewer} vs ${humanReviewer}`);
   lines.push(`Paired posts: ${total}  Agree: ${agree}  Agreement: ${agreementPct ?? "n/a"}%`);
@@ -795,6 +816,16 @@ function formatSpotCheckReportText(args: {
   for (const a of byAnchor) {
     lines.push(a.venue_anchor_source.padEnd(16) + String(a.total).padEnd(8) + String(a.agree).padEnd(8) + `${a.agreement_pct}%`);
   }
+  const stratum = (title: string, rowsIn: SpotCheckStratumAgreement[]) => {
+    lines.push("");
+    lines.push(title);
+    lines.push("key".padEnd(28) + "total".padEnd(8) + "agree".padEnd(8) + "pct");
+    for (const r of rowsIn) {
+      lines.push(r.key.slice(0, 27).padEnd(28) + String(r.total).padEnd(8) + String(r.agree).padEnd(8) + `${r.agreement_pct}%`);
+    }
+  };
+  stratum("By reviewer confidence band:", byBand);
+  stratum("By venue (top 10 by paired posts -- watch for concentration):", byVenue);
   return lines.join("\n");
 }
 
@@ -815,10 +846,14 @@ export async function getSpotCheckAgreementReport(
     fable_verdict: string;
     human_verdict: string;
     venue_anchor_source: string | null;
+    confidence_band: string;
+    venue_username: string | null;
     n: string;
   }>(
     `with target_current as (
-       select distinct on (post_url) post_url, candidate_id, verdict
+       select distinct on (post_url) post_url, candidate_id, verdict,
+              -- the haiku reader writes notes like 'extract-v1.1 conf=0.87: ...'; fable/human rows have none
+              (regexp_match(coalesce(notes, ''), 'conf=([0-9.]+)'))[1]::real as target_confidence
        from post_venue_verdicts
        where reviewed_by = $1
        order by post_url, reviewed_at desc
@@ -830,32 +865,53 @@ export async function getSpotCheckAgreementReport(
        order by post_url, reviewed_at desc
      )
      select tc.verdict as fable_verdict, hc.verdict as human_verdict,
-            jwc.venue_anchor_source, count(*) as n
+            jwc.venue_anchor_source,
+            case when tc.target_confidence is null then 'n/a'
+                 when tc.target_confidence >= 0.9 then '>=0.9' else '<0.9' end as confidence_band,
+            a.username::text as venue_username,
+            count(*) as n
      from target_current tc
      join human_current hc on hc.post_url = tc.post_url
      join jeremy_wedding_candidates jwc on jwc.id = tc.candidate_id
-     group by 1, 2, 3
+     left join accounts a on a.id = jwc.venue_account_id
+     group by 1, 2, 3, 4, 5
      order by 3, 1, 2`,
     [reviewer, humanReviewer]
   );
 
   let total = 0;
   let agree = 0;
-  const confusion: SpotCheckConfusionCell[] = [];
+  const confusionMap = new Map<string, SpotCheckConfusionCell>();
   const anchorMap = new Map<string, { total: number; agree: number }>();
+  const bandMap = new Map<string, { total: number; agree: number }>();
+  const venueMap = new Map<string, { total: number; agree: number }>();
+  const bump = (m: Map<string, { total: number; agree: number }>, key: string, n: number, isAgree: boolean) => {
+    const entry = m.get(key) ?? { total: 0, agree: 0 };
+    entry.total += n;
+    if (isAgree) entry.agree += n;
+    m.set(key, entry);
+  };
 
   for (const r of rows) {
     const n = Number(r.n);
     total += n;
     const isAgree = r.fable_verdict === r.human_verdict;
     if (isAgree) agree += n;
-    confusion.push({ fable_verdict: r.fable_verdict, human_verdict: r.human_verdict, n });
-    const key = r.venue_anchor_source ?? "(none)";
-    const entry = anchorMap.get(key) ?? { total: 0, agree: 0 };
-    entry.total += n;
-    if (isAgree) entry.agree += n;
-    anchorMap.set(key, entry);
+    const ck = `${r.fable_verdict}|${r.human_verdict}`;
+    const cell = confusionMap.get(ck) ?? { fable_verdict: r.fable_verdict, human_verdict: r.human_verdict, n: 0 };
+    cell.n += n;
+    confusionMap.set(ck, cell);
+    bump(anchorMap, r.venue_anchor_source ?? "(none)", n, isAgree);
+    bump(bandMap, r.confidence_band, n, isAgree);
+    bump(venueMap, r.venue_username ?? "(none)", n, isAgree);
   }
+  const confusion = [...confusionMap.values()].sort((a, b) => b.n - a.n);
+  const toRows = (m: Map<string, { total: number; agree: number }>) =>
+    [...m.entries()]
+      .map(([key, v]) => ({ key, total: v.total, agree: v.agree, agreement_pct: v.total > 0 ? Math.round((v.agree / v.total) * 1000) / 10 : 0 }))
+      .sort((a, b) => b.total - a.total);
+  const byBand = toRows(bandMap);
+  const byVenue = toRows(venueMap).slice(0, 10);
 
   const byAnchor: SpotCheckAnchorAgreement[] = [...anchorMap.entries()]
     .map(([venue_anchor_source, v]) => ({
@@ -876,6 +932,8 @@ export async function getSpotCheckAgreementReport(
     agreementPct,
     confusion,
     byAnchor,
+    byBand,
+    byVenue,
   });
 
   return {
@@ -885,6 +943,8 @@ export async function getSpotCheckAgreementReport(
     agreement_pct: agreementPct,
     confusion,
     by_anchor_source: byAnchor,
+    by_confidence_band: byBand,
+    by_venue_top10: byVenue,
     text,
   };
 }
