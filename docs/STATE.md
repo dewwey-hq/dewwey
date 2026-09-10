@@ -49,7 +49,7 @@ user spot-checks and says "create" for every batch.
 
 1. **D056 stage 1** after the user settles the disagreements: parser v10 (Sonnet), additive re-parse,
    coverage report; stage 2 migration dry-run on the local Docker copy.
-2. Phase 3 residue table for D055 (numbers are in the newest addendum) — the exit criterion.
+2. (done) D055 Phase 3 residue table written — D055 closed as a mining mission; leftovers are image-only, out of market, or a ~830-post human pass.
 3. Duplicate merge pass (same couple at the same venue; participants table in D056 will make
    this exact) — $0.
 4. 36 mis-anchored weddings (restaurants credited as catering are probably real venues;

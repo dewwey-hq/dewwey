@@ -622,6 +622,28 @@ each slice behind a calibration gate on the golden set before corpus spend.
   ambiguous-geography venues, 1,075 out of market. Never clustered: image-only venue-anchored
   (~11,300, vision slice), no-anchor text (pool B tiers 3+, ~4,400), no signal (~13,850).
   Residue table (Phase 3 exit) still to be written from these numbers.
+- **Phase 3 residue table — the exit criterion** (2026-09-10 close; live counts). What the
+  47,623 corpus posts became, and why what is left is left:
+
+  | Slice | Posts | Why it is where it is / what would move it |
+  |---|---|---|
+  | Documented as a wedding (5,606 posts → 6,018 weddings, 2,477 added by D055) | 5,606 | done; est. 1-3% duplicate pairs to merge (D056 participants table makes this exact) |
+  | Candidates at a confirmed metro venue, model NOT_WEDDING ≥0.8 | 1,270 | venue marketing, showers, roundups, upcoming; model precision on N is unmeasured — only a human pass would recover any |
+  | Candidates at a confirmed venue, model called a wedding at <0.8 | 456 | the 0.8-0.9 band spot-checked at 88%; a human pass at ~$0 (queue class filter, not built) |
+  | Candidates at a confirmed venue, model UNSURE / never read | 308 + 71 | UNSURE = real wedding, venue unclear from text; 71 never read (recent candidates) |
+  | Candidates at a confirmed venue with a human N / V / other verdict | 598 | human-decided; not weddings at that venue |
+  | Candidates at ambiguous-geography venues | 1,007 | 593 venues with no metro verdict; reader-resolved geography ~$2.70 (parked) |
+  | Candidates out of market | 1,075 | correctly excluded (Omaha, Milwaukee, Napa, Cabo…) |
+  | Never clustered: venue-anchored (author / location tag), image-only | ~11,300 | no caption signal; the vision slice (Apify re-acquisition + Haiku vision, ~$32) after 09-11 |
+  | Never clustered: no venue anchor, wedding text, pool B tiers 3+ | ~4,400 | couple-name-only posts; venue discovery read them at ~40% W but the venue is rarely named — low yield |
+  | Never clustered: no anchor, no wedding word | ~13,850 | vendor marketing, tips, unrelated; residue by text |
+  | New-venue leads that could not be verified | 40 leads | public parks, ambiguous names; a person could resolve a few |
+
+  Reader spend $42.95 over 6,393 posts; human labels 998 verdicts + 222 blind spot-checks
+  (96.8%). Coverage at close: `/venues` 612 venues / 5,546 countable weddings (417 / 4,178 at
+  the start of 2026-09-10). **D055 is closed as a mining mission**; what remains is either
+  image-only (needs Apify + vision), out of market, or a human pass over ~830 confirmed-venue
+  posts the model would not commit to.
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 
