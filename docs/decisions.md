@@ -448,6 +448,48 @@ each slice behind a calibration gate on the golden set before corpus spend.
   `mcachicago` are two museums, `intercontinental` is the brand handle not the property. Aliases
   now 58; no alias points at another alias (checked). The finder is standing: re-run it after
   every corpus parse.
+- **Stages 1-3 executed** (2026-09-10 overnight). Tests before spend: v1.2 verdict re-check
+  92.0% at ≥0.8 (200 posts, $1.10); venue-attribution gate 94.3% with the venue hidden (300
+  posts, $1.66; 92.5% even when the caption had neither handle nor name); A1 pilots 200 posts
+  ($1.26) — the model's rejections were right (banquet-hall quinceañera pitches, budget-tip
+  posts), so the A1 yield estimate was cut from 500-700 to 150-250 and the full read went ahead
+  because every hit lands at a thin venue. **Rescue batch** (`d055-golden-legacy-rescue`, user:
+  "Create"): 65 human-confirmed posts attached to their existing weddings, 72 weddings created,
+  48 mid-confidence matches held (32 more would have merged a different couple at the same
+  venue — caught by testing couple names against the matched wedding's captions), 46 gated out.
+  Residue re-read under v1.2 with Sonnet escalation (610 posts, $4.38): 127 more confident W.
+  **Batch 6** (`d055-structural-v2-batch6`, user: "Create"): **172 weddings / 185 posts**, zero
+  orphans; weddings 5,349 → **5,521**. Spot-check on the new classes: 150 paired, 97.3%. The
+  A1 pool (structural-v3-a1, 1,250 candidates read at ~$0.0055/post with escalation) creates as
+  its own batch (`d055-a1-batch1`, `--clustering-version` added to the create path) once its
+  read completes — pre-approved by the user on the interim dry run (190 weddings / 201 posts,
+  mostly venue-only credits by construction).
+- **A1 batch + coverage audit** (2026-09-10 ~00:30 CT). A1 read finished: 1,556 posts, $10.42
+  (356 escalated to Sonnet), 571 THIS_VENUE / 818 NOT_WEDDING / 151 UNSURE / 16 OTHER_VENUE;
+  387 W written at ≥0.8. **A1 batch** (`d055-a1-batch1`, pre-approved; `--author-min-confidence
+  0.9` holds author-anchored candidates to a human W or a reader W at ≥0.9 because the
+  spot-check put that anchor at 83.3%): **228 weddings / 246 posts**, zero orphans, 0 venues out
+  of the zero bucket, 2 venues 1-5 → 6+; weddings 5,521 → **5,749** (3,541 at D055 start;
+  1,484 landed 2026-09-09/10). It is depth at known venues, as the pilot predicted.
+  **Coverage audit** (read-only, user: "that still feels too thin"): of 224 metro Places venues,
+  11 at 0 · 88 at 1-5 · 50 at 6-15 · 75 at 16+; median 7; top 50 = 70%, top 100 = 90% of
+  weddings. Root cause is acquisition, not extraction: the 47k corpus is a crawl of ~1,160
+  vendor profiles (13,291 posts by 149 venue accounts, 20,894 by 1,014 other vendors, 13,438
+  unknown), not of the venues — only 18 of the 88 thin venues have any own posts in it, 107 of
+  238 metro-bridged venues have a handle never scraped, 81 of 430 Places venues have no handle
+  at all, and `ops.crawl_frontier`'s 3,840-venue tagged-feed crawl never ran. What the corpus
+  still holds for 0-5 venues is mostly the venue's own image-only marketing (1,756 posts); the
+  three venues the user checked by hand (Biagio 198 own posts, Chicago Theater Works 5, Le Loft
+  202) are exactly that — promotions, not recaps, and the reader rejects them correctly.
+  `venuelogic` (188 weddings) is a management company credited as a venue; 353 venue accounts
+  with weddings (27 with ≥5) have no Places row and are invisible on `/venues`. Two smaller
+  finds: ~45 golden-WEDDING posts sit in undocumented confirmed-venue candidates with no human
+  venue verdict (serve them in the queue, do not auto-create — early labels include marketing
+  slips); Le Loft's second handle `leloftchicago_weddings` (a real recap, "Hannah & Josh") has no
+  account row so no alias signal can see it → alias signal S8. The coverage plan (count
+  honestly → finish the corpus for thin venues → Apify own+tagged crawl of thin venues after
+  09-11 → wedding-likelihood ranking → web-sourced coverage for no-IG venues) is in the plan
+  file, not yet approved. Pool-B read still in flight (2,000 posts, cap $14).
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 

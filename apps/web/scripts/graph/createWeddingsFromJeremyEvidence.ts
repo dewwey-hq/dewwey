@@ -855,6 +855,12 @@ function hasRecentSnapshot(): boolean {
 interface FromConfirmedCandidatesOptions {
   since?: string;
   limit?: number;
+  /** D055 stage 2 (2026-09-10): which candidate pool to create from -- structural-v2 (default) or
+   *  structural-v3-a1 (the relaxed-eligibility A1 pool, kept under its own provenance). */
+  clusteringVersion?: string;
+  /** D055 (2026-09-10): minimum model confidence for a CONFIRM on an author-anchored candidate
+   *  when no human W exists (spot-check: venue-authored posts 83% vs 98% at >=0.9). */
+  authorMinConfidence?: number;
 }
 
 interface FromConfirmedCandidatesResult {
@@ -915,8 +921,17 @@ async function runFromConfirmedCandidates(
        and jwc.clustering_version = $1
        and not exists (select 1 from jeremy_weddings_created jc where jc.candidate_id = jwc.id)
        and ($2::timestamptz is null or crd.reviewed_at >= $2::timestamptz)
+       -- D055 (2026-09-10, spot-check strata: venue-authored posts 83% vs 98% elsewhere at
+       -- model confidence >=0.9): when --author-min-confidence is set, a CONFIRM whose only
+       -- THIS_VENUE verdicts are the model's, on an author-anchored candidate, must carry
+       -- confidence >= the floor; human verdicts are never subject to it.
+       and ($3::real is null or jwc.venue_anchor_source is distinct from 'author' or exists (
+             select 1 from post_venue_verdicts_current v
+             where v.candidate_id = jwc.id and v.verdict = 'THIS_VENUE'
+               and (v.reviewed_by not like 'haiku-%'
+                    or coalesce((regexp_match(coalesce(v.notes,''), 'conf=([0-9.]+)'))[1]::real, 0) >= $3::real)))
      order by crd.reviewed_at asc`,
-    [STRUCTURAL_CLUSTERING_VERSION, opts.since ?? null]
+    [opts.clusteringVersion ?? STRUCTURAL_CLUSTERING_VERSION, opts.since ?? null, opts.authorMinConfidence ?? null]
   );
 
   const scoped = opts.limit != null ? eligible.slice(0, opts.limit) : eligible;
@@ -1877,6 +1892,10 @@ async function main() {
   }
 
   const sinceFlagIndex = process.argv.indexOf("--since");
+  const cvIdx = process.argv.indexOf("--clustering-version");
+  const clusteringVersion = cvIdx >= 0 ? process.argv[cvIdx + 1] : undefined;
+  const amcIdx = process.argv.indexOf("--author-min-confidence");
+  const authorMinConfidence = amcIdx >= 0 ? Number(process.argv[amcIdx + 1]) : undefined;
   const since = sinceFlagIndex !== -1 ? process.argv[sinceFlagIndex + 1] : undefined;
   if (since !== undefined && (since.startsWith("--") || isNaN(Date.parse(since)))) {
     console.error(`[create-weddings] --since must be a valid ISO timestamp, got "${since}"`);
@@ -1943,7 +1962,7 @@ async function main() {
       // --from-confirmed-candidates mode (D055 Phase 1 step 9) -- entirely separate candidate
       // source and gating logic, see runFromConfirmedCandidates above. The hardcoded-array mode
       // below (CANDIDATE_IDS loop) is completely unchanged.
-      const result = await runFromConfirmedCandidates(client, batchId, { since, limit });
+      const result = await runFromConfirmedCandidates(client, batchId, { since, limit, clusteringVersion, authorMinConfidence });
       weddingsCreated = result.weddingsCreated;
       postsImported = result.postsImported;
       vendorsInserted = result.vendorsInserted;
