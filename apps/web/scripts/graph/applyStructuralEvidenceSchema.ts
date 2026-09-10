@@ -7,6 +7,12 @@
  * `add column if not exists` makes a rerun a no-op, same idempotency bar as every other apply
  * script in this directory.
  *
+ * 2026-09-09 (venue-discovery reader downstream): the view gained a 6th CTE / 5th
+ * venue_anchor_source ('extracted', ranked last), fed by extracted_venue_anchors
+ * (resolveDiscoveredVenues.ts). Run applyExtractedVenueAnchorSchema.ts --apply FIRST -- this
+ * view's extracted_venue CTE joins that table, so CREATE OR REPLACE fails outright if it
+ * doesn't exist yet.
+ *
  * Unlike its siblings (applyVenueInlineMentionSchema.ts etc.), this one supports --dry-run --
  * D055 Phase 0 is explicitly schema-design-and-sizing only, no live writes yet, so this script
  * defaults to dry-run behavior (prints the SQL, executes nothing) unless --apply is passed.
@@ -132,6 +138,24 @@ const STATEMENTS: string[] = [
        and not exists (select 1 from inline_venue iv where iv.source_post_url = u.post_url)
      order by u.post_url, l.line_no asc
    ),
+   -- D055 venue-discovery reader downstream (2026-09-09), 6th and LAST priority: the Haiku
+   -- pool-b reader's own venue attribution (extracted_venue_anchors, resolveDiscoveredVenues.ts),
+   -- for posts none of the five patterns above anchored at all -- a model's read of free text
+   -- (94% venue-attribution accuracy on documented posts), good enough to be the anchor of last
+   -- resort but not to outrank any real structural match.
+   extracted_venue as (
+     select
+       u.post_url as source_post_url,
+       coalesce(al.canonical_account_id, eva.venue_account_id) as account_id
+     from universe u
+     join extracted_venue_anchors eva on eva.post_url = u.post_url
+     left join account_aliases al on al.alias_account_id = eva.venue_account_id
+     where not exists (select 1 from credit_line_venue clv where clv.source_post_url = u.post_url)
+       and not exists (select 1 from author_venue av where av.source_post_url = u.post_url)
+       and not exists (select 1 from location_venue lv where lv.source_post_url = u.post_url)
+       and not exists (select 1 from inline_venue iv where iv.source_post_url = u.post_url)
+       and not exists (select 1 from hashtag_venue hv where hv.source_post_url = u.post_url)
+   ),
    venue_anchor as (
      select
        source_post_url, account_id, 'venue'::text as role, role_raw, line_no,
@@ -150,6 +174,9 @@ const STATEMENTS: string[] = [
      union all
      select source_post_url, account_id, 'venue', role_raw, line_no, 'venue_hashtag', false
      from hashtag_venue
+     union all
+     select source_post_url, account_id, 'venue', null, null, 'extracted', false
+     from extracted_venue
    ),
    non_venue_evidence as (
      select
@@ -213,7 +240,7 @@ const STATEMENTS: string[] = [
    from combined c
    join universe u on u.post_url = c.source_post_url
    join couple_extract ce on ce.post_url = c.source_post_url;`,
-  `comment on view structural_post_vendor_evidence is 'DERIVED (D055 "squeeze the 47k" Phase 0, precision fixes for structural-v2 2026-09-08): venue-anchors a post from credit-line, author-is-known-venue, or IG location-tag (priority order, alias-resolved, conflict-flagged), plus the post''s own non-venue stack credits. has_couple_signal/couple_guess veto business-word false matches (e.g. "Lido Banquets & Events"). Eligibility (venue anchor + supporting evidence, anchor-source-dependent) and the couple-guess merge veto are enforced in runJeremyWeddingClustering.ts --evidence-source structural, not here. See docs/decisions.md D055.';`,
+  `comment on view structural_post_vendor_evidence is 'DERIVED (D055 "squeeze the 47k" Phase 0, precision fixes for structural-v2 2026-09-08; extracted_venue_anchors 5th anchor source added 2026-09-09): venue-anchors a post from credit-line, author-is-known-venue, IG location-tag, inline @mention, venue-branded hashtag, or (lowest priority, last resort) the Haiku pool-b reader''s own extraction (priority order, alias-resolved, conflict-flagged), plus the post''s own non-venue stack credits. has_couple_signal/couple_guess veto business-word false matches (e.g. "Lido Banquets & Events"). Eligibility (venue anchor + supporting evidence, anchor-source-dependent) and the couple-guess merge veto are enforced in runJeremyWeddingClustering.ts --evidence-source structural, not here. See docs/decisions.md D055.';`,
   `alter table jeremy_wedding_candidates add column if not exists venue_anchor_source text;`,
   `alter table jeremy_wedding_candidates add column if not exists venue_anchor_conflict boolean;`,
 ];

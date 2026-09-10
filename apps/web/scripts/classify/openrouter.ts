@@ -14,6 +14,10 @@ export interface ToolCallResult<T> {
   latencyMs: number;
   inputTokens: number;
   outputTokens: number;
+  /** The raw OpenRouter `usage` object, untouched -- includes fields callers may want beyond
+   *  the parsed inputTokens/outputTokens/costUsd above, e.g. prompt_tokens_details.cached_tokens
+   *  when a cached system prompt (see cacheSystemPrompt below) was actually served from cache. */
+  usage: Record<string, unknown>;
 }
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -66,6 +70,13 @@ export async function callTool<T>(opts: {
   toolDescription: string;
   parameters: object;
   maxTokens?: number;
+  /** When true, send the system prompt as a content-block array with an Anthropic ephemeral
+   *  cache_control breakpoint on it -- OpenRouter passes cache_control through for anthropic/*
+   *  models, so a repeated call with the SAME system text can be served (partly) from cache.
+   *  Defaults to false, which sends `system` as a plain string exactly as before -- existing
+   *  callers (llmClassifier.ts's classify(), used by runClassify.ts) are unaffected unless they
+   *  opt in. */
+  cacheSystemPrompt?: boolean;
 }): Promise<ToolCallResult<T>> {
   // NEW_OPENROUTER_API_KEY (funded 2026-09-02, $100) is used in preference to
   // OPENROUTER_API_KEY (exhausted — left untouched per instruction) so this
@@ -83,6 +94,15 @@ export async function callTool<T>(opts: {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     await acquireSlot(opts.model);
 
+    // Plain string (unchanged default) vs. a content-block array carrying an ephemeral
+    // cache_control breakpoint (opt-in via cacheSystemPrompt) -- see the option's doc comment.
+    const systemMessage = opts.cacheSystemPrompt
+      ? {
+          role: "system",
+          content: [{ type: "text", text: opts.system, cache_control: { type: "ephemeral" } }],
+        }
+      : { role: "system", content: opts.system };
+
     let res: Response;
     try {
       res = await fetch(OPENROUTER_URL, {
@@ -93,10 +113,7 @@ export async function callTool<T>(opts: {
         },
         body: JSON.stringify({
           model: opts.model,
-          messages: [
-            { role: "system", content: opts.system },
-            { role: "user", content: opts.user },
-          ],
+          messages: [systemMessage, { role: "user", content: opts.user }],
           max_tokens: opts.maxTokens ?? 1200,
           temperature: 0,
           tools: [
@@ -152,9 +169,11 @@ export async function callTool<T>(opts: {
     const usage = data.usage || {};
     const inputTokens = usage.prompt_tokens ?? 0;
     const outputTokens = usage.completion_tokens ?? 0;
+    // OpenRouter reports actual spend in usage.cost when present -- prefer it over any
+    // token-count x price-table estimate, per the project's standing rule.
     const costUsd = typeof usage.cost === "number" ? usage.cost : null;
 
-    return { args, model: data.model ?? opts.model, costUsd, latencyMs, inputTokens, outputTokens };
+    return { args, model: data.model ?? opts.model, costUsd, latencyMs, inputTokens, outputTokens, usage };
   }
   throw lastError;
 }

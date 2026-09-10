@@ -1467,6 +1467,26 @@ hashtag_venue as (
     and not exists (select 1 from inline_venue iv where iv.source_post_url = u.post_url)
   order by u.post_url, l.line_no asc
 ),
+-- D055 venue-discovery reader downstream (2026-09-09), 6th and LAST priority: the Haiku pool-b
+-- reader's own venue attribution (extracted_venue_anchors, resolveDiscoveredVenues.ts), for
+-- posts none of the five patterns above anchored at all. Ranked last because every pattern
+-- above is either a labeled credit line or a direct structural signal (IG's own location tag,
+-- the author's own known-venue identity, an inline/@ mention, a venue-branded hashtag) -- this
+-- one is a model's read of free text, measured at 94% venue-attribution accuracy on documented
+-- posts, good enough to be the anchor of last resort but not to outrank a real structural match.
+extracted_venue as (
+  select
+    u.post_url as source_post_url,
+    coalesce(al.canonical_account_id, eva.venue_account_id) as account_id
+  from universe u
+  join extracted_venue_anchors eva on eva.post_url = u.post_url
+  left join account_aliases al on al.alias_account_id = eva.venue_account_id
+  where not exists (select 1 from credit_line_venue clv where clv.source_post_url = u.post_url)
+    and not exists (select 1 from author_venue av where av.source_post_url = u.post_url)
+    and not exists (select 1 from location_venue lv where lv.source_post_url = u.post_url)
+    and not exists (select 1 from inline_venue iv where iv.source_post_url = u.post_url)
+    and not exists (select 1 from hashtag_venue hv where hv.source_post_url = u.post_url)
+),
 venue_anchor as (
   select
     source_post_url, account_id, 'venue'::text as role, role_raw, line_no,
@@ -1485,6 +1505,9 @@ venue_anchor as (
   union all
   select source_post_url, account_id, 'venue', role_raw, line_no, 'venue_hashtag', false
   from hashtag_venue
+  union all
+  select source_post_url, account_id, 'venue', null, null, 'extracted', false
+  from extracted_venue
 ),
 non_venue_evidence as (
   select
@@ -1550,7 +1573,7 @@ from combined c
 join universe u on u.post_url = c.source_post_url
 join couple_extract ce on ce.post_url = c.source_post_url;
 
-comment on view structural_post_vendor_evidence is 'DERIVED (D055 "squeeze the 47k" Phase 0, precision fixes for structural-v2 2026-09-08): venue-anchors a post from credit-line, author-is-known-venue, or IG location-tag (priority order, alias-resolved, conflict-flagged), plus the post''s own non-venue stack credits. has_couple_signal/couple_guess veto business-word false matches (e.g. "Lido Banquets & Events"). Eligibility (venue anchor + supporting evidence, anchor-source-dependent) and the couple-guess merge veto are enforced in runJeremyWeddingClustering.ts --evidence-source structural, not here. See docs/decisions.md D055.';
+comment on view structural_post_vendor_evidence is 'DERIVED (D055 "squeeze the 47k" Phase 0, precision fixes for structural-v2 2026-09-08; extracted_venue_anchors 5th anchor source added 2026-09-09): venue-anchors a post from credit-line, author-is-known-venue, IG location-tag, inline @mention, venue-branded hashtag, or (lowest priority, last resort) the Haiku pool-b reader''s own extraction (priority order, alias-resolved, conflict-flagged), plus the post''s own non-venue stack credits. has_couple_signal/couple_guess veto business-word false matches (e.g. "Lido Banquets & Events"). Eligibility (venue anchor + supporting evidence, anchor-source-dependent) and the couple-guess merge veto are enforced in runJeremyWeddingClustering.ts --evidence-source structural, not here. See docs/decisions.md D055.';
 
 -- v8 (D055, 2026-09-08 -- Phase 0 step 2): stack_extraction_entries gets a `source` column so
 -- per-pattern precision can be measured before anything downstream trusts a new pattern the same
@@ -1751,4 +1774,106 @@ create table if not exists post_extraction_runs (
 );
 create index if not exists idx_post_extraction_runs_candidate on post_extraction_runs(candidate_id);
 create index if not exists idx_post_extraction_runs_verdict on post_extraction_runs(verdict);
+
+-- D055 (2026-09-09): `createWeddingsFromJeremyEvidence.ts --from-golden-legacy` recovers
+-- golden_set INCLUDE posts that were clustered under a LEGACY clustering_version
+-- ('human-confirmed-v1'/'jeremy-cluster-v1'/'venue-couple-signal-v1', pre-dating structural-v2)
+-- and never made it into `weddings`. One sub-case of that mode (posts whose legacy candidate's
+-- latest jeremy_wedding_candidate_reconciliation row already believes a matched Ben wedding)
+-- ATTACHES the post to that EXISTING wedding rather than creating a new one -- `jeremy_weddings_
+-- created` is deliberately NOT used for these rows: its own name and every comment describing it
+-- (this script's own header, D023, D055's batch_id addendum) says "weddings THIS SCRIPT CREATED",
+-- and revertWeddingBatch.ts reads it to decide which `weddings` rows to delete outright -- writing
+-- an attach-only row there would make a future revert of this batch try to delete a wedding this
+-- batch never created (possibly one of Ben's own 1,326 original-crawl weddings). This table is the
+-- parallel, attach-only provenance log: one row per (batch_id, post_id) actually attached.
+-- revertWeddingBatch.ts is NOT extended to read this table (out of scope for this change) -- a
+-- future revert of an attach batch must, by hand or a follow-up script, delete the `wedding_posts`
+-- row for each (wedding_id, post_id) pair logged here (and the underlying `posts` row too, ONLY if
+-- it has source='jeremy_evidence' and no other wedding_posts row references it, same orphan check
+-- revertWeddingBatch.ts already does for CREATEd posts) -- never delete the `weddings` row itself,
+-- since this table never created one.
+create table if not exists jeremy_wedding_post_attachments (
+  batch_id      text not null,
+  wedding_id    bigint not null,
+  post_id       bigint not null,
+  candidate_id  bigint not null,
+  attached_at   timestamptz not null default now(),
+  primary key (batch_id, post_id)
+);
+comment on table jeremy_wedding_post_attachments is 'D055 (2026-09-09): provenance for createWeddingsFromJeremyEvidence.ts --from-golden-legacy''s ATTACH sub-case (post''s legacy candidate already reconciled to an existing wedding) -- distinct from jeremy_weddings_created, which is strictly "weddings this script created" and is what revertWeddingBatch.ts deletes wholesale. wedding_id/post_id/candidate_id are deliberately NOT foreign keys, same "not stable across a future rebuild, log the value not the reference" reasoning as jeremy_weddings_created.wedding_id and weddings_retired_batches.wedding_id. Reverting an attach batch is NOT handled by revertWeddingBatch.ts (out of scope, see the section comment above) -- do it by hand: delete the wedding_posts row for each logged (wedding_id, post_id) pair, and the posts row too only if source=''jeremy_evidence'' and no other wedding_posts row references it; never delete the weddings row itself.';
+create index if not exists idx_jeremy_wedding_post_attachments_batch on jeremy_wedding_post_attachments(batch_id);
+create index if not exists idx_jeremy_wedding_post_attachments_wedding on jeremy_wedding_post_attachments(wedding_id);
 comment on table post_extraction_runs is 'RAW (D055 Phase 2, extract-v1): one row per (post_url, prompt_version) LLM extraction attempt from runExtract.ts. result is the full structured tool-call output; verdict/confidence/corrected_venue_handle are denormalized copies for cheap querying/reporting. See decideVerdictWrite in extractPrompt.ts for how (or whether) a post_venue_verdicts row gets written from this.';
+
+-- D055 Phase 2 pool-b (2026-09-09, "squeeze the 47k"): runExtract.ts --mode pool-b reads posts
+-- with wedding-language captions but NO venue anchor of any kind (no stack_extraction_entries
+-- venue credit, no location_tag_venue_map hit, owner not a known venue account) and not already
+-- part of any jeremy_wedding_candidates -- there is no candidate_id to attach these runs to.
+-- candidate_id above was ALREADY nullable (no NOT NULL constraint) both in this file and live in
+-- Supabase (verified 2026-09-09) -- nothing to relax there. `pool` is the new bit: null for
+-- every calibration/corpus/venue-calibration row, past and future; only pool-b sets it, to
+-- 'pool-b' -- lets pool-b's discovery rows be selected back out of the shared table without a
+-- prompt_version-based heuristic. Applied via scripts/classify/applyPostExtractionSchema.ts
+-- (idempotent, add column if not exists).
+alter table post_extraction_runs add column if not exists pool text;
+comment on column post_extraction_runs.pool is 'D055 pool-b (2026-09-09): null for calibration/corpus/venue-calibration rows; ''pool-b'' for runExtract.ts --mode pool-b rows (posts with candidate_id NULL -- wedding-language caption, no venue anchor, not already in jeremy_wedding_candidate_posts). Lets pool-b''s rows be selected back out of the shared table.';
+create index if not exists idx_post_extraction_runs_pool on post_extraction_runs(pool) where pool is not null;
+
+-- D055 venue-discovery reader downstream (2026-09-09): resolveDiscoveredVenues.ts reads pool-b
+-- extraction rows (post_extraction_runs.pool = 'pool-b', verdict in THIS_VENUE/OTHER_VENUE --
+-- for pool-b both just mean "a real wedding, venue as extracted") and tries to resolve the
+-- model's venue_handle_guess / venue_name to an EXISTING accounts row, three tiers:
+--   A. venue_handle_guess resolves to an existing account (alias-aware) AND the caption itself
+--      literally credits '@handle' (sanity check -- a handle that resolves but isn't in the
+--      caption downgrades to tier B rather than being trusted blind).
+--   B. venue_name normalizes (lowercase, strip punctuation, drop leading "the", collapse spaces)
+--      to an EXISTING venue (exact match on accounts.full_name / vendors.name /
+--      location_tag_venue_map.location_tag) that is vendors.category='venue' or already has
+--      >=1 venue-role wedding.
+--   C. neither resolves -> a NEW-VENUE LEAD (discovered_venue_leads below), never auto-minted
+--      into accounts -- a new venue needs an independent geography check before it enters the
+--      graph (same D052 rule reportDefaultCityVenueGeography.ts exists to enforce).
+-- One row per post_url (that post's own venue verdict) -- this table never re-decides a post
+-- that already has a stronger structural anchor (credit_line/author/location_tag/inline_at/
+-- venue_hashtag); see structural_post_vendor_evidence's `extracted_venue` CTE below, which only
+-- reaches this table for posts the other four anchor sources missed entirely. Applied via
+-- scripts/graph/applyExtractedVenueAnchorSchema.ts (idempotent, create table if not exists) --
+-- apply this BEFORE the view change below, since the view's extracted_venue CTE joins it.
+create table if not exists extracted_venue_anchors (
+  post_url         text primary key,
+  venue_account_id bigint not null references accounts(id),
+  source           text not null default 'extract-v1.2',
+  confidence       real,
+  venue_name_raw   text,
+  resolved_by      text not null,           -- 'handle' (tier A) | 'name' (tier B)
+  resolved_at      timestamptz default now()
+);
+comment on table extracted_venue_anchors is 'D055 venue-discovery reader downstream: one row per post_url the Haiku pool-b reader (extract-v1.2, posts with no structural anchor) resolved a venue for -- written by resolveDiscoveredVenues.ts. resolved_by is "handle" (venue_handle_guess resolved to an existing account, sanity-checked against the caption) or "name" (venue_name normalized-matched an existing venue unambiguously). Feeds structural_post_vendor_evidence as its 5th, lowest-priority venue_anchor_source ("extracted").';
+create index if not exists idx_extracted_venue_anchors_account on extracted_venue_anchors(venue_account_id);
+
+-- D055 venue-discovery reader downstream (2026-09-09), tier C of resolveDiscoveredVenues.ts:
+-- pool-b posts whose venue neither a handle guess nor a name match resolves to an EXISTING
+-- account -- likely a real venue the graph has never seen at all. Aggregated by normalized
+-- venue name (one row per distinct candidate new venue, not per post) so a human can scan a
+-- short list instead of hundreds of individual posts. Deliberately NOT auto-minted into
+-- `accounts` and NOT written to `account_locations` -- the D052 rule (a new venue needs an
+-- independent geography check before it enters the graph) applies here exactly as it did to
+-- reportDefaultCityVenueGeography.ts's population; minting is a separate, later, approved step.
+-- Applied via resolveDiscoveredVenues.ts itself (idempotent, create table if not exists),
+-- written only under --apply.
+create table if not exists discovered_venue_leads (
+  name_norm        text primary key,        -- normalizeVenueName(venue_name), the grouping key
+  name_display     text,                    -- a representative raw venue_name for display
+  posts            int,                     -- distinct posts naming this venue
+  owners           int,                     -- distinct staging.instagram_posts.owner_username
+  location_claim   text,                    -- most common location_claim seen for this group
+  metro_yes        int,                     -- chicago_metro='yes' vote count
+  metro_no         int,                     -- chicago_metro='no' vote count
+  metro_unknown    int,                     -- chicago_metro='unknown' vote count
+  handle_guesses   text[],                  -- distinct venue_handle_guess values seen (none exist as accounts -- a mintable lead)
+  sample_post_urls text[],                  -- up to 3 sample post_url values
+  status           text default 'new',      -- 'new' until a human reviews/mints/rejects it
+  updated_at       timestamptz default now()
+);
+comment on table discovered_venue_leads is 'D055 venue-discovery reader downstream, resolveDiscoveredVenues.ts tier C: candidate NEW venues the pool-b reader surfaced with no existing accounts match, aggregated by normalized venue name. Never auto-minted into accounts/account_locations -- see the D052 "independent geography check before it enters the graph" rule. status is a human review flag (default ''new''), not written by the resolver beyond that default.';

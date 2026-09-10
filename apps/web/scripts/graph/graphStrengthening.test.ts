@@ -632,7 +632,10 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     `);
     // Now 45 (beyond_include_v1 completion sync, 2026-09-07): re-verified still zero of the 45
     // are in jeremy_wedding_vendors_ingested.
-    expect(Number(rows[0].n)).toBe(45);
+    // 50 (D055, 2026-09-10): the reconciler re-ran over structural-v2 after the tag-map round-2
+    // re-cluster added 114 candidates; five more ambiguous-tier rows changed identity vs v1. Same
+    // mechanism as every prior bump; none ingested.
+    expect(Number(rows[0].n)).toBe(50);
   });
 
   it("reconcile-v1 rows still exist untouched — the floor was shipped as a new version, not an overwrite", async () => {
@@ -679,7 +682,10 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // about weddings already on file (the ambiguous 0.4 tier -- the review UI's "Duplicate"
     // path), so many-to-one convergence rises as expected. Zero ingestion-safety impact: only
     // the 0.75-0.85 band is ever auto-applied. 426 after the couple-name merge pass.
-    expect(after).toBe(426);
+    // 420 (D055 golden-legacy rescue, 2026-09-10): 65 legacy candidates' posts were attached to
+    // their reconciled weddings and 72 created, removing some many-to-one convergence among the
+    // still-unresolved matched candidates (-6). Measured live, not re-pinned blindly.
+    expect(after).toBe(420);
   });
 
   it("insufficient-evidence tier size matches the current reconcile-v2 state (1,909 as of 2026-09-05)", async () => {
@@ -747,7 +753,9 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // absorbed candidate's reconciliation row is deleted with it (structural_candidate_merges
     // reason 'manual (Fable, D055 batch-N review)'). 2,561 once the author-anchored class was
     // read too (10 hand-merges in all; 7 of them sat in this tier).
-    expect(Number(rows[0].n)).toBe(2561);
+    // 2,575 (D055 stage 1-3 builds, 2026-09-10): the rescue batch and the tag-map round-2
+    // re-cluster added structural-v2 candidates that the reconciler placed in this tier (+14).
+    expect(Number(rows[0].n)).toBe(2575);
   }, 15000);
 
   it("weddings/wedding_posts are unaffected by the reconciliation rerun — reconciliation never writes to Ben's graph (wedding_vendors/edges are D023's separate, deliberate ingestion, asserted in its own describe block)", async () => {
@@ -849,8 +857,12 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
         // +641 weddings / +685 posts from D055 batch 5 (2026-09-09 night, user: "create"): the first
     // batch drawn mostly from the Haiku reader's corpus pass (820 THIS_VENUE verdicts at >=0.8 over
     // 1,300 posts; user spot-checked 122 venue-spread posts blind at 96.7%). Zero orphans.
-    expect(Number(rows[0].weddings)).toBe(5277);
-    expect(Number(rows[0].wedding_posts)).toBe(5981);
+        // +72 weddings / +252 posts from the D055 golden-legacy rescue (2026-09-10, user: "Create"):
+    // human-confirmed posts stuck in pre-D055 candidates -- 65 attached to their existing weddings
+    // (logged in jeremy_wedding_post_attachments, a new provenance table), 72 created at a
+    // resolved venue through the same Chicago gate; 48 mid-confidence matches held, 46 gated out.
+    expect(Number(rows[0].weddings)).toBe(5349);
+    expect(Number(rows[0].wedding_posts)).toBe(6122);
   });
 });
 
@@ -910,8 +922,12 @@ describe("clustering boundary-tie investigation — current (unfixed) state (DB)
     // couple-name merge missed. Posts unchanged (they move). 7,636 after the author-anchored
     // class (4 more: 8182->8176 and 8181/8212->8178 Salvatore's, 8497->8203 The Arbory) --
     // 10 manual merges in all, every one logged in structural_candidate_merges.
-    expect(Number(rows[0].candidates)).toBe(7636);
-    expect(Number(rows[0].candidate_posts)).toBe(8705);
+    // 9,000/10,738 (D055 stages 2-3, 2026-09-10): +1,250 structural-v3-a1 candidates (pool A1,
+    // relaxed eligibility, its own clustering_version -- never mixed into structural-v2) and
+    // +114 structural-v2 candidates from location-tag map round 2 (23 new venue tags). Posts
+    // grew accordingly; nothing was deleted.
+    expect(Number(rows[0].candidates)).toBe(9000);
+    expect(Number(rows[0].candidate_posts)).toBe(10738);
   });
 });
 
@@ -1022,8 +1038,9 @@ describe("graph ingestion — D023 (DB)", () => {
     // "untouched").
     // +1171 more from D055 batch 4 (371 weddings, 2026-09-09 evening; same provenance).
     // +1721 more from D055 batch 5 (641 weddings, 2026-09-09 night; same provenance).
-    expect(Number(rows[0].untouched)).toBe(39165);
-    expect(Number(rows[0].total)).toBe(39276);
+    // +761 more from the golden-legacy rescue (72 weddings, 2026-09-10; same provenance).
+    expect(Number(rows[0].untouched)).toBe(39926);
+    expect(Number(rows[0].total)).toBe(40037);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -1096,8 +1113,12 @@ describe("graph ingestion — D023 (DB)", () => {
         // +641 weddings / +685 posts from D055 batch 5 (2026-09-09 night, user: "create"): the first
     // batch drawn mostly from the Haiku reader's corpus pass (820 THIS_VENUE verdicts at >=0.8 over
     // 1,300 posts; user spot-checked 122 venue-spread posts blind at 96.7%). Zero orphans.
-    expect(Number(rows[0].weddings)).toBe(5277);
-    expect(Number(rows[0].wedding_posts)).toBe(5981);
+        // +72 weddings / +252 posts from the D055 golden-legacy rescue (2026-09-10, user: "Create"):
+    // human-confirmed posts stuck in pre-D055 candidates -- 65 attached to their existing weddings
+    // (logged in jeremy_wedding_post_attachments, a new provenance table), 72 created at a
+    // resolved venue through the same Chicago gate; 48 mid-confidence matches held, 46 gated out.
+    expect(Number(rows[0].weddings)).toBe(5349);
+    expect(Number(rows[0].wedding_posts)).toBe(6122);
     // accounts +6 (14334->14340): Tier 1's 159 candidates credited a few vendor handles never
     // seen before in `accounts` -- unlike Batch 5/6, whose venue accounts always pre-existed
     // (that's how they got tagged 'venue' in the first place), Tier 1 spans the FULL candidate
@@ -1131,7 +1152,8 @@ describe("graph ingestion — D023 (DB)", () => {
     // +16 (22855->22871, D055 batch 3): imported posts' authors minted on import, as above.
     // +19 (22871->22890, D055 batch 4): imported posts' authors minted on import, as above.
     // +21 (22890->22911, D055 batch 5): imported posts' authors minted on import, as above.
-    expect(Number(rows[0].accounts)).toBe(22911);
+    // +1 (22911->22912, D055 rescue batch): one imported post's author minted on import.
+    expect(Number(rows[0].accounts)).toBe(22912);
   });
 
   it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {

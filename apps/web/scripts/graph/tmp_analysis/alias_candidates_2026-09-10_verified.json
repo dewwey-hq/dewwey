@@ -1,0 +1,310 @@
+[
+  {
+    "alias": "rockwellontherive",
+    "canonical": "rockwellontheriver",
+    "verdict": "yes",
+    "reason": "One-letter-dropped typo of a real venue with 140 weddings vs 0; no independent profile.",
+    "searched": false
+  },
+  {
+    "alias": "chicagoilluminatingcomapny",
+    "canonical": "chicagoilluminatingcompany",
+    "verdict": "yes",
+    "reason": "Letter-transposition typo (comapny/company) of real venue with 102 weddings vs 0.",
+    "searched": false
+  },
+  {
+    "alias": "uclubashley",
+    "canonical": "universityclubofchicago",
+    "verdict": "no",
+    "reason": "Co-credited alongside the venue but reads as a staff member's personal account (\"Ashley\"), not the club.",
+    "searched": false
+  },
+  {
+    "alias": "cbgweddings",
+    "canonical": "cacweddings",
+    "verdict": "no",
+    "reason": "cacweddings = Weddings • Coastal Arts Center, Orange Beach AL — a different venue in a different city, coincidental acronym.",
+    "searched": true
+  },
+  {
+    "alias": "intercontinental",
+    "canonical": "interconchicago",
+    "verdict": "no",
+    "reason": "@interconchicago IS InterContinental Chicago's own account; @intercontinental is the separate bare/global brand handle.",
+    "searched": true
+  },
+  {
+    "alias": "saintclementparish",
+    "canonical": "totlspecialevents",
+    "verdict": "no",
+    "reason": "St. Clement Parish is a church credited alongside the reception venue (Theater on the Lake), not the same account.",
+    "searched": false
+  },
+  {
+    "alias": "saintclementparish",
+    "canonical": "theateronthelakechicago",
+    "verdict": "no",
+    "reason": "Church co-credited alongside a reception venue; not the same account.",
+    "searched": false
+  },
+  {
+    "alias": "lhchicago",
+    "canonical": "ulcchicago",
+    "verdict": "no",
+    "reason": "lhchicago = LondonHouse Chicago (Curio/Hilton hotel), a distinct real venue from Union League Club of Chicago.",
+    "searched": true
+  },
+  {
+    "alias": "artinstituteweddingevents",
+    "canonical": "artinstituteweddingsevents",
+    "verdict": "yes",
+    "reason": "Missing-\"s\" typo; corrected direction — artinstituteweddingsevents is the real handle with 36 weddings vs 1.",
+    "searched": false
+  },
+  {
+    "alias": "artinstituespecialevents",
+    "canonical": "artinstitutespecialevents",
+    "verdict": "yes",
+    "reason": "Missing-\"t\" typo of real, scraped Art Institute Weddings & Special Events (36 weddings vs 0).",
+    "searched": false
+  },
+  {
+    "alias": "artinsitutechi",
+    "canonical": "artinstitutechi",
+    "verdict": "yes",
+    "reason": "Missing-\"t\" typo of the Art Institute of Chicago's real, scraped account (850k followers).",
+    "searched": false
+  },
+  {
+    "alias": "thompsonchicago",
+    "canonical": "totlspecialevents",
+    "verdict": "no",
+    "reason": "Thompson Chicago is a distinct real hotel co-credited on the same post as Theater on the Lake, not the same account.",
+    "searched": false
+  },
+  {
+    "alias": "wacchicago",
+    "canonical": "ulcchicago",
+    "verdict": "no",
+    "reason": "wacchicago = Wabash Arts Corridor (public-art initiative), unrelated to Union League Club of Chicago.",
+    "searched": true
+  },
+  {
+    "alias": "lhchicago",
+    "canonical": "fschicago",
+    "verdict": "no",
+    "reason": "lhchicago = LondonHouse Chicago, a distinct real hotel from the Four Seasons Hotel Chicago.",
+    "searched": true
+  },
+  {
+    "alias": "totlspeacialevents",
+    "canonical": "totlspecialevents",
+    "verdict": "yes",
+    "reason": "Inserted-letter typo (\"speacial\"/\"special\") of the real venue, 46 weddings vs 1.",
+    "searched": false
+  },
+  {
+    "alias": "olmchicago",
+    "canonical": "ulcchicago",
+    "verdict": "no",
+    "reason": "olmchicago = Our Lady of Mercy Church, unrelated to Union League Club of Chicago.",
+    "searched": true
+  },
+  {
+    "alias": "msichicago",
+    "canonical": "fschicago",
+    "verdict": "no",
+    "reason": "msichicago = Museum of Science and Industry, a distinct well-known institution from the Four Seasons Hotel Chicago.",
+    "searched": false
+  },
+  {
+    "alias": "lhchicago",
+    "canonical": "wachicago",
+    "verdict": "no",
+    "reason": "lhchicago = LondonHouse Chicago, a distinct real hotel from Waldorf Astoria Chicago.",
+    "searched": true
+  },
+  {
+    "alias": "wacchicago",
+    "canonical": "wachicago",
+    "verdict": "no",
+    "reason": "wacchicago = Wabash Arts Corridor, unrelated to Waldorf Astoria Chicago despite the 1-letter edit distance.",
+    "searched": true
+  },
+  {
+    "alias": "thompsonchicago",
+    "canonical": "saintclementparish",
+    "verdict": "no",
+    "reason": "Thompson Chicago (hotel) and St. Clement Parish (church) are distinct venues co-credited together.",
+    "searched": false
+  },
+  {
+    "alias": "thefarmhouseainfield",
+    "canonical": "thefarmhouseplainfield",
+    "verdict": "yes",
+    "reason": "Dropped-\"pl\" typo; corrected direction — thefarmhouseplainfield is the real handle, 14 weddings vs 1.",
+    "searched": false
+  },
+  {
+    "alias": "lhchicago",
+    "canonical": "uchicago",
+    "verdict": "no",
+    "reason": "lhchicago = LondonHouse Chicago (hotel), a distinct entity from the University of Chicago.",
+    "searched": true
+  },
+  {
+    "alias": "olmchicago",
+    "canonical": "lhchicago",
+    "verdict": "no",
+    "reason": "lhchicago = LondonHouse Chicago; olmchicago = Our Lady of Mercy Church. Distinct, unrelated accounts.",
+    "searched": true
+  },
+  {
+    "alias": "mcachicago",
+    "canonical": "wachicago",
+    "verdict": "no",
+    "reason": "mcachicago = Museum of Contemporary Art Chicago, a distinct well-known institution from Waldorf Astoria Chicago.",
+    "searched": false
+  },
+  {
+    "alias": "wipachicago",
+    "canonical": "wachicago",
+    "verdict": "no",
+    "reason": "wipachicago = WIPA Chicago, the Wedding Industry Professionals Association chapter — not a venue, not Waldorf Astoria.",
+    "searched": true
+  },
+  {
+    "alias": "taochicago",
+    "canonical": "wachicago",
+    "verdict": "no",
+    "reason": "TAO Chicago is a distinct, well-known nightclub/restaurant brand, not Waldorf Astoria Chicago.",
+    "searched": false
+  },
+  {
+    "alias": "wacchicago",
+    "canonical": "iahcchicago",
+    "verdict": "no",
+    "reason": "wacchicago = Wabash Arts Corridor, unrelated to whatever iahcchicago is.",
+    "searched": true
+  },
+  {
+    "alias": "westinchicagonw",
+    "canonical": "westinchicagons",
+    "verdict": "no",
+    "reason": "Two distinct real Westin properties: Westin Chicago North Shore (Wheeling) vs Westin Chicago Northwest (Itasca).",
+    "searched": true
+  },
+  {
+    "alias": "wacchicago",
+    "canonical": "taochicago",
+    "verdict": "no",
+    "reason": "TAO Chicago (nightclub/restaurant) and wacchicago (Wabash Arts Corridor) are distinct, unrelated entities.",
+    "searched": true
+  },
+  {
+    "alias": "radissonblueaquachicago",
+    "canonical": "radissonbluaquachicago",
+    "verdict": "yes",
+    "reason": "\"Blue\" misspelling of the real brand spelling \"Blu\" (Radisson Blu Aqua Chicago).",
+    "searched": false
+  },
+  {
+    "alias": "salon6levents",
+    "canonical": "salon61events",
+    "verdict": "yes",
+    "reason": "\"6l\" vs \"61\" digit/letter-confusion typo of real, scraped Salon 61.",
+    "searched": false
+  },
+  {
+    "alias": "cafebauer",
+    "canonical": "cafebrauer",
+    "verdict": "yes",
+    "reason": "Missing-\"r\" typo; corrected direction — Café Brauer is the real Lincoln Park venue, 9 weddings vs 1.",
+    "searched": false
+  },
+  {
+    "alias": "msichicago",
+    "canonical": "mcachicago",
+    "verdict": "no",
+    "reason": "Two distinct well-known Chicago museums: Museum of Science and Industry vs Museum of Contemporary Art.",
+    "searched": false
+  },
+  {
+    "alias": "cacweddings",
+    "canonical": "uccweddings",
+    "verdict": "no",
+    "reason": "cacweddings = Coastal Arts Center, Orange Beach AL, unrelated to University Club of Chicago's uccweddings.",
+    "searched": true
+  },
+  {
+    "alias": "tciweddings",
+    "canonical": "uccweddings",
+    "verdict": "no",
+    "reason": "tciweddings = TCI Weddings, Temecula Wine Country CA, a different venue in a different city.",
+    "searched": true
+  },
+  {
+    "alias": "thewadechicago",
+    "canonical": "thegagechicago",
+    "verdict": "no",
+    "reason": "Both are distinct, real Chicago venues (The Gage; The Wade Hotel), coincidentally close by edit distance.",
+    "searched": true
+  },
+  {
+    "alias": "ndbasilica",
+    "canonical": "experience_nd",
+    "verdict": "no",
+    "reason": "experience_nd is a Notre Dame visitor/tourism guide account; ndbasilica is the Basilica church — distinct entities.",
+    "searched": true
+  },
+  {
+    "alias": "celebratebloom",
+    "canonical": "celebrateatbloom",
+    "verdict": "yes",
+    "reason": "Missing-\"at\" mis-capture of the real, scraped Bloom Events account.",
+    "searched": false
+  },
+  {
+    "alias": "destinationgnweddings",
+    "canonical": "destinationgn",
+    "verdict": "yes",
+    "reason": "Same resort, Destination Geneva National: main account (13K followers) vs its weddings sub-account (1.6K followers).",
+    "searched": true
+  },
+  {
+    "alias": "thedisctric_il",
+    "canonical": "thedistrict_il",
+    "verdict": "yes",
+    "reason": "\"disctric\"/\"district\" transposition typo; corrected direction — thedistrict_il has 4 weddings vs 1.",
+    "searched": false
+  },
+  {
+    "alias": "warhouse109",
+    "canonical": "warehouse109",
+    "verdict": "yes",
+    "reason": "Missing-\"e\" typo of the real venue, 3 weddings vs 0.",
+    "searched": false
+  },
+  {
+    "alias": "lacunacatalystsuites",
+    "canonical": "lacunabycatalystsuites",
+    "verdict": "yes",
+    "reason": "Dropped-\"by\" variant of the real, scraped Lacuna By Catalyst Suites (matching full_name).",
+    "searched": false
+  },
+  {
+    "alias": "olmchicago",
+    "canonical": "rlm_chicago",
+    "verdict": "no",
+    "reason": "rlm_chicago = RLM Events & Design; olmchicago = Our Lady of Mercy Church. Distinct, unrelated accounts.",
+    "searched": true
+  },
+  {
+    "alias": "harraycaraycelebrations",
+    "canonical": "harrycarayscelebrations",
+    "verdict": "yes",
+    "reason": "\"Harry\"/\"Harray\" transposition typo of the real, scraped Harry Caray's Events account.",
+    "searched": false
+  }
+]

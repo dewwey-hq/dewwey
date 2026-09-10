@@ -1,0 +1,1569 @@
+{
+  "generatedAt": "2026-09-10T04:22:17.791Z",
+  "universeSize": 1777,
+  "minStemLen": 4,
+  "tierCounts": {
+    "T3": 52,
+    "T2": 39,
+    "T1": 2
+  },
+  "signalCounts": {
+    "S1": 34,
+    "S4": 22,
+    "S6": 39,
+    "S5": 37,
+    "S1b": 2,
+    "S2": 1,
+    "S7": 1
+  },
+  "pairs": [
+    {
+      "alias": "shorebyclub",
+      "canonical": "shoreby_club",
+      "tier": "T1",
+      "signals": [
+        "S1",
+        "S1b"
+      ],
+      "evidence": [
+        "[S1] @shoreby_club ~ @shorebyclub (stem \"shorebyclub\")",
+        "[S1b] scrape/parse artifact ('.'/'_' variant)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "peartreeestate",
+      "canonical": "pear_tree_estate",
+      "tier": "T1",
+      "signals": [
+        "S1",
+        "S1b"
+      ],
+      "evidence": [
+        "[S1] @pear_tree_estate ~ @peartreeestate (stem \"peartreeeste\")",
+        "[S1b] scrape/parse artifact ('.'/'_' variant)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "uclubashley",
+      "canonical": "universityclubofchicago",
+      "tier": "T2",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 6 posts (e.g. https://www.instagram.com/p/DBM2IkePguO/)"
+      ],
+      "suggested_note": "@universityclubofchicago has a scraped profile, @uclubashley does not"
+    },
+    {
+      "alias": "uccweddings",
+      "canonical": "cacweddings",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @cacweddings (never scraped) vs @uccweddings (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "uccweddings",
+      "canonical": "tciweddings",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @tciweddings (never scraped) vs @uccweddings (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "cbgweddings",
+      "canonical": "cacweddings",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @cacweddings (never scraped) vs @cbgweddings (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "intercontinental",
+      "canonical": "interconchicago",
+      "tier": "T2",
+      "signals": [
+        "S5",
+        "S7"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DAtyA4RPKaK/)",
+        "[S7] reader disagreement: 2 posts THIS_VENUE>=0.8 at one venue but guessed the other's handle"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "lhchicago",
+      "canonical": "ulcchicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @lhchicago (never scraped) vs @ulcchicago (real venue)"
+      ],
+      "suggested_note": "@ulcchicago has a scraped profile, @lhchicago does not"
+    },
+    {
+      "alias": "artinstituteweddingsevents",
+      "canonical": "artinstituteweddingevents",
+      "tier": "T2",
+      "signals": [
+        "S1",
+        "S6"
+      ],
+      "evidence": [
+        "[S1] @artinstituteweddingevents ~ @artinstituteweddingsevents (stem \"artinstitute\")",
+        "[S6] Levenshtein distance 1: @artinstituteweddingevents (never scraped) vs @artinstituteweddingsevents (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "artinstituespecialevents",
+      "canonical": "artinstitutespecialevents",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @artinstituespecialevents (never scraped) vs @artinstitutespecialevents (real venue)"
+      ],
+      "suggested_note": "@artinstitutespecialevents has a scraped profile, @artinstituespecialevents does not"
+    },
+    {
+      "alias": "artinsitutechi",
+      "canonical": "artinstitutechi",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @artinsitutechi (never scraped) vs @artinstitutechi (real venue)"
+      ],
+      "suggested_note": "@artinstitutechi has a scraped profile, @artinsitutechi does not"
+    },
+    {
+      "alias": "thompsonchicago",
+      "canonical": "totlspecialevents",
+      "tier": "T2",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 7 posts (e.g. https://www.instagram.com/p/DaBtG-ECMNC/)"
+      ],
+      "suggested_note": "@totlspecialevents has a scraped profile, @thompsonchicago does not"
+    },
+    {
+      "alias": "wacchicago",
+      "canonical": "ulcchicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @wacchicago (never scraped) vs @ulcchicago (real venue)"
+      ],
+      "suggested_note": "@ulcchicago has a scraped profile, @wacchicago does not"
+    },
+    {
+      "alias": "lhchicago",
+      "canonical": "fschicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @lhchicago (never scraped) vs @fschicago (real venue)"
+      ],
+      "suggested_note": "@fschicago has a scraped profile, @lhchicago does not"
+    },
+    {
+      "alias": "totlspeacialevents",
+      "canonical": "totlspecialevents",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @totlspeacialevents (never scraped) vs @totlspecialevents (real venue)"
+      ],
+      "suggested_note": "@totlspecialevents has a scraped profile, @totlspeacialevents does not"
+    },
+    {
+      "alias": "olmchicago",
+      "canonical": "ulcchicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @olmchicago (never scraped) vs @ulcchicago (real venue)"
+      ],
+      "suggested_note": "@ulcchicago has a scraped profile, @olmchicago does not"
+    },
+    {
+      "alias": "msichicago",
+      "canonical": "fschicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @msichicago (never scraped) vs @fschicago (real venue)"
+      ],
+      "suggested_note": "@fschicago has a scraped profile, @msichicago does not"
+    },
+    {
+      "alias": "lhchicago",
+      "canonical": "wachicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @lhchicago (never scraped) vs @wachicago (real venue)"
+      ],
+      "suggested_note": "@wachicago has a scraped profile, @lhchicago does not"
+    },
+    {
+      "alias": "wacchicago",
+      "canonical": "wachicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @wacchicago (never scraped) vs @wachicago (real venue)"
+      ],
+      "suggested_note": "@wachicago has a scraped profile, @wacchicago does not"
+    },
+    {
+      "alias": "thefarmhouseplainfield",
+      "canonical": "thefarmhouseainfield",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @thefarmhouseainfield (never scraped) vs @thefarmhouseplainfield (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "lhchicago",
+      "canonical": "uchicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @lhchicago (never scraped) vs @uchicago (real venue)"
+      ],
+      "suggested_note": "@uchicago has a scraped profile, @lhchicago does not"
+    },
+    {
+      "alias": "olmchicago",
+      "canonical": "lhchicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @olmchicago (never scraped) vs @lhchicago (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "mcachicago",
+      "canonical": "wachicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @mcachicago (never scraped) vs @wachicago (real venue)"
+      ],
+      "suggested_note": "@wachicago has a scraped profile, @mcachicago does not"
+    },
+    {
+      "alias": "wipachicago",
+      "canonical": "wachicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @wipachicago (never scraped) vs @wachicago (real venue)"
+      ],
+      "suggested_note": "@wachicago has a scraped profile, @wipachicago does not"
+    },
+    {
+      "alias": "taochicago",
+      "canonical": "wachicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @taochicago (never scraped) vs @wachicago (real venue)"
+      ],
+      "suggested_note": "@wachicago has a scraped profile, @taochicago does not"
+    },
+    {
+      "alias": "chezweddingvenue",
+      "canonical": "chezeventvenue",
+      "tier": "T2",
+      "signals": [
+        "S1",
+        "S4"
+      ],
+      "evidence": [
+        "[S1] @chezeventvenue ~ @chezweddingvenue (stem \"chez\")",
+        "[S4] @chezeventvenue bio: \"...riences! Also visit @chezweddingvenue for more photos!\n+1...\" (unclassified)"
+      ],
+      "suggested_note": "@chezeventvenue has a scraped profile, @chezweddingvenue does not"
+    },
+    {
+      "alias": "wacchicago",
+      "canonical": "iahcchicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @iahcchicago (never scraped) vs @wacchicago (real venue)",
+        "[S6] Levenshtein distance 2: @wacchicago (never scraped) vs @iahcchicago (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "westinchicagonw",
+      "canonical": "westinchicagons",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @westinchicagons (never scraped) vs @westinchicagonw (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "wacchicago",
+      "canonical": "taochicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @taochicago (never scraped) vs @wacchicago (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "radissonblueaquachicago",
+      "canonical": "radissonbluaquachicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @radissonblueaquachicago (never scraped) vs @radissonbluaquachicago (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "salon6levents",
+      "canonical": "salon61events",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @salon6levents (never scraped) vs @salon61events (real venue)"
+      ],
+      "suggested_note": "@salon61events has a scraped profile, @salon6levents does not"
+    },
+    {
+      "alias": "cafebrauer",
+      "canonical": "cafebauer",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @cafebauer (never scraped) vs @cafebrauer (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "msichicago",
+      "canonical": "mcachicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @msichicago (never scraped) vs @mcachicago (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "thewadechicago",
+      "canonical": "thegagechicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @thegagechicago (never scraped) vs @thewadechicago (real venue)",
+        "[S6] Levenshtein distance 2: @thewadechicago (never scraped) vs @thegagechicago (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "celebratebloom",
+      "canonical": "celebrateatbloom",
+      "tier": "T2",
+      "signals": [
+        "S1",
+        "S6"
+      ],
+      "evidence": [
+        "[S1] @celebrateatbloom ~ @celebratebloom (stem \"celebrebloom\")",
+        "[S6] Levenshtein distance 2: @celebratebloom (never scraped) vs @celebrateatbloom (real venue)"
+      ],
+      "suggested_note": "@celebrateatbloom has a scraped profile, @celebratebloom does not"
+    },
+    {
+      "alias": "destinationgnweddings",
+      "canonical": "destinationgn",
+      "tier": "T2",
+      "signals": [
+        "S1",
+        "S5"
+      ],
+      "evidence": [
+        "[S1] @destinationgn ~ @destinationgnweddings (stem \"destiniongn\")",
+        "[S5] co-credited on the same venue credit line, 4 posts (e.g. https://www.instagram.com/p/DaL21dLgaua/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "thedistrict_il",
+      "canonical": "thedisctric_il",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @thedisctric_il (never scraped) vs @thedistrict_il (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "warhouse109",
+      "canonical": "warehouse109",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @warhouse109 (never scraped) vs @warehouse109 (real venue)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "lacunacatalystsuites",
+      "canonical": "lacunabycatalystsuites",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @lacunacatalystsuites (never scraped) vs @lacunabycatalystsuites (real venue)"
+      ],
+      "suggested_note": "@lacunabycatalystsuites has a scraped profile, @lacunacatalystsuites does not"
+    },
+    {
+      "alias": "olmchicago",
+      "canonical": "rlm_chicago",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @olmchicago (never scraped) vs @rlm_chicago (real venue)"
+      ],
+      "suggested_note": "@rlm_chicago has a scraped profile, @olmchicago does not"
+    },
+    {
+      "alias": "harraycaraycelebrations",
+      "canonical": "harrycarayscelebrations",
+      "tier": "T2",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @harraycaraycelebrations (never scraped) vs @harrycarayscelebrations (real venue)"
+      ],
+      "suggested_note": "@harrycarayscelebrations has a scraped profile, @harraycaraycelebrations does not"
+    },
+    {
+      "alias": "the.arbory",
+      "canonical": "ovationchicago",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/Cn8LXOnrdUZ/)"
+      ],
+      "suggested_note": "@ovationchicago has more followers (4370 vs 3003)"
+    },
+    {
+      "alias": "loftlucia",
+      "canonical": "adlerplanet",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DOWML2-DYLn/)"
+      ],
+      "suggested_note": "@adlerplanet has more followers (79775 vs 43923)"
+    },
+    {
+      "alias": "waldenweddings_",
+      "canonical": "waldenchicago",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @waldenchicago ~ @waldenweddings_ (stem \"walden\")"
+      ],
+      "suggested_note": "@waldenchicago has a scraped profile, @waldenweddings_ does not"
+    },
+    {
+      "alias": "thedalcychicago",
+      "canonical": "thedalcy",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @thedalcy ~ @thedalcychicago (stem \"dalcy\")"
+      ],
+      "suggested_note": "@thedalcy has a scraped profile, @thedalcychicago does not"
+    },
+    {
+      "alias": "post433chicago",
+      "canonical": "langhamchicago",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/DTd_b4rke-a/)"
+      ],
+      "suggested_note": "@langhamchicago has more followers (70408 vs 4237)"
+    },
+    {
+      "alias": "artifactevents",
+      "canonical": "artifacteventschicago",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @artifacteventschicago ~ @artifactevents (stem \"artifact\")"
+      ],
+      "suggested_note": "@artifacteventschicago has a scraped profile, @artifactevents does not"
+    },
+    {
+      "alias": "sohohouse",
+      "canonical": "tigerlilyevents",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DL43agKOm-3/)"
+      ],
+      "suggested_note": "@tigerlilyevents has a scraped profile, @sohohouse does not"
+    },
+    {
+      "alias": "stharalambosgoc",
+      "canonical": "cbgweddings",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/Ct4OxYXLLzL/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "stharalambosgoc",
+      "canonical": "chicagobotanic",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/Ct4OxYXLLzL/)"
+      ],
+      "suggested_note": "@chicagobotanic has a scraped profile, @stharalambosgoc does not"
+    },
+    {
+      "alias": "thefieldmuseum",
+      "canonical": "fieldmuseum",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @fieldmuseum ~ @thefieldmuseum (stem \"fieldmuseum\")"
+      ],
+      "suggested_note": "@fieldmuseum has a scraped profile, @thefieldmuseum does not"
+    },
+    {
+      "alias": "artinstituteweddingevents",
+      "canonical": "artinstitutechi",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @artinstitutechi ~ @artinstituteweddingevents (stem \"artinstitute\")"
+      ],
+      "suggested_note": "@artinstitutechi has a scraped profile, @artinstituteweddingevents does not"
+    },
+    {
+      "alias": "artinstituteweddingevents",
+      "canonical": "artinstituteevents",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @artinstituteevents ~ @artinstituteweddingevents (stem \"artinstitute\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "cantignygolf",
+      "canonical": "cantignypark",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DPjqjskkZ1B/)"
+      ],
+      "suggested_note": "@cantignypark has a scraped profile, @cantignygolf does not"
+    },
+    {
+      "alias": "thelytleauditorium",
+      "canonical": "thelytlehouse",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @thelytlehouse bio: \"...‍🤝‍👩🏻🏳️‍🌈\nAlso @thelytleauditorium...\" (unclassified)"
+      ],
+      "suggested_note": "@thelytlehouse has a scraped profile, @thelytleauditorium does not"
+    },
+    {
+      "alias": "thepeninsulachi",
+      "canonical": "peninsulachi",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @thepeninsulachi ~ @peninsulachi (stem \"peninsula\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "navypierchicago",
+      "canonical": "offshorerooftop",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @offshorerooftop bio: \"...space\n📍Located on @navypierchicago's East End\n🌎 World...\" (unclassified)"
+      ],
+      "suggested_note": "@offshorerooftop has a scraped profile, @navypierchicago does not"
+    },
+    {
+      "alias": "lshireweddings",
+      "canonical": "lshiremarriott",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DbW5gj4iSKZ/)"
+      ],
+      "suggested_note": "@lshiremarriott has a scraped profile, @lshireweddings does not"
+    },
+    {
+      "alias": "_bdarbs",
+      "canonical": "thecanvasvenue",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/DFEmmlFNRT0/)"
+      ],
+      "suggested_note": "@thecanvasvenue has a scraped profile, @_bdarbs does not"
+    },
+    {
+      "alias": "villaterracemuseum",
+      "canonical": "thevillamke",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/C2I_pm2ukAi/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "igniteeventschi",
+      "canonical": "igniteglass",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @igniteglass bio: \"...Weddings and Events @igniteeventschi...\" (unclassified)",
+        "[S4] @igniteeventschi bio: \"...celebration meet. \n@igniteglass 🔥 \n#chicagovenue #...\" (unclassified)"
+      ],
+      "suggested_note": "@igniteglass has more followers (33653 vs 1563)"
+    },
+    {
+      "alias": "thehaleymansion",
+      "canonical": "haleymansion",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @haleymansion ~ @thehaleymansion (stem \"haleymansion\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "boleochicago",
+      "canonical": "thegraychi",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @thegraychi bio: \"...de experiences.\n🍹: @boleochicago\n🍸: @vol39chicago\n\ud83d...\" (unclassified)"
+      ],
+      "suggested_note": "@thegraychi has a scraped profile, @boleochicago does not"
+    },
+    {
+      "alias": "theherringtoninnandspa",
+      "canonical": "herringtoninnandspa",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @theherringtoninnandspa ~ @herringtoninnandspa (stem \"herringtoninnspa\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "psbrewingco",
+      "canonical": "prairiestreetevents",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/DT9GfCGAodk/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "thewcofe",
+      "canonical": "eventswcofe",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @eventswcofe ~ @thewcofe (stem \"wcofe\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "treditarestaurant",
+      "canonical": "stregischicago",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/DaDqg0zDlEc/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "hotelbakerweddings",
+      "canonical": "hotelbaker",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @hotelbaker ~ @hotelbakerweddings (stem \"hotelbaker\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "theempressbanquets",
+      "canonical": "empressbanquets",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @theempressbanquets ~ @empressbanquets (stem \"empress\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "themorrisinn",
+      "canonical": "experience_nd",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/Dac6KzAlsTe/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "trumptowerchicago",
+      "canonical": "terrace16chicago",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DO_0mokE0y7/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "oasisatdeathvalleyweddings",
+      "canonical": "oasisatdeathvalley",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @oasisatdeathvalley ~ @oasisatdeathvalleyweddings (stem \"oasisdehvalley\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "16occhicago",
+      "canonical": "thaliahallchicago",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @thaliahallchicago bio: \"...1892\nRe-Est. 2014\na @16occhicago project...\" (unclassified)"
+      ],
+      "suggested_note": "@thaliahallchicago has a scraped profile, @16occhicago does not"
+    },
+    {
+      "alias": "rgccprivateevents",
+      "canonical": "raviniagreencountryclub",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DL1HBp-xO5u/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "dcestatewineryweddings",
+      "canonical": "dcestatewinery",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @dcestatewineryweddings ~ @dcestatewinery (stem \"dcestewinery\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "cityhallofchicago",
+      "canonical": "chicityclerk",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/Da6V846j-aE/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "floatingworldgallery",
+      "canonical": "floatingworldevents",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DPWzZ77CbOv/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "thegrovecountryclub",
+      "canonical": "grovecountryclub",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @thegrovecountryclub ~ @grovecountryclub (stem \"grovecountryclub\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "weddings.hoteljuliendubuque",
+      "canonical": "hoteljuliendubuque",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @hoteljuliendubuque ~ @weddings.hoteljuliendubuque (stem \"hoteljuliendubuque\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "booktowerdetroit",
+      "canonical": "anthologyevents",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 4 posts (e.g. https://www.instagram.com/p/DEGpF34u8id/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "theheritagecollection",
+      "canonical": "chateau_de_villette",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DGTIOjysk8K/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "wrigleyfieldevents",
+      "canonical": "officialwrigleyfield",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @officialwrigleyfield ~ @wrigleyfieldevents (stem \"wrigleyfield\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "hellenicmuseumevents",
+      "canonical": "hellenicmuseum",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @hellenicmuseum ~ @hellenicmuseumevents (stem \"hellenicmuseum\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "royalmelbourneccevents",
+      "canonical": "royalmelbournecc",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @royalmelbournecc ~ @royalmelbourneccevents (stem \"royalmelbournecc\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "ashtonplacebanquets",
+      "canonical": "ashtonplacebanquet",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @ashtonplacebanquet ~ @ashtonplacebanquets (stem \"ashtonplace\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "thedelafieldhotel",
+      "canonical": "delafieldhotel",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @delafieldhotel ~ @thedelafieldhotel (stem \"delafieldhotel\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "highpointat1333",
+      "canonical": "highpoint1333",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @highpoint1333 ~ @highpointat1333 (stem \"highpoint1333\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "weddingsatpiazzamessina",
+      "canonical": "piazza_messina",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @piazza_messina ~ @weddingsatpiazzamessina (stem \"piazzamessina\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "schlitzaudubonvenue",
+      "canonical": "schlitzaudubon",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @schlitzaudubon ~ @schlitzaudubonvenue (stem \"schlitzaudubon\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "thewarmemorial_events",
+      "canonical": "thewarmemorial",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @thewarmemorial ~ @thewarmemorial_events (stem \"warmemorial\")"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    },
+    {
+      "alias": "16occhicago",
+      "canonical": "punchhousechicago",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @punchhousechicago bio: \"...2am\nSun 5pm-12am \na @16occhicago project...\" (unclassified)"
+      ],
+      "suggested_note": "@punchhousechicago has a scraped profile, @16occhicago does not"
+    },
+    {
+      "alias": "harperandivorybridal",
+      "canonical": "newhite_bridal",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 4 posts (e.g. https://www.instagram.com/p/DBd9Tfmpnkl/)"
+      ],
+      "suggested_note": "@newhite_bridal has a scraped profile, @harperandivorybridal does not"
+    },
+    {
+      "alias": "pendrybaltimore",
+      "canonical": "hippodromebway",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/Dbjl4JrgCi7/)"
+      ],
+      "suggested_note": "tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand"
+    }
+  ],
+  "relatedNotSame": [
+    {
+      "alias": "venuelogic",
+      "canonical": "bridgeportartcenter",
+      "tier": "T3",
+      "signals": [
+        "S4",
+        "S5"
+      ],
+      "evidence": [
+        "[S4] @venuelogic bio: \"...rockwellontheriver, @bridgeportartcenter & @amazingspacechic...\" (unclassified)",
+        "[S5] co-credited on the same venue credit line, 11 posts (e.g. https://www.instagram.com/p/DcB_z8WlOs8/)",
+        "EXCLUDED: known round-3 false positive or deny-listed brand handle"
+      ],
+      "suggested_note": "known round-3 false positive or deny-listed brand handle"
+    },
+    {
+      "alias": "venuelogic",
+      "canonical": "rockwellontheriver",
+      "tier": "T3",
+      "signals": [
+        "S4",
+        "S5"
+      ],
+      "evidence": [
+        "[S4] @venuelogic bio: \"...enue Management for @rockwellontheriver, @bridgeportartcent...\" (related_not_alias)",
+        "[S5] co-credited on the same venue credit line, 6 posts (e.g. https://www.instagram.com/p/DbUTpqHlAiw/)",
+        "EXCLUDED: known round-3 false positive or deny-listed brand handle"
+      ],
+      "suggested_note": "known round-3 false positive or deny-listed brand handle"
+    },
+    {
+      "alias": "lettuceentertainyou",
+      "canonical": "thedalcy",
+      "tier": "T3",
+      "signals": [
+        "S4",
+        "S5"
+      ],
+      "evidence": [
+        "[S4] @thedalcy bio: \"...ivate event hall by @lettuceentertainyou in the Fulton Marke...\" (related_not_alias)",
+        "[S5] co-credited on the same venue credit line, 6 posts (e.g. https://www.instagram.com/p/DaLqck4RPHA/)",
+        "EXCLUDED: known round-3 false positive or deny-listed brand handle"
+      ],
+      "suggested_note": "known round-3 false positive or deny-listed brand handle"
+    },
+    {
+      "alias": "amazingspacechicago",
+      "canonical": "venuelogic",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @venuelogic bio: \"...idgeportartcenter & @amazingspacechicago \n• Purveyors of the...\" (unclassified)",
+        "EXCLUDED: known round-3 false positive or deny-listed brand handle"
+      ],
+      "suggested_note": "known round-3 false positive or deny-listed brand handle"
+    },
+    {
+      "alias": "thefairlie",
+      "canonical": "fairliechicago",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @fairliechicago ~ @thefairlie (stem \"fairlie\")",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "failiechicago",
+      "canonical": "fairliechicago",
+      "tier": "T3",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @failiechicago (never scraped) vs @fairliechicago (real venue)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "saintclementparish",
+      "canonical": "totlspecialevents",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 8 posts (e.g. https://www.instagram.com/p/DaBtG-ECMNC/)",
+        "EXCLUDED: church/parish/cathedral-type name"
+      ],
+      "suggested_note": "church/parish/cathedral-type name"
+    },
+    {
+      "alias": "theateronthelakechicago",
+      "canonical": "saintclementparish",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 6 posts (e.g. https://www.instagram.com/p/DU2A1dUDN_v/)",
+        "EXCLUDED: church/parish/cathedral-type name"
+      ],
+      "suggested_note": "church/parish/cathedral-type name"
+    },
+    {
+      "alias": "lmstudiochi",
+      "canonical": "lmcateringchi",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @lmcateringchi bio: \"...@lacunaloftevents, @lmstudiochi, @skyonnine, and @t...\" (unclassified)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "lacuna2150",
+      "canonical": "lacunaloftevents",
+      "tier": "T3",
+      "signals": [
+        "S4",
+        "S5"
+      ],
+      "evidence": [
+        "[S4] @lacunaloftevents bio: \"...cuna Lofts Building @lacuna2150...\" (unclassified)",
+        "[S5] co-credited on the same venue credit line, 4 posts (e.g. https://www.instagram.com/p/C_RL1C1PrXZ/)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "lacunacatalystsuites",
+      "canonical": "lacunaloftevents",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DTvspxuj8zS/)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "lmcateringchi",
+      "canonical": "lacunaloftevents",
+      "tier": "T3",
+      "signals": [
+        "S4",
+        "S5"
+      ],
+      "evidence": [
+        "[S4] @lmcateringchi bio: \"...In-house caterer at @lacunaloftevents, @lmstudiochi, @sky...\" (related_not_alias)",
+        "[S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/DbCJSyLxOyQ/)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "exchangechicago",
+      "canonical": "theexchangechicago",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @theexchangechicago ~ @exchangechicago (stem \"exchange\")",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "episcope.hospitality",
+      "canonical": "theexchangechicago",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @theexchangechicago bio: \"...⠀⠀⠀⠀⠀⠀⠀⠀\nCreated by @episcope.hospitality...\" (related_not_alias)",
+        "EXCLUDED: known round-3 false positive or deny-listed brand handle"
+      ],
+      "suggested_note": "known round-3 false positive or deny-listed brand handle"
+    },
+    {
+      "alias": "alyssabudayyeh",
+      "canonical": "theexchangechicago",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DRFTFHNjTcb/)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "lhchicago",
+      "canonical": "rcchicago",
+      "tier": "T3",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @lhchicago (never scraped) vs @rcchicago (real venue)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "wacchicago",
+      "canonical": "rcchicago",
+      "tier": "T3",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @wacchicago (never scraped) vs @rcchicago (real venue)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "twenysixchicago",
+      "canonical": "twentysixchicago",
+      "tier": "T3",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 1: @twenysixchicago (never scraped) vs @twentysixchicago (real venue)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "twentysixchicago",
+      "canonical": "lmcateringchi",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @lmcateringchi bio: \"...hi, @skyonnine, and @twentysixchicago...\" (unclassified)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "mcachicago",
+      "canonical": "rcchicago",
+      "tier": "T3",
+      "signals": [
+        "S6"
+      ],
+      "evidence": [
+        "[S6] Levenshtein distance 2: @mcachicago (never scraped) vs @rcchicago (real venue)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "abbotthospitality",
+      "canonical": "thecrawfordvenue",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @thecrawfordvenue bio: \"...The Crawford by @abbotthospitality is filled with a vi...\" (related_not_alias)",
+        "EXCLUDED: only evidence is an S4 related_not_alias phrase (managed-by / sister / part-of, not the same venue)"
+      ],
+      "suggested_note": "only evidence is an S4 related_not_alias phrase (managed-by / sister / part-of, not the same venue)"
+    },
+    {
+      "alias": "skyonnine",
+      "canonical": "lmcateringchi",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @lmcateringchi bio: \"...ents, @lmstudiochi, @skyonnine, and @twentysixchic...\" (unclassified)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "thompsonchicago",
+      "canonical": "saintclementparish",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 7 posts (e.g. https://www.instagram.com/p/DaBtG-ECMNC/)",
+        "EXCLUDED: church/parish/cathedral-type name"
+      ],
+      "suggested_note": "church/parish/cathedral-type name"
+    },
+    {
+      "alias": "alliumchicago",
+      "canonical": "blueplatechicago",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @blueplatechicago bio: \"...e Dining\n🥂  Venue: @alliumchicago...\" (unclassified)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "ndbasilica",
+      "canonical": "experience_nd",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 5 posts (e.g. https://www.instagram.com/p/Dac6KzAlsTe/)",
+        "EXCLUDED: church/parish/cathedral-type name"
+      ],
+      "suggested_note": "church/parish/cathedral-type name"
+    },
+    {
+      "alias": "chicagohotelcollection",
+      "canonical": "ambassadorchicago",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @ambassadorchicago bio: \"...ade option)\nPart of @chicagohotelcollection...\" (related_not_alias)",
+        "EXCLUDED: only evidence is an S4 related_not_alias phrase (managed-by / sister / part-of, not the same venue)"
+      ],
+      "suggested_note": "only evidence is an S4 related_not_alias phrase (managed-by / sister / part-of, not the same venue)"
+    },
+    {
+      "alias": "gooseislandchicago",
+      "canonical": "gooseisland",
+      "tier": "T3",
+      "signals": [
+        "S1"
+      ],
+      "evidence": [
+        "[S1] @gooseisland ~ @gooseislandchicago (stem \"gooseisl\")",
+        "EXCLUDED: known round-3 false positive or deny-listed brand handle"
+      ],
+      "suggested_note": "known round-3 false positive or deny-listed brand handle"
+    },
+    {
+      "alias": "aspenavenuestudios",
+      "canonical": "wsphotography.us",
+      "tier": "T3",
+      "signals": [
+        "S2"
+      ],
+      "evidence": [
+        "[S2] same full_name \"Chicago Wedding Photographer\"",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "eeeventco",
+      "canonical": "thursdaytherapychi",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @thursdaytherapychi bio: \"...orking event. Hosts @eeeventco, @modernlovedjs, @t...\" (unclassified)",
+        "EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio"
+      ],
+      "suggested_note": "non-venue vendors.category or catering/management/hospitality-type bio"
+    },
+    {
+      "alias": "themorrisinn",
+      "canonical": "ndbasilica",
+      "tier": "T3",
+      "signals": [
+        "S5"
+      ],
+      "evidence": [
+        "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/Dac6KzAlsTe/)",
+        "EXCLUDED: church/parish/cathedral-type name"
+      ],
+      "suggested_note": "church/parish/cathedral-type name"
+    },
+    {
+      "alias": "modernluxury",
+      "canonical": "modluxweddingschi",
+      "tier": "T3",
+      "signals": [
+        "S4"
+      ],
+      "evidence": [
+        "[S4] @modluxweddingschi bio: \"...Shore | Beyond\n✨ By @modernluxury @cschicagosocial @n...\" (related_not_alias)",
+        "EXCLUDED: only evidence is an S4 related_not_alias phrase (managed-by / sister / part-of, not the same venue)"
+      ],
+      "suggested_note": "only evidence is an S4 related_not_alias phrase (managed-by / sister / part-of, not the same venue)"
+    }
+  ]
+}

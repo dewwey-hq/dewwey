@@ -99,10 +99,18 @@
  * --execute: required to actually write. Prints the exact reconciliation re-run command at the
  * end (does not run it).
  *
+ * --clustering-version <value> (D055 Stage 2, pool A1, 2026-09-09): overrides
+ * STRUCTURAL_CLUSTERING_VERSION so this same merge pass can run against a DIFFERENT structural
+ * provenance pool (e.g. "structural-v3-a1", runJeremyWeddingClustering.ts's relaxed-eligibility
+ * pool) instead of "structural-v2" -- every query/table reference below that previously hardcoded
+ * STRUCTURAL_CLUSTERING_VERSION now uses this resolved value, so running against a non-default
+ * pool touches only that pool's candidates. Defaults to STRUCTURAL_CLUSTERING_VERSION unchanged.
+ *
  * Usage (from apps/web):
  *   bun run scripts/graph/mergeStructuralCandidatesByCouple.ts              # dry run (default)
  *   bun run scripts/graph/mergeStructuralCandidatesByCouple.ts --dry-run    # same, explicit
  *   bun run scripts/graph/mergeStructuralCandidatesByCouple.ts --execute    # real write, human only
+ *   bun run scripts/graph/mergeStructuralCandidatesByCouple.ts --clustering-version structural-v3-a1 --execute
  */
 import { getPool, closePool } from "../classify/db";
 import { STRUCTURAL_CLUSTERING_VERSION } from "../../lib/server/structuralVersion";
@@ -314,21 +322,24 @@ function buildMergeGroups(
   return { groups, rejectedDateSpan, skippedAlreadyCreated };
 }
 
-async function loadDerivedCandidates(pool: ReturnType<typeof getPool>): Promise<{
+async function loadDerivedCandidates(
+  pool: ReturnType<typeof getPool>,
+  clusteringVersion: string
+): Promise<{
   derived: DerivedCandidate[];
   vetoedCount: number;
 }> {
   const { rows: candidates } = await pool.query<CandidateRow>(
     `select id, venue_account_id, event_date_est::text as event_date_est, venue_anchor_source, venue_anchor_conflict
      from jeremy_wedding_candidates where clustering_version = $1`,
-    [STRUCTURAL_CLUSTERING_VERSION]
+    [clusteringVersion]
   );
   const { rows: candidatePosts } = await pool.query<CandidatePostRow>(
     `select cp.candidate_id, cp.source_post_url
      from jeremy_wedding_candidate_posts cp
      join jeremy_wedding_candidates c on c.id = cp.candidate_id
      where c.clustering_version = $1`,
-    [STRUCTURAL_CLUSTERING_VERSION]
+    [clusteringVersion]
   );
   // DISTINCT per post_url -- couple_guess/event_date are constant per post across the view's
   // multiple evidence rows (one venue-anchor row + N non-venue credit rows), verified live
@@ -402,10 +413,17 @@ async function loadDerivedCandidates(pool: ReturnType<typeof getPool>): Promise<
 }
 
 async function main() {
-  const execute = process.argv.includes("--execute");
+  const argv = process.argv.slice(2);
+  const execute = argv.includes("--execute");
+  // Defaults to STRUCTURAL_CLUSTERING_VERSION ("structural-v2") unchanged; override to run this
+  // same merge pass against a different structural provenance pool (e.g. pool A1's
+  // "structural-v3-a1") without touching structural-v2's candidates -- see header comment.
+  const clusteringVersion = argv.includes("--clustering-version")
+    ? argv[argv.indexOf("--clustering-version") + 1]
+    : STRUCTURAL_CLUSTERING_VERSION;
   const pool = getPool();
 
-  const { derived, vetoedCount } = await loadDerivedCandidates(pool);
+  const { derived, vetoedCount } = await loadDerivedCandidates(pool, clusteringVersion);
   const distributionBefore = histogram(derived.map((c) => c.postUrls.length));
 
   const { rows: createdRows } = await pool.query<{ candidate_id: number }>(
@@ -419,7 +437,7 @@ async function main() {
      join jeremy_wedding_candidates c on c.id = v.candidate_id
      where c.clustering_version = $1
      group by v.candidate_id`,
-    [STRUCTURAL_CLUSTERING_VERSION]
+    [clusteringVersion]
   );
   const verdictCountByCandidate = new Map(verdictRows.map((r) => [r.candidate_id, Number(r.count)]));
 
@@ -466,7 +484,7 @@ async function main() {
   const usernameByVenueId = new Map(venueRows.map((r) => [r.id, r.username]));
 
   console.log(
-    `[merge-structural-couple] ${execute ? "EXECUTE" : "DRY RUN"} -- structural-v2 candidates=${derived.length}`
+    `[merge-structural-couple] ${execute ? "EXECUTE" : "DRY RUN"} -- clustering_version=${clusteringVersion} candidates=${derived.length}`
   );
   console.log(
     `[merge-structural-couple] NORMALIZED plan: groups=${mergeGroups.length} candidates-absorbed=${candidatesAbsorbed} posts-moved=${postsMoved} verdicts-moved=${verdictsMoved}`
@@ -508,8 +526,8 @@ async function main() {
     );
   }
 
-  console.log(`[merge-structural-couple] posts-per-candidate distribution, structural-v2, BEFORE: ${JSON.stringify(distributionBefore)}`);
-  console.log(`[merge-structural-couple] posts-per-candidate distribution, structural-v2, AFTER (hypothetical): ${JSON.stringify(distributionAfter)}`);
+  console.log(`[merge-structural-couple] posts-per-candidate distribution, ${clusteringVersion}, BEFORE: ${JSON.stringify(distributionBefore)}`);
+  console.log(`[merge-structural-couple] posts-per-candidate distribution, ${clusteringVersion}, AFTER (hypothetical): ${JSON.stringify(distributionAfter)}`);
 
   if (!execute) {
     console.log("[merge-structural-couple] DRY RUN -- no statement that writes to the database was executed");
@@ -535,7 +553,7 @@ async function main() {
     `);
 
     for (const g of mergeGroups) {
-      const reason = `structural-v2 same-venue+couple merge: venue_account_id=${g.venueAccountId} normalized_couple="${g.couple}" group span=${g.spanDays}d (<= ${DATE_SPAN_LIMIT_DAYS}d), survivor=${g.survivor.id}, ${g.members.length} candidates merged`;
+      const reason = `${clusteringVersion} same-venue+couple merge: venue_account_id=${g.venueAccountId} normalized_couple="${g.couple}" group span=${g.spanDays}d (<= ${DATE_SPAN_LIMIT_DAYS}d), survivor=${g.survivor.id}, ${g.members.length} candidates merged`;
 
       for (const absorbed of g.absorbed) {
         await client.query(

@@ -38,6 +38,11 @@ function baseResult(overrides: Partial<ExtractResult> = {}): ExtractResult {
     event_type: "wedding",
     couple_names: "Sarah & Mike",
     event_date_hint: null,
+    // extract-v1.2 fields (venue discovery + geography).
+    venue_name: "The Dalcy",
+    venue_handle_guess: "thedalcy",
+    location_claim: "Chicago, IL",
+    chicago_metro: "yes",
     confidence: 0.9,
     evidence: "Sarah & Mike's big day",
     ...overrides,

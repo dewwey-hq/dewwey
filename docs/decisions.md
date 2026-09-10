@@ -414,6 +414,40 @@ each slice behind a calibration gate on the golden set before corpus spend.
   a Giraffe Manor (Kenya) wedding reached the spot-check because the sampler ignores
   `chicago_status`; the fix and the bigger idea — let the reader state each wedding's location
   so the 593 ambiguous venues resolve from their own captions — are in the plan file.
+- **Alias round 6** (2026-09-10, WebSearch-verified): `cbgweddings→chicagobotanic` (the Garden's
+  own events account, 16 venue weddings had accumulated on it), `artinstituteweddingsevents→
+  artinstitutechi` (fourth handle for one events program), `totlspecialevents→
+  theateronthelakechicago`, and the user-caught `venutisrestaurant→venutis.banquets` (the real
+  account is the dotted one; the other is a mention-only handle with no profile). Left unapplied
+  as unverified: `rpmeventsandcatering↔rpmeventschicago`, `167greenstreet/167eventschicago`.
+- **Location-tag map round 2** (same day): 23 more tags → verified metro venues (Lacuna Lofts 65
+  posts, The Haight 43, Gather 42, Concorde 30, Providence Vineyard 27, Redfield Estate 24, Sky
+  on Nine, Elawa Farm, Herrington Inn, Royal Sonesta, Westin River North, Ravisloe, Drury Lane,
+  Venuti's, Fishermen's Inn, White Stone, Haley Mansion, Biagio, Saddle & Cycle, City View Loft,
+  Allure on the Lake, Gardens of Woodstock); re-clustering added 114 structural-v2 and 66
+  A1-pool candidates from them at no cost.
+- **Systematic alias detection** (2026-09-10; user: "do other checks like that... venues with
+  multiple potential handles... reduce that failure mode"): `findVenueAliasCandidates.ts`
+  (report-only, re-runnable) scores 1,750 venue-ish accounts on seven signals — same handle
+  stem, punctuation-only variants, same full_name, same external_url, bio mentions the other
+  handle (phrase-classified: "events account" vs "managed by"), co-credited on one "Venue:"
+  line, edit-distance 1-2 to an unscraped handle, reader handle-guess ≠ anchor — with a
+  deny-list of the round-3 false positives and exclusions for churches, caterers, management
+  groups and brands. First run: 9 auto-safe, 44 to verify, 48 weak. **Round 7a applied** (8):
+  `thearbory→the.arbory` (117 vs 4 weddings), `uccweddings→universityclubofchicago` (bio-
+  confirmed), `thedrakechicago.→thedrakechicago`, `morganmfg→morgan.mfg`, `grandgeneva→
+  grand_geneva`, `silverlake_cc→silverlake.cc`, and two one-letter mis-captures
+  (`rockwellontherive`, `chicagoilluminatingcomapny`). The 44 verify-tier pairs went to a web-
+  checking agent (≤40 searches) for round 7b; the review UI gains a "possible alias" hint on
+  the venue line so the human sees split handles at the moment they appear. **Round 7b applied**
+  (14 of the verifier's 16 yes; 28 no, 14 searches): almost all typo captures of real venue
+  handles (`artinsitutechi`, `totlspeacialevents`, `thefarmhouseainfield`, `radissonblueaquachicago`,
+  `salon6levents`, `cafebauer`, `warhouse109`, `harraycaraycelebrations`, …) plus one confirmed
+  sub-account (`destinationgnweddings→destinationgn`). Notable NO verdicts that protect the graph:
+  `lhchicago` (LondonHouse) matched five unrelated venues by edit distance, `msichicago` vs
+  `mcachicago` are two museums, `intercontinental` is the brand handle not the property. Aliases
+  now 58; no alias points at another alias (checked). The finder is standing: re-run it after
+  every corpus parse.
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 

@@ -10,7 +10,7 @@
  * testable (extractPrompt.test.ts). runExtract.ts wires it to the DB.
  */
 
-export const EXTRACT_PROMPT_VERSION = "extract-v1.1";
+export const EXTRACT_PROMPT_VERSION = "extract-v1.2";
 
 export const EXTRACT_VERDICTS = ["THIS_VENUE", "OTHER_VENUE", "NOT_WEDDING", "UNSURE"] as const;
 export type ExtractVerdict = (typeof EXTRACT_VERDICTS)[number];
@@ -57,6 +57,11 @@ export interface ExtractResult {
   event_type: ExtractEventType;
   couple_names: string | null;
   event_date_hint: string | null;
+  /** extract-v1.2: venue discovery + geography (see the schema descriptions). */
+  venue_name: string | null;
+  venue_handle_guess: string | null;
+  location_claim: string | null;
+  chicago_metro: "yes" | "no" | "unknown";
   confidence: number; // 0-1
   evidence: string; // <=200 chars, quotes the caption
 }
@@ -106,13 +111,42 @@ export const EXTRACT_PARAMETERS = {
         "The wedding's OWN date/season ONLY when the caption gives direct textual evidence " +
         "('10.4.24', 'June 2025 wedding'). Never inferred from posted_at. Null otherwise.",
     },
+    venue_name: {
+      type: ["string", "null"],
+      description:
+        "The name of the venue where the RECEPTION happened as the caption/tag states it (e.g. 'Lake " +
+        "Geneva Riviera', 'Salvatore's', 'Chicago Botanic Garden') -- copied from the text, never inferred " +
+        "from a vendor's hashtags. Null if no venue is named. Fill this even when verdict is THIS_VENUE.",
+    },
+    venue_handle_guess: {
+      type: ["string", "null"],
+      description:
+        "If the caption tags the reception venue's Instagram handle (with or without a 'Venue:' label), " +
+        "that bare handle; else null. Never invent a handle.",
+    },
+    location_claim: {
+      type: ["string", "null"],
+      description:
+        "Where THIS wedding took place, as the caption or IG location tag states it -- a city/region/" +
+        "country ('Naperville, IL', 'Kenya', 'Lake Geneva, Wisconsin', 'downtown Chicago'). Null if the " +
+        "text does not say. A vendor's own #chicago hashtags are their market, not this wedding's " +
+        "location -- do not use them.",
+    },
+    chicago_metro: {
+      type: "string",
+      enum: ["yes", "no", "unknown"],
+      description:
+        "Is the wedding's location (location_claim, the venue, or the IG location tag) inside the Chicago " +
+        "metro (Chicago + collar counties, NW Indiana)? 'no' for another state/country or a non-metro " +
+        "Illinois city (Rockford, Bloomington, Champaign, Peoria). 'unknown' if nothing in the text says.",
+    },
     confidence: { type: "number", description: "0.0-1.0" },
     evidence: {
       type: "string",
       description: "A short quote (<=200 chars) from the caption grounding the verdict. Required, no vague reasoning.",
     },
   },
-  required: ["verdict", "corrected_venue_handle", "event_type", "couple_names", "event_date_hint", "confidence", "evidence"],
+  required: ["verdict", "corrected_venue_handle", "event_type", "couple_names", "event_date_hint", "venue_name", "venue_handle_guess", "location_claim", "chicago_metro", "confidence", "evidence"],
 } as const;
 
 export const EXTRACT_TOOL_NAME = TOOL_NAME;
@@ -200,6 +234,15 @@ couple-name regex guess (couple_guess, not authoritative -- verify it against th
 yourself); and whether the caption contains an obvious non-wedding-event keyword
 (has_non_wedding_event_keyword, e.g. "mitzvah," "birthday" -- also not authoritative on its own,
 since a venue's marketing copy sometimes lists "weddings, galas, and mitzvahs" together).
+
+ALWAYS ALSO EXTRACT THE VENUE AND THE PLACE (these feed venue discovery and geography, and are
+filled regardless of verdict): venue_name = the reception venue as the text names it (a 'Venue:'
+line, a plain-text name like "VENUE - Lake Geneva Riviera", "at Salvatore's", the IG location
+tag); venue_handle_guess = its tagged @handle if one is present; location_claim = the city/
+region/country the caption or location tag states for THIS wedding; chicago_metro = whether
+that place is in the Chicago metro. A vendor's market hashtags (#chicagoweddingphotographer) are
+NOT a location claim. When the anchored venue is wrong or missing and the text names the real
+one, venue_name is where the correction lives even if you cannot give a handle.
 
 Ground every verdict in the evidence field with a short (<=200 char) quote from the caption.
 Temperature is 0 -- be decisive and consistent, but genuinely prefer UNSURE over a confident
@@ -306,3 +349,25 @@ export function decideVerdictWrite(
 }
 
 export { normalizeHandle };
+
+/**
+ * Pool-B framing (D055 stage 3, venue discovery): these posts have NO anchored venue, so the
+ * base prompt's "is this a real wedding at THAT venue" question has no referent. Same rules,
+ * different question: is this a real wedding at all, and can you name where?
+ */
+export const EXTRACT_SYSTEM_PROMPT_POOL_B =
+  EXTRACT_SYSTEM_PROMPT +
+  `
+
+THIS POST HAS NO ANCHORED VENUE (venue_anchor_source is "none-pool-b"). Ignore the "anchored
+venue" framing above and answer this instead:
+- THIS_VENUE = this post documents a real, specific wedding (a named couple, a real day, or a
+  vendor's recap of one event) AND you can name where the reception was, from the caption, the
+  credits, or the IG location tag -- put it in venue_name and, if tagged, venue_handle_guess.
+- UNSURE = it is a real, specific wedding but nothing in the text says where it was (no venue
+  name, no venue handle, no location tag naming a venue). Still fill location_claim if a city or
+  region is stated.
+- NOT_WEDDING = exactly as above (marketing, tips, styled shoots, showers, roundups, upcoming).
+- Never answer OTHER_VENUE in this mode -- there is no anchor to be "other" than.
+Confidence here means: how sure you are that it is a real wedding AND that venue_name is right.
+A vendor's #chicago hashtags still say nothing about where the wedding was.`;

@@ -1,4 +1,6 @@
 import type { PoolClient } from "pg";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { getPool } from "./db";
 import { LABELED_BY } from "./labeling";
 import { STRUCTURAL_CLUSTERING_VERSION } from "./structuralVersion";
@@ -89,6 +91,12 @@ export interface PostReviewVenue {
   // 6-15, 16+) -- see COVERAGE_BUCKET_SQL/coverageBucketLabel above. Always derived from
   // current_wedding_count, never independently sourced, so the two can't disagree.
   coverage_bucket: CoverageBucket;
+  // Split-handle nudge (scripts/graph/findVenueAliasCandidates.ts, re-runnable): T1/T2 alias
+  // candidates on file for THIS venue username that aren't yet in account_aliases -- see
+  // loadAliasHints below for how this is populated. Empty array (never null/undefined) when
+  // there's no hint file, no candidate for this username, or every candidate for it is already
+  // merged -- so the UI can render on plain `.length > 0` without a null check.
+  alias_hints: AliasHint[];
 }
 
 export interface PostReviewGroup {
@@ -250,6 +258,141 @@ function coverageBucketLabel(n: number): CoverageBucket {
   if (n <= 5) return "1-5";
   if (n <= 15) return "6-15";
   return "16+";
+}
+
+// ============================================================
+// Alias hints (2026-09-10): "possible alias: @<other> (<signals>)" nudge under the venue line,
+// sourced from scripts/graph/findVenueAliasCandidates.ts's re-runnable, report-only JSON (this
+// file NEVER writes account_aliases -- see that script's own header comment). Surfaced so the
+// human notices a split handle at the moment they're already looking at the venue, the way the
+// user caught venutisrestaurant/venutis.banquets by hand.
+// ============================================================
+
+export interface AliasHint {
+  other: string;
+  signals: string[];
+}
+
+interface AliasCandidatePairRaw {
+  alias?: unknown;
+  canonical?: unknown;
+  tier?: unknown;
+  signals?: unknown;
+}
+
+interface AliasCandidatesFileRaw {
+  pairs?: AliasCandidatePairRaw[];
+}
+
+// scripts/graph/tmp_analysis/, relative to the Next.js process's cwd (apps/web, same root the
+// `bun run dev`/`bun run build` scripts are launched from) -- deliberately NOT
+// `new URL(..., import.meta.url)` (the convention findVenueAliasCandidates.ts's OUT_DIR uses when
+// run standalone via `bun run`): inside Next.js's own server bundling, a `new URL(relative,
+// import.meta.url)` is statically rewritten into an asset import and fails to resolve a directory
+// that doesn't exist at build time, so this file needs the runtime-only cwd-based path instead.
+const ALIAS_HINTS_DIR = path.join(process.cwd(), "scripts/graph/tmp_analysis");
+const ALIAS_HINTS_FILE_RE = /^alias_candidates_\d{4}-\d{2}-\d{2}\.json$/;
+const ALIAS_HINTS_TTL_MS = 5 * 60 * 1000;
+
+// Module-scope cache of the PARSED FILE only (not the account_aliases exclusion, which is a
+// cheap, always-fresh DB query run on every loadAliasHints() call below) -- the file only changes
+// when someone reruns findVenueAliasCandidates.ts by hand, so a 5-minute TTL is plenty and saves
+// re-reading + re-parsing it on every queue page load.
+let aliasHintsFileCache: { loadedAt: number; map: Map<string, AliasHint[]> } | null = null;
+
+// Reads the newest alias_candidates_*.json in scripts/graph/tmp_analysis/ (newest by filename --
+// the YYYY-MM-DD naming sorts lexically the same as chronologically) and returns a lowercased
+// username -> hints map covering BOTH sides of every T1/T2 pair, so a lookup works regardless of
+// which handle (the alias or the canonical) is the one currently anchoring a candidate. Tolerates
+// a missing directory/file, an unreadable file, or malformed JSON -- returns an empty map rather
+// than throwing, since this is a nice-to-have hint, never a blocker for the review queue itself.
+function buildAliasHintsFileMap(): Map<string, AliasHint[]> {
+  const map = new Map<string, AliasHint[]>();
+
+  let files: string[];
+  try {
+    files = readdirSync(ALIAS_HINTS_DIR);
+  } catch {
+    return map;
+  }
+  const candidateFiles = files.filter((f) => ALIAS_HINTS_FILE_RE.test(f)).sort().reverse();
+  if (candidateFiles.length === 0) return map;
+
+  let parsed: AliasCandidatesFileRaw;
+  try {
+    const raw = readFileSync(path.join(ALIAS_HINTS_DIR, candidateFiles[0]), "utf8");
+    parsed = JSON.parse(raw) as AliasCandidatesFileRaw;
+  } catch {
+    return map;
+  }
+
+  for (const p of parsed.pairs ?? []) {
+    if (p.tier !== "T1" && p.tier !== "T2") continue;
+    if (typeof p.alias !== "string" || typeof p.canonical !== "string") continue;
+    const alias = p.alias.toLowerCase();
+    const canonical = p.canonical.toLowerCase();
+    if (!alias || !canonical) continue;
+    const signals = Array.isArray(p.signals) ? (p.signals as string[]) : [];
+
+    const push = (key: string, other: string) => {
+      const list = map.get(key) ?? [];
+      list.push({ other, signals });
+      map.set(key, list);
+    };
+    push(alias, canonical);
+    push(canonical, alias);
+  }
+
+  return map;
+}
+
+function getAliasHintsFileMap(): Map<string, AliasHint[]> {
+  const now = Date.now();
+  if (!aliasHintsFileCache || now - aliasHintsFileCache.loadedAt > ALIAS_HINTS_TTL_MS) {
+    aliasHintsFileCache = { loadedAt: now, map: buildAliasHintsFileMap() };
+  }
+  return aliasHintsFileCache.map;
+}
+
+/**
+ * Returns a lowercased-username -> AliasHint[] map for exactly the given `usernames`, built from
+ * the cached alias-candidates file (see above) with any pair EXCLUDED where either handle is
+ * already an `alias_account_id` in `account_aliases` -- i.e. already merged, so no hint is
+ * useful. That exclusion is always a fresh, single query (one row per already-aliased username,
+ * cheap and indexed), never cached, so a hint disappears the moment its pair is applied.
+ *
+ * Read-only: never touches account_aliases beyond this one select. Called from hydrateQueueRows
+ * (shared by getPostReviewQueue / getPostReviewItemsByPostUrls / getSpotCheckQueue) so every mode
+ * -- normal queue, spot-check, and ?post= direct-open -- surfaces the same hints.
+ */
+export async function loadAliasHints(usernames: (string | null)[]): Promise<Map<string, AliasHint[]>> {
+  const result = new Map<string, AliasHint[]>();
+  const lowerUsernames = [
+    ...new Set(usernames.filter((u): u is string => !!u).map((u) => u.toLowerCase())),
+  ];
+  if (lowerUsernames.length === 0) return result;
+
+  const fileMap = getAliasHintsFileMap();
+  if (fileMap.size === 0) return result;
+
+  const relevant = lowerUsernames.filter((u) => fileMap.has(u));
+  if (relevant.length === 0) return result;
+
+  const pool = getPool();
+  const { rows } = await pool.query<{ username: string }>(
+    `select a.username::text as username
+     from account_aliases al
+     join accounts a on a.id = al.alias_account_id`
+  );
+  const alreadyAliased = new Set(rows.map((r) => r.username.toLowerCase()));
+
+  for (const username of relevant) {
+    const hints = (fileMap.get(username) ?? []).filter(
+      (h) => !alreadyAliased.has(username) && !alreadyAliased.has(h.other)
+    );
+    if (hints.length > 0) result.set(username, hints);
+  }
+  return result;
 }
 
 function arr(x: unknown): string[] {
@@ -459,6 +602,11 @@ async function hydrateQueueRows(rows: any[]): Promise<PostReviewQueueItem[]> {
     [candidateIds]
   );
 
+  // Split-handle nudge (see loadAliasHints above) -- keyed by the SAME venue_username the UI
+  // already displays (r.venue_username, from `a.username` joined on cpz.venue_account_id), so no
+  // extra alias resolution is needed here.
+  const aliasHintsByUsername = await loadAliasHints(rows.map((r) => r.venue_username as string | null));
+
   const vendorsByPost = new Map<string, PostReviewVendorCredit[]>();
   for (const r of vendorRows) {
     const list = vendorsByPost.get(r.post_url) ?? [];
@@ -531,6 +679,9 @@ async function hydrateQueueRows(rows: any[]): Promise<PostReviewQueueItem[]> {
         chicago_status: r.chicago_status,
         current_wedding_count: Number(r.current_wedding_count),
         coverage_bucket: coverageBucketLabel(Number(r.current_wedding_count)),
+        alias_hints: r.venue_username
+          ? (aliasHintsByUsername.get((r.venue_username as string).toLowerCase()) ?? [])
+          : [],
       },
       group: {
         candidate_id: r.candidate_id,
@@ -738,6 +889,14 @@ export async function getSpotCheckQueue(
        select 1 from post_venue_verdicts pv
        where pv.post_url = cpz.source_post_url and pv.reviewed_by = $3
      )
+     -- Geography gate: an out-of-market (CHICAGO_AMBIGUOUS/CHICAGO_NOT_CONFIRMED) post never
+     -- reaches the human spot-check queue -- spot-checking exists to audit whether the reviewer's
+     -- venue/wedding call was right, not to re-litigate geography the review queue itself no
+     -- longer serves by default (see selectCorpusMeta's --mode corpus confirmed-only default in
+     -- runExtract.ts). A post PAIRED before this change (both reviewers already verdicted it)
+     -- still surfaces in getSpotCheckAgreementReport below -- that function's by_chicago_status
+     -- stratum keeps it visible there.
+     and cpz.chicago_status = 'CHICAGO_CONFIRMED'
      -- D055 (user-caught 2026-09-09: "most of the 20+ I've been spot checking are from similar
      -- venues"): a uniform random draw over verdicts inherits the corpus run's coverage-first
      -- ordering, so one venue (Morton Arboretum, 52 of the pilot's 181 verdicts) dominated the
@@ -778,6 +937,11 @@ export interface SpotCheckReport {
   // panel itself, not just the headline number.
   by_confidence_band: SpotCheckStratumAgreement[];
   by_venue_top10: SpotCheckStratumAgreement[];
+  // getSpotCheckQueue now excludes CHICAGO_AMBIGUOUS/CHICAGO_NOT_CONFIRMED posts (geography
+  // gate), so this report -- which pairs whatever both reviewers already verdicted, including
+  // posts paired before that change -- keeps the ambiguous-geography slice visible as its own
+  // stratum rather than letting it quietly vanish into the CHICAGO_CONFIRMED-dominated headline.
+  by_chicago_status: SpotCheckStratumAgreement[];
   // Plain-text rendering of the above, ready to drop into a <pre> block or a terminal.
   text: string;
 }
@@ -799,8 +963,9 @@ function formatSpotCheckReportText(args: {
   byAnchor: SpotCheckAnchorAgreement[];
   byBand: SpotCheckStratumAgreement[];
   byVenue: SpotCheckStratumAgreement[];
+  byChicagoStatus: SpotCheckStratumAgreement[];
 }): string {
-  const { reviewer, humanReviewer, total, agree, agreementPct, confusion, byAnchor, byBand, byVenue } = args;
+  const { reviewer, humanReviewer, total, agree, agreementPct, confusion, byAnchor, byBand, byVenue, byChicagoStatus } = args;
   const lines: string[] = [];
   lines.push(`Spot-check agreement: ${reviewer} vs ${humanReviewer}`);
   lines.push(`Paired posts: ${total}  Agree: ${agree}  Agreement: ${agreementPct ?? "n/a"}%`);
@@ -826,6 +991,7 @@ function formatSpotCheckReportText(args: {
   };
   stratum("By reviewer confidence band:", byBand);
   stratum("By venue (top 10 by paired posts -- watch for concentration):", byVenue);
+  stratum("By chicago_status (ambiguous/not-confirmed posts no longer reach spot-check, but pre-existing pairs stay visible here):", byChicagoStatus);
   return lines.join("\n");
 }
 
@@ -848,6 +1014,7 @@ export async function getSpotCheckAgreementReport(
     venue_anchor_source: string | null;
     confidence_band: string;
     venue_username: string | null;
+    chicago_status: string | null;
     n: string;
   }>(
     `with target_current as (
@@ -869,12 +1036,13 @@ export async function getSpotCheckAgreementReport(
             case when tc.target_confidence is null then 'n/a'
                  when tc.target_confidence >= 0.9 then '>=0.9' else '<0.9' end as confidence_band,
             a.username::text as venue_username,
+            jwc.chicago_status,
             count(*) as n
      from target_current tc
      join human_current hc on hc.post_url = tc.post_url
      join jeremy_wedding_candidates jwc on jwc.id = tc.candidate_id
      left join accounts a on a.id = jwc.venue_account_id
-     group by 1, 2, 3, 4, 5
+     group by 1, 2, 3, 4, 5, 6
      order by 3, 1, 2`,
     [reviewer, humanReviewer]
   );
@@ -885,6 +1053,7 @@ export async function getSpotCheckAgreementReport(
   const anchorMap = new Map<string, { total: number; agree: number }>();
   const bandMap = new Map<string, { total: number; agree: number }>();
   const venueMap = new Map<string, { total: number; agree: number }>();
+  const chicagoStatusMap = new Map<string, { total: number; agree: number }>();
   const bump = (m: Map<string, { total: number; agree: number }>, key: string, n: number, isAgree: boolean) => {
     const entry = m.get(key) ?? { total: 0, agree: 0 };
     entry.total += n;
@@ -904,6 +1073,7 @@ export async function getSpotCheckAgreementReport(
     bump(anchorMap, r.venue_anchor_source ?? "(none)", n, isAgree);
     bump(bandMap, r.confidence_band, n, isAgree);
     bump(venueMap, r.venue_username ?? "(none)", n, isAgree);
+    bump(chicagoStatusMap, r.chicago_status ?? "(none)", n, isAgree);
   }
   const confusion = [...confusionMap.values()].sort((a, b) => b.n - a.n);
   const toRows = (m: Map<string, { total: number; agree: number }>) =>
@@ -912,6 +1082,7 @@ export async function getSpotCheckAgreementReport(
       .sort((a, b) => b.total - a.total);
   const byBand = toRows(bandMap);
   const byVenue = toRows(venueMap).slice(0, 10);
+  const byChicagoStatus = toRows(chicagoStatusMap);
 
   const byAnchor: SpotCheckAnchorAgreement[] = [...anchorMap.entries()]
     .map(([venue_anchor_source, v]) => ({
@@ -934,6 +1105,7 @@ export async function getSpotCheckAgreementReport(
     byAnchor,
     byBand,
     byVenue,
+    byChicagoStatus,
   });
 
   return {
@@ -945,6 +1117,7 @@ export async function getSpotCheckAgreementReport(
     by_anchor_source: byAnchor,
     by_confidence_band: byBand,
     by_venue_top10: byVenue,
+    by_chicago_status: byChicagoStatus,
     text,
   };
 }

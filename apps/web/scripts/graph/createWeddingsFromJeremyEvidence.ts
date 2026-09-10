@@ -80,8 +80,21 @@
  * Usage:
  *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --from-confirmed-candidates --batch-id <id> --dry-run
  *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --from-confirmed-candidates --batch-id <id> --since 2026-09-08T00:00:00Z --limit 50 --dry-run
+ *
+ * `--from-golden-legacy` (D055, 2026-09-09) is a FOURTH, independent candidate source: golden_set
+ * INCLUDE posts clustered under a LEGACY clustering_version (human-confirmed-v1/jeremy-cluster-v1/
+ * venue-couple-signal-v1 -- everything pre-dating structural-v2) that never made it into
+ * `weddings` -- not yet documented, not claimed by a structural-v2 candidate. See
+ * runFromGoldenLegacy's own doc comment for the three sub-cases (ATTACH to an already-reconciled
+ * wedding / CREATE via the same Chicago gate as --from-confirmed-candidates / SKIP(no_venue) to
+ * tmp_analysis/d055_golden_legacy_no_venue.txt). Neither of the other two modes is touched by
+ * this one.
+ *
+ * Usage:
+ *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --from-golden-legacy --batch-id <id> --dry-run
+ *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --from-golden-legacy --batch-id <id>
  */
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { getPool, closePool } from "../classify/db";
 import type { PoolClient } from "pg";
 import { STRUCTURAL_CLUSTERING_VERSION } from "../../lib/server/structuralVersion";
@@ -1198,9 +1211,17 @@ async function runFromConfirmedCandidates(
     console.log(`  ${label}: ${n}`);
   }
 
-  // Coverage-bucket delta this batch WOULD produce — alias-aware (two IG handles for the same
-  // real venue must count as one), weddings.is_chicago only (same discipline as
-  // candidateReview.ts's venue_counts CTE, which this mirrors).
+  await printCoverageDelta(client, newWeddingsByVenue);
+
+  return { weddingsCreated, postsImported, vendorsInserted };
+}
+
+// Coverage-bucket delta a batch WOULD produce — alias-aware (two IG handles for the same real
+// venue must count as one), weddings.is_chicago only (same discipline as candidateReview.ts's
+// venue_counts CTE, which this mirrors). Shared by --from-confirmed-candidates and
+// --from-golden-legacy (D055, 2026-09-09) -- same printer, same venueAccountId -> #new-weddings
+// map shape, so this is extracted rather than duplicated a third time.
+async function printCoverageDelta(client: PoolClient, newWeddingsByVenue: Map<number, number>): Promise<void> {
   if (newWeddingsByVenue.size > 0) {
     const venueIds = [...newWeddingsByVenue.keys()];
     const { rows: aliasRows } = await client.query<{ alias_account_id: number; canonical_account_id: number }>(
@@ -1257,13 +1278,592 @@ async function runFromConfirmedCandidates(
   } else {
     console.log(`\n[create-weddings] coverage-bucket delta: nothing would be created, no delta.`);
   }
+}
 
-  return { weddingsCreated, postsImported, vendorsInserted };
+// Legacy clustering_versions this mode rescues from -- everything that pre-dates structural-v2
+// (see STRUCTURAL_CLUSTERING_VERSION import above).
+const LEGACY_CLUSTERING_VERSIONS = ["human-confirmed-v1", "jeremy-cluster-v1", "venue-couple-signal-v1"];
+
+interface FromGoldenLegacyResult {
+  attached: number;
+  weddingsCreated: number;
+  postsImported: number;
+  vendorsInserted: number;
+}
+
+/**
+ * `--from-golden-legacy` (D055, 2026-09-09). THE POPULATION (measured 2026-09-09): golden_set
+ * rows with expected_decision='INCLUDE' whose post is NOT yet in any wedding (no posts+
+ * wedding_posts row for the shortcode) and NOT in any structural-v2 candidate, but IS in a
+ * candidate clustered under a LEGACY clustering_version (human-confirmed-v1/jeremy-cluster-v1/
+ * venue-couple-signal-v1 -- everything that pre-dates structural-v2). Takes the newest legacy
+ * candidate per post (jeremy_wedding_candidate_posts' PK on source_post_url normally makes this
+ * 1:1 already -- the ranking is defensive, not load-bearing for the common case).
+ *
+ * Grouped by candidate (a post belongs to at most one candidate, so a candidate's group here is
+ * exactly its full set of golden-INCLUDE, not-yet-documented posts), each group is one of three
+ * sub-cases:
+ *   (a) the candidate's LATEST jeremy_wedding_candidate_reconciliation row already believes a
+ *       matched_wedding_id -- refined 2026-09-09 after a spot-check found 32 of 113 mid-confidence
+ *       (0.4-0.7) matches were actually a DIFFERENT couple at the same venue (a repeat vendor
+ *       team), i.e. blind-attaching on reconciliation alone would merge unrelated weddings. Rule,
+ *       per candidate:
+ *         - match_confidence >= 0.7: ATTACH the whole group outright (high enough to trust).
+ *         - below 0.7 (incl. null): per POST, extract a couple-name pair from the post's own
+ *           caption (COUPLE_NAME_REGEX on staging.instagram_posts.caption_raw) and test both
+ *           names (word-boundary, case-insensitive) against the matched wedding's OWN existing
+ *           captions (concatenated posts.caption over its wedding_posts) -- see
+ *           classifyByCoupleName. BOTH names present -> ATTACH (same wedding, different post).
+ *           NEITHER present -> CREATE instead, ignoring the reconciliation match entirely (same
+ *           venue, different real wedding -- sub-case (b), scoped to just this post). No couple
+ *           name in the post, or only ONE name matches -> SKIP(attach_undecided), too ambiguous
+ *           to resolve here; written to tmp_analysis/d055_golden_legacy_attach_undecided.txt for
+ *           a later reader comparison. ATTACH provenance always goes to
+ *           `jeremy_wedding_post_attachments` (NOT `jeremy_weddings_created` -- this script
+ *           created nothing there; see that table's own schema.sql comment for why the two are
+ *           kept separate, and revertWeddingBatch.ts's own comment for what it deletes off
+ *           jeremy_weddings_created).
+ *   (b) no reconciliation match, but the candidate has a venue_account_id (or a subset of a
+ *       mid-confidence group's posts was rerouted here by the couple-name rule above): CREATE,
+ *       exactly like --from-confirmed-candidates' CREATE path -- same Chicago gate
+ *       (structuralCandidateGating.ts, decision='CONFIRM' since a legacy candidate has no
+ *       reviewer-corrected-venue concept), same D050 duplicate-post guard, same vendor-evidence
+ *       query, logged to `jeremy_weddings_created` like every other CREATE path in this file.
+ *   (c) no venue_account_id at all: SKIP(no_venue) -- printed and written to
+ *       tmp_analysis/d055_golden_legacy_no_venue.txt for a later venue-discovery read.
+ */
+const COUPLE_NAME_REGEX = /([A-Z][a-z]+) *(?:&|\+|and) *([A-Z][a-z]+)/;
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+interface CoupleNameClassification {
+  attachUrls: string[];
+  createUrls: string[];
+  undecidedUrls: string[];
+}
+
+// D055 (2026-09-09): mid/unknown-confidence reconciliation arbitration -- see runFromGoldenLegacy's
+// sub-case (a) doc comment above for the full rule. Pure-ish (only reads), scoped to ONE
+// candidate's posts and its one matched wedding at a time.
+async function classifyByCoupleName(
+  client: PoolClient,
+  postUrls: string[],
+  matchedWeddingId: number
+): Promise<CoupleNameClassification> {
+  const { rows: captionRows } = await client.query<{ post_url: string; caption_raw: string | null }>(
+    `select post_url, caption_raw from staging.instagram_posts where post_url = any($1::text[])`,
+    [postUrls]
+  );
+  const captionByUrl = new Map(captionRows.map((r) => [r.post_url, r.caption_raw ?? ""]));
+
+  const { rows: matchedRows } = await client.query<{ captions: string }>(
+    `select coalesce(string_agg(p.caption, ' '), '') as captions
+     from wedding_posts wp
+     join posts p on p.id = wp.post_id
+     where wp.wedding_id = $1`,
+    [matchedWeddingId]
+  );
+  const matchedCaptions = matchedRows[0]?.captions ?? "";
+
+  const attachUrls: string[] = [];
+  const createUrls: string[] = [];
+  const undecidedUrls: string[] = [];
+
+  for (const u of postUrls) {
+    const caption = captionByUrl.get(u) ?? "";
+    const m = COUPLE_NAME_REGEX.exec(caption);
+    if (!m) {
+      undecidedUrls.push(u);
+      continue;
+    }
+    const [, name1, name2] = m;
+    const has1 = new RegExp(`\\b${escapeRegExp(name1)}\\b`, "i").test(matchedCaptions);
+    const has2 = new RegExp(`\\b${escapeRegExp(name2)}\\b`, "i").test(matchedCaptions);
+    if (has1 && has2) attachUrls.push(u);
+    else if (!has1 && !has2) createUrls.push(u);
+    else undecidedUrls.push(u);
+  }
+
+  return { attachUrls, createUrls, undecidedUrls };
+}
+async function runFromGoldenLegacy(client: PoolClient, batchId: string): Promise<FromGoldenLegacyResult> {
+  let attached = 0;
+  let weddingsCreated = 0;
+  let postsImported = 0;
+  let vendorsInserted = 0;
+
+  const { rows: popRows } = await client.query<{
+    post_url: string;
+    candidate_id: number;
+    venue_account_id: number | null;
+    event_date_est: string | null;
+    chicago_status: ChicagoStatus;
+  }>(
+    `with legacy_candidates as (
+       select
+         jwc.id as candidate_id,
+         jwc.venue_account_id::int as venue_account_id,
+         jwc.event_date_est::text as event_date_est,
+         jwc.chicago_status,
+         jwc.created_at,
+         cp.source_post_url as post_url
+       from jeremy_wedding_candidates jwc
+       join jeremy_wedding_candidate_posts cp on cp.candidate_id = jwc.id
+       where jwc.clustering_version = any($2::text[])
+     ),
+     structural_posts as (
+       select cp.source_post_url as post_url
+       from jeremy_wedding_candidate_posts cp
+       join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
+       where jwc.clustering_version = $1
+     ),
+     documented_posts as (
+       select p.shortcode
+       from posts p
+       join wedding_posts wp on wp.post_id = p.id
+     ),
+     ranked as (
+       select
+         gs.post_url,
+         lc.candidate_id,
+         lc.venue_account_id,
+         lc.event_date_est,
+         lc.chicago_status,
+         row_number() over (partition by gs.post_url order by lc.created_at desc, lc.candidate_id desc) as rn
+       from golden_set gs
+       join legacy_candidates lc on lc.post_url = gs.post_url
+       where gs.expected_decision = 'INCLUDE'
+         and not exists (select 1 from structural_posts sp where sp.post_url = gs.post_url)
+         and not exists (
+           select 1 from documented_posts dp
+           where dp.shortcode = substring(gs.post_url from '/p/([^/]+)')
+         )
+     )
+     select post_url, candidate_id, venue_account_id, event_date_est, chicago_status
+     from ranked
+     where rn = 1
+     order by candidate_id, post_url`,
+    [STRUCTURAL_CLUSTERING_VERSION, LEGACY_CLUSTERING_VERSIONS]
+  );
+
+  const byCandidate = new Map<
+    number,
+    { venueAccountId: number | null; eventDateEst: string | null; chicagoStatus: ChicagoStatus; postUrls: string[] }
+  >();
+  for (const r of popRows) {
+    let g = byCandidate.get(r.candidate_id);
+    if (!g) {
+      g = { venueAccountId: r.venue_account_id, eventDateEst: r.event_date_est, chicagoStatus: r.chicago_status, postUrls: [] };
+      byCandidate.set(r.candidate_id, g);
+    }
+    g.postUrls.push(r.post_url);
+  }
+
+  console.log(
+    `[create-weddings] --from-golden-legacy: population=${popRows.length} post(s) across ${byCandidate.size} legacy candidate(s)`
+  );
+
+  const candidateIds = [...byCandidate.keys()];
+  const { rows: reconRows } = await client.query<{
+    candidate_id: number;
+    matched_wedding_id: number | null;
+    match_confidence: number | null;
+  }>(
+    `select distinct on (candidate_id) candidate_id, matched_wedding_id, match_confidence
+     from jeremy_wedding_candidate_reconciliation
+     where candidate_id = any($1::bigint[])
+     order by candidate_id, reconciled_at desc`,
+    [candidateIds]
+  );
+  const latestMatch = new Map(
+    reconRows.map((r) => [r.candidate_id, { matchedWeddingId: r.matched_wedding_id, matchConfidence: r.match_confidence }])
+  );
+
+  const outcomeCounts: Record<string, number> = {};
+  const bump = (label: string) => {
+    outcomeCounts[label] = (outcomeCounts[label] ?? 0) + 1;
+  };
+
+  const newWeddingsByVenue = new Map<number, number>();
+  const noVenuePostUrls: string[] = [];
+  const undecidedRows: { post_url: string; candidate_id: number; matched_wedding_id: number }[] = [];
+
+  // Sub-case (a): ATTACH `postUrls` (already decided to be the SAME wedding as `weddingId`) --
+  // shared by the confidence>=0.7 whole-group path and the couple-name-confirmed subset of a
+  // mid-confidence group.
+  async function attachPostsToWedding(candidateId: number, weddingId: number, postUrls: string[]): Promise<void> {
+    const { rows: weddingExists } = await client.query<{ id: number }>(`select id from weddings where id = $1`, [weddingId]);
+    if (weddingExists.length === 0) {
+      for (const u of postUrls) {
+        console.log(`[create-weddings] candidate=${candidateId} post=${u} matched_wedding=${weddingId} -> SKIP(wedding_missing)`);
+        bump("SKIP(wedding_missing)");
+      }
+      return;
+    }
+
+    const withShortcode = postUrls
+      .map((u) => ({ url: u, shortcode: shortcodeFromUrl(u) }))
+      .filter((x): x is { url: string; shortcode: string } => x.shortcode !== null);
+
+    const { rows: existing } = await client.query<{
+      shortcode: string;
+      post_id: number | null;
+      already_attached: boolean;
+    }>(
+      `select sc.shortcode, p.id as post_id, (wp.post_id is not null) as already_attached
+       from unnest($1::text[]) as sc(shortcode)
+       left join posts p on p.shortcode = sc.shortcode
+       left join wedding_posts wp on wp.post_id = p.id`,
+      [withShortcode.map((s) => s.shortcode)]
+    );
+    const existingByShortcode = new Map(existing.map((e) => [e.shortcode, e]));
+
+    const needsImport = withShortcode.filter((s) => existingByShortcode.get(s.shortcode)?.post_id == null);
+    const stagingByUrl = new Map<
+      string,
+      { post_url: string; caption_raw: string | null; post_timestamp: string; owner_username: string; likes_count: number | null }
+    >();
+    if (needsImport.length > 0) {
+      const { rows: stagingRows } = await client.query<{
+        post_url: string;
+        caption_raw: string | null;
+        post_timestamp: string;
+        owner_username: string;
+        likes_count: number | null;
+      }>(
+        `select post_url, caption_raw, post_timestamp::text, owner_username, likes_count
+         from staging.instagram_posts where post_url = any($1::text[])`,
+        [needsImport.map((s) => s.url)]
+      );
+      for (const sr of stagingRows) stagingByUrl.set(sr.post_url, sr);
+    }
+
+    for (const s of withShortcode) {
+      const e = existingByShortcode.get(s.shortcode);
+      if (e?.already_attached) {
+        console.log(`[create-weddings] candidate=${candidateId} post=${s.url} -> SKIP(already_attached)`);
+        bump("SKIP(already_attached)");
+        continue;
+      }
+
+      let postId: number;
+      if (e?.post_id != null) {
+        postId = e.post_id;
+      } else {
+        const sr = stagingByUrl.get(s.url);
+        if (!sr) {
+          console.log(`[create-weddings] candidate=${candidateId} post=${s.url} -> SKIP(no_staging_row)`);
+          bump("SKIP(no_staging_row)");
+          continue;
+        }
+        const { rows: ownerRows } = await client.query<{ id: number }>(
+          `insert into accounts (username) values ($1)
+           on conflict (username) do update set username = excluded.username
+           returning id`,
+          [sr.owner_username.toLowerCase()]
+        );
+        const ownerId = ownerRows[0].id;
+        const { rows: postRows } = await client.query<{ id: number }>(
+          `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, source, raw)
+           values ($1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7)
+           on conflict (shortcode) do nothing
+           returning id`,
+          [s.shortcode, sr.post_url, ownerId, sr.caption_raw, sr.post_timestamp, sr.likes_count, JSON.stringify(sr)]
+        );
+        if (postRows.length === 0) {
+          // Same race-guard shape as the CREATE paths: on conflict do nothing means the post
+          // landed via a concurrent insert between our lookup and this insert -- link it.
+          const { rows: raceRows } = await client.query<{ id: number }>(`select id from posts where shortcode = $1`, [
+            s.shortcode,
+          ]);
+          if (raceRows.length === 0) {
+            console.log(`[create-weddings] candidate=${candidateId} post=${s.url} -> SKIP(post_insert_race)`);
+            bump("SKIP(post_insert_race)");
+            continue;
+          }
+          postId = raceRows[0].id;
+        } else {
+          postsImported++;
+          postId = postRows[0].id;
+        }
+      }
+
+      await client.query(`insert into wedding_posts (wedding_id, post_id) values ($1, $2) on conflict (post_id) do nothing`, [
+        weddingId,
+        postId,
+      ]);
+      await client.query(
+        `insert into jeremy_wedding_post_attachments (batch_id, wedding_id, post_id, candidate_id)
+         values ($1, $2, $3, $4) on conflict (batch_id, post_id) do nothing`,
+        [batchId, weddingId, postId, candidateId]
+      );
+      attached++;
+      console.log(`[create-weddings] candidate=${candidateId} post=${s.url} -> ATTACH wedding=${weddingId}`);
+      bump("ATTACH");
+    }
+  }
+
+  // Sub-case (b): CREATE a new wedding from `postUrls` at `venueAccountId`, exactly like
+  // --from-confirmed-candidates' CREATE path. Shared by candidates with no reconciliation match
+  // at all AND by the couple-name-rejected subset of a mid-confidence group (different real
+  // wedding, same venue -- reconciliation ignored for those posts).
+  async function createWeddingFromPosts(
+    candidateId: number,
+    venueAccountId: number,
+    eventDateEst: string | null,
+    chicagoStatus: ChicagoStatus,
+    postUrls: string[]
+  ): Promise<void> {
+    const { rows: unameRows } = await client.query<{ username: string }>(
+      `select username::text as username from accounts where id = $1`,
+      [venueAccountId]
+    );
+    const venueUsername = unameRows[0]?.username ?? "?";
+
+    const { rows: geoRows } = await client.query<{ city_chicago: boolean; in_metro: boolean }>(
+      `select
+         exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago' and v.discovery_source = 'google_places') as city_chicago,
+         coalesce((select al.in_metro from account_locations al where al.account_id = $1), false) as in_metro`,
+      [venueAccountId]
+    );
+
+    const gate = decideStructuralCandidateCreation({
+      decision: "CONFIRM", // legacy candidates have no reviewer-corrected-venue concept
+      originalVenueAccountId: venueAccountId,
+      correctedVenueAccountId: null,
+      chicagoStatus: chicagoStatus ?? "CHICAGO_AMBIGUOUS",
+      venueCityIsChicago: geoRows[0].city_chicago,
+      venueInMetro: geoRows[0].in_metro,
+      includedPostUrls: postUrls,
+    });
+
+    if (gate.action !== "CREATE") {
+      console.log(
+        `[create-weddings] candidate=${candidateId} venue=@${venueUsername} posts=${postUrls.length} -> SKIP(${gate.reason})`
+      );
+      bump(`SKIP(${gate.reason})`);
+      return;
+    }
+
+    // D050 duplicate-post guard, same check as every other creation path in this file.
+    const shortcodesForGuard = postUrls.map((u) => shortcodeFromUrl(u)).filter((s): s is string => s !== null);
+    const { rows: alreadyDocumented } = await client.query<{ wedding_id: number }>(
+      `select wp.wedding_id from posts p join wedding_posts wp on wp.post_id = p.id where p.shortcode = any($1::text[])`,
+      [shortcodesForGuard]
+    );
+    if (alreadyDocumented.length > 0) {
+      console.log(
+        `[create-weddings] candidate=${candidateId} venue=@${venueUsername} posts=${postUrls.length} -> SKIP(duplicate_post) — already belongs to wedding=${alreadyDocumented[0].wedding_id}`
+      );
+      bump("SKIP(duplicate_post)");
+      return;
+    }
+
+    // Vendor evidence -- identical query to --from-confirmed-candidates' allCredits (D055 perf
+    // fix: stack_extraction_entries read directly, post_url-scoped first).
+    const { rows: allCredits } = await client.query<{ account_id: number; role: string; n_confirmations: number }>(
+      `select coalesce(al.canonical_account_id, a.id)::int as account_id, latest.role,
+              count(distinct latest.post_url)::int as n_confirmations
+       from (
+         select distinct on (post_url, line_no, handle)
+           post_url, line_no, handle, role
+         from stack_extraction_entries
+         where post_url = any($1::text[])
+         order by post_url, line_no, handle, extracted_at desc
+       ) latest
+       join accounts a on a.username = latest.handle::citext
+       left join account_aliases al on al.alias_account_id = a.id
+       where latest.role <> 'other'
+       group by coalesce(al.canonical_account_id, a.id), latest.role`,
+      [postUrls]
+    );
+    const nonVenueVendors = allCredits.filter((v) => v.role !== "venue");
+    const venueCredit = allCredits.find((v) => v.role === "venue" && v.account_id === gate.venueAccountId);
+    const venueNConfirmations = Math.max(1, venueCredit?.n_confirmations ?? 0);
+
+    console.log(
+      `[create-weddings] candidate=${candidateId} venue=@${venueUsername} posts=${postUrls.length} vendors=${nonVenueVendors.length + 1} -> CREATE`
+    );
+    bump("CREATE");
+
+    const { rows: weddingRows } = await client.query<{ id: number }>(
+      `insert into weddings (venue_id, event_date_est, is_chicago) values ($1, $2, $3) returning id`,
+      [gate.venueAccountId, eventDateEst, true]
+    );
+    const weddingId = weddingRows[0].id;
+    weddingsCreated++;
+    newWeddingsByVenue.set(gate.venueAccountId, (newWeddingsByVenue.get(gate.venueAccountId) ?? 0) + 1);
+
+    const { rows: posts } = await client.query<{
+      post_url: string;
+      caption_raw: string | null;
+      post_timestamp: string;
+      owner_username: string;
+      likes_count: number | null;
+    }>(
+      `select post_url, caption_raw, post_timestamp::text, owner_username, likes_count
+       from staging.instagram_posts where post_url = any($1::text[])`,
+      [postUrls]
+    );
+
+    for (const p of posts) {
+      const shortcode = shortcodeFromUrl(p.post_url);
+      if (!shortcode) continue;
+
+      const { rows: ownerRows } = await client.query<{ id: number }>(
+        `insert into accounts (username) values ($1)
+         on conflict (username) do update set username = excluded.username
+         returning id`,
+        [p.owner_username.toLowerCase()]
+      );
+      const ownerId = ownerRows[0].id;
+
+      const { rows: postRows } = await client.query<{ id: number }>(
+        `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, source, raw)
+         values ($1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7)
+         on conflict (shortcode) do nothing
+         returning id`,
+        [shortcode, p.post_url, ownerId, p.caption_raw, p.post_timestamp, p.likes_count, JSON.stringify(p)]
+      );
+      let postId: number;
+      if (postRows.length === 0) {
+        const { rows: existingRows } = await client.query<{ id: number }>(`select id from posts where shortcode = $1`, [
+          shortcode,
+        ]);
+        if (existingRows.length === 0) continue;
+        postId = existingRows[0].id;
+      } else {
+        postsImported++;
+        postId = postRows[0].id;
+      }
+
+      await client.query(`insert into wedding_posts (wedding_id, post_id) values ($1, $2) on conflict (post_id) do nothing`, [
+        weddingId,
+        postId,
+      ]);
+    }
+
+    const vendorsToInsert = [
+      { account_id: gate.venueAccountId, role: "venue", n_confirmations: venueNConfirmations },
+      ...nonVenueVendors,
+    ];
+    for (const v of vendorsToInsert) {
+      const { rows: inserted } = await client.query(
+        `insert into wedding_vendors (wedding_id, account_id, role, n_confirmations)
+         values ($1, $2, $3::vendor_role, $4)
+         on conflict (wedding_id, account_id, role) do nothing
+         returning wedding_id`,
+        [weddingId, v.account_id, v.role, v.n_confirmations]
+      );
+      if (inserted.length > 0) vendorsInserted++;
+    }
+
+    await client.query(
+      `insert into jeremy_weddings_created (candidate_id, wedding_id, batch_id) values ($1, $2, $3) on conflict (candidate_id) do nothing`,
+      [candidateId, weddingId, batchId]
+    );
+  }
+
+  for (const [candidateId, g] of byCandidate) {
+    const recon = latestMatch.get(candidateId);
+    const matchedWeddingId = recon?.matchedWeddingId ?? null;
+
+    if (matchedWeddingId != null) {
+      const confidence = recon?.matchConfidence ?? null;
+
+      if (confidence != null && confidence >= 0.7) {
+        console.log(
+          `[create-weddings] candidate=${candidateId} matched_wedding=${matchedWeddingId} match_confidence=${confidence} -> rule: ATTACH (confidence>=0.7) posts=${g.postUrls.length}`
+        );
+        await attachPostsToWedding(candidateId, matchedWeddingId, g.postUrls);
+        continue;
+      }
+
+      // D055 refinement (2026-09-09): mid/unknown confidence -- arbitrate by couple name before
+      // trusting the reconciliation match. See classifyByCoupleName + this function's doc comment.
+      const { attachUrls, createUrls, undecidedUrls } = await classifyByCoupleName(client, g.postUrls, matchedWeddingId);
+      console.log(
+        `[create-weddings] candidate=${candidateId} matched_wedding=${matchedWeddingId} match_confidence=${confidence ?? "null"} -> rule: attach=${attachUrls.length} create=${createUrls.length} undecided=${undecidedUrls.length}`
+      );
+
+      if (attachUrls.length > 0) {
+        await attachPostsToWedding(candidateId, matchedWeddingId, attachUrls);
+      }
+
+      for (const u of undecidedUrls) {
+        console.log(`[create-weddings] candidate=${candidateId} post=${u} matched_wedding=${matchedWeddingId} -> SKIP(attach_undecided)`);
+        bump("SKIP(attach_undecided)");
+        undecidedRows.push({ post_url: u, candidate_id: candidateId, matched_wedding_id: matchedWeddingId });
+      }
+
+      if (createUrls.length > 0) {
+        if (g.venueAccountId == null) {
+          for (const u of createUrls) {
+            console.log(`[create-weddings] candidate=${candidateId} post=${u} -> SKIP(no_venue) (different-couple reroute, no venue to anchor)`);
+            bump("SKIP(no_venue)");
+            noVenuePostUrls.push(u);
+          }
+        } else {
+          await createWeddingFromPosts(candidateId, g.venueAccountId, g.eventDateEst, g.chicagoStatus, createUrls);
+        }
+      }
+      continue;
+    }
+
+    if (g.venueAccountId == null) {
+      // Sub-case (c): no venue to anchor a wedding to at all.
+      for (const u of g.postUrls) {
+        console.log(`[create-weddings] candidate=${candidateId} post=${u} -> SKIP(no_venue)`);
+        bump("SKIP(no_venue)");
+        noVenuePostUrls.push(u);
+      }
+      continue;
+    }
+
+    // Sub-case (b): CREATE, no reconciliation match at all.
+    await createWeddingFromPosts(candidateId, g.venueAccountId, g.eventDateEst, g.chicagoStatus, g.postUrls);
+  }
+
+  console.log(`\n[create-weddings] --from-golden-legacy totals by outcome:`);
+  for (const [label, n] of Object.entries(outcomeCounts)) {
+    console.log(`  ${label}: ${n}`);
+  }
+  console.log(
+    `[create-weddings] --from-golden-legacy summary: attached=${attached} weddings_created=${weddingsCreated} posts_imported=${postsImported} vendors_inserted=${vendorsInserted}`
+  );
+
+  await printCoverageDelta(client, newWeddingsByVenue);
+
+  const outDir = new URL("./tmp_analysis", import.meta.url).pathname;
+
+  if (noVenuePostUrls.length > 0) {
+    mkdirSync(outDir, { recursive: true });
+    const outPath = `${outDir}/d055_golden_legacy_no_venue.txt`;
+    writeFileSync(outPath, noVenuePostUrls.join("\n") + "\n");
+    console.log(`[create-weddings] wrote ${noVenuePostUrls.length} no-venue post_url(s) to ${outPath}`);
+  }
+
+  if (undecidedRows.length > 0) {
+    mkdirSync(outDir, { recursive: true });
+    const outPath = `${outDir}/d055_golden_legacy_attach_undecided.txt`;
+    writeFileSync(
+      outPath,
+      undecidedRows.map((r) => `${r.post_url}\t${r.candidate_id}\t${r.matched_wedding_id}`).join("\n") + "\n"
+    );
+    console.log(
+      `[create-weddings] wrote ${undecidedRows.length} undecided attach row(s) (post_url\\tcandidate_id\\tmatched_wedding_id) to ${outPath}`
+    );
+  }
+
+  return { attached, weddingsCreated, postsImported, vendorsInserted };
 }
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
   const fromConfirmedCandidates = process.argv.includes("--from-confirmed-candidates");
+  const fromGoldenLegacy = process.argv.includes("--from-golden-legacy");
 
   const batchIdFlagIndex = process.argv.indexOf("--batch-id");
   const batchId = batchIdFlagIndex !== -1 ? process.argv[batchIdFlagIndex + 1] : undefined;
@@ -1319,15 +1919,40 @@ async function main() {
       )
     `);
 
+    // --from-golden-legacy's ATTACH sub-case (D055, 2026-09-09) -- see pipeline/schema.sql /
+    // applyWeddingPostAttachmentSchema.ts for the full reasoning. Created here too (idempotent,
+    // matches the jeremy_weddings_created pattern above) so this script never depends on the
+    // apply script having run first.
+    await client.query(`
+      create table if not exists jeremy_wedding_post_attachments (
+        batch_id      text not null,
+        wedding_id    bigint not null,
+        post_id       bigint not null,
+        candidate_id  bigint not null,
+        attached_at   timestamptz not null default now(),
+        primary key (batch_id, post_id)
+      )
+    `);
+
     let weddingsCreated = 0;
     let postsImported = 0;
     let vendorsInserted = 0;
+    let attached = 0;
 
     if (fromConfirmedCandidates) {
       // --from-confirmed-candidates mode (D055 Phase 1 step 9) -- entirely separate candidate
       // source and gating logic, see runFromConfirmedCandidates above. The hardcoded-array mode
       // below (CANDIDATE_IDS loop) is completely unchanged.
       const result = await runFromConfirmedCandidates(client, batchId, { since, limit });
+      weddingsCreated = result.weddingsCreated;
+      postsImported = result.postsImported;
+      vendorsInserted = result.vendorsInserted;
+    } else if (fromGoldenLegacy) {
+      // --from-golden-legacy mode (D055, 2026-09-09) -- see runFromGoldenLegacy above. A THIRD,
+      // independent candidate source alongside the hardcoded CANDIDATE_IDS arrays and
+      // --from-confirmed-candidates; neither of those modes is touched by this branch.
+      const result = await runFromGoldenLegacy(client, batchId);
+      attached = result.attached;
       weddingsCreated = result.weddingsCreated;
       postsImported = result.postsImported;
       vendorsInserted = result.vendorsInserted;
@@ -1484,7 +2109,8 @@ async function main() {
     }
 
     console.log(
-      `[create-weddings] ${dryRun ? "DRY RUN — " : ""}batch_id=${batchId} weddings_created=${weddingsCreated} posts_imported=${postsImported} vendors_inserted=${vendorsInserted}`
+      `[create-weddings] ${dryRun ? "DRY RUN — " : ""}batch_id=${batchId} ` +
+        `${fromGoldenLegacy ? `attached=${attached} ` : ""}weddings_created=${weddingsCreated} posts_imported=${postsImported} vendors_inserted=${vendorsInserted}`
     );
 
     if (!dryRun) {

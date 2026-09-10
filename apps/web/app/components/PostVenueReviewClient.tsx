@@ -728,6 +728,17 @@ export function PostVenueReviewClient({
                 your current verdict: {VERDICT_LETTER[current.your_verdict]}
               </span>
             )}
+            {/* Split-handle nudge (scripts/graph/findVenueAliasCandidates.ts, T1/T2, not yet in
+                account_aliases -- see loadAliasHints in lib/server/postVenueReview.ts). Muted so
+                it doesn't compete with the venue identity line above it; no keyboard action, no
+                verdict semantics -- purely a "go look at this" hint. */}
+            {venue.alias_hints.length > 0 && (
+              <div className="mt-0.5 text-xs text-amber-700">
+                {venue.alias_hints
+                  .map((h) => `possible alias: @${h.other} (${h.signals.join(", ")})`)
+                  .join(" · ")}
+              </div>
+            )}
           </div>
           {current.group.size > 1 && (
             <span className="text-xs text-gray-500">

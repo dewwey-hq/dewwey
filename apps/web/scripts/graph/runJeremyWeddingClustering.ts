@@ -86,6 +86,36 @@
  * non-null couple_guess and they differ, that specific match is skipped (not vetoed globally —
  * another candidate may still match, or the post starts its own new candidate).
  *
+ * --eligibility venue-anchor-plus-wedding-keyword (structural source only, D055 "squeeze the 47k"
+ * Stage 2, 2026-09-09 — the plan's pool A1): a SECOND, more permissive eligibility rule for the
+ * SAME structural_post_vendor_evidence view, for posts that have a venue anchor AND
+ * has_wedding_keyword but fail the default structural rule above because they have neither a
+ * non-venue credit nor a couple signal (whatever the anchor source). Rule: anchor present AND
+ * has_wedding_keyword AND NOT has_non_wedding_event_keyword — the last check is UNCONDITIONAL
+ * here (unlike the default rule's `hasNonWeddingEventKeyword && !hasWeddingKeyword`), because the
+ * plan's pool A4 (non-wedding-keyword posts, 743, e.g. "whether it's a wedding, a birthday, or a
+ * baby shower") is DROPPED by decision — the model's NOT calls on that pattern aren't reliable
+ * enough to spend on (plan doc: "the W yield is ~50 at the riskiest pattern"). No non-venue-
+ * credit / couple-signal requirement at all — that's exactly the gap this pool exists to route
+ * around, left for the Haiku reader to verdict post-by-post instead of a rule. Every other guard
+ * is unchanged: the couple-name merge veto, the chicago_status tri-state resolution, and the
+ * anchor-conflict bookkeeping all apply identically (they read the same evidence rows regardless
+ * of which eligibility rule selected the post). Additionally (pool-A1-only, not applied to the
+ * default structural rule): a post is also skipped if it's already documented — has a `posts` row
+ * (matched by shortcode parsed from the URL) joined to `wedding_posts` — even though
+ * jeremy_wedding_candidate_posts has no row for it yet, since the default rule's dry-run/live runs
+ * were never sized against that check and changing it there is out of scope here.
+ *
+ * --clustering-version <value> (structural + venue-anchor-plus-wedding-keyword ONLY): overrides
+ * STRUCTURAL_CLUSTERING_VERSION for this run. Refused outright unless BOTH --evidence-source
+ * structural AND --eligibility venue-anchor-plus-wedding-keyword are also passed — that
+ * bidirectional gate is deliberate: the relaxed eligibility rule must never write under
+ * "structural-v2" (it would pollute that population with posts the v2 precision fix explicitly
+ * excluded), and this override must never be used to silently redirect the DEFAULT rule's
+ * candidates to some other version either. Used for pool A1's own provenance pool,
+ * clustering_version="structural-v3-a1" (D055 Stage 2), so the Haiku reader can target it without
+ * touching structural-v2's 7,600+ candidates.
+ *
  * --dry-run (any source): runs the exact same match-upsert logic, but every statement that would
  * write to jeremy_wedding_candidates/jeremy_wedding_candidate_posts is skipped outright (not
  * issued-then-rolled-back — no write statement reaches the database at all under --dry-run).
@@ -109,6 +139,7 @@
  *   bun run scripts/graph/runJeremyWeddingClustering.ts --evidence-source venue_inline_mention
  *   bun run scripts/graph/runJeremyWeddingClustering.ts --evidence-source structural --dry-run
  *   bun run scripts/graph/runJeremyWeddingClustering.ts --evidence-source structural --dry-run --ignore-existing-candidates
+ *   bun run scripts/graph/runJeremyWeddingClustering.ts --evidence-source structural --eligibility venue-anchor-plus-wedding-keyword --clustering-version structural-v3-a1 --dry-run
  */
 import { getPool, closePool } from "../classify/db";
 import { effectiveDate, daysBetween, jaccard } from "./clusteringUtils";
@@ -174,6 +205,13 @@ const VALID_SOURCES: EvidenceSource[] = [
   "structural",
 ];
 
+// "default" is the existing >=3-role / anchor-source-dependent rule (unchanged). "venue-anchor-
+// plus-wedding-keyword" is pool A1's relaxed rule (structural source only, D055 Stage 2, see the
+// header comment above) -- structural_post_vendor_evidence is still the evidence view either way;
+// this only changes which of its posts qualify.
+type Eligibility = "default" | "venue-anchor-plus-wedding-keyword";
+const VALID_ELIGIBILITY: Eligibility[] = ["default", "venue-anchor-plus-wedding-keyword"];
+
 function parseArgs() {
   const a = process.argv.slice(2);
   const evidenceSource = a.includes("--evidence-source")
@@ -192,7 +230,34 @@ function parseArgs() {
   if (ignoreExistingCandidates && !dryRun) {
     throw new Error("--ignore-existing-candidates is dry-run only -- pass --dry-run too");
   }
-  return { evidenceSource: evidenceSource as EvidenceSource, dryRun, ignoreExistingCandidates };
+
+  const eligibility = (a.includes("--eligibility") ? a[a.indexOf("--eligibility") + 1] : "default") as Eligibility;
+  if (!VALID_ELIGIBILITY.includes(eligibility)) {
+    throw new Error(`--eligibility must be one of ${VALID_ELIGIBILITY.join(", ")}, got "${eligibility}"`);
+  }
+  if (eligibility === "venue-anchor-plus-wedding-keyword" && evidenceSource !== "structural") {
+    throw new Error("--eligibility venue-anchor-plus-wedding-keyword is only valid with --evidence-source structural");
+  }
+
+  // Pool-A1 provenance guard (D055 Stage 2): the override may ONLY be used together with the
+  // relaxed eligibility rule -- refused outright, not silently ignored, in either direction. This
+  // is what makes it structurally impossible for a relaxed-eligibility run to land under
+  // "structural-v2" (polluting the default rule's population) or for the override to be used to
+  // quietly redirect the default rule's own candidates somewhere else.
+  const clusteringVersionOverride = a.includes("--clustering-version") ? a[a.indexOf("--clustering-version") + 1] : null;
+  const isPoolA1 = evidenceSource === "structural" && eligibility === "venue-anchor-plus-wedding-keyword";
+  if (clusteringVersionOverride && !isPoolA1) {
+    throw new Error(
+      "--clustering-version is only allowed together with --evidence-source structural --eligibility venue-anchor-plus-wedding-keyword"
+    );
+  }
+  if (isPoolA1 && !clusteringVersionOverride) {
+    throw new Error(
+      "--eligibility venue-anchor-plus-wedding-keyword requires an explicit --clustering-version override (so its candidates never land under structural-v2)"
+    );
+  }
+
+  return { evidenceSource: evidenceSource as EvidenceSource, dryRun, ignoreExistingCandidates, eligibility, clusteringVersionOverride };
 }
 
 const CLUSTERING_VERSION_BY_SOURCE: Record<EvidenceSource, string> = {
@@ -211,8 +276,8 @@ const EVIDENCE_VIEW_BY_SOURCE: Record<EvidenceSource, string> = {
 };
 
 async function main() {
-  const { evidenceSource, dryRun, ignoreExistingCandidates } = parseArgs();
-  const clusteringVersion = CLUSTERING_VERSION_BY_SOURCE[evidenceSource];
+  const { evidenceSource, dryRun, ignoreExistingCandidates, eligibility, clusteringVersionOverride } = parseArgs();
+  const clusteringVersion = clusteringVersionOverride ?? CLUSTERING_VERSION_BY_SOURCE[evidenceSource];
   const evidenceView = EVIDENCE_VIEW_BY_SOURCE[evidenceSource];
   const pool = getPool();
 
@@ -254,24 +319,44 @@ async function main() {
   let nonWeddingEventExcludedCount = 0;
   const eligiblePostUrls =
     evidenceSource === "structural"
-      ? [...evidenceByPost.entries()]
-          .filter(([, rows]) => {
-            const hasWeddingKeyword = rows.some((r) => r.has_wedding_keyword);
-            const hasNonWeddingEventKeyword = rows.some((r) => r.has_non_wedding_event_keyword);
-            if (hasNonWeddingEventKeyword && !hasWeddingKeyword) {
-              nonWeddingEventExcludedCount++;
-              return false;
-            }
-            const anchorRow = rows.find((r) => r.role === "venue" && r.venue_anchor_source != null);
-            if (!anchorRow) return false;
-            const hasNonVenueEvidence = rows.some((r) => r.role !== "venue");
-            const hasCoupleSignal = rows.some((r) => r.has_couple_signal);
-            if (anchorRow.venue_anchor_source === "credit_line") {
-              return hasNonVenueEvidence || (hasWeddingKeyword && hasCoupleSignal);
-            }
-            return hasWeddingKeyword && (hasNonVenueEvidence || hasCoupleSignal);
-          })
-          .map(([url]) => url)
+      ? eligibility === "venue-anchor-plus-wedding-keyword"
+        ? // Pool A1 (D055 Stage 2): anchor + has_wedding_keyword is sufficient on its own -- no
+          // non-venue-credit / couple-signal requirement at all (that's exactly the gap this pool
+          // exists to route around, left for the Haiku reader). has_non_wedding_event_keyword is
+          // an UNCONDITIONAL exclude here (unlike the default rule below), because pool A4 (the
+          // non-wedding-keyword bucket) is dropped by decision -- see the header comment.
+          [...evidenceByPost.entries()]
+            .filter(([, rows]) => {
+              const anchorRow = rows.find((r) => r.role === "venue" && r.venue_anchor_source != null);
+              if (!anchorRow) return false;
+              const hasWeddingKeyword = rows.some((r) => r.has_wedding_keyword);
+              if (!hasWeddingKeyword) return false;
+              const hasNonWeddingEventKeyword = rows.some((r) => r.has_non_wedding_event_keyword);
+              if (hasNonWeddingEventKeyword) {
+                nonWeddingEventExcludedCount++;
+                return false;
+              }
+              return true;
+            })
+            .map(([url]) => url)
+        : [...evidenceByPost.entries()]
+            .filter(([, rows]) => {
+              const hasWeddingKeyword = rows.some((r) => r.has_wedding_keyword);
+              const hasNonWeddingEventKeyword = rows.some((r) => r.has_non_wedding_event_keyword);
+              if (hasNonWeddingEventKeyword && !hasWeddingKeyword) {
+                nonWeddingEventExcludedCount++;
+                return false;
+              }
+              const anchorRow = rows.find((r) => r.role === "venue" && r.venue_anchor_source != null);
+              if (!anchorRow) return false;
+              const hasNonVenueEvidence = rows.some((r) => r.role !== "venue");
+              const hasCoupleSignal = rows.some((r) => r.has_couple_signal);
+              if (anchorRow.venue_anchor_source === "credit_line") {
+                return hasNonVenueEvidence || (hasWeddingKeyword && hasCoupleSignal);
+              }
+              return hasWeddingKeyword && (hasNonVenueEvidence || hasCoupleSignal);
+            })
+            .map(([url]) => url)
       : [...evidenceByPost.entries()]
           .filter(([, rows]) => new Set(rows.map((r) => r.role)).size >= 3)
           .map(([url]) => url);
@@ -287,7 +372,7 @@ async function main() {
       const src = anchorRow?.venue_anchor_source ?? "unknown";
       eligibleByAnchorSource[src] = (eligibleByAnchorSource[src] ?? 0) + 1;
     }
-    console.log(`[jeremy-cluster] structural eligible-by-anchor-source: ${JSON.stringify(eligibleByAnchorSource)}`);
+    console.log(`[jeremy-cluster] structural[${eligibility}] eligible-by-anchor-source: ${JSON.stringify(eligibleByAnchorSource)}`);
   }
 
   const posts: PostRow[] =
@@ -333,10 +418,38 @@ async function main() {
   // The real alreadyClusteredSet is still fetched/logged above for visibility either way.
   const effectiveAlreadyClusteredSet = ignoreExistingCandidates ? new Set<string>() : alreadyClusteredSet;
 
+  // Pool-A1-only (D055 Stage 2): also skip posts that are already DOCUMENTED -- a `posts` row
+  // (matched by shortcode parsed from the URL, same convention as
+  // createWeddingsFromJeremyEvidence.ts's shortcodeFromUrl/duplicate_post guard) joined to
+  // `wedding_posts` -- even though jeremy_wedding_candidate_posts has no row for it. The default
+  // structural rule doesn't do this (that guard lives at CREATE time in
+  // createWeddingsFromJeremyEvidence.ts instead, which is sufficient there); pool A1 is sized and
+  // reported against this check up front, per the mission's accounting ("1,897 venue-anchored+
+  // keyword never-clustered minus 220 with a non-wedding keyword" already nets out documented
+  // posts), so it's applied here rather than left to surface as CREATE-time skips later.
+  const isPoolA1 = evidenceSource === "structural" && eligibility === "venue-anchor-plus-wedding-keyword";
+  const alreadyDocumentedSet = new Set<string>();
+  if (isPoolA1) {
+    const shortcodeToUrl = new Map<string, string>();
+    for (const url of eligiblePostUrls) {
+      const m = url.match(/\/p\/([^/]+)/);
+      if (m) shortcodeToUrl.set(m[1], url);
+    }
+    const shortcodes = [...shortcodeToUrl.keys()];
+    const { rows: documented } = await pool.query<{ shortcode: string }>(
+      `select distinct p.shortcode from posts p join wedding_posts wp on wp.post_id = p.id where p.shortcode = any($1::text[])`,
+      [shortcodes]
+    );
+    for (const r of documented) {
+      const url = shortcodeToUrl.get(r.shortcode);
+      if (url) alreadyDocumentedSet.add(url);
+    }
+  }
+
   // Deterministic order: effective date ascending (nulls last), then post_url — required for
   // true idempotency (an unordered pass could let a borderline Jaccard case land differently).
   const sortable = dedupedPosts
-    .filter((p) => !effectiveAlreadyClusteredSet.has(p.source_post_url))
+    .filter((p) => !effectiveAlreadyClusteredSet.has(p.source_post_url) && !alreadyDocumentedSet.has(p.source_post_url))
     .map((p) => ({ p, date: effectiveDate(p) }))
     .sort((a, b) => {
       if (a.date && b.date) return a.date.getTime() - b.date.getTime() || a.p.source_post_url.localeCompare(b.p.source_post_url);
@@ -346,7 +459,11 @@ async function main() {
     });
 
   console.log(
-    `[jeremy-cluster] ${dryRun ? "DRY RUN — " : ""}evidence-source=${evidenceSource} version=${clusteringVersion} clustering-eligible=${eligiblePostUrls.length} already-clustered=${alreadyClusteredSet.size}${ignoreExistingCandidates ? " (IGNORED for to-process via --ignore-existing-candidates)" : ""} to-process=${sortable.length}${
+    `[jeremy-cluster] ${dryRun ? "DRY RUN — " : ""}evidence-source=${evidenceSource}${
+      evidenceSource === "structural" ? ` eligibility=${eligibility}` : ""
+    } version=${clusteringVersion} clustering-eligible=${eligiblePostUrls.length} already-clustered=${alreadyClusteredSet.size}${ignoreExistingCandidates ? " (IGNORED for to-process via --ignore-existing-candidates)" : ""}${
+      isPoolA1 ? ` already-documented=${alreadyDocumentedSet.size}` : ""
+    } to-process=${sortable.length}${
       evidenceSource === "structural" ? ` non-wedding-event-excluded=${nonWeddingEventExcludedCount}` : ""
     }`
   );

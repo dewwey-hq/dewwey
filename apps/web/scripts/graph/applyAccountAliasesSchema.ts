@@ -89,6 +89,41 @@ const ALIASES: AliasRow[] = [
   // @saltshedchicago, which already has a documented wedding). Both roll up to the real handle.
   { aliasUsername: "threetoplounge", canonicalUsername: "saltshedchicago", note: "Three Top Lounge = the rooftop at The Salt Shed; user-caught in review, D055" },
   { aliasUsername: "saltshechicago", canonicalUsername: "saltshedchicago", note: "mis-captured handle for @saltshedchicago (D055 geography pass flagged it; user confirmed the venue)" },
+  // Round 6 (D055 strong push, 2026-09-10; each WebSearch-verified this session). Not applied,
+  // unverified: rpmeventsandcatering<->rpmeventschicago (only the latter confirmed official) and
+  // 167greenstreet/167eventschicago (the venue is confirmed, neither handle was).
+  { aliasUsername: "cbgweddings", canonicalUsername: "chicagobotanic", note: "Chicago Botanic Garden Events -- the Garden's own weddings/events account (instagram.com/cbgweddings, Events@chicagobotanic.org); 16 venue weddings had accumulated on it" },
+  { aliasUsername: "artinstituteweddingsevents", canonicalUsername: "artinstitutechi", note: "Art Institute Weddings and Events -- fourth handle for the same events program (eventrentals@artic.edu, same as artinstitutespecialevents)" },
+  { aliasUsername: "totlspecialevents", canonicalUsername: "theateronthelakechicago", note: "Theater On The Lake Events -- the venue's events account (instagram.com/totlspecialevents)" },
+  { aliasUsername: "venutisrestaurant", canonicalUsername: "venutis.banquets", note: "user-caught 2026-09-10: venutis.banquets is the real Venuti's Ristorante & Banquet Hall account (Addison); venutisrestaurant is a mention-only handle with no profile" },
+  // Round 7a (D055, 2026-09-10): the first systematic pass -- findVenueAliasCandidates.ts T1
+  // (auto-safe: punctuation-only handle variants and bio-confirmed events accounts) plus two
+  // one-letter typo captures from T2. Same artifact class as round 3's trailing-dot rows.
+  { aliasUsername: "thearbory", canonicalUsername: "the.arbory", note: "round 7a: punctuation variant of The Arbory's scraped profile (117 vs 4 venue weddings)" },
+  { aliasUsername: "uccweddings", canonicalUsername: "universityclubofchicago", note: "round 7a: the club's own bio says 'Weddings Account @uccweddings'" },
+  { aliasUsername: "thedrakechicago.", canonicalUsername: "thedrakechicago", note: "round 7a: trailing-dot scrape/parse artifact (57 vs 1 weddings)" },
+  { aliasUsername: "morganmfg", canonicalUsername: "morgan.mfg", note: "round 7a: punctuation variant of Morgan MFG's scraped profile" },
+  { aliasUsername: "grandgeneva", canonicalUsername: "grand_geneva", note: "round 7a: underscore variant, same resort (Lake Geneva WI, non-metro on both sides)" },
+  { aliasUsername: "silverlake_cc", canonicalUsername: "silverlake.cc", note: "round 7a: underscore/dot variant of Silver Lake Country Club (3 weddings on the dotted handle)" },
+  { aliasUsername: "rockwellontherive", canonicalUsername: "rockwellontheriver", note: "round 7a: one-letter mis-capture of a 140-wedding venue handle" },
+  { aliasUsername: "chicagoilluminatingcomapny", canonicalUsername: "chicagoilluminatingcompany", note: "round 7a: transposed-letters mis-capture of a 102-wedding venue handle" },
+  // Round 7b (D055, 2026-09-10): the finder's verify tier after a web-checking agent (16 yes / 28
+  // no across 44 pairs, 14 searches). Where the verified target is itself an alias, the row
+  // points at the real canonical so no alias ever points at an alias.
+  { aliasUsername: "artinstituteweddingevents", canonicalUsername: "artinstitutechi", note: "round 7b: missing-s typo of artinstituteweddingsevents (itself an alias of artinstitutechi)" },
+  { aliasUsername: "artinstituespecialevents", canonicalUsername: "artinstitutechi", note: "round 7b: missing-t typo of artinstitutespecialevents (itself an alias of artinstitutechi)" },
+  { aliasUsername: "artinsitutechi", canonicalUsername: "artinstitutechi", note: "round 7b: missing-t typo of the Art Institute's main handle" },
+  { aliasUsername: "totlspeacialevents", canonicalUsername: "theateronthelakechicago", note: "round 7b: inserted-letter typo of totlspecialevents (itself an alias of theateronthelakechicago)" },
+  { aliasUsername: "thefarmhouseainfield", canonicalUsername: "thefarmhouseplainfield", note: "round 7b: dropped-letters typo of The Farmhouse Plainfield (14 weddings on the real handle)" },
+  { aliasUsername: "radissonblueaquachicago", canonicalUsername: "radissonbluaquachicago", note: "round 7b: 'Blue' misspelling of the Radisson Blu Aqua handle" },
+  { aliasUsername: "salon6levents", canonicalUsername: "salon61events", note: "round 7b: 6l/61 digit-letter confusion" },
+  { aliasUsername: "cafebauer", canonicalUsername: "cafebrauer", note: "round 7b: missing-r typo of Cafe Brauer" },
+  { aliasUsername: "celebratebloom", canonicalUsername: "celebrateatbloom", note: "round 7b: dropped-'at' mis-capture of the real Bloom account" },
+  { aliasUsername: "destinationgnweddings", canonicalUsername: "destinationgn", note: "round 7b: WebSearch-confirmed weddings sub-account of Destination Geneva National (Lake Geneva WI, non-metro on both sides)" },
+  { aliasUsername: "thedisctric_il", canonicalUsername: "thedistrict_il", note: "round 7b: transposition typo of The District (4 weddings on the real handle)" },
+  { aliasUsername: "warhouse109", canonicalUsername: "warehouse109", note: "round 7b: missing-e typo of Warehouse 109 (Plainfield)" },
+  { aliasUsername: "lacunacatalystsuites", canonicalUsername: "lacunabycatalystsuites", note: "round 7b: dropped-'by' variant of the scraped Lacuna by Catalyst Suites account" },
+  { aliasUsername: "harraycaraycelebrations", canonicalUsername: "harrycarays", note: "round 7b: transposition typo of harrycarayscelebrations (itself an alias of harrycarays)" },
 ];
 
 async function main() {

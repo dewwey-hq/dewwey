@@ -68,6 +68,31 @@ function normalize(raw: string): string {
 // vs "The Library" at 190 S LaSalle), "Nobu Restaurants" (global brand handle), and any tag
 // naming a non-venue vendor's own shop or a city/neighborhood/park.
 const HAND_PASS: { tag: string; username: string; note: string }[] = [
+  // Round 2 (D055 strong push, 2026-09-10): pool-B tags with >=3 wedding-language posts that the
+  // automatic tiers missed (name variants, missing vendors.name, or an accounts row with no
+  // full_name). Every username below exists and is account_locations.in_metro=true.
+  { tag: "Lacuna Lofts", username: "lacunaloftevents", note: "round 2: 65 posts; @lacunalofts also exists (0 weddings, no profile) -- events handle is the documented one" },
+  { tag: "The Haight", username: "thehaight", note: "round 2: 43 posts; Elgin" },
+  { tag: "Gather", username: "gatherpingreegrove", note: "round 2: 42 posts; in this corpus 'Gather' is the Pingree Grove venue (its own posts carry the tag)" },
+  { tag: "Concorde Banquets", username: "concordebanquets", note: "round 2: 30 posts; Kildeer" },
+  { tag: "Providence Vineyard", username: "providencevineyard", note: "round 2: 27 posts; Hebron" },
+  { tag: "Redfield Estate", username: "thegroveredfieldestate", note: "round 2: 24 posts; Glenview" },
+  { tag: "Sky on Nine", username: "skyonnine", note: "round 2; Oak Brook" },
+  { tag: "Elawa Farm", username: "elawafarm", note: "round 2; Lake Forest" },
+  { tag: "The Herrington Inn & Spa  Geneva, IL", username: "theherringtoninnandspa", note: "round 2; double-space in the IG tag is literal" },
+  { tag: "Royal Sonesta Chicago Downtown", username: "royalsonestachicago", note: "round 2" },
+  { tag: "The Westin Chicago River North", username: "westinchicagorivernorth", note: "round 2" },
+  { tag: "Ravisloe Country Club", username: "ravisloeweddings", note: "round 2; Homewood" },
+  { tag: "Drury Lane", username: "drurylaneevents", note: "round 2; Oakbrook Terrace" },
+  { tag: "Venuti's Banquets & Ristorante", username: "venutisrestaurant", note: "round 2; Addison" },
+  { tag: "Fishermen's Inn Elburn", username: "fishermensinn", note: "round 2; Elburn" },
+  { tag: "White Stone Events", username: "whitestoneeventsvenue", note: "round 2" },
+  { tag: "The Haley Mansion", username: "haleymansion", note: "round 2; Joliet" },
+  { tag: "Biagio Events & Catering", username: "biagioevents", note: "round 2; Addison" },
+  { tag: "Saddle Cycle Club", username: "saddleandcycleclub", note: "round 2; Lincoln Park" },
+  { tag: "City View Loft Chicago", username: "cityviewloft", note: "round 2; West Loop" },
+  { tag: "The Allure on The Lake", username: "theallureonthelake", note: "round 2; Chesterton IN (NW Indiana = metro)" },
+  { tag: "The Gardens of Woodstock", username: "gardensofwoodstock", note: "round 2; Woodstock IL" },
   { tag: "Wildman BT", username: "wildmanbt", note: "vendors.name 'WildmanBT' (no space)" },
   { tag: "InterContinental Chicago Magnificent Mile", username: "intercontinental", note: "vendors.name has ' by IHG' suffix" },
   { tag: "LondonHouse Chicago", username: "lhchicago", note: "vendors.name has ', Curio Collection by Hilton' suffix" },
