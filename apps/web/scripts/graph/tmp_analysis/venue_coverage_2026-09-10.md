@@ -7,89 +7,86 @@ the page doesn't either).
 
 ## Universe A summary
 
-- Listed venues: **417**
-- Total weddings (anchored to a listed venue): **4178**
-- Buckets: 0=154  1-5=147  6-15=38  16-49=57  50+=21
-- Median weddings/venue: **1**
-- Top 50 share: 2955 / 4178 (70.7%)
-- Top 100 share: 3780 / 4178 (90.5%)
+- Listed venues: **614**
+- Total weddings (anchored to a listed venue): **5194**
+- Buckets: 0=156  1-5=291  6-15=74  16-49=71  50+=22
+- Median weddings/venue: **2**
+- Top 50 share: 3007 / 5194 (57.9%)
+- Top 100 share: 4039 / 5194 (77.8%)
 
-## Hidden B -- venue-top, no account_locations row at all (207 accounts, 354 weddings)
+## Hidden B -- venue-top, no account_locations row at all (248 accounts, 173 weddings)
 
 Top 15 by weddings:
-- thedrakechicago -- 57 weddings
-- thepeninsulachi -- 31 weddings
-- palmerhousehilton -- 28 weddings
-- chicagomuseum -- 25 weddings
 - armourhouseweddings -- 19 weddings
-- fieldmuseumspecialevents -- 19 weddings
-- lhchicago -- 16 weddings
-- loftonlake -- 11 weddings
-- radissonbluaquachicago -- 8 weddings
-- viceroychicago -- 8 weddings
+- saintclementparish -- 11 weddings
 - artinstitutespecialevents -- 7 weddings
-- mcachicago -- 7 weddings
 - lpconservancy -- 5 weddings
 - haroldwashingtonlibrary -- 5 weddings
-- chezweddingvenue -- 5 weddings
+- butterfieldcc_grounds -- 5 weddings
+- conwayfarmsgolfclub -- 5 weddings
+- uccweddings -- 4 weddings
+- louloubylula -- 3 weddings
+- lacuna2150 -- 3 weddings
+- trumpturnberryscotland -- 3 weddings
+- communityhouse_celebrate -- 2 weddings
+- bevhillshotel -- 2 weddings
+- villagesuitesbayharbor -- 2 weddings
+- marriottbonvoy -- 2 weddings
 
-## Hidden C -- venue-top, has a location row but in_metro=false (33 accounts, 36 weddings)
+## Hidden C -- venue-top, has a location row but in_metro=false (35 accounts, 41 weddings)
 
 Top 15 by weddings:
 - post433chicago -- 7 weddings
 - kohlerwi -- 3 weddings
 - grand_geneva -- 3 weddings
+- stjames1868 -- 3 weddings
 - thevillamke -- 2 weddings
 - thearmourhousemansion -- 2 weddings
 - venue3two -- 2 weddings
 - castello_di_petrata -- 2 weddings
 - the_odyssey_events -- 2 weddings
 - renplanowest -- 2 weddings
+- prairiestreetevents -- 2 weddings
 - lazyshacienda -- 1 weddings
 - ssabrookfieldteam -- 1 weddings
 - carnerosresort -- 1 weddings
 - villa_balbiano -- 1 weddings
-- theivyhousemke -- 1 weddings
-- castelfalfi -- 1 weddings
 
-## Hidden D -- top role is hotel, but is venue_id of >=1 wedding (19 accounts, 91 weddings)
+## Hidden D -- top role is hotel, but is venue_id of >=1 wedding (12 accounts, 30 weddings)
 
 Product question: hotels don't currently appear under /venues' category=venue filter.
 
 Top 15 by weddings:
-- loewschicagohotel -- 19 weddings
-- royalsonestachicago -- 15 weddings
-- jwmarriottchi -- 9 weddings
 - pendrychicago -- 8 weddings
-- westinlombard -- 6 weddings
-- nobuchicago -- 5 weddings
 - renchicagodowntown -- 4 weddings
-- congressplazahotel -- 3 weddings
-- trumphotels -- 3 weddings
 - ambassadorchicago -- 3 weddings
 - westinchicagorivernorth -- 2 weddings
-- sohohouse -- 2 weddings
 - magmilemarriott -- 2 weddings
 - thelasallechicago -- 2 weddings
 - allegrochicago -- 2 weddings
+- therobeychicago -- 2 weddings
+- marquis_chicago -- 2 weddings
+- parkhyattchicago -- 1 weddings
+- hyattchicago -- 1 weddings
+- sableatnavypier -- 1 weddings
 
-## Hidden E -- mis-anchored: venue_id account's top role is neither venue nor hotel (246 accounts, 876 weddings)
+## Hidden E -- mis-anchored: venue_id account's top role is neither venue nor hotel (39 accounts, 49 weddings)
 
 Includes accounts with no account_tags row at all (top role shown as "(none)").
 
 Top 15 by weddings:
-- thehaight -- top role: (none) -- 43 weddings
-- thedrakeoakbrook -- top role: (none) -- 33 weddings
-- fschicago -- top role: other -- 29 weddings
-- totlspecialevents -- top role: planner -- 25 weddings
-- intercontinental -- top role: (none) -- 25 weddings
-- gatherpingreegrove -- top role: (none) -- 22 weddings
-- cbgweddings -- top role: (none) -- 21 weddings
-- concordebanquets -- top role: (none) -- 18 weddings
-- elawafarm -- top role: (none) -- 17 weddings
-- providencevineyard -- top role: (none) -- 15 weddings
-- drurylaneevents -- top role: (none) -- 14 weddings
-- ravisloeweddings -- top role: planner -- 14 weddings
-- thebridgelemont -- top role: (none) -- 13 weddings
-- venue5126 -- top role: (none) -- 13 weddings
-- meyerscastle -- top role: (none) -- 12 weddings
+- ashyanabanquets -- top role: catering -- 4 weddings
+- venuelogic -- top role: other -- 3 weddings
+- bokachicago -- top role: catering -- 3 weddings
+- lmcateringchi -- top role: catering -- 2 weddings
+- eeeventco -- top role: other -- 2 weddings
+- sepiachicago -- top role: catering -- 2 weddings
+- avecchicago -- top role: catering -- 1 weddings
+- maxwellstrading -- top role: other -- 1 weddings
+- revelglobalevents -- top role: planner -- 1 weddings
+- thelivenroom_eventvenue -- top role: planner -- 1 weddings
+- publishinghouse_bnb -- top role: other -- 1 weddings
+- revel_decor -- top role: rentals -- 1 weddings
+- entertaining_co -- top role: catering -- 1 weddings
+- stjosaphatparish -- top role: other -- 1 weddings
+- hangoutlighting -- top role: other -- 1 weddings
