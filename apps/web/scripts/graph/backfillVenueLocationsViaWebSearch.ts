@@ -7,13 +7,15 @@
  * explicit wedding-hosting corroboration, at zero real-money cost).
  *
  * Each entry below was individually searched (`"<username>" instagram Chicago [wedding
- * venue]`), read, and judged — not a blind city-name-contains-"chicago" heuristic. Only
- * CONFIRMED-Chicago-metro results are included; inconclusive searches (no match, ambiguous
- * multi-city chains) are left out entirely rather than guessed. A confirmed Chicago
- * *location* does not by itself mean "this is a legitimate wedding venue" — two entries
- * here (figdrinks, murphysbleachers) are real Chicago businesses but not primarily event
- * venues (a catering/bar company, a sports bar); that distinction is a separate concern the
- * existing account_tags venue-role filter (Phase 1) already handles downstream — this
+ * venue]`), read, and judged — not a blind city-name-contains-"chicago" heuristic. Confirmed
+ * results go in one of two lists: CONFIRMED_LOCATIONS (Chicago-metro, in_metro=true) or
+ * CONFIRMED_NOT_METRO (a real, identified place confirmed OUTSIDE the metro, in_metro=false —
+ * added in Batch 3, D052). Inconclusive searches (no match, ambiguous multi-city chains) are
+ * left out entirely rather than guessed, noted in an "Unclear, left out" comment per batch. A
+ * confirmed Chicago *location* does not by itself mean "this is a legitimate wedding venue" —
+ * two entries here (figdrinks, murphysbleachers) are real Chicago businesses but not primarily
+ * event venues (a catering/bar company, a sports bar); that distinction is a separate concern
+ * the existing account_tags venue-role filter (Phase 1) already handles downstream — this
  * script's only job is "is this account's address genuinely in the Chicago metro," which is
  * true for both.
  *
@@ -359,12 +361,48 @@ const CONFIRMED_LOCATIONS: ConfirmedLocation[] = [
   { accountId: 6725, username: "illuminatedbrewworks", address: null, city: "Chicago", region: "IL", source: "web:ibw-chicago.com (West Loop; possibly since closed, location confirmed regardless)" },
   { accountId: 6726, username: "mysticrogueirishpub", address: "6070 N Northwest Hwy", city: "Chicago", region: "IL", source: "web:mysticrogueirishpub.com, yelp.com" },
   { accountId: 6933, username: "magikstreetbylm", address: "2150 S Canalport Ave", city: "Chicago", region: "IL", source: "web:lacunaeventsbylm.com/magik-street (Pilsen/Bridgeport)" },
+
+  // Batch 3 (2026-09-10) — a hand-picked list of 17 documented-venue accounts (D052), not the
+  // 252-account cohort of Batches 5-11. All 17 resolved (11 confirmed Chicago-metro here, 6
+  // confirmed NOT metro -- see CONFIRMED_NOT_METRO below -- 0 left unclear). edgewoodvalley is
+  // a distinct, currently-live handle from edgewoodvalleycc (already confirmed Burr Ridge in
+  // Batch 3-of-4 above at accountId 19183) -- same real club, address matches, included as its
+  // own handle-variant row per this file's established precedent (thegreathallatmistwood,
+  // morgan.mfg./401morganmfg, etc.).
+  { accountId: 9496, username: "saintclementparish", address: "642 W Deming Pl", city: "Chicago", region: "IL", source: "web:clement.org, tripadvisor.com (Lincoln Park)" },
+  { accountId: 5680, username: "conwayfarmsgolfclub", address: "425 S Conway Farm Dr", city: "Lake Forest", region: "IL", source: "web:theknot.com, yelp.com, visitlakecounty.org" },
+  { accountId: 2793, username: "haroldwashingtonlibrary", address: "400 S State St", city: "Chicago", region: "IL", source: "web:chipublib.org, weddingwire.com (Winter Garden)" },
+  { accountId: 4444, username: "butterfieldcc_grounds", address: "2800 Midwest Rd", city: "Oak Brook", region: "IL", source: "web:yelp.com, butterfieldcc.org" },
+  { accountId: 1209, username: "lpconservancy", address: null, city: "Chicago", region: "IL", source: "web:lincolnparkconservancy.org, weddingwire.com (Lincoln Park)" },
+  { accountId: 2001, username: "louloubylula", address: "3057 W Logan Blvd", city: "Chicago", region: "IL", source: "web:blockclubchicago.org, yelp.com (Logan Square)" },
+  { accountId: 18728, username: "bryn.mawrcc", address: "6600 N Crawford Ave", city: "Lincolnwood", region: "IL", source: "web:yelp.com, brynmawrcountryclub.com" },
+  { accountId: 19277, username: "evanstonhistorycenter", address: "225 Greenwood St", city: "Evanston", region: "IL", source: "web:mindtrip.ai, cityofevanston.org" },
+  { accountId: 8747, username: "oldstpatschicago", address: "700 W Adams St", city: "Chicago", region: "IL", source: "web:oldstpats.org, yelp.com" },
+  { accountId: 8836, username: "edgewoodvalley", address: "7500 S Willow Springs Rd", city: "La Grange", region: "IL", source: "web:yelp.com, edgewoodvalleycc.com (handle variant of edgewoodvalleycc, already confirmed Burr Ridge)" },
+  { accountId: 6469, username: "lacuna2150", address: "2150 S Canalport Ave", city: "Chicago", region: "IL", source: "web:yelp.com, lacuna2150.com (McKinley Park/Pilsen)" },
 ];
 // whitehawkcc (Crown Point, IN, ~50min S of downtown) explicitly excluded per user
 // review 2026-09-06 -- Indiana is out of scope for this corpus, same call as Batch 2's
 // stjames1868/williams.orchard exclusions. westloopweddingwalk kept in (user confirmed) --
 // the venue-role corroboration filter downstream still decides whether it survives as
 // "a venue" for candidate creation, this script only confirms the address is Chicago.
+
+// Batch 3 (2026-09-10) — CONFIRMED NOT Chicago-metro. Same 17-account hand-picked list as
+// above: these 6 are real, identifiable businesses whose own site/listing puts them outside
+// every county in this corpus's Chicago-metro definition (Cook, DuPage, Lake, Will, Kane,
+// McHenry, Kendall IL; Lake County IN; Kenosha WI). Written with in_metro=false rather than
+// left out, so the graph can positively exclude them instead of leaving an open question.
+const CONFIRMED_NOT_METRO: ConfirmedLocation[] = [
+  { accountId: 11184, username: "trumpturnberryscotland", address: null, city: "Turnberry, Ayrshire", region: "Scotland", source: "web:turnberry.co.uk, tietheknot.scot" },
+  { accountId: 20463, username: "ndbasilica", address: null, city: "Notre Dame", region: "IN", source: "web:instagram bio \"Notre Dame, IN\", weddings.nd.edu (St. Joseph County, not Lake County IN)" },
+  { accountId: 4161, username: "bevhillshotel", address: null, city: "Beverly Hills", region: "CA", source: "web:instagram.com/bevhillshotel, fourseasons.com" },
+  { accountId: 5642, username: "villagesuitesbayharbor", address: null, city: "Bay Harbor", region: "MI", source: "web:weddingwire.com, theknot.com, bayharbor.com (Emmet County, near Petoskey)" },
+  { accountId: 7525, username: "stregiskanairesort", address: null, city: "Riviera Maya", region: "Quintana Roo, Mexico", source: "web:marriott.com" },
+  { accountId: 10781, username: "psbrewingco", address: "200 Prairie St", city: "Rockford", region: "IL", source: "web:psbrewingco.com, instagram.com/psbrewingco (Winnebago County, ~90mi NW of Chicago -- not a metro county)" },
+];
+
+// Unclear, left out: none. All 17 accounts in this batch resolved to a confirmed metro or
+// not-metro location -- no ambiguous or unfindable handles this round.
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
@@ -377,22 +415,27 @@ async function main() {
     let attempted = 0;
     let inserted = 0;
 
-    for (const loc of CONFIRMED_LOCATIONS) {
-      attempted++;
-      const { rows } = await client.query(
-        `insert into account_locations (account_id, address, city, region, in_metro, source, verified_at)
-         values ($1, $2, $3, $4, true, 'websearch', now())
-         on conflict (account_id) do nothing
-         returning account_id`,
-        [loc.accountId, loc.address, loc.city, loc.region]
-      );
-      if (rows.length > 0) {
-        inserted++;
-        console.log(`[backfill-locations] @${loc.username} -> ${loc.city}, ${loc.region} (${loc.source})`);
-      } else {
-        console.log(`[backfill-locations] @${loc.username} already has a location row, skipping`);
+    async function insertBatch(locations: ConfirmedLocation[], inMetro: boolean) {
+      for (const loc of locations) {
+        attempted++;
+        const { rows } = await client.query(
+          `insert into account_locations (account_id, address, city, region, in_metro, source, verified_at)
+           values ($1, $2, $3, $4, $5, 'websearch', now())
+           on conflict (account_id) do nothing
+           returning account_id`,
+          [loc.accountId, loc.address, loc.city, loc.region, inMetro]
+        );
+        if (rows.length > 0) {
+          inserted++;
+          console.log(`[backfill-locations] @${loc.username} -> ${loc.city}, ${loc.region} (in_metro=${inMetro}) (${loc.source})`);
+        } else {
+          console.log(`[backfill-locations] @${loc.username} already has a location row, skipping`);
+        }
       }
     }
+
+    await insertBatch(CONFIRMED_LOCATIONS, true);
+    await insertBatch(CONFIRMED_NOT_METRO, false);
 
     console.log(`[backfill-locations] ${dryRun ? "DRY RUN — " : ""}attempted=${attempted} inserted=${inserted}`);
 

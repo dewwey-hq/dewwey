@@ -126,6 +126,10 @@ export async function searchVendors(params: VendorSearchParams) {
          -- is the evidence. See D055 "count honestly" in docs/decisions.md.
          OR ($1::text = 'venue' AND var.role = 'hotel' AND COALESCE(wc.n_weddings, 0) > 0)
        )
+       -- An alias handle (account_aliases) is the same business as its canonical account;
+       -- the detail page already resolves it, so the browse list must not show it as a
+       -- second card (D055 count-honestly, 2026-09-10).
+       AND NOT EXISTS (SELECT 1 FROM account_aliases x WHERE x.alias_account_id = a.id)
        AND al.in_metro
        AND (
          $4::text IS NULL

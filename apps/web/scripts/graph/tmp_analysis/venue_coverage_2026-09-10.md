@@ -7,50 +7,50 @@ the page doesn't either).
 
 ## Universe A summary
 
-- Listed venues: **614**
-- Total weddings (anchored to a listed venue): **5194**
-- Buckets: 0=156  1-5=291  6-15=74  16-49=71  50+=22
+- Listed venues: **595**
+- Total weddings (anchored to a listed venue): **5036**
+- Buckets: 0=151  1-5=284  6-15=73  16-49=65  50+=22
 - Median weddings/venue: **2**
-- Top 50 share: 3007 / 5194 (57.9%)
-- Top 100 share: 4039 / 5194 (77.8%)
+- Top 50 share: 2992 / 5036 (59.4%)
+- Top 100 share: 3955 / 5036 (78.5%)
 
-## Hidden B -- venue-top, no account_locations row at all (248 accounts, 173 weddings)
+## Hidden B -- venue-top, no account_locations row at all (231 accounts, 115 weddings)
 
 Top 15 by weddings:
 - armourhouseweddings -- 19 weddings
-- saintclementparish -- 11 weddings
 - artinstitutespecialevents -- 7 weddings
-- lpconservancy -- 5 weddings
-- haroldwashingtonlibrary -- 5 weddings
-- butterfieldcc_grounds -- 5 weddings
-- conwayfarmsgolfclub -- 5 weddings
 - uccweddings -- 4 weddings
-- louloubylula -- 3 weddings
-- lacuna2150 -- 3 weddings
-- trumpturnberryscotland -- 3 weddings
 - communityhouse_celebrate -- 2 weddings
-- bevhillshotel -- 2 weddings
-- villagesuitesbayharbor -- 2 weddings
 - marriottbonvoy -- 2 weddings
+- lmstudiochicago -- 2 weddings
+- dream_creeks -- 1 weddings
+- xocohousegallery -- 1 weddings
+- thursdaytherapychi -- 1 weddings
+- humbledhospitality -- 1 weddings
+- elgrancaribe -- 1 weddings
+- pepesoffice -- 1 weddings
+- subtle.haus -- 1 weddings
+- sofarchicago -- 1 weddings
+- churchclubchicago -- 1 weddings
 
-## Hidden C -- venue-top, has a location row but in_metro=false (35 accounts, 41 weddings)
+## Hidden C -- venue-top, has a location row but in_metro=false (41 accounts, 54 weddings)
 
 Top 15 by weddings:
 - post433chicago -- 7 weddings
 - kohlerwi -- 3 weddings
 - grand_geneva -- 3 weddings
+- trumpturnberryscotland -- 3 weddings
 - stjames1868 -- 3 weddings
 - thevillamke -- 2 weddings
 - thearmourhousemansion -- 2 weddings
 - venue3two -- 2 weddings
 - castello_di_petrata -- 2 weddings
+- bevhillshotel -- 2 weddings
 - the_odyssey_events -- 2 weddings
+- villagesuitesbayharbor -- 2 weddings
+- stregiskanairesort -- 2 weddings
 - renplanowest -- 2 weddings
-- prairiestreetevents -- 2 weddings
-- lazyshacienda -- 1 weddings
-- ssabrookfieldteam -- 1 weddings
-- carnerosresort -- 1 weddings
-- villa_balbiano -- 1 weddings
+- psbrewingco -- 2 weddings
 
 ## Hidden D -- top role is hotel, but is venue_id of >=1 wedding (12 accounts, 30 weddings)
 

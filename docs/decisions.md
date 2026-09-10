@@ -518,6 +518,32 @@ each slice behind a calibration gate on the golden set before corpus spend.
   pairs exist (1.3%, exact-string; true rate likely 1-3% → ~60-170 of 5,749). Same-venue-
   same-day pairs (363) are NOT duplicates — `event_date_est` is the post date. Planned: a
   couple-name merge pass (normalize &/+/and, first names), batch-provenanced, $0.
+- **Count honestly, session 2** (2026-09-10 afternoon, user: "finish the scripts or resume as
+  necessary"). Applied: the role-tag refresh (3,543 accounts newly tagged, 318 top roles
+  corrected; `/venues` 417 → 585); `backfillAccountLocationsFromPlaces.ts` (29 venue/hotel
+  accounts with Google-Places-verified addresses inside the metro box but no
+  `account_locations` row — The Drake 57 weddings, Peninsula 31, Palmer House 28,
+  InterContinental 25, Chicago History Museum 25, Field Museum 19 — written as
+  source=google_maps/in_metro=true, brand handle `marriottbonvoy` skipped); web-check batch 3
+  in `backfillVenueLocationsViaWebSearch.ts` (17 accounts, 11 metro / 6 not: Trump Turnberry,
+  Notre Dame basilica, Beverly Hills Hotel, Bay Harbor MI, St. Regis Kanai, PS Brewing
+  Rockford — the script now also writes `in_metro=false` rows). Listing rule: alias handles are
+  excluded from `/venues` (the detail page already resolves them; they were duplicate cards).
+  Result: **`/venues` 595 venues / 5,036 countable weddings** (was 417 / 4,178 at the start of
+  the day); hidden B (no location row) 231 accounts / 115 weddings, C not-metro 41 / 54,
+  E mis-anchored 39 / 49. Pool-B read finished at 2,013 posts / $11.42 (a resume after the
+  machine slept selected a fresh 2,000 instead of the 47 leftovers — stopped after ~60 extra
+  posts; `--limit` selects post-exclusion, so a resume must pass the remaining count):
+  779 THIS_VENUE (625 at ≥0.8) / 838 NOT_WEDDING / 396 UNSURE; metro claims yes 425 / no 252 /
+  unknown 102. Resolver dry-run: tier A 313 posts (handle, caption-confirmed), B 21 (name),
+  19 near-miss for a hand pass (Cafe Brauer, Field Museum, Ritz-Carlton, Navy Pier, Skyline
+  Loft…), C 272 posts → 226 new-venue leads (largely out of market). **Blocked by the auto-mode
+  classifier, waiting on the user to run:** `remapWeddingsToCanonicalAccounts.ts --batch-id
+  d055-alias-remap-1 --apply` (243 weddings + 305 credits alias → canonical, provenance in
+  `account_alias_remaps`) and `resolveDiscoveredVenues.ts --apply`; then clustering
+  (`--evidence-source structural`, then the relaxed A1 eligibility under `structural-v3-a1`),
+  the reader over the new candidates (~$1.5), the metro-yes leads web-check, and the create
+  dry-run for the user's word.
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 
