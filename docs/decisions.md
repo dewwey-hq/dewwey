@@ -4,6 +4,60 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D056 — 2026-09-10 — Vendor-stack nomenclature: two-level taxonomy, event context, participants out of the graph
+
+**Context.** The user (2026-09-10): "richer/more standardized nomenclature for vendor graphs…
+how vendors were used matters… set ourselves up at the data plane and for UX." Measured on
+the 89,337 v9 credit lines: 16% fell into `other` across 2,652 labels; the substring
+first-match `ROLE_MAP` produced "chairs → hair", "string quartet → jeweler", "invitation
+suite → attire"; every event modifier was discarded (rehearsal dinner → catering, getting-
+ready hotel → hotel); bride/groom/couple handles became `wedding_vendors` rows and `edges`
+nodes; `venuelogic` (venue management) was a venue. Full audit and plan: the "Vendor-stack
+nomenclature" section of the D055 plan file.
+
+**Decisions (with the user).** (1) Two levels: 12 categories → 48 roles (`VENDOR_ROLES` in
+`scripts/graph/vendorRoleRules.ts`), display names in the table, not the enum. (2) Matching
+by specificity, not first match: exact label → context modifiers stripped → compound split
+(`&`/`+`/`/`/and) → head noun; modifiers only ever set `event_context` (ceremony, reception,
+cocktail_hour, getting_ready, rehearsal_dinner, welcome_party, after_party, brunch,
+engagement, shower, sangeet_mehndi; default wedding_day). (3) Compound labels emit several
+credits: "Venue & Catering" → venue + catering (in-house services get both credits);
+"Venue Management & Bar" → venue_management + bar_service; "Hair & Makeup" → hair + makeup.
+(4) Participants (bride, groom, couple, host family, models, muse) are recognised, stored
+(`wedding_participants`, stage 2) and never shown; business status comes from the credit
+label, never from the account. (5) No religion-specific role: churches are `venue` with
+context ceremony; the kind of place becomes an `accounts.venue_type` facet. (6) "Hotel:" is
+`accommodations` unless the account is the wedding's `venue_id` (migration rule); `hotel`
+retired as a role. (7) Renames in one migration with a tested protocol: `beauty_other →
+beauty_services`, `jeweler → jewelry`, `photobooth → photo_booth`, `musician → live_music`.
+(8) Rules live in versioned code with tests, not a DB table; a CSV export serves review.
+
+**Stage 0 result (same day, $0).** `vendorRoleRules.ts` + `reportLabelCoverage.ts` over the
+v9 export (`tmp_analysis/d056_labels_v9.csv`): real role **92.4%** of credits (v9: 84%),
+multi-role 7.7%, `other` **3.3%** (v9: 16%; the remainder is ≤4-credit fragments), participants
+2.9% separated, press/junk 1.5% separated; 46 fixture tests from the user's three pasted
+captions + the v9 failure cases (`vendorRoleRules.test.ts`). Largest relabels vs v9: hair &
+makeup → both credits (779), decor → decor_other (713), beauty → hair+makeup (697), lighting
+other → lighting_production (620), coordinator split from planner (371+257), design →
+event_design (332). Outputs: `tmp_analysis/d056_label_map.csv` (every label → roles, context,
+rule), `d056_golden_sample.csv` (300 stratified labels), and
+**`d056_golden_disagreements.csv` — 20 judgment calls for the user** (entertainment = dj?,
+beauty = hair+makeup?, host = participant?, music = live_music?, glam, production, decor…).
+
+**Protection of verified venues (hard stops, stage 2).** Protected weddings (human THIS_VENUE
+verdicts, golden set, tag/author/alias/web-verified anchors) may gain credits but never lose
+or re-role their venue credit or move `venue_id` except the logged ceremony+reception case;
+venue identity is never re-derived from labels; the migration prints every venue-credit
+change and refuses to run if a protected wedding is on the list; `reportVenueCoverage.ts`
+before/after may not lose a listed venue or a countable wedding; rehearsed on the local
+Docker copy first; `account_locations`/`account_aliases`/`location_tag_venue_map`/
+`extracted_venue_anchors`/`post_venue_verdicts`/`human_post_labels` are never written.
+
+**Next.** Stage 1 parser v10 (Sonnet build; emoji-keyed lines and the event-title rule
+bundled; additive re-parse), stage 2 schema + one revertable migration, stage 3 UI — each on
+the user's word. Related: D055 (plan file), D049 (styled-shoot signal — models/SP couple now
+feed it), D050/D051 (secondary-event venues).
+
 ## D055 — 2026-09-08 — Squeeze the 47k: remove the gates first, extract the residue last, humans review at the wedding level
 
 Status: Accepted (in progress — Phase 0 landing; addenda appended below as phases complete)
