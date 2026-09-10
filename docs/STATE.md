@@ -5,8 +5,8 @@ working session; history lives in `decisions.md`, preferences in Claude's memory
 detail nowhere else. If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-09 ~21:15 CT** (after batch 5). `origin/main` is at `f62abdb`; local
-`main` carries the Phase-1 re-plan commits since — **not pushed**; run `git log --oneline -4`..
+Last rewritten: **2026-09-09 ~21:15 CT** (after batch 5). **Pushed** to `origin/main` 2026-09-09 21:30 CT on the user's word (`c2b1893`, Vercel deploy
+completed); run `git log --oneline -4` to confirm..
 
 ## Mission in flight
 
@@ -41,21 +41,19 @@ the model, and says "create" for every batch.
 
 ## Blocked on the user
 
-1. **Push** local `main` (Phase-1 re-plan: reader, queue cut, spot-check + model badge, batches
-   4-5) — never pushed without the user's word.
-2. **Alias round 6** needs web verification (`cbgweddings→chicagobotanic` etc., see D055) —
+1. **Alias round 6** needs web verification (`cbgweddings→chicagobotanic` etc., see D055) —
    the search budget resets per session; not yet requested.
-3. **Apify credits (2026-09-11)** before the vision slice (every stored CDN image URL is dead).
-4. **Approvals parked in the plan file**, none executing: the stratified-sampler geography fix
+2. **Apify credits (2026-09-11)** before the vision slice (every stored CDN image URL is dead).
+3. **Approvals parked in the plan file**, none executing: the stratified-sampler geography fix
    + "let the reader state each wedding's location" (Giraffe Manor leak); parser failure-path
    backlog #1 emoji-keyed stacks (615 posts) and #2 non-wedding events that also say "wedding";
    the 27-post answer-key correction link (marketing/styled posts the user marked W early).
-5. **Labeling**: the 12 zero-coverage venues have no confirmed candidates; the human queue's
+4. **Labeling**: the 12 zero-coverage venues have no confirmed candidates; the human queue's
    534 posts are the model's low-confidence residue — worth a pass only when convenient.
 
 ## Next actions (in order, when unblocked)
 
-1. On the user's word: push; then the geography leak fix + reader-resolved venue geography
+1. On the user's word: the geography leak fix + reader-resolved venue geography
    (~$2.70 for the 636 ambiguous posts; expected to drop most of the 593 venues to "not metro"
    from their own captions and shrink the human queue by ~600 without a click).
 2. Batch 6 when the human's residue pass yields ~100 new verdicts (same protocol).
