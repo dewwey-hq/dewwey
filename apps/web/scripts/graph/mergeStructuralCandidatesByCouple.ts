@@ -130,6 +130,8 @@ const DATE_SPAN_LIMIT_DAYS = 400;
 // (that view is out of scope here) -- this is a second, script-local veto applied to the
 // NORMALIZED pair, not the raw string.
 const BUSINESS_WORDS = new Set([
+  "caterer", "caterers", "reception", "ceremony", "cocktail", "cocktails", "dinner", "brunch", "planner",
+  "coordinator", "florist", "photographer", "videographer", "officiant", "bride", "groom", "couple",
   "events", "event", "catering", "photography", "photo", "photos", "films", "film", "designs",
   "design", "florals", "floral", "flowers", "banquets", "banquet", "studio", "studios", "co",
   "company", "weddings", "wedding", "hall", "room", "bar", "grill", "rentals", "decor", "beauty",

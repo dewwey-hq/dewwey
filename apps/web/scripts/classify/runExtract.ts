@@ -269,6 +269,8 @@ async function selectCorpusMeta(
        and ($2::boolean or not exists (
          select 1 from post_extraction_runs per
          where per.post_url = cp.source_post_url and per.prompt_version = $3
+           -- a pool-b venue-discovery read (no anchor shown) does not count as an anchored read
+           and coalesce(per.pool, '') <> 'pool-b'
        ))
      order by
        case jwc.chicago_status when 'CHICAGO_CONFIRMED' then 0 when 'CHICAGO_AMBIGUOUS' then 1 else 2 end,
