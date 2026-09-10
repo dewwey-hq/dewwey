@@ -1,0 +1,1287 @@
+[
+  {
+    "lead_name": "223 Main Street Events",
+    "decision": "new:223mainstreetevents",
+    "username": "223mainstreetevents",
+    "city": "Lemont",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 223 Main St, Lemont, IL 60439, instagram.com/223mainstreetevents + weddingwire.com",
+    "post_urls": [
+      "https://www.instagram.com/p/C9cizYNOpd9/"
+    ]
+  },
+  {
+    "lead_name": "AB Biergarten",
+    "decision": "unclear",
+    "username": null,
+    "city": null,
+    "region": null,
+    "evidence": "No location_claim, no handle_guess, no accounts match found.",
+    "post_urls": [
+      "https://www.instagram.com/p/DBYxkHguZnX/"
+    ]
+  },
+  {
+    "lead_name": "Abbington Banquets",
+    "decision": "existing:theabbington",
+    "username": "theabbington",
+    "city": "Glen Ellyn",
+    "region": "IL",
+    "evidence": "accounts.username=theabbington matched via word \"abbington\"; same physical venue as \"Abbington Distinctive Banquets\" (see next), a known Glen Ellyn IL banquet hall — location_claim of \"Chicago, IL\" here is a loose/generic tag.",
+    "post_urls": [
+      "https://www.instagram.com/p/DblaCNjEUei/"
+    ]
+  },
+  {
+    "lead_name": "Abbington Distinctive Banquets",
+    "decision": "existing:theabbington",
+    "username": "theabbington",
+    "city": "Glen Ellyn",
+    "region": "IL",
+    "evidence": "location_claim Glen Ellyn, IL; resolver handle_guess \"abbingtonbanquets\" does not exist, but accounts.theabbington matches on name stem \"abbington\" and is the known Abbington venue (Glen Ellyn banquet hall).",
+    "post_urls": [
+      "https://www.instagram.com/p/DaAfcYqlitf/",
+      "https://www.instagram.com/p/C6nGceJrty-/"
+    ]
+  },
+  {
+    "lead_name": "Alfred Caldwell Lily Pond",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Lincoln Park, Chicago public landmark (Chicago Park District Lily Pool) — no vendor accounts row, no confirmed handle for a park-district-operated site.",
+    "post_urls": [
+      "https://www.instagram.com/p/DZjfI4AjUAi/"
+    ]
+  },
+  {
+    "lead_name": "Algonquin Golf Club",
+    "decision": "unclear",
+    "username": null,
+    "city": "Algonquin",
+    "region": "IL",
+    "evidence": "WebSearch confirms Algonquin, IL wedding-golf venues exist (McHenry/Kane county, metro) but no single confirmed \"Algonquin Golf Club\" IG handle — results split between \"Golf Club of Illinois\" and an unrelated @gonk_golf account.",
+    "post_urls": [
+      "https://www.instagram.com/p/C_TENdiuwo0/"
+    ]
+  },
+  {
+    "lead_name": "Andros",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "location_claim Chicago, IL (likely Andros Taverna); no accounts match, no verified handle (not individually web-searched — budget spent on higher-ambiguity leads).",
+    "post_urls": [
+      "https://www.instagram.com/p/DT3HL_-DmSA/"
+    ]
+  },
+  {
+    "lead_name": "Arranmore Farm and Polo Club",
+    "decision": "new:arranmorefarmandpoloclub",
+    "username": "arranmorefarmandpoloclub",
+    "city": "Oswego",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: Arranmore Farm + Polo Club, 34 Rance Rd, Oswego, IL (Kendall County, metro), official site arranmorefarmandpoloclub.com matches resolver handle_guess exactly.",
+    "post_urls": [
+      "https://www.instagram.com/p/DLFvdMARjT5/"
+    ]
+  },
+  {
+    "lead_name": "Ashyana Banquets",
+    "decision": "existing:ashyanabanquets",
+    "username": "ashyanabanquets",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=ashyanabanquets exact match to handle_guess; full_name \"Ashyana Events & Catering\".",
+    "post_urls": [
+      "https://www.instagram.com/p/DDp6Ys8P6rQ/"
+    ]
+  },
+  {
+    "lead_name": "Backyard (Lake Forest)",
+    "decision": "unclear",
+    "username": null,
+    "city": "Lake Forest",
+    "region": "IL",
+    "evidence": "location_claim Lake Forest, IL (metro) but \"Backyard (Lake Forest)\" reads as a private residence, not a vendor account — no accounts match, no handle.",
+    "post_urls": [
+      "https://www.instagram.com/p/DQ3JyOUCVIq/"
+    ]
+  },
+  {
+    "lead_name": "Baha'i House of Worship for North America",
+    "decision": "unclear",
+    "username": null,
+    "city": "Wilmette",
+    "region": "IL",
+    "evidence": "Well-known Bahá’í Temple, Wilmette IL (Cook county, metro) — public landmark, no accounts row or handle found.",
+    "post_urls": [
+      "https://www.instagram.com/p/C__YAi-SI7I/"
+    ]
+  },
+  {
+    "lead_name": "Barn 1888",
+    "decision": "not_metro",
+    "username": null,
+    "city": null,
+    "region": null,
+    "evidence": "WebSearch: \"Barn 1888\" is a venue in Hopkins, MI (near Grand Rapids) or a similarly-named \"1888 Wedding Barn\" in Bethel, ME — neither is Chicago metro; no third IL venue by this name found.",
+    "post_urls": [
+      "https://www.instagram.com/p/C-7porGuL_k/"
+    ]
+  },
+  {
+    "lead_name": "The Barn at Fairview Acres",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Biggsville",
+    "region": "IL",
+    "evidence": "WebSearch: The Barn at Fairview Acres is in Biggsville, IL, Henderson County — far western Illinois, not a Chicago-metro county.",
+    "post_urls": [
+      "https://www.instagram.com/p/DA3hV94ukJS/"
+    ]
+  },
+  {
+    "lead_name": "Bartlett Hills Country Club",
+    "decision": "existing:bartletthillsgc",
+    "username": "bartletthillsgc",
+    "city": "Bartlett",
+    "region": "IL",
+    "evidence": "accounts.username=bartletthillsgc matched via word \"bartlett\"; location_claim Bartlett Hills, IL (Cook/DuPage, metro). Resolver handle_guess \"bartletthillsweddings\" does not exist as an account.",
+    "post_urls": [
+      "https://www.instagram.com/p/DHo49RNP769/"
+    ]
+  },
+  {
+    "lead_name": "The Bassment Chicago",
+    "decision": "new:thebassmentchi",
+    "username": "thebassmentchi",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 353 W Hubbard St, River North, Chicago, IL, thebassmentchicago.com",
+    "post_urls": [
+      "https://www.instagram.com/p/DblNo1IDpRj/"
+    ]
+  },
+  {
+    "lead_name": "Belvedere Chateau",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "location_claim Chicago, IL; no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/DcMRGrFlilj/"
+    ]
+  },
+  {
+    "lead_name": "Blackstone Country Club",
+    "decision": "unclear",
+    "username": null,
+    "city": null,
+    "region": null,
+    "evidence": "WebSearch turned up two distinct candidates — Blackstone Golf Club in Marengo, IL (McHenry county, metro) and a generic \"weddingsatblackstonecountryclub.com\" site of unclear identity — plus an unrelated Arizona Blackstone Country Club. Not resolvable without guessing.",
+    "post_urls": [
+      "https://www.instagram.com/p/C9aL5YRPLmG/"
+    ]
+  },
+  {
+    "lead_name": "Bolingbrook Golf Club",
+    "decision": "existing:bolingbrookgolfclub",
+    "username": "bolingbrookgolfclub",
+    "city": "Bolingbrook",
+    "region": "IL",
+    "evidence": "accounts.username=bolingbrookgolfclub, exact name match; location_claim Bolingbrook, IL (Will county, metro).",
+    "post_urls": [
+      "https://www.instagram.com/p/DQIF_2xDiD_/"
+    ]
+  },
+  {
+    "lead_name": "Brando's Speakeasy",
+    "decision": "new:brandosspeakeasy",
+    "username": "brandosspeakeasy",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 343 S Dearborn St, Chicago Loop, IL, brandoschicago.com",
+    "post_urls": [
+      "https://www.instagram.com/p/Db594ZCltF9/"
+    ]
+  },
+  {
+    "lead_name": "The Brewery Lodge & Supper Club",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Michigan City",
+    "region": "IN",
+    "evidence": "WebSearch: The Brewery Lodge & Supper Club is in Michigan City, IN — LaPorte County, not in the metro county list (only Lake County, IN qualifies).",
+    "post_urls": [
+      "https://www.instagram.com/p/DPzAea8DgAh/"
+    ]
+  },
+  {
+    "lead_name": "Buffalo Creek Brewing",
+    "decision": "new:buffalocreekbrewing",
+    "username": "buffalocreekbrewing",
+    "city": "Long Grove",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 360 Historical Lane, Long Grove, IL 60047, buffalocreekbrewing.com",
+    "post_urls": [
+      "https://www.instagram.com/p/DAeP6JAuFrI/",
+      "https://www.instagram.com/p/DAsGb-vOq7W/"
+    ]
+  },
+  {
+    "lead_name": "Butterfield Country Club",
+    "decision": "existing:butterfieldcc_grounds",
+    "username": "butterfieldcc_grounds",
+    "city": "Oak Brook",
+    "region": "IL",
+    "evidence": "Per prior working knowledge/task brief: Butterfield Country Club → butterfieldcc_grounds. A second candidate account butterfieldcountryclub also exists; butterfieldcc_grounds taken as primary per confirmed example.",
+    "post_urls": [
+      "https://www.instagram.com/p/C3k4AWFLZq3/",
+      "https://www.instagram.com/p/DbeBjoMRZGq/"
+    ]
+  },
+  {
+    "lead_name": "The Casino Club Chicago",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "location_claim Chicago, IL (The Casino Club, a private Chicago social club); no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/DRVgwO-kg21/",
+      "https://www.instagram.com/p/DQirULZjePT/"
+    ]
+  },
+  {
+    "lead_name": "The Chapel McHenry",
+    "decision": "new:thechapelmchenry",
+    "username": "thechapelmchenry",
+    "city": "McHenry County",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: McHenry, IL, facebook.com/thechapelmchenry",
+    "post_urls": [
+      "https://www.instagram.com/p/DXNU3smkalJ/"
+    ]
+  },
+  {
+    "lead_name": "Chef O'neill's Avondale Chicago",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "location_claim Avondale, Chicago (Chef O’Neill’s restaurant); no accounts match, no handle_guess, not individually web-searched.",
+    "post_urls": [
+      "https://www.instagram.com/p/DH68a7rS6Ol/"
+    ]
+  },
+  {
+    "lead_name": "Chicago City Hall",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Public building, Chicago, IL; no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/C5Rm1TFSPDw/",
+      "https://www.instagram.com/p/DbgwNMdFPhH/"
+    ]
+  },
+  {
+    "lead_name": "Chicago river boat",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Ambiguous among several Chicago River boat-tour/charter operators (Odyssey, Mercury, Chicago’s First Lady, etc.); no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/C-tdKpnv_m0/"
+    ]
+  },
+  {
+    "lead_name": "Claridge House Chicago",
+    "decision": "existing:claridge_house",
+    "username": "claridge_house",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=claridge_house matched via word \"claridge\"; location_claim Chicago, IL.",
+    "post_urls": [
+      "https://www.instagram.com/p/C27zCbTLZPE/"
+    ]
+  },
+  {
+    "lead_name": "Deer Ridge Barn",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Kankakee",
+    "region": "IL",
+    "evidence": "WebSearch: Deer Ridge Barn is in Kankakee, IL (Kankakee County) — not on the metro county list (adjacent to but excluding Will County). Resolver handle_guess deerridgebarn matches the venue’s real IG (@deerridgebarn) but the location itself is out of scope.",
+    "post_urls": [
+      "https://www.instagram.com/p/DJmfrGHNBvl/"
+    ]
+  },
+  {
+    "lead_name": "DiNolfo's Banquets of Homer Glen",
+    "decision": "existing:dinolfosbanquets",
+    "username": "dinolfosbanquets",
+    "city": "Homer Glen",
+    "region": "IL",
+    "evidence": "accounts.username=dinolfosbanquets found by full-text search on \"dinolfo\"; location_claim Homer Glen, IL (Will county, metro).",
+    "post_urls": [
+      "https://www.instagram.com/p/C5EEj7KOVz1/"
+    ]
+  },
+  {
+    "lead_name": "The Drake Oak Brook Hotel",
+    "decision": "existing:thedrakeoakbrook",
+    "username": "thedrakeoakbrook",
+    "city": "Oak Brook",
+    "region": "IL",
+    "evidence": "accounts.username=thedrakeoakbrook confirmed to exist (resolver handle_guess \"thedrakeoakbrookhotel\" does not); matches the task brief’s worked example.",
+    "post_urls": [
+      "https://www.instagram.com/p/DMWXJ-NvMAx/"
+    ]
+  },
+  {
+    "lead_name": "The Duck Inn",
+    "decision": "new:duckinnchicago",
+    "username": "duckinnchicago",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 2701 S Eleanor St, Bridgeport, Chicago, IL, theduckinnchicago.com",
+    "post_urls": [
+      "https://www.instagram.com/p/CyEmhJVOujj/"
+    ]
+  },
+  {
+    "lead_name": "Eagle Brook Country Club",
+    "decision": "existing:eaglebrookcc",
+    "username": "eaglebrookcc",
+    "city": "Geneva",
+    "region": "IL",
+    "evidence": "accounts.username=eaglebrookcc found by full-text search; location_claim Geneva, IL (Kane county, metro). Resolver handle_guess \"eventsateaglebrook\" does not exist as an account.",
+    "post_urls": [
+      "https://www.instagram.com/p/C_d5_o2v3Tb/"
+    ]
+  },
+  {
+    "lead_name": "Emil Bach House",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Frank Lloyd Wright house, Rogers Park, Chicago (public landmark/event rental); no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/DUCRYj7AE-5/"
+    ]
+  },
+  {
+    "lead_name": "The Estate at Moraine Farm",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Beverly",
+    "region": "MA",
+    "evidence": "WebSearch: The Estate at Moraine Farm is in Beverly, MA (North Shore Massachusetts, not Illinois) — not Chicago metro despite ambiguous location_claim/owners repeatedly tagging it.",
+    "post_urls": [
+      "https://www.instagram.com/p/DOXbTEWDIuj/",
+      "https://www.instagram.com/p/DNQ3sNLxVlX/",
+      "https://www.instagram.com/p/DQe_WIEieEo/"
+    ]
+  },
+  {
+    "lead_name": "Estereo",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "location_claim Chicago, Illinois; no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/C5omZo3vMjQ/"
+    ]
+  },
+  {
+    "lead_name": "Exmoor Country Club",
+    "decision": "existing:exmoorcc",
+    "username": "exmoorcc",
+    "city": "Highland Park",
+    "region": "IL",
+    "evidence": "accounts.username=exmoorcc found by full-text search; matches task brief’s worked example.",
+    "post_urls": [
+      "https://www.instagram.com/p/DRUjQ6BEfms/",
+      "https://www.instagram.com/p/DDsHjw8PJmP/"
+    ]
+  },
+  {
+    "lead_name": "Famous Freddie's Roadhouse",
+    "decision": "new:famousfreddies",
+    "username": "famousfreddies",
+    "city": "Fox Lake",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 510 S Park Ave, Fox Lake, IL, famousfreddiesroadhouse.com",
+    "post_urls": [
+      "https://www.instagram.com/p/DBgw6yQx1Wo/"
+    ]
+  },
+  {
+    "lead_name": "GG Piano Bar",
+    "decision": "new:ggpianobar",
+    "username": "ggpianobar",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: West Loop, Chicago, IL, opentable.com/r/ggs-piano-bar-chicago",
+    "post_urls": [
+      "https://www.instagram.com/p/DaDfKCHFvim/"
+    ]
+  },
+  {
+    "lead_name": "Gibson's Steakhouse",
+    "decision": "existing:gibsonssteakhouse",
+    "username": "gibsonssteakhouse",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=gibsonssteakhouse exact match; location_claim Chicago, IL.",
+    "post_urls": [
+      "https://www.instagram.com/p/C8fD9rCO2aL/"
+    ]
+  },
+  {
+    "lead_name": "Glass House creative community",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "location_claim Chicago, IL; no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/C_24-S-RsPc/"
+    ]
+  },
+  {
+    "lead_name": "The Glen View Club",
+    "decision": "existing:glenviewclub",
+    "username": "glenviewclub",
+    "city": "Golf",
+    "region": "IL",
+    "evidence": "accounts.username=glenviewclub, resolver’s own handle_guess exists as an account; matches task brief’s worked example (Glen View Club, Golf, IL).",
+    "post_urls": [
+      "https://www.instagram.com/p/DPhw7fcgYvD/",
+      "https://www.instagram.com/p/DTivUEbEld7/",
+      "https://www.instagram.com/p/DAYrm7wRQ_l/"
+    ]
+  },
+  {
+    "lead_name": "Goebbert's Farm",
+    "decision": "unclear",
+    "username": null,
+    "city": "Pingree Grove",
+    "region": "IL",
+    "evidence": "location_claim Pingree Grove, IL (Kane county, metro) — Goebbert’s Farm is a real, well-known venue but no accounts match or handle_guess and not individually web-searched.",
+    "post_urls": [
+      "https://www.instagram.com/p/DaiLZGRO4N0/"
+    ]
+  },
+  {
+    "lead_name": "the groom's grandma's backyard",
+    "decision": "unclear",
+    "username": null,
+    "city": "Evanston",
+    "region": "IL",
+    "evidence": "location_claim Evanston, Illinois (metro) but this is a private residence (\"the groom’s grandma’s backyard\"), not a resolvable vendor account.",
+    "post_urls": [
+      "https://www.instagram.com/p/Db55RkQkQ5s/"
+    ]
+  },
+  {
+    "lead_name": "Halim Time & Glass Museum",
+    "decision": "existing:halimmuseum",
+    "username": "halimmuseum",
+    "city": "Evanston",
+    "region": "IL",
+    "evidence": "accounts.username=halimmuseum confirmed to exist; matches task brief’s worked example.",
+    "post_urls": [
+      "https://www.instagram.com/p/DaspUD2Dp3w/",
+      "https://www.instagram.com/p/DaspNdVuVw4/"
+    ]
+  },
+  {
+    "lead_name": "Harry Carey's Steakhouse",
+    "decision": "existing:harrycarays",
+    "username": "harrycarays",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=harrycarays (and a second, harrycarayscelebrations / \"Harry Caray’s Events\") found by full-text search on \"harry\"; location_claim Chicago, IL. Picked harrycarays as the more canonical handle; medium confidence given two plausible accounts.",
+    "post_urls": [
+      "https://www.instagram.com/p/CukxmfXtpWU/"
+    ]
+  },
+  {
+    "lead_name": "Haworth Hotel",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Holland",
+    "region": "MI",
+    "evidence": "WebSearch: Haworth Hotel is in Holland, MI — not Chicago metro.",
+    "post_urls": [
+      "https://www.instagram.com/p/DHgRL0au2zH/"
+    ]
+  },
+  {
+    "lead_name": "Heritage Family Farms",
+    "decision": "unclear",
+    "username": null,
+    "city": null,
+    "region": null,
+    "evidence": "WebSearch found no venue named exactly \"Heritage Family Farms\"; closest match is Heritage Prairie Farm in Elburn, IL (Kane county, metro) but that is not confirmed to be the same business — no location_claim in the lead data either.",
+    "post_urls": [
+      "https://www.instagram.com/p/DLqNkPEJMBY/"
+    ]
+  },
+  {
+    "lead_name": "Highland Park Community House",
+    "decision": "new:highlandparkcommunityhouse",
+    "username": "highlandparkcommunityhouse",
+    "city": "Highland Park",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 1991 Sheridan Rd, Highland Park, IL, highlandparkcommunityhouse.org",
+    "post_urls": [
+      "https://www.instagram.com/p/C-EYKlIPqHs/"
+    ]
+  },
+  {
+    "lead_name": "The Historic Two Brothers Roundhouse",
+    "decision": "existing:thetwobrothersroundhouse",
+    "username": "thetwobrothersroundhouse",
+    "city": "Aurora",
+    "region": "IL",
+    "evidence": "accounts.username=thetwobrothersroundhouse exact match to handle_guess; location_claim Aurora, IL (Kane county, metro).",
+    "post_urls": [
+      "https://www.instagram.com/p/DaLaLTCDgQJ/"
+    ]
+  },
+  {
+    "lead_name": "The Honeycomb",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "location_claim Chicago; two plausible accounts found (honeycombchicago, honeycombaffair) with no metadata to disambiguate — not resolvable without guessing.",
+    "post_urls": [
+      "https://www.instagram.com/p/Da5k_BvulQg/",
+      "https://www.instagram.com/p/Da0K3w4ueHv/"
+    ]
+  },
+  {
+    "lead_name": "Independence Grove Forest Preserve",
+    "decision": "existing:relisheventsindependencegrove",
+    "username": "relisheventsindependencegrove",
+    "city": null,
+    "region": "IL",
+    "evidence": "accounts.username=relisheventsindependencegrove (\"Relish Events at Independence Grove\") found by full-text search — the caterer/events operator at this Lake County Forest Preserve District site represents the venue in our system; location_claim Independence Grove Forest Preserve, Illinois (Lake county, metro).",
+    "post_urls": [
+      "https://www.instagram.com/p/DGV9o7Xxd1X/"
+    ]
+  },
+  {
+    "lead_name": "Itasca Country Club",
+    "decision": "existing:itascacountryclub",
+    "username": "itascacountryclub",
+    "city": "Itasca",
+    "region": "IL",
+    "evidence": "accounts.username=itascacountryclub exact match; location_claim Itasca, IL (DuPage county, metro).",
+    "post_urls": [
+      "https://www.instagram.com/p/DOrVAe3Ccsb/",
+      "https://www.instagram.com/p/CuruhR0Oniw/"
+    ]
+  },
+  {
+    "lead_name": "Ivy Chateau",
+    "decision": "unclear",
+    "username": null,
+    "city": "Fox Lake",
+    "region": "IL",
+    "evidence": "location_claim Fox Lake, Illinois (Lake county, metro); no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/DAl9HHRS2r8/"
+    ]
+  },
+  {
+    "lead_name": "Journeyman Distillery",
+    "decision": "existing:journeymandistillery",
+    "username": "journeymandistillery",
+    "city": null,
+    "region": null,
+    "evidence": "accounts.username=journeymandistillery already exists (found by full-text search — resolver’s own handle_guess \"thejourneymandistillery\" does not). Note: Journeyman Distillery’s actual location is Three Oaks, MI, not \"Northwest Indiana/Chicago\" as location_claim states — flagging the metro-status discrepancy rather than resolving it, since the accounts row predates this task.",
+    "post_urls": [
+      "https://www.instagram.com/p/Db6uC_OiAKW/"
+    ]
+  },
+  {
+    "lead_name": "Kenilworth Assembly Hall",
+    "decision": "existing:kenilworth.parkdistrict",
+    "username": "kenilworth.parkdistrict",
+    "city": "Kenilworth",
+    "region": "IL",
+    "evidence": "accounts.username=kenilworth.parkdistrict found by full-text search on \"kenilworth\"; location_claim Kenilworth, IL (Cook county, metro). Medium confidence — Assembly Hall is presumed to be Park District-operated.",
+    "post_urls": [
+      "https://www.instagram.com/p/C30uRh9vhPP/"
+    ]
+  },
+  {
+    "lead_name": "Kuipers Family Farm",
+    "decision": "new:kuipersfamilyfarm",
+    "username": "kuipersfamilyfarm",
+    "city": "Maple Park",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 1N318 Watson Rd, Maple Park, IL, kuipersfamilyfarm.com",
+    "post_urls": [
+      "https://www.instagram.com/p/C7WpzlauVH_/"
+    ]
+  },
+  {
+    "lead_name": "Lake Bluff",
+    "decision": "unclear",
+    "username": null,
+    "city": "Lake Bluff",
+    "region": "IL",
+    "evidence": "location_claim Lake Bluff, Illinois (Lake county, metro) but \"Lake Bluff\" alone is a town name, not a resolvable vendor/venue — no accounts match, no handle.",
+    "post_urls": [
+      "https://www.instagram.com/p/DMbp7thR4V6/",
+      "https://www.instagram.com/p/DMeRLW0RFdx/"
+    ]
+  },
+  {
+    "lead_name": "Lake Michigan, Chicago Lakefront",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Generic lakefront location tag, not a vendor account; no accounts match, no handle.",
+    "post_urls": [
+      "https://www.instagram.com/p/DDsAskIOKpb/"
+    ]
+  },
+  {
+    "lead_name": "Lake Shore Country Club",
+    "decision": "unclear",
+    "username": null,
+    "city": "Glencoe",
+    "region": "IL",
+    "evidence": "location_claim \"North Shore\"; Lake Shore Country Club is a real Glencoe, IL club (Cook county, metro) but no accounts match or handle_guess found.",
+    "post_urls": [
+      "https://www.instagram.com/p/DKcyXXNvNgy/",
+      "https://www.instagram.com/p/Db4JwXmGxzv/"
+    ]
+  },
+  {
+    "lead_name": "Lincoln Park Conservatory",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Public Chicago Park District conservatory; no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/DbJKI3DDirC/"
+    ]
+  },
+  {
+    "lead_name": "Lonesome Rose",
+    "decision": "new:lonesomeroseforever",
+    "username": "lonesomeroseforever",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 2101 N California Ave, Logan Square, Chicago, IL, lonesomerose.com",
+    "post_urls": [
+      "https://www.instagram.com/p/DO4Wm1rEZ1p/"
+    ]
+  },
+  {
+    "lead_name": "Lyric Opera of Chicago",
+    "decision": "existing:lyricopera",
+    "username": "lyricopera",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=lyricopera found by full-text search; location_claim Chicago, IL.",
+    "post_urls": [
+      "https://www.instagram.com/p/DFx4txVOMKg/"
+    ]
+  },
+  {
+    "lead_name": "Marchesa Chicago",
+    "decision": "new:marchesa312",
+    "username": "marchesa312",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 535 N Wells St, Chicago, IL, facebook.com/Marchesa312",
+    "post_urls": [
+      "https://www.instagram.com/p/C2TODLBrr-W/"
+    ]
+  },
+  {
+    "lead_name": "Montrose Beach",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Public Chicago lakefront beach; no accounts match, no handle.",
+    "post_urls": [
+      "https://www.instagram.com/p/DPIkdFGjVDV/"
+    ]
+  },
+  {
+    "lead_name": "Monty's Elegant Banquets",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "location_claim Chicago; no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/DZ7I_cHlgnu/"
+    ]
+  },
+  {
+    "lead_name": "The Morris Estate",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Niles",
+    "region": "MI",
+    "evidence": "WebSearch: The Morris Estate is in Niles, MI (Berrien County) — not a Chicago-metro county, despite marketing itself to Chicago-suburb couples.",
+    "post_urls": [
+      "https://www.instagram.com/p/DVcGiXjDjdK/"
+    ]
+  },
+  {
+    "lead_name": "NIU Conference Centers",
+    "decision": "existing:niu_conference_centers",
+    "username": "niu_conference_centers",
+    "city": null,
+    "region": "IL",
+    "evidence": "accounts.username=niu_conference_centers matches handle_guess exactly. Note: NIU’s main conference centers are in DeKalb, IL (DeKalb county is NOT on the metro county list); NIU also runs a Naperville (DuPage county, metro) extension site, so metro status of the specific posts is unresolved — flagging rather than guessing.",
+    "post_urls": [
+      "https://www.instagram.com/p/C8CixlzRoqv/"
+    ]
+  },
+  {
+    "lead_name": "Oak Park Country Club",
+    "decision": "existing:oakparkcountryclub",
+    "username": "oakparkcountryclub",
+    "city": "Oak Park",
+    "region": "IL",
+    "evidence": "accounts.username=oakparkcountryclub matches handle_guess exactly; location_claim Oak Park, IL (Cook county, metro).",
+    "post_urls": [
+      "https://www.instagram.com/p/DHJTIv2urTA/"
+    ]
+  },
+  {
+    "lead_name": "Odyssey Chicago River",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Ambiguous between the Odyssey dinner-cruise brand and unrelated \"Odyssey Events\" accounts found (anewodyssey, the_odyssey_events); no confident accounts match.",
+    "post_urls": [
+      "https://www.instagram.com/p/C33Gta2v3h9/"
+    ]
+  },
+  {
+    "lead_name": "Palmisano Park",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Public Chicago park (Bridgeport); no accounts match, no handle.",
+    "post_urls": [
+      "https://www.instagram.com/p/DbyQV6qNcgz/"
+    ]
+  },
+  {
+    "lead_name": "Park and Field",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Generic name, location_claim just \"Chicago, IL\"; no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/DZS37yeFVJW/"
+    ]
+  },
+  {
+    "lead_name": "Park Ridge Country Club",
+    "decision": "existing:parkridgecc",
+    "username": "parkridgecc",
+    "city": "Park Ridge",
+    "region": "IL",
+    "evidence": "accounts.username=parkridgecc found by full-text search; location_claim Park Ridge, IL (Cook county, metro).",
+    "post_urls": [
+      "https://www.instagram.com/p/DcJwVqHkSlQ/"
+    ]
+  },
+  {
+    "lead_name": "Pearl Banquets",
+    "decision": "existing:pearlbanquets",
+    "username": "pearlbanquets",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=pearlbanquets matches handle_guess exactly.",
+    "post_urls": [
+      "https://www.instagram.com/p/DVU_7gKl6lW/"
+    ]
+  },
+  {
+    "lead_name": "Pearl Banquets & Conference Center",
+    "decision": "existing:pearlbanquets",
+    "username": "pearlbanquets",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Same venue as \"pearl banquets\" — accounts.username=pearlbanquets matches handle_guess exactly.",
+    "post_urls": [
+      "https://www.instagram.com/p/DbqRlQWnDqX/"
+    ]
+  },
+  {
+    "lead_name": "Ping Tom Park",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Public Chicago park (Chinatown); no accounts match, no handle.",
+    "post_urls": [
+      "https://www.instagram.com/p/DbB0isJFv_X/"
+    ]
+  },
+  {
+    "lead_name": "Pleasant Home Oak Park",
+    "decision": "unclear",
+    "username": null,
+    "city": "Oak Park",
+    "region": "IL",
+    "evidence": "location_claim Oak Park, IL (Cook county, metro) — historic house museum; no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/DWeaiqcEa1R/",
+      "https://www.instagram.com/p/DWg6y1OidK3/"
+    ]
+  },
+  {
+    "lead_name": "Racquet Club of Chicago",
+    "decision": "unclear",
+    "username": null,
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "WebSearch confirms a real private club at 1365 N Dearborn Pkwy, Chicago (Gold Coast) that hosts weddings, but no confirmed IG handle was found.",
+    "post_urls": [
+      "https://www.instagram.com/p/DEjL-5qxSSC/"
+    ]
+  },
+  {
+    "lead_name": "Richardson Farm",
+    "decision": "unclear",
+    "username": null,
+    "city": null,
+    "region": null,
+    "evidence": "location_claim Wayne, Illinois; WebSearch surfaced two differently-named/located farms (Richardson Farms Wedding Barn in Monticello, KY; Richardson Adventure Farm in Spring Grove, IL) neither of which clearly matches \"Wayne, IL\" — not resolvable without guessing.",
+    "post_urls": [
+      "https://www.instagram.com/p/C7nsDXDuiG4/"
+    ]
+  },
+  {
+    "lead_name": "Ridgemoor Country Club",
+    "decision": "unclear",
+    "username": null,
+    "city": "Harwood Heights",
+    "region": "IL",
+    "evidence": "WebSearch confirms Ridgemoor Country Club, 6601 W Gunnison St, Harwood Heights, IL (Cook county, metro; est. 1905) but no confirmed IG handle was found.",
+    "post_urls": [
+      "https://www.instagram.com/p/Db6BXyoDgaZ/"
+    ]
+  },
+  {
+    "lead_name": "The Ridges Golf Course and Banquet Facility",
+    "decision": "unclear",
+    "username": null,
+    "city": null,
+    "region": null,
+    "evidence": "location_claim \"unknown\"; no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/DaVzMZfmXbA/"
+    ]
+  },
+  {
+    "lead_name": "Riverside Golf Club",
+    "decision": "new:rgc1893",
+    "username": "rgc1893",
+    "city": "Riverside",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 2520 S Des Plaines Ave, North Riverside, IL, rgc1893.org",
+    "post_urls": [
+      "https://www.instagram.com/p/DJZp092Ov6b/"
+    ]
+  },
+  {
+    "lead_name": "Rogers Park Social",
+    "decision": "new:rogersparksocial",
+    "username": "rogersparksocial",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 6920 N Glenwood Ave, Rogers Park, Chicago, IL, rogersparksocial.com",
+    "post_urls": [
+      "https://www.instagram.com/p/C1DXqqnuSBC/"
+    ]
+  },
+  {
+    "lead_name": "The Royal Melbourne Country Club",
+    "decision": "existing:royalmelbournecc",
+    "username": "royalmelbournecc",
+    "city": "Long Grove",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: Royal Melbourne Country Club, 4700 Royal Melbourne Dr, Long Grove, IL (Lake county, metro), official IG @royalmelbournecc — accounts row exists under this exact username.",
+    "post_urls": [
+      "https://www.instagram.com/p/C8PGRY4J_nc/"
+    ]
+  },
+  {
+    "lead_name": "RPM Events",
+    "decision": "existing:rpmevents",
+    "username": "rpmevents",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=rpmevents exact name match via full-text search; several other RPM-branded accounts also exist (rpmeventsandcatering, rpmeventschicago, rpmprivateevents) so confidence is medium.",
+    "post_urls": [
+      "https://www.instagram.com/p/DK9pJ2JRqoH/"
+    ]
+  },
+  {
+    "lead_name": "Saddle and Cycle Club",
+    "decision": "existing:saddleandcycleclub",
+    "username": "saddleandcycleclub",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=saddleandcycleclub found by full-text search; matches task brief’s worked example.",
+    "post_urls": [
+      "https://www.instagram.com/p/C6w-5kILFE3/"
+    ]
+  },
+  {
+    "lead_name": "Sanctuary Plainfield",
+    "decision": "existing:sanctuaryeventsplainfield",
+    "username": "sanctuaryeventsplainfield",
+    "city": "Plainfield",
+    "region": "IL",
+    "evidence": "accounts.username=sanctuaryeventsplainfield found by full-text search on \"sanctuary\"+\"plainfield\"; location_claim Plainfield (Will county, metro).",
+    "post_urls": [
+      "https://www.instagram.com/p/DDXwR27BYaa/"
+    ]
+  },
+  {
+    "lead_name": "Sheraton Lisle",
+    "decision": "new:sheratonlisle",
+    "username": "sheratonlisle",
+    "city": "Lisle",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: 3000 Warrenville Rd, Lisle, IL 60532, marriott.com",
+    "post_urls": [
+      "https://www.instagram.com/p/DU5pkSBEdyU/"
+    ]
+  },
+  {
+    "lead_name": "Stonewater Country Club",
+    "decision": "unclear",
+    "username": "stonewatercc",
+    "city": "Cary",
+    "region": "IL",
+    "evidence": "WebSearch could not confirm @stonewatercc as an Illinois business: stonewatercc.com and its Facebook page point to StoneWater Country Club in Caledonia, MI (not Cary, IL); related handle @stonewatergc traces to Highland Heights, OH. No matching Cary, IL entity found under this handle. (username kept per instructions.)",
+    "post_urls": [
+      "https://www.instagram.com/p/DHtJJcVMcRT/"
+    ]
+  },
+  {
+    "lead_name": "Terrain Gardens",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Doylestown",
+    "region": "PA",
+    "evidence": "WebSearch: \"Terrain\" garden-center wedding venues are a national chain (Terrain at DelVal, Doylestown PA, etc.) with no Chicago-area location found.",
+    "post_urls": [
+      "https://www.instagram.com/p/DaOMJrVxQQf/"
+    ]
+  },
+  {
+    "lead_name": "Turner Hall",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Milwaukee",
+    "region": "WI",
+    "evidence": "WebSearch: Turner Hall Ballroom is in downtown Milwaukee, WI — not Chicago metro.",
+    "post_urls": [
+      "https://www.instagram.com/p/C2Ag6zGuY5N/"
+    ]
+  },
+  {
+    "lead_name": "Turner Hall Ballroom Weddings",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Milwaukee",
+    "region": "WI",
+    "evidence": "Same venue as \"turner hall\" — Milwaukee, WI, not Chicago metro.",
+    "post_urls": [
+      "https://www.instagram.com/p/DcMlKZjBiHe/"
+    ]
+  },
+  {
+    "lead_name": "Victoria Avenues",
+    "decision": "new:victoriavenues",
+    "username": "victoriavenues",
+    "city": "Wood Dale",
+    "region": "IL",
+    "evidence": "WebSearch confirmed: Mount Prospect, IL (Victoria Venues parent account of Victoria in the Park), victoriavenues.com",
+    "post_urls": [
+      "https://www.instagram.com/p/DKxq8lTxK-v/"
+    ]
+  },
+  {
+    "lead_name": "Villa Terrace & CANVAS",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Milwaukee",
+    "region": "WI",
+    "evidence": "WebSearch: Villa Terrace Decorative Arts Museum is on Milwaukee’s East Side, WI — not Chicago metro.",
+    "post_urls": [
+      "https://www.instagram.com/p/DbHW9PGR6L8/"
+    ]
+  },
+  {
+    "lead_name": "W Chicago Lakeshore",
+    "decision": "new:wlakeshore",
+    "username": "wlakeshore",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "WebSearch confirmed IG handle @wlakeshore for the W Chicago Lakeshore hotel, Streeterville, Chicago, IL.",
+    "post_urls": [
+      "https://www.instagram.com/p/DSRNIvwDmJu/"
+    ]
+  },
+  {
+    "lead_name": "Warwick Allerton",
+    "decision": "existing:warwick.allerton.chicago",
+    "username": "warwick.allerton.chicago",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=warwick.allerton.chicago found by full-text search; location_claim Chicago, IL.",
+    "post_urls": [
+      "https://www.instagram.com/p/CzZU6Ckvt-k/"
+    ]
+  },
+  {
+    "lead_name": "Westin Hotel",
+    "decision": "unclear",
+    "username": null,
+    "city": null,
+    "region": null,
+    "evidence": "No location_claim (too generic — \"Westin Hotel\" alone could refer to any of several metro-area Westin properties); no accounts match, no handle_guess.",
+    "post_urls": [
+      "https://www.instagram.com/p/C87-JC1PsLL/"
+    ]
+  },
+  {
+    "lead_name": "The Westin Itasca, Chicago",
+    "decision": "unclear",
+    "username": null,
+    "city": "Itasca",
+    "region": "IL",
+    "evidence": "location_claim \"Itasca, Chicago\" (DuPage county, metro) with 2/2 metro-yes votes, but no confirmed IG handle — accounts search only surfaced westinchicagorivernorth, a different property.",
+    "post_urls": [
+      "https://www.instagram.com/p/DbL8OtFER2w/",
+      "https://www.instagram.com/p/DbL8Khtkfgj/"
+    ]
+  },
+  {
+    "lead_name": "Wicker Memorial Park",
+    "decision": "unclear",
+    "username": null,
+    "city": "Highland",
+    "region": "IN",
+    "evidence": "location_claim Highland, IN (Lake County, IN — on the metro list) confirms metro status, but this is a public park with no accounts match or resolvable handle.",
+    "post_urls": [
+      "https://www.instagram.com/p/C2QDpS4MiZu/"
+    ]
+  },
+  {
+    "lead_name": "Women's Athletic Club",
+    "decision": "existing:wacchicago",
+    "username": "wacchicago",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=wacchicago; matches task brief’s worked example.",
+    "post_urls": [
+      "https://www.instagram.com/p/Dba-nQkjiMm/",
+      "https://www.instagram.com/p/DadZdesiSUy/"
+    ]
+  },
+  {
+    "lead_name": "Woodbury Jewish Center Regal",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Woodbury",
+    "region": "NY",
+    "evidence": "WebSearch: Woodbury Jewish Center (with Regal Caterers) is in Woodbury, NY, Nassau County — not Chicago metro, despite location_claim erroneously saying \"Chicago, Illinois\".",
+    "post_urls": [
+      "https://www.instagram.com/p/Da26nEfjnRe/"
+    ]
+  },
+  {
+    "lead_name": "Wrigley Building",
+    "decision": "existing:thewrigleybuilding",
+    "username": "thewrigleybuilding",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=thewrigleybuilding found by full-text search; location_claim Chicago, IL.",
+    "post_urls": [
+      "https://www.instagram.com/p/DOOgKjuDf38/",
+      "https://www.instagram.com/p/DOSWWLcDWMg/"
+    ]
+  },
+  {
+    "lead_name": "The Skyline Loft @ Bridgeport Art Center",
+    "decision": "existing:bridgeportartcenter",
+    "username": "bridgeportartcenter",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=bridgeportartcenter confirmed to exist; full_name \"Bridgeport Art Center\". \"Skyline Loft\" is an event space within the Art Center.",
+    "post_urls": []
+  },
+  {
+    "lead_name": "Cafe Brauer",
+    "decision": "existing:cafebrauer",
+    "username": "cafebrauer",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=cafebrauer confirmed to exist (3 posts per near-miss note).",
+    "post_urls": []
+  },
+  {
+    "lead_name": "Navy Pier",
+    "decision": "existing:navypierchicago",
+    "username": "navypierchicago",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=navypierchicago confirmed to exist.",
+    "post_urls": []
+  },
+  {
+    "lead_name": "Sarabande Chicago",
+    "decision": "existing:sarabandechicago",
+    "username": "sarabandechicago",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=sarabandechicago confirmed to exist; full_name \"SARABANDE\".",
+    "post_urls": []
+  },
+  {
+    "lead_name": "Harold Washington Library",
+    "decision": "existing:haroldwashingtonlibrary",
+    "username": "haroldwashingtonlibrary",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=haroldwashingtonlibrary confirmed to exist (2 posts per near-miss note).",
+    "post_urls": []
+  },
+  {
+    "lead_name": "Chicago Field Museum",
+    "decision": "existing:fieldmuseum",
+    "username": "fieldmuseum",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=fieldmuseum confirmed to exist; full_name \"Field Museum\".",
+    "post_urls": []
+  },
+  {
+    "lead_name": "Terrace 167",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Richfield",
+    "region": "WI",
+    "evidence": "WebSearch: the real \"Terrace 167\" (@terrace167 on IG) is an \"Industrial Rustic Wedding Venue\" in Richfield, WI, ~20 min from Milwaukee — not Chicago metro. (A separate, unrelated Chicago venue, \"167 Events\" / @167eventschicago in Fulton Market, is NOT the same business as this near-miss name.)",
+    "post_urls": []
+  },
+  {
+    "lead_name": "the farm",
+    "decision": "unclear",
+    "username": null,
+    "city": null,
+    "region": null,
+    "evidence": "Ambiguous per task brief — skipped intentionally, too many candidate \"the farm\" venues to resolve without guessing.",
+    "post_urls": []
+  },
+  {
+    "lead_name": "The Ritz-Carlton",
+    "decision": "existing:ritzcarltonchicago",
+    "username": "ritzcarltonchicago",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=ritzcarltonchicago confirmed to exist.",
+    "post_urls": []
+  },
+  {
+    "lead_name": "The Conservatory",
+    "decision": "existing:gpconservatory",
+    "username": "gpconservatory",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=gpconservatory confirmed to exist; Garfield Park Conservatory.",
+    "post_urls": []
+  },
+  {
+    "lead_name": "The Secret Garden",
+    "decision": "existing:thesecretgardenpilsen",
+    "username": "thesecretgardenpilsen",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=thesecretgardenpilsen confirmed to exist (Pilsen).",
+    "post_urls": []
+  },
+  {
+    "lead_name": "Skyline Lofts",
+    "decision": "existing:bridgeportartcenter",
+    "username": "bridgeportartcenter",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "Same venue/account as \"The Skyline Loft @ Bridgeport Art Center\" — accounts.username=bridgeportartcenter.",
+    "post_urls": []
+  },
+  {
+    "lead_name": "The Exchange at Bridge Park",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Dublin",
+    "region": "OH",
+    "evidence": "WebSearch: The Exchange at Bridge Park is at 6520 Riverside Dr, Dublin, OH — not Chicago metro.",
+    "post_urls": []
+  },
+  {
+    "lead_name": "private",
+    "decision": "unclear",
+    "username": null,
+    "city": null,
+    "region": null,
+    "evidence": "Skipped per task brief — not a resolvable venue name.",
+    "post_urls": []
+  },
+  {
+    "lead_name": "The Grain Exchange",
+    "decision": "not_metro",
+    "username": null,
+    "city": "Milwaukee",
+    "region": "WI",
+    "evidence": "WebSearch: The Grain Exchange (Bartolotta Catering) is at 225 E Michigan St, downtown Milwaukee, WI — not Chicago metro. (accounts.grainexchangemke exists in our DB, consistent with the \"mke\" location.)",
+    "post_urls": []
+  },
+  {
+    "lead_name": "the Pazzos",
+    "decision": "existing:311pazzos",
+    "username": "311pazzos",
+    "city": "Chicago",
+    "region": "IL",
+    "evidence": "accounts.username=311pazzos confirmed to exist; full_name \"Pazzo’s Chicago\".",
+    "post_urls": []
+  }
+]

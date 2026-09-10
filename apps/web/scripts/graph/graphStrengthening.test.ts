@@ -865,8 +865,11 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // residue re-read + the human's later verdicts. +228 weddings / +246 posts from the A1 batch
     // (d055-a1-batch1, 2026-09-10, pre-approved): never-clustered venue-anchored posts with wedding
     // language (structural-v3-a1), Haiku W at >=0.8, author-anchored posts held to >=0.9. Zero orphans.
-    expect(Number(rows[0].weddings)).toBe(5749);
-    expect(Number(rows[0].wedding_posts)).toBe(6560);
+        // +269 weddings / +281 posts from the D055 pool-B batches (d055-poolb-structural-v2 202,
+    // d055-poolb-structural-v3-a1 67; 2026-09-10 evening, user: "create"): venue-discovery reader
+    // (pool B) + resolver + hand-verified lead map (18 new metro venues minted). Zero orphans.
+    expect(Number(rows[0].weddings)).toBe(6018);
+    expect(Number(rows[0].wedding_posts)).toBe(6842);
   });
 });
 
@@ -930,8 +933,11 @@ describe("clustering boundary-tie investigation — current (unfixed) state (DB)
     // relaxed eligibility, its own clustering_version -- never mixed into structural-v2) and
     // +114 structural-v2 candidates from location-tag map round 2 (23 new venue tags). Posts
     // grew accordingly; nothing was deleted.
-    expect(Number(rows[0].candidates)).toBe(9000);
-    expect(Number(rows[0].candidate_posts)).toBe(10738);
+    // 9381/11152 (D055 pool-B pipeline, 2026-09-10): +242+38 structural-v2 and +99+15 structural-v3-a1
+    // candidates from the venue-discovery reader's anchors (resolver tiers A/B + the hand-verified
+    // lead map), +414 candidate_posts; -13 candidates absorbed by the couple-name merge pass.
+    expect(Number(rows[0].candidates)).toBe(9381);
+    expect(Number(rows[0].candidate_posts)).toBe(11152);
   });
 });
 
@@ -1048,8 +1054,9 @@ describe("graph ingestion — D023 (DB)", () => {
     // +1 from the venuelogic recredit (d055-venuelogic-recredit, 2026-09-10): wedding 2586 re-anchored
     // to Bridgeport Art Center via its location tag gained a venue credit row; 189 rows changed role
     // venue->other in place (no count change). Provenance in wedding_vendor_recredits.
-    expect(Number(rows[0].untouched)).toBe(40564);
-    expect(Number(rows[0].total)).toBe(40675);
+    // +363 from the D055 pool-B batches (269 weddings, 2026-09-10 evening); same provenance.
+    expect(Number(rows[0].untouched)).toBe(40927);
+    expect(Number(rows[0].total)).toBe(41038);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -1132,8 +1139,11 @@ describe("graph ingestion — D023 (DB)", () => {
     // resolved venue through the same Chicago gate; 48 mid-confidence matches held, 46 gated out.
         // +172 weddings / +186 posts from D055 batch 6 (2026-09-09 late) and +228 / +246 from the A1
     // batch (d055-a1-batch1, 2026-09-10, pre-approved; author-anchored held to >=0.9). Zero orphans.
-    expect(Number(rows[0].weddings)).toBe(5749);
-    expect(Number(rows[0].wedding_posts)).toBe(6560);
+        // +269 weddings / +281 posts from the D055 pool-B batches (d055-poolb-structural-v2 202,
+    // d055-poolb-structural-v3-a1 67; 2026-09-10 evening, user: "create"): venue-discovery reader
+    // (pool B) + resolver + hand-verified lead map (18 new metro venues minted). Zero orphans.
+    expect(Number(rows[0].weddings)).toBe(6018);
+    expect(Number(rows[0].wedding_posts)).toBe(6842);
     // accounts +6 (14334->14340): Tier 1's 159 candidates credited a few vendor handles never
     // seen before in `accounts` -- unlike Batch 5/6, whose venue accounts always pre-existed
     // (that's how they got tagged 'venue' in the first place), Tier 1 spans the FULL candidate
@@ -1169,7 +1179,9 @@ describe("graph ingestion — D023 (DB)", () => {
     // +21 (22890->22911, D055 batch 5): imported posts' authors minted on import, as above.
     // +1 (22911->22912, D055 rescue batch): one imported post's author minted on import.
     // +10 (22912->22922, D055 batch 6) and +19 (22922->22941, A1 batch): authors minted on import.
-    expect(Number(rows[0].accounts)).toBe(22941);
+    // +33 (22941->22974, pool-B batches): 18 web-verified new venues minted by applyPoolBLeadMap.ts
+    // + 15 imported posts' authors minted on import.
+    expect(Number(rows[0].accounts)).toBe(22974);
   });
 
   it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {
@@ -1292,9 +1304,10 @@ describe("vendor feed count invariant (DB)", () => {
     // WRONG_VENUE correction created at Galleria.
     // 80 (D055 batches 4-5, 2026-09-09): 21 more Galleria Marchetti weddings, mostly from the
     // Haiku reader's verdicts on the venue's own posts and credit-line stacks.
+    // 91 (D055 pool-B batches, 2026-09-10 evening): 2 more Galleria Marchetti weddings.
     // 89 (D055 batch 6 + A1 batch, 2026-09-10): 1 + 7 more Galleria weddings, reader verdicts on
     // the venue-authored A1 pool and the residue re-read; +1 from a second-role row.
-    expect(rows[0].n).toBe(89);
+    expect(rows[0].n).toBe(91);
   });
 
   it("ulcchicago has a venue credit on wedding 1352 (the Case A index bug, D027)", async () => {

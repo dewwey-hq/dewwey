@@ -5,67 +5,56 @@ working session; history lives in `decisions.md`, preferences in Claude's memory
 detail nowhere else. If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-10 ~16:15 CT** (after "count honestly" session 2). `origin/main` =
+Last rewritten: **2026-09-10 ~18:45 CT** (after the pool-B batches). `origin/main` =
 `297ac5e` (pushed 2026-09-09 21:30 CT). Local commits since, NOT pushed: `7972972`, `c2b1893`,
-`5b3472f`, `39e29aa`, `c89cdb1`, `9c54d07`, plus this session's final checkpoint. Run
-`git log --oneline -8` and `git status` to confirm before trusting this line.
+`5b3472f`, `39e29aa`, `c89cdb1`, `9c54d07`, `8b9d5d0`, `8ee9aa3`, `fba7e0a`, plus tonight's
+checkpoint. Run `git log --oneline -12` and `git status` to confirm before trusting this line.
 
 ## Mission in flight
 
 **D055 — "squeeze the 47k"**: turn Jeremy's 47,623-post Instagram corpus into as many real,
 credible, venue-anchored documented weddings as possible, then write the residue table and move
 on. Plan: `~/.claude/plans/i-have-a-prompt-flickering-creek.md` (the "Coverage strategy" section
-at the top is the current work; item 1 "count honestly" is approved and mostly done; items 2-8
+at the top: **D056 vendor-stack nomenclature approved 2026-09-10, stage 0 next**; coverage item 1 done, items 2-8
 not approved). Roles (cost rule): Fable strategizes/reviews, Sonnet builds, Haiku reads; the
 user spot-checks and says "create" for every batch.
 
-## Numbers (live DB, 2026-09-10 16:10 CT)
+## Numbers (live DB, 2026-09-10 18:40 CT)
 
 | | |
 |---|---|
-| `weddings` | **5,749** (3,541 at D055 start; 1,484 landed 09-09/10; est. 1-3% duplicate pairs) |
-| `wedding_posts` / `wedding_vendors` / `accounts` | 6,560 / 40,675 / 22,941 |
-| Batches (revertable by `batch_id`) | b1 13 · b2 60 · b3 651 · b4 371 · b5 641 · rescue 72 · b6 172 · a1-batch1 228 |
-| Other provenance tables | `wedding_vendor_recredits` (venuelogic, 189 rows), `account_alias_remaps` (empty until the remap runs) |
-| **`/venues` listing** | **595 venues / 5,036 countable weddings** (417 / 4,178 this morning) — role tags refreshed, hotels-as-venues rule, alias cards excluded, 46 location rows added |
-| Still hidden from `/venues` | 231 venue accounts with no location row (115 weddings, mostly 0-1 each) · 41 not-metro (54) · 39 mis-anchored on caterers/planners (49) |
+| `weddings` | **6,018** (3,541 at D055 start; +2,477; est. 1-3% duplicate pairs) |
+| `wedding_posts` / `wedding_vendors` / `accounts` | 6,842 / 41,038 / 22,974 |
+| Batches (revertable by `batch_id`) | b1 13 · b2 60 · b3 651 · b4 371 · b5 641 · rescue 72 · b6 172 · a1-batch1 228 · **poolb-v2 202 · poolb-a1 67** |
+| Other provenance tables | `wedding_vendor_recredits` (venuelogic, 189), `account_alias_remaps` (548, alias remap applied) |
+| **`/venues` listing** | **612 venues / 5,546 countable weddings** (417 / 4,178 this morning) — role tags refreshed, hotels-as-venues rule, alias cards excluded, 64 location rows added, 18 new venues minted |
+| Still hidden from `/venues` | 233 venue accounts with no location row (80 weddings) · ~41 not-metro · 36 mis-anchored on caterers/planners (49) |
 | Reader verdicts | user 744 W / 234 N / 20 V · Fable 600 W · Haiku 1,309 W written |
-| Pool-B venue-discovery read | 2,013 posts, $11.42: 779 THIS_VENUE (625 ≥0.8), 838 NOT, 396 UNSURE; metro yes 425 / no 252 |
-| OpenRouter spend, whole reader effort | ≈ $50.5 |
+| Pool-B venue discovery | 2,013 posts read ($11.42) → 334 resolver anchors + 54 hand-mapped + 18 new venues → 269 weddings; 226 leads: 44 existing, 18 new, 15 not metro, 40 unclear |
+| OpenRouter spend, whole reader effort | $42.95 (`post_extraction_runs.cost_usd`, 6,393 posts read) |
 | Aliases / location-tag map | 58 / 166 |
 
-## Blocked on the user — run these (the auto-mode classifier refuses bulk DB writes)
+## Blocked on the user
 
-From `/home/jhoffen/dewwey/apps/web`, in this order (each prints a revert or is additive):
-
-1. `! cd apps/web && bun run scripts/graph/remapWeddingsToCanonicalAccounts.ts --batch-id d055-alias-remap-1 --apply`
-   — 243 weddings + 305 credits from alias handles (chicagomuseumevents, post433events,
-   cbgweddings, totlspecialevents…) to their canonical accounts. Then re-run
-   `refreshAccountRoleTagsFromWeddings.ts --apply` (idempotent) so the alias accounts drop
-   their venue vote.
-2. `! cd apps/web && bun run scripts/graph/resolveDiscoveredVenues.ts --apply`
-   — writes 334 pool-B venue anchors (tier A 313 handle, B 21 name) + 226 new-venue leads.
-   Dry-run already reviewed. Then Claude continues: clustering (`runJeremyWeddingClustering.ts
-   --evidence-source structural`, then `--eligibility venue-anchor-plus-wedding-keyword
-   --clustering-version structural-v3-a1`), reader over the new candidates (~$1.5), web-check
-   of metro-yes leads before any account is minted, create dry-run → your "create".
-3. Decisions: (a) `/venues` bar — recommend venue-or-hotel top role AND ≥1 documented wedding
-   (today 0-wedding venue accounts still list); (b) coverage items 2-5 after 09-11 Apify
-   credits; (c) push.
+1. **D056 stage 0 output**: a CSV of ~40 taxonomy disagreements to settle (Claude produces it
+   next; 15 minutes of your time). Stage 2 migration later needs your "run it".
+2. Decisions: (a) `/venues` bar — recommend venue-or-hotel top role AND ≥1 documented
+   wedding (today 0-wedding venue accounts still list, 148 of them); (b) coverage items 2-5
+   after 09-11 Apify credits (thin-venue text read + vision slice; own + tagged crawl);
+   (c) push of the local commits.
+3. Bulk DB writes are refused by the auto-mode classifier; when Claude hands you a `!`
+   command, run it from `apps/web` (your shell already sits there).
 
 ## Next actions (Claude, when unblocked)
 
-1. Pool-B pipeline (item 2 above) → create batch on the user's word.
-2. Duplicate merge pass: same couple name at the same venue (16 exact pairs found on 1,230
-   named weddings; normalize &/+/and, first names), batch-provenanced, $0.
-3. Hand-pass the 19 resolver near-misses (Cafe Brauer, Field Museum, Ritz-Carlton, Navy Pier,
-   Skyline Loft → existing accounts) and the 39 mis-anchored weddings (restaurants credited as
-   catering: Boka, Sepia, Avec, The Gage — probably real venues; caterers/management — re-anchor).
-4. Venue card: show "weddings hosted" (anchored) separately from the any-role feed count;
-   church-anchored weddings with a reception venue credited → anchor on the reception.
-5. Alias signal S8 (venue caption announces its weddings handle, e.g. `leloftchicago_weddings`).
-6. 09-11: Apify crawl of thin venues' own + tagged feeds; vision slice by coverage bucket.
-7. Phase 3 residue table — the exit criterion.
+1. **D056 stage 0** (approved): taxonomy + rules draft from `tmp_analysis/d056_labels_v9.csv`
+   (5,222 label/role rows), 300-label golden set, disagreement CSV for the user.
+2. Phase 3 residue table for D055 (numbers are in the newest addendum) — the exit criterion.
+3. Duplicate merge pass (same couple at the same venue; participants table in D056 will make
+   this exact) — $0.
+4. 36 mis-anchored weddings (restaurants credited as catering are probably real venues;
+   caterers/management re-anchor) and the 5 lead-map handles with no account row.
+5. 09-11: Apify crawl of thin venues' own + tagged feeds; vision slice by coverage bucket.
 
 ## Landmines (things that bit us; check before repeating)
 
@@ -74,7 +63,8 @@ From `/home/jhoffen/dewwey/apps/web`, in this order (each prints a revert or is 
   `refreshAccountRoleTagsFromWeddings.ts --apply` or new venues stay invisible.
 - The auto-mode classifier blocks bulk `update`/DDL scripts; have the user run them with `!`.
 - `runExtract.ts --limit N` selects N posts AFTER excluding already-read ones — a "resume"
-  reads N NEW posts. Pass the remaining count, not the original limit.
+  reads N NEW posts. Pass the remaining count, not the original limit. **Corpus reads need
+  `--write-verdicts`** or nothing reaches creation (replay: `writeVerdictsFromExtractionRuns.ts`).
 - Watchers that `pgrep -f` a pattern match their own shell; pgrep the `^bun run …` command.
 - `vendors.city` DEFAULTS to `'Chicago'` — evidence only with `discovery_source='google_places'`.
 - Brand-level handles (`marriottbonvoy`, `trumphotels`, `intercontinental`) can carry one
@@ -99,9 +89,12 @@ From `/home/jhoffen/dewwey/apps/web`, in this order (each prints a revert or is 
 - Decision log: `docs/decisions.md` (D055; newest addenda "A1 batch + coverage audit", "Count
   honestly", "Count honestly, session 2").
 - Coverage: `scripts/graph/reportVenueCoverage.ts` (standing metric; output in
-  `tmp_analysis/venue_coverage_2026-09-10.md`), `refreshAccountRoleTagsFromWeddings.ts`,
-  `recreditManagementCompany.ts`, `remapWeddingsToCanonicalAccounts.ts`,
-  `backfillAccountLocationsFromPlaces.ts`, `backfillVenueLocationsViaWebSearch.ts` (batch 3).
+  `tmp_analysis/venue_coverage_2026-09-10.md`), `refreshAccountRoleTagsFromWeddings.ts` (run
+  after EVERY batch), `recreditManagementCompany.ts`, `remapWeddingsToCanonicalAccounts.ts`,
+  `backfillAccountLocationsFromPlaces.ts`, `backfillVenueLocationsViaWebSearch.ts` (batch 3),
+  `applyPoolBLeadMap.ts` + `tmp_analysis/poolb_lead_map_2026-09-10.json`.
+- D056 taxonomy: plan file section "Vendor-stack nomenclature"; label export
+  `tmp_analysis/d056_labels_v9.csv`.
 - Review UI: `/label/candidates` (`?spotcheck=<reviewer>&n=20`, `?post=a,b,c`).
 - Provenance: `jeremy_weddings_created.batch_id`, `jeremy_wedding_post_attachments`,
   `wedding_vendor_recredits`, `account_alias_remaps`; `snapshotGraphTables.ts`,

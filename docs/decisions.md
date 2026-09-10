@@ -544,6 +544,30 @@ each slice behind a calibration gate on the golden set before corpus spend.
   (`--evidence-source structural`, then the relaxed A1 eligibility under `structural-v3-a1`),
   the reader over the new candidates (~$1.5), the metro-yes leads web-check, and the create
   dry-run for the user's word.
+- **Pool-B batches + lead map** (2026-09-10 evening, user: "create"). The venue-discovery
+  pipeline closed: resolver (334 anchors), clustering (242 + 99 candidates, then 38 + 15 from
+  the hand-verified lead map), 13 couple-name merges (role words "caterer/reception/planner…"
+  added to the couple veto list after one false merge), two anchored reads ($1.51 — run without
+  `--write-verdicts` by mistake, fixed by `writeVerdictsFromExtractionRuns.ts`, a replay of the
+  stored results under the same THIS_VENUE ≥0.8 gate: 229 verdicts) and two more with verdicts
+  on ($0.57, 79 W). Lead map (`tmp_analysis/poolb_lead_map_2026-09-10.json`, research agent +
+  a WebSearch pass): 44 reader-named venues → existing accounts (Women's Athletic Club →
+  wacchicago, Butterfield CC, Exmoor, Cafe Brauer, Field Museum, Navy Pier, Ritz-Carlton…),
+  18 new metro venues web-verified and minted with `account_locations` (`applyPoolBLeadMap.ts`,
+  run by the user; Arranmore Farm, The Duck Inn, Kuipers Family Farm, Sheraton Lisle, W
+  Lakeshore…), 15 not metro (Terrace 167 is Richfield WI; the Grain Exchange is Milwaukee),
+  40 unclear (public parks, ambiguous names), Stonewater CC turned out to be Michigan.
+  **Batches `d055-poolb-structural-v2` 202 weddings / 212 posts and
+  `d055-poolb-structural-v3-a1` 67 / 69**, zero orphans, venue credits verified; 9 venues
+  1-5 → 6+; the 18 new venues get their first wedding each. Weddings 5,749 → **6,018**;
+  `/venues` **612 venues / 5,546 countable weddings**. Reader spend to date $42.95
+  (`post_extraction_runs`), 6,393 distinct posts read. **47k accounting at close:** 5,606
+  corpus posts documented; 5,677 sit in candidates undocumented — of the 2,489 at confirmed
+  venues, 598 carry verdicts (human N/V or model), 1,270 the model rejected as not-a-wedding
+  at ≥0.8, 456 the model called a wedding below 0.8, 308 UNSURE, 71 never read; 1,007 at
+  ambiguous-geography venues, 1,075 out of market. Never clustered: image-only venue-anchored
+  (~11,300, vision slice), no-anchor text (pool B tiers 3+, ~4,400), no signal (~13,850).
+  Residue table (Phase 3 exit) still to be written from these numbers.
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 

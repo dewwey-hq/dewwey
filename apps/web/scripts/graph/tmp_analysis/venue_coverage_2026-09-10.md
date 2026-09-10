@@ -7,14 +7,14 @@ the page doesn't either).
 
 ## Universe A summary
 
-- Listed venues: **593**
-- Total weddings (anchored to a listed venue): **5224**
-- Buckets: 0=148  1-5=283  6-15=73  16-49=64  50+=25
+- Listed venues: **612**
+- Total weddings (anchored to a listed venue): **5546**
+- Buckets: 0=148  1-5=292  6-15=80  16-49=65  50+=27
 - Median weddings/venue: **2**
-- Top 50 share: 3109 / 5224 (59.5%)
-- Top 100 share: 4116 / 5224 (78.8%)
+- Top 50 share: 3234 / 5546 (58.3%)
+- Top 100 share: 4316 / 5546 (77.8%)
 
-## Hidden B -- venue-top, no account_locations row at all (232 accounts, 80 weddings)
+## Hidden B -- venue-top, no account_locations row at all (233 accounts, 80 weddings)
 
 Top 15 by weddings:
 - marriottbonvoy -- 2 weddings
@@ -33,11 +33,9 @@ Top 15 by weddings:
 - kohlerw -- 1 weddings
 - contidisanbonifacio -- 1 weddings
 
-## Hidden C -- venue-top, has a location row but in_metro=false (41 accounts, 105 weddings)
+## Hidden C -- venue-top, has a location row but in_metro=false (39 accounts, 45 weddings)
 
 Top 15 by weddings:
-- post433chicago -- 39 weddings
-- thearmourhousemansion -- 21 weddings
 - kohlerwi -- 3 weddings
 - grand_geneva -- 3 weddings
 - trumpturnberryscotland -- 3 weddings
@@ -51,17 +49,19 @@ Top 15 by weddings:
 - stregiskanairesort -- 2 weddings
 - renplanowest -- 2 weddings
 - psbrewingco -- 2 weddings
+- ndbasilica -- 2 weddings
+- prairiestreetevents -- 2 weddings
 
-## Hidden D -- top role is hotel, but is venue_id of >=1 wedding (11 accounts, 29 weddings)
+## Hidden D -- top role is hotel, but is venue_id of >=1 wedding (11 accounts, 30 weddings)
 
 Product question: hotels don't currently appear under /venues' category=venue filter.
 
 Top 15 by weddings:
 - pendrychicago -- 8 weddings
 - renchicagodowntown -- 4 weddings
+- magmilemarriott -- 3 weddings
 - ambassadorchicago -- 3 weddings
 - westinchicagorivernorth -- 2 weddings
-- magmilemarriott -- 2 weddings
 - thelasallechicago -- 2 weddings
 - allegrochicago -- 2 weddings
 - therobeychicago -- 2 weddings
@@ -69,7 +69,7 @@ Top 15 by weddings:
 - parkhyattchicago -- 1 weddings
 - sableatnavypier -- 1 weddings
 
-## Hidden E -- mis-anchored: venue_id account's top role is neither venue nor hotel (36 accounts, 49 weddings)
+## Hidden E -- mis-anchored: venue_id account's top role is neither venue nor hotel (40 accounts, 56 weddings)
 
 Includes accounts with no account_tags row at all (top role shown as "(none)").
 
@@ -77,8 +77,10 @@ Top 15 by weddings:
 - ashyanabanquets -- top role: catering -- 4 weddings
 - harrycarays -- top role: other -- 3 weddings
 - venuelogic -- top role: other -- 3 weddings
+- citycruises -- top role: transportation -- 3 weddings
 - bokachicago -- top role: catering -- 3 weddings
 - tethered_events__ -- top role: planner -- 2 weddings
+- northshorecountryclub -- top role: catering -- 2 weddings
 - lmcateringchi -- top role: catering -- 2 weddings
 - eeeventco -- top role: other -- 2 weddings
 - sepiachicago -- top role: catering -- 2 weddings
@@ -86,6 +88,4 @@ Top 15 by weddings:
 - maxwellstrading -- top role: other -- 1 weddings
 - revelglobalevents -- top role: planner -- 1 weddings
 - thelivenroom_eventvenue -- top role: planner -- 1 weddings
-- revel_decor -- top role: rentals -- 1 weddings
-- entertaining_co -- top role: catering -- 1 weddings
-- stjosaphatparish -- top role: other -- 1 weddings
+- hotelarista -- top role: catering -- 1 weddings
