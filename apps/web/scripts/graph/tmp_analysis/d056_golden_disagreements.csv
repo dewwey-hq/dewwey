@@ -1,21 +1,21 @@
 label_raw,credits,rules_say,fable_says,question_for_jeremy,your_call
-entertainment,1254,dj,dj,"""Entertainment:"" is usually the DJ company but sometimes a band or a full entertainment group. Keep dj (matches how the graph already reads it), or make it entertainment_other (a neutral umbrella)?",
-beauty,697,hair|makeup,hair|makeup,"""Beauty:"" / ""Beauty team:"" almost always means the hair+makeup team. Emit both credits, or a single beauty_services credit?",
-decor,713,decor_other,decor_other,"v9 called this rentals. Decor companies do rentals AND styling; decor_other keeps them distinct from pure rental houses. Agree?",
-design,332,event_design,event_design,"Bare ""Design:"" is the event designer/stylist ~80% of the time; the rest are floral designers. Accept event_design, or emit event_design+florist?",
-production,145,lighting_production,lighting_production,"""Production:"" = AV/lighting/staging company in most stacks; some are ""event production"" planners. Keep lighting_production?",
-hotel,338,accommodations,accommodations,"Per your decision: ""Hotel:"" = where guests stayed / got ready, unless the account is the wedding's venue (then venue). The migration decides that per wedding. Confirm.",
-host,116,participant:host_family,participant:host_family,"""Host:""/""Hosts:"" — in recaps it is the couple's parents or the couple; in styled-shoot posts it is the organizing business. Treat as participant (never shown) or as a vendor role mc/venue?",
-content,201,content_creator,content_creator,"Bare ""Content:"" — content creator (social/BTS) vs videographer. Keep content_creator?",
-glam,169,makeup,hair|makeup,"""Glam:"" usually means makeup only, sometimes hair+makeup. Rules say makeup; I lean hair|makeup. Your call.",
-music,445,live_music,live_music,"Bare ""Music:"" — DJ or live musicians? Rules say live_music; a DJ credited as ""Music:"" would land wrong. Alternative: dj. Your call.",
-location,115,venue,venue,"""Location:"" — the wedding venue in most stacks, a portrait spot in some photographer posts. Keep venue?",
-at @,1296,venue,venue,"The inline ""at @venue"" anchor (parser source inline_at). Keep venue; the getting-ready variant is already accommodations.",
-sp couple,316,participant:couple,participant:couple,"""SP couple"" = styled-shoot couple (models). Participant, and a styled-shoot signal. Confirm.",
-models,349,participant:model,participant:model,"Styled-shoot models. Participant, never shown, styled-shoot signal. Confirm.",
-coordinator,371,coordinator,coordinator,"Split from planner (day-of/month-of coordination is a different service). Two roles in the planning category. Confirm.",
-photo credit,152,photographer,photographer,"""Photo credit:"" / ""PC:"" is the photographer. Confirm.",
-venue management & bar,286,venue_management|bar_service,venue_management|bar_service,"VenueLogic-class line. Two credits, neither is venue. Confirm.",
-venue & catering,123,venue|catering,venue|catering,"Per your decision: both credits on the venue account. Confirm.",
-church / parish / chapel,94,venue @ ceremony,venue @ ceremony,"Per your decision: no religion-specific role; venue with context ceremony, plus a venue_type facet later. Confirm.",
-second for / second shot for,23,photographer,photographer,"""Second for @x"" = the credited handle is the LEAD photographer the poster seconded for. Photographer credit on that handle. Confirm.",
+entertainment,1254,dj,dj,"""Entertainment:"" is usually the DJ company but sometimes a band or a full entertainment group. Keep dj (matches how the graph already reads it), or make it entertainment_other (a neutral umbrella)?","dj (user: aligned, 2026-09-10)"
+beauty,697,hair|makeup,hair|makeup,"""Beauty:"" / ""Beauty team:"" almost always means the hair+makeup team. Emit both credits, or a single beauty_services credit?","hair|makeup (user: aligned, 2026-09-10)"
+decor,713,decor_other,decor_other,v9 called this rentals. Decor companies do rentals AND styling; decor_other keeps them distinct from pure rental houses. Agree?,"decor_other (user: aligned, 2026-09-10)"
+design,332,event_design,event_design,"Bare ""Design:"" is the event designer/stylist ~80% of the time; the rest are floral designers. Accept event_design, or emit event_design+florist?","event_design (user: aligned, 2026-09-10)"
+production,145,lighting_production,lighting_production,"""Production:"" = AV/lighting/staging company in most stacks; some are ""event production"" planners. Keep lighting_production?","lighting_production (user: aligned, 2026-09-10)"
+hotel,338,accommodations,accommodations,"Per your decision: ""Hotel:"" = where guests stayed / got ready, unless the account is the wedding's venue (then venue). The migration decides that per wedding. Confirm.","accommodations (user: aligned, 2026-09-10)"
+host,116,participant:host_family,participant:host_family,"""Host:""/""Hosts:"" — in recaps it is the couple's parents or the couple; in styled-shoot posts it is the organizing business. Treat as participant (never shown) or as a vendor role mc/venue?","participant:host_family (user: aligned, 2026-09-10)"
+content,201,content_creator,content_creator,"Bare ""Content:"" — content creator (social/BTS) vs videographer. Keep content_creator?","content_creator (user: aligned, 2026-09-10)"
+glam,169,makeup,hair|makeup,"""Glam:"" usually means makeup only, sometimes hair+makeup. Rules say makeup; I lean hair|makeup. Your call.","hair|makeup (user: aligned, 2026-09-10)"
+music,445,live_music,live_music,"Bare ""Music:"" — DJ or live musicians? Rules say live_music; a DJ credited as ""Music:"" would land wrong. Alternative: dj. Your call.","live_music (user: aligned, 2026-09-10)"
+location,115,venue,venue,"""Location:"" — the wedding venue in most stacks, a portrait spot in some photographer posts. Keep venue?","venue (user: aligned, 2026-09-10)"
+at @,1296,venue,venue,"The inline ""at @venue"" anchor (parser source inline_at). Keep venue; the getting-ready variant is already accommodations.","venue (user: aligned, 2026-09-10)"
+sp couple,316,participant:couple,participant:couple,"""SP couple"" = styled-shoot couple (models). Participant, and a styled-shoot signal. Confirm.","participant:couple (user: aligned, 2026-09-10)"
+models,349,participant:model,participant:model,"Styled-shoot models. Participant, never shown, styled-shoot signal. Confirm.","participant:model (user: aligned, 2026-09-10)"
+coordinator,371,coordinator,coordinator,Split from planner (day-of/month-of coordination is a different service). Two roles in the planning category. Confirm.,"coordinator (user: aligned, 2026-09-10)"
+photo credit,152,photographer,photographer,"""Photo credit:"" / ""PC:"" is the photographer. Confirm.","photographer (user: aligned, 2026-09-10)"
+venue management & bar,286,venue_management|bar_service,venue_management|bar_service,"VenueLogic-class line. Two credits, neither is venue. Confirm.","venue_management|bar_service (user: aligned, 2026-09-10)"
+venue & catering,123,venue|catering,venue|catering,Per your decision: both credits on the venue account. Confirm.,"venue|catering (user: aligned, 2026-09-10)"
+church / parish / chapel,94,venue @ ceremony,venue @ ceremony,"Per your decision: no religion-specific role; venue with context ceremony, plus a venue_type facet later. Confirm.","venue @ ceremony (user: aligned, 2026-09-10)"
+second for / second shot for,23,photographer,photographer,"""Second for @x"" = the credited handle is the LEAD photographer the poster seconded for. Photographer credit on that handle. Confirm.","photographer (user: aligned, 2026-09-10)"

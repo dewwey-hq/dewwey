@@ -69,7 +69,7 @@ content,201,videographer,content_creator,wedding_day,,exact
 rings,195,jeweler,jewelry,wedding_day,,exact
 shoes,184,attire,accessories,wedding_day,,exact
 content creation,184,videographer,content_creator,wedding_day,,exact
-glam,169,other,makeup,wedding_day,,exact
+glam,169,other,hair|makeup,wedding_day,,exact
 planning and design,162,planner,planner|event_design,wedding_day,,exact
 desserts,155,cake,desserts,wedding_day,,exact
 tent,153,other,tent,wedding_day,,exact
@@ -165,7 +165,7 @@ trolley,49,other,transportation,wedding_day,,exact
 late night snack,49,other,desserts,wedding_day,,exact
 venues,48,venue,venue,wedding_day,,exact
 rehearsal dinner,48,catering,venue,rehearsal_dinner,,phase_venue
-glam for,47,other,makeup,wedding_day,,exact
+glam for,47,other,hair|makeup,wedding_day,,exact
 musicians,45,musician,live_music,wedding_day,,exact
 strings,45,musician,live_music,wedding_day,,exact
 dance floor,45,other,lighting_production,wedding_day,,exact
@@ -478,7 +478,7 @@ bts photographer,11,photographer,second_shooter,wedding_day,,exact
 reception music,11,musician,live_music,reception,,exact
 vendor team,11,other,noise,wedding_day,,noise
 a/v,11,other,lighting_production,wedding_day,,exact
-glam on,11,other,makeup,wedding_day,,exact
+glam on,11,other,hair|makeup,wedding_day,,exact
 printing,11,other,stationery,wedding_day,,exact
 specialty linens,11,rentals,rentals,wedding_day,,exact
 planning team,11,planner,planner,wedding_day,,exact
@@ -2036,7 +2036,7 @@ ceremony + decor florals,2,florist,florist,ceremony,,h.florist.ctx
 h & m,2,other,other,wedding_day,,unmatched
 the jewelry,2,jeweler,jewelry,wedding_day,,exact
 decor & fresh florals,2,florist,decor_other|florist,wedding_day,,compound(exact+h.florist)
-bridal glam,2,attire,makeup,wedding_day,,exact.stripped
+bridal glam,2,attire,hair|makeup,wedding_day,,exact.stripped
 photo backdrop,2,photographer,decor_other,wedding_day,,h.decor
 photo assistants,2,photographer,other,wedding_day,,unmatched
 photo and film,2,photographer,photographer|videographer,wedding_day,,compound(exact+exact)
@@ -2903,8 +2903,8 @@ bridal dress shop,1,attire,attire,wedding_day,,exact.stripped
 bridal dress shop & groom's tux,1,attire,attire,wedding_day,,compound(exact.stripped+exact)
 bridal dress store,1,attire,attire,wedding_day,,exact.stripped
 bridal gajre,1,attire,other,wedding_day,,unmatched
-bridal glam by me for,1,attire,makeup,wedding_day,,exact.stripped
-bridal glam for,1,attire,makeup,wedding_day,,exact.stripped
+bridal glam by me for,1,attire,hair|makeup,wedding_day,,exact.stripped
+bridal glam for,1,attire,hair|makeup,wedding_day,,exact.stripped
 bridal glow spray,1,attire,other,wedding_day,,unmatched
 bridal gown & after party dress,1,attire,attire,after_party,,compound(exact+exact).ctx
 bridal gown & styling,1,attire,attire|event_design,wedding_day,,compound(exact+exact)
@@ -2959,7 +2959,7 @@ bride’s afterparty look custom,1,other,other,after_party,,unmatched
 bride's attire,1,attire,attire,wedding_day,,exact
 bride's dresses,1,attire,attire,wedding_day,,exact
 bride’s engagement ring,1,jeweler,jewelry,engagement,,exact.stripped
-bride’s glam,1,other,makeup,wedding_day,,exact.stripped
+bride’s glam,1,other,hair|makeup,wedding_day,,exact.stripped
 bride's gown,1,attire,attire,wedding_day,,exact
 bride’s hair elthon lopez,1,hair,other,wedding_day,,unmatched
 bride's makeup,1,makeup,makeup,wedding_day,,exact
@@ -5024,7 +5024,7 @@ the debut issue under new editor,1,other,other,wedding_day,,unmatched
 the floral enchantment and table set,1,florist,other,wedding_day,,unmatched
 the flower firm,1,florist,other,wedding_day,,unmatched
 the gardner school,1,other,other,wedding_day,,unmatched
-the glam,1,other,makeup,wedding_day,,exact
+the glam,1,other,hair|makeup,wedding_day,,exact
 the heart behind dejanae events and,1,other,other,wedding_day,,unmatched
 the host,1,other,,wedding_day,host_family,participant
 the ilbgf power brunch,1,other,other,brunch,,unmatched
