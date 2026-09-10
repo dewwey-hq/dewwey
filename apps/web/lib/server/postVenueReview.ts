@@ -85,6 +85,10 @@ export interface PostReviewVenue {
   anchor_label: string | null;
   chicago_status: string | null;
   current_wedding_count: number;
+  // D055: current_wedding_count bucketed into the same 4 tiers the queue now sorts by (0, 1-5,
+  // 6-15, 16+) -- see COVERAGE_BUCKET_SQL/coverageBucketLabel above. Always derived from
+  // current_wedding_count, never independently sourced, so the two can't disagree.
+  coverage_bucket: CoverageBucket;
 }
 
 export interface PostReviewGroup {
@@ -116,6 +120,23 @@ export interface PostReviewDuplicateHint {
   event_date_est: string | null;
 }
 
+// Phase 2 (D055): the Haiku reader's (scripts/classify/runExtract.ts, extractPrompt.ts) opinion on
+// this post, read from the latest post_extraction_runs row for its post_url (see
+// LATEST_EXTRACTION_CTE below) -- surfaced to the human as a badge, never auto-applied. Only
+// THIS_VENUE/OTHER_VENUE/NOT_WEDDING/UNSURE are possible verdict values (ExtractVerdict in
+// extractPrompt.ts); event_type/couple_names/evidence come from the extraction's jsonb `result`
+// column, which this file has no compile-time link to (kept as plain strings here rather than
+// importing scripts/classify/extractPrompt's types, so this lib/server module doesn't reach into
+// scripts/).
+export interface PostReviewModelInfo {
+  verdict: string;
+  event_type: string | null;
+  confidence: number | null;
+  evidence: string | null;
+  couple_names: string | null;
+  prompt_version: string;
+}
+
 export interface PostReviewQueueItem {
   post: PostReviewPost;
   venue: PostReviewVenue;
@@ -129,6 +150,16 @@ export interface PostReviewQueueItem {
   // STYLED_SIGNAL_SQL below for why inline rather than a JOIN. 'LIKELY' or null, never a bare
   // boolean, so the UI's copy ("STYLED-SHOOT SIGNAL") reads the same vocabulary as the view.
   styled_signal: "LIKELY" | null;
+  // Phase 2 (D055): the Haiku reader's opinion on this post, or null when no
+  // post_extraction_runs row exists for it yet. See PostReviewModelInfo above.
+  model: PostReviewModelInfo | null;
+  // Set ONLY by getPostReviewItemsByPostUrls (the ?post=<shortcode> direct-open path) -- the
+  // human reviewer's (LABELED_BY, 'jeremy') own latest verdict on this exact post, so the UI can
+  // show "your current verdict: W" before they override it. Always undefined on items from
+  // getPostReviewQueue/getSpotCheckQueue (those never serve a post the human already verdicted,
+  // so it would always be null there anyway) -- undefined, not null, distinguishes "not computed"
+  // from "computed and there isn't one".
+  your_verdict?: PostVenueVerdict | null;
 }
 
 // D056: the same high-precision phrase/hashtag regex as pipeline/schema.sql's
@@ -156,6 +187,69 @@ function styledSignalSql(captionCol: string): string {
     or ${captionCol} ~* '#(styledshoot|styledshoots|stylizedshoot|editorialshoot|inspirationshoot|styledweddingshoot)\\y'
     or (${captionCol} ~* '\\ystyled by\\y' and ${captionCol} ~* '\\yshoot\\y')
   )`;
+}
+
+// D055: shared "not a real wedding event" caption exclusion -- same regex the queue's WHERE
+// clause used inline before this change, pulled out so getPostReviewProgress's remaining-count
+// CTE can never drift from what the queue itself actually excludes (same "one shared constant"
+// discipline as styledSignalSql above). See the queue's own comment (still below) for the
+// original story (user, mid-review: "filter out the posts that say bar or bat mitzvah").
+function nonWeddingEventExclusionSql(captionCol: string): string {
+  return `(
+    ${captionCol} ~* '\\y(mitzvah|quincea|sweet\\s*16|birthday|corporate|baby shower|bridal shower|graduation|anniversary party|retirement|gala|networking|fundraiser|holiday party|prom|conference|expo|trade show|open house)\\y'
+    and ${captionCol} !~* '\\y(wedding|bride|groom|newlywed|married)\\y'
+  )`;
+}
+
+// D055: a candidate whose venue's documented-Chicago-wedding count (see venue_counts CTE) is 0
+// only reviews as confusing without knowing how sparse that venue's coverage already is -- the
+// queue's primary sort (after chicago_status) is now this bucket, ascending, so the reviewer
+// clears zero-coverage venues first. Shared between the queue's ORDER BY (as inline SQL, see
+// COVERAGE_BUCKET_SQL below) and the value attached to each returned item (coverageBucketLabel)
+// so the two can never disagree about where a boundary falls.
+const COVERAGE_BUCKET_SQL = `(
+    case
+      when coalesce(vc.n, 0) = 0 then 0
+      when coalesce(vc.n, 0) between 1 and 5 then 1
+      when coalesce(vc.n, 0) between 6 and 15 then 2
+      else 3
+    end
+  )`;
+
+// Phase 2 (D055): one row per post_url, the latest post_extraction_runs attempt regardless of
+// prompt_version -- "latest" (order by created_at desc) is sufficient to prefer extract-v1.1 over
+// extract-v1 on its own, since a newer prompt_version is by construction created later; no
+// separate prompt_version tie-break needed. Shared between getPostReviewQueue and
+// getPostReviewItemsByPostUrls (NOT getSpotCheckQueue -- that mode is deliberately unaffected, see
+// its own doc comment) via string interpolation into each query's own `with` clause, same
+// "one shared constant" discipline as styledSignalSql/COVERAGE_BUCKET_SQL above.
+const LATEST_EXTRACTION_CTE = `
+     latest_extraction as (
+       select distinct on (post_url)
+         post_url, verdict, confidence, prompt_version, result
+       from post_extraction_runs
+       order by post_url, created_at desc
+     )`;
+
+// Selected alongside every other candidate_posts column in getPostReviewQueue and
+// getPostReviewItemsByPostUrls -- kept as one constant so the two queries' model columns can never
+// drift apart. `result` carries event_type/evidence/couple_names (not denormalized onto
+// post_extraction_runs itself), pulled out here with ->>.
+const LATEST_EXTRACTION_SELECT_SQL = `
+       le.verdict as model_verdict,
+       le.confidence as model_confidence,
+       le.prompt_version as model_prompt_version,
+       le.result->>'event_type' as model_event_type,
+       le.result->>'evidence' as model_evidence,
+       le.result->>'couple_names' as model_couple_names,`;
+
+export type CoverageBucket = "0" | "1-5" | "6-15" | "16+";
+
+function coverageBucketLabel(n: number): CoverageBucket {
+  if (n === 0) return "0";
+  if (n <= 5) return "1-5";
+  if (n <= 15) return "6-15";
+  return "16+";
 }
 
 function arr(x: unknown): string[] {
@@ -229,12 +323,14 @@ export async function getPostReviewQueue(
        join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
        join staging.instagram_posts sp on sp.post_url = cp.source_post_url
        where jwc.clustering_version = $1
-     )
+     ),
+     ${LATEST_EXTRACTION_CTE}
      select
        cpz.source_post_url, cpz.candidate_id, cpz.venue_account_id, cpz.chicago_status,
        cpz.venue_anchor_source, cpz.venue_anchor_conflict, cpz.group_index, cpz.group_size,
        cpz.caption, cpz.posted_at, cpz.location_tag, cpz.owner_username, cpz.mentions,
        cpz.styled_signal_raw,
+       ${LATEST_EXTRACTION_SELECT_SQL}
        a.username::text as venue_username,
        a.full_name as venue_full_name,
        (select v.name from vendors v where v.account_id = cpz.venue_account_id limit 1) as vendor_name,
@@ -242,6 +338,7 @@ export async function getPostReviewQueue(
      from candidate_posts cpz
      left join accounts a on a.id = cpz.venue_account_id
      left join venue_counts vc on vc.venue_account_id = cpz.venue_account_id
+     left join latest_extraction le on le.post_url = cpz.source_post_url
      where not exists (
        -- Any reviewer's current verdict removes a post from the queue (D055): a bounded class of
        -- structurally unambiguous posts is cleared under reviewed_by='fable-structured' on the
@@ -251,22 +348,36 @@ export async function getPostReviewQueue(
      )
        -- $2 (reviewer) is no longer used by the exclusion above; keep it typed so pg can plan.
        and $2::text is not null
+       -- D055: a candidate whose chicago_status is CHICAGO_NOT_CONFIRMED is a real wedding
+       -- outside the Chicago metro (the venue itself resolved off-metro) -- the human should
+       -- never see it in this queue. CHICAGO_AMBIGUOUS still shows, sorted after CONFIRMED below.
+       and cpz.chicago_status <> 'CHICAGO_NOT_CONFIRMED'
        -- D055 (user, mid-review 2026-09-08: "filter out the posts that say bar or bat mitzvah"):
        -- a post naming a non-wedding event with NO wedding language is never served -- 43 of
        -- 4,743 queued posts at the time. Same rule now lives in the structural clustering
        -- eligibility; this keeps already-clustered posts out of the human's way. Posts that
        -- mention both (a venue's "weddings, galas, mitzvahs" marketing) still get reviewed.
-       and not (
-         cpz.caption ~* '\\y(mitzvah|quincea|sweet\\s*16|birthday|corporate|baby shower|bridal shower|graduation|anniversary party|retirement|gala|networking|fundraiser|holiday party|prom|conference|expo|trade show|open house)\\y'
-         and cpz.caption !~* '\\y(wedding|bride|groom|newlywed|married)\\y'
-       )
+       and not ${nonWeddingEventExclusionSql("cpz.caption")}
      order by
        case cpz.chicago_status
          when 'CHICAGO_CONFIRMED' then 0
          when 'CHICAGO_AMBIGUOUS' then 1
-         when 'CHICAGO_NOT_CONFIRMED' then 2
-         else 3
+         else 2
        end,
+       -- D055: primary sort within a chicago_status tier -- the venue's documented-wedding
+       -- coverage bucket ascending (0, then 1-5, then 6-15, then 16+), computed from the same
+       -- venue_counts CTE current_wedding_count already reads. Zero- and low-coverage venues
+       -- surface first, since that's where the residue-mining payoff is (STATE.md's "metro
+       -- Places venues by documented weddings" table).
+       ${COVERAGE_BUCKET_SQL} asc,
+       -- Phase 2 (D055): a post the Haiku reader already called NOT_WEDDING or UNSURE sorts after
+       -- one it called THIS_VENUE/OTHER_VENUE (confident THIS_VENUE calls never reach this queue at
+       -- all -- they're written straight to post_venue_verdicts under reviewed_by='haiku-extract-v1'
+       -- and excluded by the "not exists post_venue_verdicts_current" clause above) and after one
+       -- with no extraction row yet -- the human reviews likely-real-but-unconfident posts first,
+       -- likely-junk last. le.verdict is null (no row) sorts with THIS_VENUE/OTHER_VENUE (false),
+       -- not with NOT_WEDDING/UNSURE (true), since an unread post is not evidence of anything.
+       (le.verdict in ('NOT_WEDDING', 'UNSURE')) asc,
        -- D056 (user, mid-review 2026-09-08): author-anchored posts confirm as a real wedding only
        -- 27% of the time vs. 72-75% for every other anchor source -- mostly the venue's own
        -- marketing, not a documented wedding -- so they're pushed to the back of the queue rather
@@ -285,6 +396,15 @@ export async function getPostReviewQueue(
     [STRUCTURAL_CLUSTERING_VERSION, reviewedBy, limit]
   );
 
+  return hydrateQueueRows(rows);
+}
+
+// Same implicit shape pool.query(...) without a generic always returned here before this was
+// pulled out of getPostReviewQueue (rows come straight from that query's untyped result); see
+// other lib/server/*.ts files for the same convention.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function hydrateQueueRows(rows: any[]): Promise<PostReviewQueueItem[]> {
+  const pool = getPool();
   if (rows.length === 0) return [];
 
   const postUrls = rows.map((r) => r.source_post_url as string);
@@ -377,6 +497,20 @@ export async function getPostReviewQueue(
       r.venue_anchor_source === "credit_line" && venueAccountId != null
         ? (postOtherVenues?.get(venueAccountId)?.label ?? null)
         : null;
+    // Phase 2 (D055): present only on rows selected from queries that join latest_extraction
+    // (getPostReviewQueue, getPostReviewItemsByPostUrls) -- r.model_verdict is simply undefined on
+    // getSpotCheckQueue's rows (that query doesn't select it), which falls through to null here,
+    // same as "no extraction row yet".
+    const model: PostReviewModelInfo | null = r.model_verdict
+      ? {
+          verdict: r.model_verdict,
+          event_type: r.model_event_type ?? null,
+          confidence: r.model_confidence != null ? Number(r.model_confidence) : null,
+          evidence: r.model_evidence ?? null,
+          couple_names: r.model_couple_names ?? null,
+          prompt_version: r.model_prompt_version,
+        }
+      : null;
     return {
       post: {
         post_url: r.source_post_url,
@@ -396,6 +530,7 @@ export async function getPostReviewQueue(
         anchor_label: anchorLabel,
         chicago_status: r.chicago_status,
         current_wedding_count: Number(r.current_wedding_count),
+        coverage_bucket: coverageBucketLabel(Number(r.current_wedding_count)),
       },
       group: {
         candidate_id: r.candidate_id,
@@ -407,8 +542,351 @@ export async function getPostReviewQueue(
       other_venue_credits: otherVenues,
       duplicate_hint: reconByCandidate.get(r.candidate_id) ?? null,
       styled_signal: r.styled_signal_raw ? ("LIKELY" as const) : null,
+      model,
     };
   });
+}
+
+/**
+ * Direct-open mode (?post=<shortcode>[,<shortcode>...] on /label/candidates and
+ * /api/post-venue-review): serves EXACTLY the requested post_urls, in the order given,
+ * REGARDLESS of whether any reviewer (including the human) already has a current verdict on
+ * them -- this is how the human corrects an earlier verdict of their own. Unlike
+ * getPostReviewQueue, this deliberately does NOT apply the "no existing verdict",
+ * chicago_status<>CHICAGO_NOT_CONFIRMED, or non-wedding-event-caption filters: a correction list
+ * is an explicit request for THESE posts, not a fresh slice of the eligibility-filtered queue.
+ *
+ * Silently drops any post_url that doesn't resolve to a jeremy_wedding_candidate_posts row (never
+ * throws) -- the caller (the API route / page) reports requested vs. found counts itself.
+ *
+ * Each returned item's `your_verdict` is populated from the human reviewer's (LABELED_BY,
+ * 'jeremy') own latest post_venue_verdicts row for that post_url, or null if they have none --
+ * deliberately NOT any other reviewer's verdict (see the field's own doc comment on
+ * PostReviewQueueItem).
+ */
+export async function getPostReviewItemsByPostUrls(postUrls: string[]): Promise<PostReviewQueueItem[]> {
+  const pool = getPool();
+  if (postUrls.length === 0) return [];
+
+  const { rows } = await pool.query(
+    `with venue_counts as (
+       select coalesce(al.canonical_account_id, wv.account_id) as venue_account_id,
+              count(distinct wv.wedding_id) as n
+       from wedding_vendors wv
+       join weddings w on w.id = wv.wedding_id and w.is_chicago = true
+       left join account_aliases al on al.alias_account_id = wv.account_id
+       where wv.role = 'venue'
+       group by 1
+     ),
+     candidate_posts as (
+       select
+         cp.source_post_url,
+         cp.candidate_id,
+         jwc.venue_account_id,
+         jwc.chicago_status,
+         jwc.venue_anchor_source,
+         coalesce(jwc.venue_anchor_conflict, false) as venue_anchor_conflict,
+         row_number() over (
+           partition by cp.candidate_id
+           order by sp.post_timestamp asc nulls last, cp.source_post_url asc
+         ) as group_index,
+         count(*) over (partition by cp.candidate_id) as group_size,
+         sp.caption_raw as caption,
+         sp.post_timestamp as posted_at,
+         sp.location_tag,
+         sp.owner_username,
+         sp.mentions,
+         ${styledSignalSql("sp.caption_raw")} as styled_signal_raw
+       from jeremy_wedding_candidate_posts cp
+       join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
+       join staging.instagram_posts sp on sp.post_url = cp.source_post_url
+       where cp.source_post_url = any($1::text[])
+     ),
+     ${LATEST_EXTRACTION_CTE}
+     select
+       cpz.source_post_url, cpz.candidate_id, cpz.venue_account_id, cpz.chicago_status,
+       cpz.venue_anchor_source, cpz.venue_anchor_conflict, cpz.group_index, cpz.group_size,
+       cpz.caption, cpz.posted_at, cpz.location_tag, cpz.owner_username, cpz.mentions,
+       cpz.styled_signal_raw,
+       ${LATEST_EXTRACTION_SELECT_SQL}
+       a.username::text as venue_username,
+       a.full_name as venue_full_name,
+       (select v.name from vendors v where v.account_id = cpz.venue_account_id limit 1) as vendor_name,
+       coalesce(vc.n, 0) as current_wedding_count
+     from candidate_posts cpz
+     left join accounts a on a.id = cpz.venue_account_id
+     left join venue_counts vc on vc.venue_account_id = cpz.venue_account_id
+     left join latest_extraction le on le.post_url = cpz.source_post_url`,
+    [postUrls]
+  );
+
+  const items = await hydrateQueueRows(rows);
+
+  const { rows: verdictRows } = await pool.query<{ post_url: string; verdict: string }>(
+    `select distinct on (post_url) post_url, verdict
+     from post_venue_verdicts
+     where reviewed_by = $1 and post_url = any($2::text[])
+     order by post_url, reviewed_at desc`,
+    [LABELED_BY, postUrls]
+  );
+  const yourVerdictByUrl = new Map<string, PostVenueVerdict>(
+    verdictRows
+      .filter((r) => isPostVenueVerdict(r.verdict))
+      .map((r) => [r.post_url, r.verdict as PostVenueVerdict])
+  );
+
+  const byUrl = new Map(items.map((it) => [it.post.post_url, it]));
+  // Re-order to match the caller's requested order (the SQL's `any($1)` gives no ordering
+  // guarantee), and drop any post_url that didn't resolve to a candidate row.
+  return postUrls.reduce<PostReviewQueueItem[]>((acc, url) => {
+    const item = byUrl.get(url);
+    if (item) acc.push({ ...item, your_verdict: yourVerdictByUrl.get(url) ?? null });
+    return acc;
+  }, []);
+}
+
+/**
+ * D055 spot-check mode ("?spotcheck=fable-structured&n=40"): a RANDOM sample of posts that
+ * already carry a CURRENT verdict from `targetReviewer` (default 'fable-structured') and do NOT
+ * yet carry any verdict from `humanReviewer` (default LABELED_BY, 'jeremy') -- an independent
+ * blind check of the on-behalf class-clearing the user approved. Deliberately does NOT reuse
+ * post_venue_verdicts_current for the "does targetReviewer have a verdict" half: that view is
+ * `distinct on (post_url)` ACROSS ALL REVIEWERS (see pipeline/schema.sql), so once a post has
+ * verdicts from two reviewers it only exposes the most recent one -- exactly the situation this
+ * mode exists to create (a human verdict following a fable one). Instead this queries
+ * post_venue_verdicts directly, taking the latest row PER (post_url, reviewed_by) itself, which
+ * is correct regardless of what any other reviewer has done to the same post_url. This is a
+ * deliberate workaround, not a view change -- the task that added this mode said to stop and
+ * report rather than touch the view, and a workaround was possible, so the view is untouched.
+ *
+ * Also deliberately does NOT reapply the chicago_status / non-wedding-event exclusions
+ * getPostReviewQueue now applies (D055 change 1) -- this mode audits whatever targetReviewer
+ * actually decided, which may predate those exclusions, so narrowing the sample would bias the
+ * audit toward the class of posts the normal queue happens to still serve today.
+ *
+ * The returned items deliberately carry NO trace of targetReviewer's verdict or notes (nothing
+ * in the SELECT list even fetches them) -- the UI must stay blind. See
+ * getSpotCheckAgreementReport() below for the reviewer-vs-reviewer comparison itself.
+ */
+export async function getSpotCheckQueue(
+  n: number,
+  opts: { targetReviewer?: string; humanReviewer?: string } = {}
+): Promise<PostReviewQueueItem[]> {
+  const targetReviewer = opts.targetReviewer ?? "fable-structured";
+  const humanReviewer = opts.humanReviewer ?? LABELED_BY;
+  const pool = getPool();
+
+  const { rows } = await pool.query(
+    `with venue_counts as (
+       select coalesce(al.canonical_account_id, wv.account_id) as venue_account_id,
+              count(distinct wv.wedding_id) as n
+       from wedding_vendors wv
+       join weddings w on w.id = wv.wedding_id and w.is_chicago = true
+       left join account_aliases al on al.alias_account_id = wv.account_id
+       where wv.role = 'venue'
+       group by 1
+     ),
+     candidate_posts as (
+       select
+         cp.source_post_url,
+         cp.candidate_id,
+         jwc.venue_account_id,
+         jwc.chicago_status,
+         jwc.venue_anchor_source,
+         coalesce(jwc.venue_anchor_conflict, false) as venue_anchor_conflict,
+         row_number() over (
+           partition by cp.candidate_id
+           order by sp.post_timestamp asc nulls last, cp.source_post_url asc
+         ) as group_index,
+         count(*) over (partition by cp.candidate_id) as group_size,
+         sp.caption_raw as caption,
+         sp.post_timestamp as posted_at,
+         sp.location_tag,
+         sp.owner_username,
+         sp.mentions,
+         ${styledSignalSql("sp.caption_raw")} as styled_signal_raw
+       from jeremy_wedding_candidate_posts cp
+       join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
+       join staging.instagram_posts sp on sp.post_url = cp.source_post_url
+       where jwc.clustering_version = $1
+     ),
+     target_current as (
+       -- Latest verdict PER (post_url) scoped to targetReviewer only -- NOT the shared
+       -- post_venue_verdicts_current view, see function doc comment above.
+       select distinct on (post_url) post_url
+       from post_venue_verdicts
+       where reviewed_by = $2
+       order by post_url, reviewed_at desc
+     )
+     select
+       cpz.source_post_url, cpz.candidate_id, cpz.venue_account_id, cpz.chicago_status,
+       cpz.venue_anchor_source, cpz.venue_anchor_conflict, cpz.group_index, cpz.group_size,
+       cpz.caption, cpz.posted_at, cpz.location_tag, cpz.owner_username, cpz.mentions,
+       cpz.styled_signal_raw,
+       a.username::text as venue_username,
+       a.full_name as venue_full_name,
+       (select v.name from vendors v where v.account_id = cpz.venue_account_id limit 1) as vendor_name,
+       coalesce(vc.n, 0) as current_wedding_count
+     from candidate_posts cpz
+     join target_current tc on tc.post_url = cpz.source_post_url
+     left join accounts a on a.id = cpz.venue_account_id
+     left join venue_counts vc on vc.venue_account_id = cpz.venue_account_id
+     where not exists (
+       -- The human reviewer specifically (not "any reviewer" -- that's the whole point of this
+       -- mode: bypass the normal any-reviewer exclusion so a post fable already cleared is still
+       -- eligible here, as long as the human hasn't personally weighed in on it yet).
+       select 1 from post_venue_verdicts pv
+       where pv.post_url = cpz.source_post_url and pv.reviewed_by = $3
+     )
+     order by random()
+     limit $4`,
+    [STRUCTURAL_CLUSTERING_VERSION, targetReviewer, humanReviewer, n]
+  );
+
+  return hydrateQueueRows(rows);
+}
+
+export interface SpotCheckConfusionCell {
+  fable_verdict: string;
+  human_verdict: string;
+  n: number;
+}
+
+export interface SpotCheckAnchorAgreement {
+  venue_anchor_source: string;
+  total: number;
+  agree: number;
+  agreement_pct: number;
+}
+
+export interface SpotCheckReport {
+  reviewer: string;
+  human_reviewer: string;
+  total_paired: number;
+  agreement_pct: number | null;
+  confusion: SpotCheckConfusionCell[];
+  by_anchor_source: SpotCheckAnchorAgreement[];
+  // Plain-text rendering of the above, ready to drop into a <pre> block or a terminal.
+  text: string;
+}
+
+function formatSpotCheckReportText(args: {
+  reviewer: string;
+  humanReviewer: string;
+  total: number;
+  agree: number;
+  agreementPct: number | null;
+  confusion: SpotCheckConfusionCell[];
+  byAnchor: SpotCheckAnchorAgreement[];
+}): string {
+  const { reviewer, humanReviewer, total, agree, agreementPct, confusion, byAnchor } = args;
+  const lines: string[] = [];
+  lines.push(`Spot-check agreement: ${reviewer} vs ${humanReviewer}`);
+  lines.push(`Paired posts: ${total}  Agree: ${agree}  Agreement: ${agreementPct ?? "n/a"}%`);
+  lines.push("");
+  lines.push("Confusion (fable verdict x human verdict):");
+  lines.push("fable_verdict".padEnd(14) + "human_verdict".padEnd(14) + "n");
+  for (const c of confusion) {
+    lines.push(c.fable_verdict.padEnd(14) + c.human_verdict.padEnd(14) + String(c.n));
+  }
+  lines.push("");
+  lines.push("By venue_anchor_source:");
+  lines.push("anchor_source".padEnd(16) + "total".padEnd(8) + "agree".padEnd(8) + "pct");
+  for (const a of byAnchor) {
+    lines.push(a.venue_anchor_source.padEnd(16) + String(a.total).padEnd(8) + String(a.agree).padEnd(8) + `${a.agreement_pct}%`);
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Read-only agreement report between targetReviewer (default 'fable-structured') and
+ * humanReviewer (default LABELED_BY, 'jeremy') over posts BOTH have a current verdict on. Same
+ * "query post_venue_verdicts directly, take latest per (post_url, reviewed_by) myself" approach
+ * as getSpotCheckQueue above, for the same reason: post_venue_verdicts_current is not
+ * reviewer-aware, so it cannot expose both reviewers' opinions on the same post at once.
+ */
+export async function getSpotCheckAgreementReport(
+  reviewer: string,
+  humanReviewer: string = LABELED_BY
+): Promise<SpotCheckReport> {
+  const pool = getPool();
+
+  const { rows } = await pool.query<{
+    fable_verdict: string;
+    human_verdict: string;
+    venue_anchor_source: string | null;
+    n: string;
+  }>(
+    `with target_current as (
+       select distinct on (post_url) post_url, candidate_id, verdict
+       from post_venue_verdicts
+       where reviewed_by = $1
+       order by post_url, reviewed_at desc
+     ),
+     human_current as (
+       select distinct on (post_url) post_url, verdict
+       from post_venue_verdicts
+       where reviewed_by = $2
+       order by post_url, reviewed_at desc
+     )
+     select tc.verdict as fable_verdict, hc.verdict as human_verdict,
+            jwc.venue_anchor_source, count(*) as n
+     from target_current tc
+     join human_current hc on hc.post_url = tc.post_url
+     join jeremy_wedding_candidates jwc on jwc.id = tc.candidate_id
+     group by 1, 2, 3
+     order by 3, 1, 2`,
+    [reviewer, humanReviewer]
+  );
+
+  let total = 0;
+  let agree = 0;
+  const confusion: SpotCheckConfusionCell[] = [];
+  const anchorMap = new Map<string, { total: number; agree: number }>();
+
+  for (const r of rows) {
+    const n = Number(r.n);
+    total += n;
+    const isAgree = r.fable_verdict === r.human_verdict;
+    if (isAgree) agree += n;
+    confusion.push({ fable_verdict: r.fable_verdict, human_verdict: r.human_verdict, n });
+    const key = r.venue_anchor_source ?? "(none)";
+    const entry = anchorMap.get(key) ?? { total: 0, agree: 0 };
+    entry.total += n;
+    if (isAgree) entry.agree += n;
+    anchorMap.set(key, entry);
+  }
+
+  const byAnchor: SpotCheckAnchorAgreement[] = [...anchorMap.entries()]
+    .map(([venue_anchor_source, v]) => ({
+      venue_anchor_source,
+      total: v.total,
+      agree: v.agree,
+      agreement_pct: v.total > 0 ? Math.round((v.agree / v.total) * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const agreementPct = total > 0 ? Math.round((agree / total) * 1000) / 10 : null;
+
+  const text = formatSpotCheckReportText({
+    reviewer,
+    humanReviewer,
+    total,
+    agree,
+    agreementPct,
+    confusion,
+    byAnchor,
+  });
+
+  return {
+    reviewer,
+    human_reviewer: humanReviewer,
+    total_paired: total,
+    agreement_pct: agreementPct,
+    confusion,
+    by_anchor_source: byAnchor,
+    text,
+  };
 }
 
 export async function getPostReviewProgress(
@@ -416,6 +894,12 @@ export async function getPostReviewProgress(
 ): Promise<{
   posts_total: number;
   posts_reviewed: number;
+  // D055: remaining (not-yet-any-reviewer-verdicted) posts within the queue's own eligibility
+  // filter (chicago_status <> CHICAGO_NOT_CONFIRMED, non-wedding-event caption excluded), split
+  // by chicago_status -- replaces the header's old raw corpus-wide posts_total (~4,743, which
+  // never reflected what the queue would actually still serve).
+  remaining_confirmed: number;
+  remaining_ambiguous: number;
   candidates_total: number;
   candidates_complete: number;
   by_verdict: Record<string, number>;
@@ -426,14 +910,19 @@ export async function getPostReviewProgress(
   const { rows } = await pool.query<{
     posts_total: string;
     posts_reviewed: string;
+    remaining_confirmed: string;
+    remaining_ambiguous: string;
     candidates_total: string;
     candidates_complete: string;
   }>(
     `with cv as (
-       select cp.source_post_url
+       select cp.source_post_url, jwc.chicago_status
        from jeremy_wedding_candidate_posts cp
        join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
+       join staging.instagram_posts sp on sp.post_url = cp.source_post_url
        where jwc.clustering_version = $1
+         and jwc.chicago_status <> 'CHICAGO_NOT_CONFIRMED'
+         and not ${nonWeddingEventExclusionSql("sp.caption_raw")}
      )
      select
        (select count(*) from cv) as posts_total,
@@ -442,6 +931,16 @@ export async function getPostReviewProgress(
             select 1 from post_venue_verdicts_current pv
             where pv.post_url = cv.source_post_url and pv.reviewed_by = $2
           )) as posts_reviewed,
+       (select count(*) from cv
+          where chicago_status = 'CHICAGO_CONFIRMED'
+            and not exists (
+              select 1 from post_venue_verdicts_current pv where pv.post_url = cv.source_post_url
+            )) as remaining_confirmed,
+       (select count(*) from cv
+          where chicago_status = 'CHICAGO_AMBIGUOUS'
+            and not exists (
+              select 1 from post_venue_verdicts_current pv where pv.post_url = cv.source_post_url
+            )) as remaining_ambiguous,
        (select count(*) from jeremy_wedding_candidates where clustering_version = $1) as candidates_total,
        (select count(*) from candidate_review_derived crd
           join jeremy_wedding_candidates jwc on jwc.id = crd.candidate_id
@@ -465,6 +964,8 @@ export async function getPostReviewProgress(
   return {
     posts_total: Number(rows[0].posts_total),
     posts_reviewed: Number(rows[0].posts_reviewed),
+    remaining_confirmed: Number(rows[0].remaining_confirmed),
+    remaining_ambiguous: Number(rows[0].remaining_ambiguous),
     candidates_total: Number(rows[0].candidates_total),
     candidates_complete: Number(rows[0].candidates_complete),
     by_verdict: byVerdict,

@@ -4,7 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { embedUrl } from "./InstagramEmbed";
 import { matchPostVenueReviewKey, type PostVenueReviewAction } from "@/lib/postVenueReviewKeyboard";
-import type { PostVenueVerdict, PostReviewQueueItem, GroupVerdict } from "@/lib/server/postVenueReview";
+import type {
+  PostVenueVerdict,
+  PostReviewQueueItem,
+  GroupVerdict,
+  SpotCheckReport,
+} from "@/lib/server/postVenueReview";
 
 // Post-per-screen wedding-venue review (D055, 2026-09-08). Replaces the candidate-level
 // CandidateReviewClient (0 decisions ever recorded there -- per the user, after trying it, "this
@@ -34,9 +39,31 @@ function CroppedEmbed({ postUrl }: { postUrl: string }) {
 interface Progress {
   posts_total: number;
   posts_reviewed: number;
+  // D055: remaining (not-yet-verdicted) posts within the queue's eligibility filter, split by
+  // chicago_status -- 0/0 in spot-check mode, where they're meaningless (see spotCheck below).
+  remaining_confirmed: number;
+  remaining_ambiguous: number;
   candidates_total: number;
   candidates_complete: number;
   by_verdict: Record<string, number>;
+}
+
+// D055: spot-check mode (?spotcheck=<reviewer>) — a blind random sample of posts `targetReviewer`
+// already verdicted that the human hasn't touched yet. n is the sample size requested from the
+// server (the actual served count may be smaller once posts run out).
+interface SpotCheckMode {
+  active: true;
+  targetReviewer: string;
+  n: number;
+}
+
+// Phase 2 (D055): direct-open mode (?post=<shortcode>[,<shortcode>...]) — a fixed, explicitly
+// requested list of posts (a correction list), not the general queue. `requested` is the count of
+// shortcodes parsed from the URL, which may exceed `initialItems.length` when a shortcode didn't
+// resolve to a candidate post.
+interface DirectMode {
+  active: true;
+  requested: number;
 }
 
 interface LastVerdict {
@@ -59,6 +86,31 @@ const REASON_CHIPS: { tag: ReasonTag; hint: string; label: string }[] = [
   { tag: "other", hint: "O", label: "Other" },
 ];
 const REASON_KEY_MAP: Record<string, ReasonTag> = { s: "styled_shoot", m: "marketing", e: "other_event", o: "other" };
+
+// Phase 2 (D055): maps the Haiku reader's event_type (extractPrompt.ts's ExtractEventType) to the
+// N-flow's reason chip, for pre-selecting a chip when the model already called this post
+// NOT_WEDDING -- same "pre-select, never auto-submit" pattern as the D056 styled-signal
+// pre-selection below. Anything without a direct chip (pre_wedding, unclear, or an unrecognized
+// value) falls back to "other".
+const MODEL_EVENT_TYPE_TO_CHIP: Partial<Record<string, ReasonTag>> = {
+  styled_shoot: "styled_shoot",
+  marketing: "marketing",
+  other_event: "other_event",
+};
+function modelEventTypeToChip(eventType: string | null): ReasonTag {
+  return (eventType && MODEL_EVENT_TYPE_TO_CHIP[eventType]) || "other";
+}
+
+// Letter shorthand for a verdict, matching the on-screen W/V/N/D/U hints -- used only for the
+// "your current verdict" line in direct-open mode.
+const VERDICT_LETTER: Record<PostVenueVerdict, string> = {
+  THIS_VENUE: "W",
+  OTHER_VENUE: "V",
+  NOT_WEDDING: "N",
+  DUPLICATE: "D",
+  UNSURE: "U",
+  SKIP: "Skip",
+};
 
 function formatDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -166,9 +218,18 @@ function Badge({ children, className }: { children: React.ReactNode; className: 
 export function PostVenueReviewClient({
   initialItems,
   initialProgress,
+  spotCheck,
+  spotCheckReport,
+  directMode,
 }: {
   initialItems: PostReviewQueueItem[];
   initialProgress: Progress;
+  // D055: present only when this page load is a blind spot-check (?spotcheck=<reviewer>).
+  spotCheck?: SpotCheckMode;
+  spotCheckReport?: SpotCheckReport;
+  // Phase 2 (D055): present only when this page load is a direct-open correction list
+  // (?post=<shortcode>[,...]).
+  directMode?: DirectMode;
 }) {
   const [items, setItems] = useState<PostReviewQueueItem[]>(initialItems);
   const [progress, setProgress] = useState<Progress>(initialProgress);
@@ -231,10 +292,17 @@ export function PostVenueReviewClient({
   }, [groupToast]);
 
   const topUp = useCallback(async () => {
+    // Phase 2 (D055): direct-open mode serves a fixed, explicitly requested list -- never top up
+    // from the general queue or spot-check sample, so the "done" state below is reached instead.
+    if (directMode?.active) return;
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
-      const res = await fetch("/api/post-venue-review?limit=5");
+      // D055: in spot-check mode, top up from the same blind random sample, not the normal queue.
+      const url = spotCheck?.active
+        ? `/api/post-venue-review?spotcheck=${encodeURIComponent(spotCheck.targetReviewer)}&n=5`
+        : "/api/post-venue-review?limit=5";
+      const res = await fetch(url);
       if (res.ok) {
         const data = (await res.json()) as { items: PostReviewQueueItem[] };
         setItems((prev) => {
@@ -246,7 +314,7 @@ export function PostVenueReviewClient({
     } finally {
       fetchingRef.current = false;
     }
-  }, []);
+  }, [spotCheck, directMode]);
 
   useEffect(() => {
     if (items.length < 3) void topUp();
@@ -400,7 +468,14 @@ export function PostVenueReviewClient({
         setDupInputOpen(false);
         setNoteUiMode("n");
         setNoteUiOpen(true);
-        setNoteReasonTag(current.styled_signal === "LIKELY" ? "styled_shoot" : null);
+        // Phase 2 (D055): when the model already called this post NOT_WEDDING, its event_type
+        // wins the pre-selection (more specific than the styled-shoot signal alone); otherwise
+        // fall back to the existing D056 styled-signal pre-selection.
+        const modelPreselect =
+          current.model && current.model.verdict === "NOT_WEDDING"
+            ? modelEventTypeToChip(current.model.event_type)
+            : null;
+        setNoteReasonTag(modelPreselect ?? (current.styled_signal === "LIKELY" ? "styled_shoot" : null));
         return;
       }
 
@@ -517,12 +592,29 @@ export function PostVenueReviewClient({
   if (!current) {
     return (
       <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-2 px-6 text-center">
-        <h1 className="text-lg font-medium text-gray-900">Queue complete</h1>
-        <p className="text-sm text-gray-600">
-          {progress.posts_reviewed} / {progress.posts_total} posts reviewed ·{" "}
-          {progress.candidates_complete} / {progress.candidates_total} candidates complete. No more
-          structural-v2 posts in this queue.
-        </p>
+        <h1 className="text-lg font-medium text-gray-900">
+          {directMode?.active ? "Done" : spotCheck?.active ? "Spot-check sample complete" : "Queue complete"}
+        </h1>
+        {directMode?.active ? (
+          <p className="text-sm text-gray-600">
+            {progress.posts_reviewed} of {directMode.requested} requested post
+            {directMode.requested === 1 ? "" : "s"} reviewed.
+          </p>
+        ) : spotCheck?.active ? (
+          <p className="text-sm text-gray-600">
+            {progress.posts_reviewed} post{progress.posts_reviewed === 1 ? "" : "s"} spot-checked
+            against @{spotCheck.targetReviewer}&apos;s verdicts. No more sampled posts left.
+          </p>
+        ) : (
+          <p className="text-sm text-gray-600">
+            {progress.posts_reviewed} / {progress.posts_total} posts reviewed ·{" "}
+            {progress.candidates_complete} / {progress.candidates_total} candidates complete. No
+            more structural-v2 posts in this queue.
+          </p>
+        )}
+        {spotCheckReport && (
+          <SpotCheckReportPanel report={spotCheckReport} />
+        )}
       </div>
     );
   }
@@ -559,11 +651,26 @@ export function PostVenueReviewClient({
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
-        <span>
-          {progress.posts_reviewed} / {progress.posts_total} posts reviewed
-          <span className="ml-2 text-gray-400">
-            ({progress.candidates_complete} / {progress.candidates_total} candidates complete)
-          </span>
+        <span className="flex items-center">
+          {spotCheck?.active && (
+            <Badge className="mr-2 bg-purple-100 text-purple-800">SPOT-CHECK</Badge>
+          )}
+          {spotCheck?.active ? (
+            <>
+              {progress.posts_reviewed} / {spotCheck.n} spot-checked
+            </>
+          ) : (
+            <>
+              {progress.posts_reviewed} / {progress.posts_total} posts reviewed
+              <span className="ml-2 text-gray-400">
+                ({progress.remaining_confirmed} confirmed + {progress.remaining_ambiguous} ambiguous
+                remaining)
+              </span>
+              <span className="ml-2 text-gray-400">
+                ({progress.candidates_complete} / {progress.candidates_total} candidates complete)
+              </span>
+            </>
+          )}
           {Object.keys(progress.by_verdict).length > 0 && (
             <span className="ml-2 text-gray-400">
               (
@@ -614,6 +721,13 @@ export function PostVenueReviewClient({
                 @{venue.username}
               </Link>
             )}
+            {/* Phase 2 (D055): direct-open mode only -- the human's own latest verdict on this
+                exact post, so they know what they're overriding. Never another reviewer's. */}
+            {current.your_verdict != null && (
+              <span className="ml-2 text-xs text-gray-400">
+                your current verdict: {VERDICT_LETTER[current.your_verdict]}
+              </span>
+            )}
           </div>
           {current.group.size > 1 && (
             <span className="text-xs text-gray-500">
@@ -625,6 +739,22 @@ export function PostVenueReviewClient({
             </span>
           )}
         </div>
+        {/* Phase 2 (D055): the Haiku reader's (scripts/classify/runExtract.ts) opinion on this
+            post, when it's already been read -- shown so the human sees what the model thought
+            before deciding. Never auto-submitted; see the N-flow pre-selection above for the one
+            place this feeds back into the UI. */}
+        {current.model && (
+          <div className="mt-1.5 rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-900">
+            <div className="font-semibold">
+              MODEL: {current.model.verdict}
+              {current.model.confidence != null && ` ${Math.round(current.model.confidence * 100)}%`}
+              {current.model.event_type && ` · ${current.model.event_type}`}
+            </div>
+            {current.model.evidence && (
+              <div className="mt-0.5 text-sky-700">&ldquo;{current.model.evidence}&rdquo;</div>
+            )}
+          </div>
+        )}
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {venue.venue_anchor_source && (
             <Badge className="bg-gray-100 text-gray-700">
@@ -633,7 +763,8 @@ export function PostVenueReviewClient({
           )}
           {chicagoBadge && <Badge className={chicagoBadge.className}>{chicagoBadge.label}</Badge>}
           <Badge className="bg-gray-100 text-gray-700">
-            {venue.current_wedding_count} documented wedding{venue.current_wedding_count === 1 ? "" : "s"} today
+            {venue.current_wedding_count} documented wedding{venue.current_wedding_count === 1 ? "" : "s"} today ·
+            bucket {venue.coverage_bucket}
           </Badge>
         </div>
         {showConflictBadge && (
@@ -844,6 +975,28 @@ export function PostVenueReviewClient({
           </div>
         </div>
       )}
+
+      {/* D055: agreement-so-far panel, computed once at page load (not live-updated as the
+          human keeps spot-checking this session -- reload to refresh). */}
+      {spotCheckReport && <SpotCheckReportPanel report={spotCheckReport} />}
+    </div>
+  );
+}
+
+// D055: renders SpotCheckReport.text (already formatted server-side, see
+// formatSpotCheckReportText in lib/server/postVenueReview.ts) as a small monospace panel --
+// appears both mid-session (below the review card) and on the "sample complete" empty state.
+function SpotCheckReportPanel({ report }: { report: SpotCheckReport }) {
+  return (
+    <div className="mt-4 rounded-2xl border border-black/[0.07] bg-white p-3 text-left">
+      <div className="mb-1.5 text-xs font-semibold text-gray-700">
+        Agreement so far: {report.reviewer} vs {report.human_reviewer} ({report.total_paired} paired
+        post{report.total_paired === 1 ? "" : "s"}
+        {report.agreement_pct != null ? `, ${report.agreement_pct}% agree` : ""})
+      </div>
+      <pre className="max-w-full overflow-x-auto whitespace-pre text-[11px] leading-relaxed text-gray-600">
+        {report.text}
+      </pre>
     </div>
   );
 }

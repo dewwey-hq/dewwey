@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getPostReviewQueue,
   getPostReviewProgress,
+  getSpotCheckQueue,
+  getPostReviewItemsByPostUrls,
   recordPostVerdict,
   isPostVenueVerdict,
 } from "@/lib/server/postVenueReview";
@@ -9,8 +11,50 @@ import {
 // GET /api/post-venue-review?limit=5 — queue + progress in one call (the page's initial load and
 // prefetch top-up both use this). Read-only. Same conventions as /api/labels and the
 // (now-replaced) /api/candidate-review.
+//
+// D055: GET /api/post-venue-review?spotcheck=fable-structured&n=40 — a separate mode, blind
+// spot-check of a reviewer's on-behalf verdicts (see getSpotCheckQueue's doc comment in
+// lib/server/postVenueReview.ts). `spotcheck`'s value IS the target reviewer name (matches the
+// page-level ?spotcheck=fable-structured convention); `n` is the sample size, default 40, capped
+// at 200. No `progress` in this mode's response -- the client tracks its own session-local
+// spot-check tally instead, and the items themselves carry no trace of the target reviewer's
+// verdict/notes.
+//
+// Phase 2 (D055): GET /api/post-venue-review?post=<shortcode>[,<shortcode>...] — direct-open mode,
+// serving exactly those post(s) (matches the page-level ?post= convention), in the order given,
+// regardless of any reviewer's existing verdict -- see getPostReviewItemsByPostUrls's doc comment.
+// No `progress` in this mode's response either, same reasoning as spotcheck.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+  const spotcheckReviewer = searchParams.get("spotcheck");
+  const postParam = searchParams.get("post");
+
+  if (postParam) {
+    const shortcodes = postParam
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const postUrls = shortcodes.map((sc) => `https://www.instagram.com/p/${sc}/`);
+    try {
+      const items = await getPostReviewItemsByPostUrls(postUrls);
+      return NextResponse.json({ items, mode: "post", requested: shortcodes.length, found: items.length });
+    } catch (err) {
+      console.error("post-venue-review-post error:", err);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+  }
+
+  if (spotcheckReviewer) {
+    const n = Math.min(Math.max(parseInt(searchParams.get("n") ?? "40", 10) || 40, 1), 200);
+    try {
+      const items = await getSpotCheckQueue(n, { targetReviewer: spotcheckReviewer });
+      return NextResponse.json({ items, mode: "spotcheck", target_reviewer: spotcheckReviewer, n });
+    } catch (err) {
+      console.error("post-venue-review-spotcheck error:", err);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+  }
+
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "5", 10) || 5, 1), 20);
 
   try {

@@ -341,6 +341,60 @@ each slice behind a calibration gate on the golden set before corpus spend.
   `artinstituteweddingsevents→artinstitutechi`, `rpmeventsandcatering↔rpmeventschicago`,
   `167greenstreet/167eventschicago`, `totlspecialevents/theateronthelakechicago`; plus an
   `account_locations` row for `empireburgerbar` (Naperville).
+- **Phase 1 re-plan: stop labeling for throughput** (2026-09-09 afternoon; user at 517
+  verdicts: "I don't think I'll make it through 4,743 posts... are we getting more confident
+  that our golden set will allow us to label better at scale?"). Measured first: the 4,743 was
+  963 out-of-market real weddings (should never have been queued), 792 ambiguous-geography
+  posts across 593 venues at 1.3 each, and 1,575 Chicago-confirmed of which only 106 sat at
+  venues with 0-5 documented weddings. **No structural stratum reaches 90% precision against
+  the human's own verdicts** (best 94% on n=16; the big strata 54-70%), so rule-based auto-
+  accept is unsafe — what scaled this week was a *reader*. The user's cost rule, now standing:
+  Fable does not read posts; Sonnet builds, Haiku reads, Fable writes the prompt and the eval
+  and decides what enters creation. Shipped the same afternoon: the queue drops
+  `CHICAGO_NOT_CONFIRMED` and sorts by coverage bucket (0, 1-5, 6-15, 16+) first; a blind
+  spot-check mode (`/label/candidates?spotcheck=fable-structured&n=40`) with an agreement
+  report; five ambiguous venues with ≥5 posts web-verified as out-of-market (New Orleans ×2,
+  Bigfork MT, Sonoma, Rockford) and their 14 candidates demoted; the other 587 ambiguous venues
+  go to the Phase 3 residue table.
+- **The Haiku reader (`extract-v1`) and its calibration.** `scripts/classify/extractPrompt.ts`
+  (system prompt encoding the mission's rules: reception anchors; in-house caterers/sales
+  teams/park districts are not the venue → OTHER_VENUE with the real handle; marketing, pitches,
+  showers, galas, styled shoots, roundups → NOT_WEDDING; anniversary re-shares of a specific
+  past wedding → THIS_VENUE; upcoming weddings and engagement sessions → NOT_WEDDING/
+  pre_wedding; a vendor showcase with a full stack but no couple and no event narrative →
+  THIS_VENUE capped at 0.7 confidence because only the photos can tell it from a styled shoot)
+  + `runExtract.ts` (calibration/corpus modes, `post_extraction_runs`, resumable, spend cap,
+  `--only-this-venue`). Calibrated against 599 human verdicts, $2.45 + $2.63:
+
+  | prompt | t≥0.5 | t≥0.8 | t≥0.9 | recall at 0.8 |
+  |---|---|---|---|---|
+  | extract-v1 | 85.5% | 86.7% | 89.8% | 81% |
+  | extract-v1.1 | 87.7% | **90.3%** | 92.2% | 76% |
+
+  By anchor at 0.8 (v1.1): credit_line 90.8%, inline_at ~91%, location_tag 89.0%. **Gate
+  cleared at confidence ≥0.8.** The model's NOT_WEDDING (68%) and OTHER_VENUE (~20%) calls do
+  not clear it and are never written — those posts stay in the human queue, badged with the
+  model's verdict and evidence, sorted last. Two findings from the disagreements: (1) half of
+  the model's false positives (27 of 54) are posts the human marked styled shoot from the
+  photos — the vision gap, exactly as the plan predicted; (2) the answer key has noise — 25 of
+  the 31 posts the model called NOT_WEDDING against a human W are venue/vendor marketing
+  ("Venue Spotlight", the Drake pitch, MUA tips, minimonies) and 4 are explicit styled shoots
+  the user later learned to flag; the model was right. Corpus pass: user chose a 300-post pilot
+  (~$1.30) before the rest (~$6.50 for the 1,474 Chicago-confirmed); THIS_VENUE verdicts at
+  ≥0.8 are written under `reviewed_by='haiku-extract-v1'`, creation stays batched with
+  provenance, the human spot-checks 5% per batch.
+- **Pilot + batch 4** (2026-09-09 evening). Corpus pilot: 300 posts, $1.30 → 202 THIS_VENUE
+  (181 written at ≥0.8), 70 NOT_WEDDING, 16 OTHER_VENUE, 10 UNSURE, 2 schema rejections (the
+  model put PRE_WEDDING in the verdict field; prompt wording tightened). User spot-checked 27 of
+  the model's W verdicts blind: **92.6% agreement** (credit_line 11/11, location_tag 14/15).
+  **Batch 4 CREATED** (`d055-structural-v2-batch4`, snapshot `2026-09-10T00-09-31`, user:
+  "create"): **371 weddings / 425 posts / 1,171 vendor credits**, 10 venues 1-5 → 6+, zero
+  orphans (the batch-3 fix held); 33 skipped out-of-market, 13 wrong-venue-no-correction.
+  weddings 4,265 → **4,636**. The review UI now shows the model's verdict, confidence, and
+  quoted evidence on every queued post, sorts model-flagged junk last, pre-selects the N reason
+  from the model's event type, and can open specific posts (`?post=a,b,c`) so the human can
+  correct earlier verdicts — the 27 answer-key posts above were handed over that way. The user
+  then approved reading the remaining ~1,170 Chicago-confirmed posts (~$5.20).
 Related: D047, D048, D050, D051, D052, D053, D054; memory files `tail-end-venue-coverage`,
 `feedback-gates-before-models`, `corpus-images-are-dead`.
 

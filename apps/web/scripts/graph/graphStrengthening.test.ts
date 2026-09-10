@@ -842,8 +842,12 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
     // venue. 8 of the 651 were created with zero posts (their post already existed in `posts`
     // from the venue_tagged crawl, unlinked) and were linked by hand the same night; the script
     // now links an existing post instead of skipping it.
-    expect(Number(rows[0].weddings)).toBe(4265);
-    expect(Number(rows[0].wedding_posts)).toBe(4870);
+        // +371 weddings / +426 posts from D055 batch 4 (2026-09-09 evening, user: "create"): the first
+    // batch that includes the Haiku reader's verdicts (extract-v1.1, 181 THIS_VENUE at >=0.8
+    // confidence, spot-checked blind by the user at 92.6% agreement) alongside the human's.
+    // Zero orphans -- the batch-3 link-existing-post fix held.
+    expect(Number(rows[0].weddings)).toBe(4636);
+    expect(Number(rows[0].wedding_posts)).toBe(5296);
   });
 });
 
@@ -1013,8 +1017,9 @@ describe("graph ingestion — D023 (DB)", () => {
     // sites -- same provenance via jeremy_weddings_created.batch_id, so all land in "untouched").
     // +2716 more from D055 batch 3 (651 weddings, 2026-09-09; same batch_id provenance, all
     // "untouched").
-    expect(Number(rows[0].untouched)).toBe(36273);
-    expect(Number(rows[0].total)).toBe(36384);
+    // +1171 more from D055 batch 4 (371 weddings, 2026-09-09 evening; same provenance).
+    expect(Number(rows[0].untouched)).toBe(37444);
+    expect(Number(rows[0].total)).toBe(37555);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -1080,8 +1085,12 @@ describe("graph ingestion — D023 (DB)", () => {
     // venue. 8 of the 651 were created with zero posts (their post already existed in `posts`
     // from the venue_tagged crawl, unlinked) and were linked by hand the same night; the script
     // now links an existing post instead of skipping it.
-    expect(Number(rows[0].weddings)).toBe(4265);
-    expect(Number(rows[0].wedding_posts)).toBe(4870);
+        // +371 weddings / +426 posts from D055 batch 4 (2026-09-09 evening, user: "create"): the first
+    // batch that includes the Haiku reader's verdicts (extract-v1.1, 181 THIS_VENUE at >=0.8
+    // confidence, spot-checked blind by the user at 92.6% agreement) alongside the human's.
+    // Zero orphans -- the batch-3 link-existing-post fix held.
+    expect(Number(rows[0].weddings)).toBe(4636);
+    expect(Number(rows[0].wedding_posts)).toBe(5296);
     // accounts +6 (14334->14340): Tier 1's 159 candidates credited a few vendor handles never
     // seen before in `accounts` -- unlike Batch 5/6, whose venue accounts always pre-existed
     // (that's how they got tagged 'venue' in the first place), Tier 1 spans the FULL candidate
@@ -1113,7 +1122,8 @@ describe("graph ingestion — D023 (DB)", () => {
     // +1 (22854->22855, D055 batch 2): one imported post's author had no accounts row yet --
     // createWeddingsFromJeremyEvidence.ts mints it on import, same as every prior batch.
     // +16 (22855->22871, D055 batch 3): imported posts' authors minted on import, as above.
-    expect(Number(rows[0].accounts)).toBe(22871);
+    // +19 (22871->22890, D055 batch 4): imported posts' authors minted on import, as above.
+    expect(Number(rows[0].accounts)).toBe(22890);
   });
 
   it("edges materialized view reflects the new wedding_vendors rows (grew from the refresh, count is consistent with a fresh recompute)", async () => {

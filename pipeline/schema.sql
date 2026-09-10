@@ -1723,3 +1723,32 @@ create table if not exists structural_candidate_merges (
   merged_at             timestamptz not null default now()
 );
 comment on table structural_candidate_merges is 'D055 (2026-09-08): provenance log for mergeStructuralCandidatesByCouple.ts -- one row per structural-v2 jeremy_wedding_candidates row absorbed into a same-venue+same-couple survivor candidate (posts and post_venue_verdicts reassigned to the survivor, the absorbed candidate row then deleted). Not FK-linked to jeremy_wedding_candidates -- the absorbed id no longer exists after the merge that wrote this row.';
+
+-- D055 Phase 2 (2026-09-09, "squeeze the 47k" Phase 1 re-plan step 3): the LLM reader --
+-- runExtract.ts asks Haiku 4.5 (via OpenRouter, same callTool plumbing as llmClassifier.ts) ONE
+-- question per structural-v2 candidate post: does this post document a real wedding at the
+-- candidate's anchored venue? See extractPrompt.ts for the prompt/schema (EXTRACT_PROMPT_VERSION
+-- = 'extract-v1'). Primary key (post_url, prompt_version) -- a rerun under the SAME prompt_version
+-- is an idempotent upsert (runExtract.ts does ON CONFLICT DO UPDATE, --force only); a NEW
+-- prompt_version inserts fresh rows, so prior prompt versions' runs stay comparable. This table is
+-- NOT a verdict by itself -- writing a real post_venue_verdicts row (reviewed_by='haiku-extract-v1')
+-- happens separately, gated on confidence/threshold/OTHER_VENUE-handle-resolution (see
+-- decideVerdictWrite in extractPrompt.ts) -- UNSURE is never written as a verdict.
+create table if not exists post_extraction_runs (
+  post_url               text not null,
+  candidate_id           bigint,
+  prompt_version         text not null,
+  model                  text,
+  result                 jsonb not null,      -- full structured tool-call output (ExtractResult)
+  confidence             real,
+  verdict                text,                -- THIS_VENUE/OTHER_VENUE/NOT_WEDDING/UNSURE
+  corrected_venue_handle text,
+  input_tokens           integer,
+  output_tokens          integer,
+  cost_usd               numeric,
+  created_at             timestamptz not null default now(),
+  primary key (post_url, prompt_version)
+);
+create index if not exists idx_post_extraction_runs_candidate on post_extraction_runs(candidate_id);
+create index if not exists idx_post_extraction_runs_verdict on post_extraction_runs(verdict);
+comment on table post_extraction_runs is 'RAW (D055 Phase 2, extract-v1): one row per (post_url, prompt_version) LLM extraction attempt from runExtract.ts. result is the full structured tool-call output; verdict/confidence/corrected_venue_handle are denormalized copies for cheap querying/reporting. See decideVerdictWrite in extractPrompt.ts for how (or whether) a post_venue_verdicts row gets written from this.';
