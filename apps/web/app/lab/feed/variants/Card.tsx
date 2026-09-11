@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { MeasuredCard } from "../components/MeasuredCard";
 import { VendorAvatar } from "../components/VendorAvatar";
+import { Avatar } from "@/app/components/Avatar";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
 import { coverPost, coverOrFirstPost, groupStackByCategory, displayName, isDerivedName } from "@/lib/feedDesign";
 import { roleLabel, contextLabel } from "@/lib/roles";
 import type { EmbedSize, Side, Split, TileCols } from "../variant";
-import type { StackVendor, WeddingStack } from "@/lib/server/graph";
+import type { StackPostInfo, StackVendor, WeddingStack } from "@/lib/server/graph";
 
 /** "July 2026" — no couple names anywhere in this variant (user feedback, 2026-09-11:
  * keep the card, drop `titleFromCaption`). Wedding dates are date-only; read as UTC so a
@@ -32,12 +33,11 @@ function panelWidthFor(embedWidth: number, split: number): number {
   return Math.round((embedWidth * (100 - split)) / split);
 }
 
-/** Tiles visible before the "+N more vendors" fold. One column of tiles (the stack column is
- * capped at 340-400px beside the embed, so two columns truncated every name); the cap is
- * higher when the embed is tall (540/470 in 1-up) so the column fills the embed's height. */
+/** Mobile-only fold cap. At md+ the stack panel now shows every tile and scrolls
+ * internally instead of folding (user feedback, 2026-09-11: don't grow the card past the
+ * embed's height, offer a scroll) -- the fold only still makes sense below md, where the
+ * panel is stacked under the embed with no height to respect. */
 const TILE_CAP = 6;
-const TILE_CAP_TALL = 9;
-const TILE_CAP_TALL_2COL = 12;
 
 /** One tile in the stack grid — avatar, name (+ `@handle` when the name had to be
  * derived from it, large screens only), role/context subtitle, small `AddToTeamButton`.
@@ -79,12 +79,64 @@ function CardTile({ vendor }: { vendor: StackVendor & { extraRoles: string[] } }
   );
 }
 
+/** FLIP target for "Show caption" (user, 2026-09-11: "instead of it elongating the post,
+ * if we have the caption take over the image") — replaces the embed+dots content in the
+ * media column at the SAME height that column was last measured at, so toggling never
+ * resizes the card. Owner row (avatar + `@handle`, linked to the post) plus a "Back to
+ * photo" button up top, caption text scrolling within the fixed height below. */
+function PostCaptionCard({
+  post,
+  height,
+  onBack,
+}: {
+  post: StackPostInfo | null;
+  height: number;
+  onBack: () => void;
+}) {
+  const ownerName = post?.ownerName ?? post?.ownerUsername ?? "Unknown";
+  return (
+    <div className="flex w-full flex-col bg-neutral-50 p-5" style={{ height }}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Avatar src={post?.ownerAvatarUrl ?? null} name={ownerName} size={32} />
+          {post?.ownerUsername ? (
+            <a
+              href={post.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="truncate text-sm font-medium text-gray-900 hover:text-gray-600"
+            >
+              @{post.ownerUsername}
+            </a>
+          ) : (
+            <span className="truncate text-sm font-medium text-gray-900">Unknown owner</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="shrink-0 text-xs font-medium text-gray-600 hover:text-gray-900"
+        >
+          Back to photo
+        </button>
+      </div>
+      <div className="mt-3 min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
+        {post?.caption || "No caption on this post."}
+      </div>
+    </div>
+  );
+}
+
 /** One card: a compliant `embed.js` embed flush against the card's own edges (so the
  * card's rounded corners clip the embed's own white border, nothing else) beside a
- * Roster-styled stack panel — "Hosted at {venue}" header, muted meta line, 2-col tile
- * grid with a 6-tile fold. Dots pager + "Show caption" toggle live under/near the embed.
- * No ResizeObserver height cap — the card is simply as tall as the taller column, panel
- * top-aligned via `md:items-start`. */
+ * Roster-styled stack panel — "Hosted at {venue}" header, muted meta line, a hairline
+ * divider, then the tile grid. Dots pager + "Show caption" toggle live under/near the
+ * embed. A `ResizeObserver` on the media column feeds `mediaHeight`, exposed as the
+ * `--media-h` CSS variable on the article: at md+ the stack panel is capped to that
+ * height and scrolls internally (user, 2026-09-11: "keep instagram post as the
+ * determining factor for the size of the card ... offer a scroll" instead of expanding
+ * past it) with a bottom fade while there's more to scroll to; below md there's no
+ * side-by-side height to respect, so it keeps the old 6-tile fold instead. */
 function FeedCardC({
   stack,
   eagerCover,
@@ -109,6 +161,39 @@ function FeedCardC({
   const [interacted, setInteracted] = useState(false);
   const [captioned, setCaptioned] = useState(false);
   const [expanded, setExpanded] = useState(false);
+
+  // Media column height, fed to the stack panel's `--media-h` cap (below) and reused as
+  // the caption card's fixed height on flip -- same state either way, so the two always
+  // agree and the card never resizes when "Show caption" is toggled.
+  const mediaRef = useRef<HTMLDivElement>(null);
+  const [mediaHeight, setMediaHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const el = mediaRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setMediaHeight(Math.round(entry.contentRect.height));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Stack panel scroll state, for the bottom fade -- only shown at md+ while there's more
+  // below the fold to scroll to (not merely because the panel happens to be scrollable).
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [canScrollMore, setCanScrollMore] = useState(false);
+  const updateScrollState = useCallback(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    setCanScrollMore(el.scrollTop + el.clientHeight < el.scrollHeight - 2);
+  }, []);
+  useEffect(() => {
+    updateScrollState();
+  }, [mediaHeight, updateScrollState]);
+  useEffect(() => {
+    window.addEventListener("resize", updateScrollState);
+    return () => window.removeEventListener("resize", updateScrollState);
+  }, [updateScrollState]);
+
   const activeEmbeddable = embeddablePosts[idx] ?? null;
   // Nothing embeddable at all -- fall back to the first post anyway so InstagramPostEmbed's
   // own blocked-owner path has the real owner/caption instead of showing nothing.
@@ -130,9 +215,8 @@ function FeedCardC({
   const others: StackVendor[] = venueVendor ? stack.vendors.filter((v) => v !== venueVendor) : stack.vendors;
   const groups = groupStackByCategory(others);
   const tiles = groups.flatMap((g) => g.vendors);
-  const tileCap = compact ? TILE_CAP : tileCols === 2 ? TILE_CAP_TALL_2COL : TILE_CAP_TALL;
-  const visibleTiles = expanded ? tiles : tiles.slice(0, tileCap);
-  const hiddenCount = tiles.length - visibleTiles.length;
+  // Mobile-only fold (md+ shows every tile, scrolling instead -- see the panel below).
+  const hiddenCountMobile = Math.max(0, tiles.length - TILE_CAP);
   // Card has no `venue` prop (unlike Roster's `venueFallbackName`) -- `stack.venue_name`
   // is already the per-wedding fallback straight from the query, so no new prop is needed.
   const venueLabel = venueVendor ? displayName(venueVendor.name, venueVendor.username) : (stack.venue_name ?? "Unknown venue");
@@ -152,6 +236,10 @@ function FeedCardC({
   const cardLayoutClass = `${SIDE_BY_SIDE_CLASS} md:items-start`;
   const cardStyle = {
     "--card-cols": flipped ? `${panelCol} ${embedCol}` : `${embedCol} ${panelCol}`,
+    // Unset (rather than a guessed default) until the ResizeObserver's first callback --
+    // `var()` referencing an unset custom property makes `max-height` invalid, so the
+    // panel simply isn't capped yet, which is the right behavior for that one frame.
+    ...(mediaHeight != null ? { "--media-h": `${mediaHeight}px` } : {}),
   } as React.CSSProperties;
   const mediaBorderClass = flipped
     ? "border-b border-black/[0.06] md:order-2 md:border-b-0 md:border-l"
@@ -168,112 +256,137 @@ function FeedCardC({
       {/* Media -- flush against the card's own edges (no padding) so the card's rounded
           corners clip the embed's own white border on the left/top/bottom-left; nothing
           else drawn over it. Dots pager (Roster-style) directly under the embed. */}
-      <div className={`flex flex-col ${mediaBorderClass}`}>
-        {/* embed.js puts an inline `margin: 0 0 12px` on the iframe it injects -- that was the
-            "tail" under the post (user, 2026-09-11); zero it here, scoped to this column only. */}
-        <div className="w-full [&_iframe]:mb-0!" style={{ maxWidth: embedWidth }}>
-          <InstagramPostEmbed
-            key={`${activePost?.url ?? "none"}-${captioned ? "cap" : "nocap"}`}
-            post={activePost}
-            eager={eagerCover || interacted}
-            captioned={captioned}
-          />
-        </div>
-        {embeddablePosts.length > 1 && (
-          <div role="group" aria-label="Choose a post" className="flex items-center justify-center gap-2 py-3">
-            {embeddablePosts.map((p, i) => (
-              <button
-                key={p.url}
-                type="button"
-                onClick={() => {
-                  setIdx(i);
-                  setInteracted(true);
-                }}
-                aria-label={`View post ${i + 1} of ${embeddablePosts.length}`}
-                aria-current={i === idx ? "true" : undefined}
-                className={`rounded-full transition-all ${
-                  i === idx ? "h-2.5 w-2.5 bg-rose-400" : "h-2 w-2 bg-black/[0.15] hover:bg-black/[0.3]"
-                }`}
-              />
-            ))}
+      <div ref={mediaRef} className={`flex flex-col ${mediaBorderClass}`}>
+        {/* Embed + dots pager stay mounted (never unmounted, so flipping back to the photo
+            never reloads embed.js's iframe) but hidden while the caption card is showing --
+            it takes over this same column at the column's last-measured height instead of
+            growing it (user, 2026-09-11: "have the caption take over the image"). */}
+        <div hidden={captioned}>
+          {/* embed.js puts an inline `margin: 0 0 12px` on the iframe it injects -- that was the
+              "tail" under the post (user, 2026-09-11); zero it here, scoped to this column only. */}
+          <div className="w-full [&_iframe]:mb-0!" style={{ maxWidth: embedWidth }}>
+            <InstagramPostEmbed key={activePost?.url ?? "none"} post={activePost} eager={eagerCover || interacted} />
           </div>
+          {embeddablePosts.length > 1 && (
+            <div role="group" aria-label="Choose a post" className="flex items-center justify-center gap-2 py-3">
+              {embeddablePosts.map((p, i) => (
+                <button
+                  key={p.url}
+                  type="button"
+                  onClick={() => {
+                    setIdx(i);
+                    setInteracted(true);
+                  }}
+                  aria-label={`View post ${i + 1} of ${embeddablePosts.length}`}
+                  aria-current={i === idx ? "true" : undefined}
+                  className={`rounded-full transition-all ${
+                    i === idx ? "h-2.5 w-2.5 bg-rose-400" : "h-2 w-2 bg-black/[0.15] hover:bg-black/[0.3]"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        {captioned && (
+          <PostCaptionCard post={activePost} height={mediaHeight ?? 480} onBack={() => setCaptioned(false)} />
         )}
       </div>
 
       {/* Stack panel -- white (no grey), Roster's Hosted-at header + meta line + tile
-          grid, venue excluded (already the Hosted line), 6-tile fold. */}
-      <div className={`flex min-w-0 flex-col p-5 md:self-start ${panelOrderClass}`}>
-        <p className="text-[15px] font-semibold text-gray-900">
-          <span className="font-semibold text-gray-500">Hosted at </span>
-          {venueVendor ? (
-            <Link href={`/vendors/${encodeURIComponent(venueVendor.username)}`} className="hover:text-gray-600">
-              {venueLabel}
-            </Link>
-          ) : (
-            venueLabel
-          )}
-        </p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-black/[0.45]">
-          <span>
-            {monthYear} · {stack.n_posts} post{stack.n_posts === 1 ? "" : "s"}
-          </span>
-          {activePost?.postType === "Video" && (
-            <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-gray-600">
-              Reel
+          grid, venue excluded (already the Hosted line). Capped to the media column's
+          height at md+ (`--media-h`) and scrolls internally instead of growing the card;
+          below md it's the old 6-tile fold with no cap. */}
+      <div
+        ref={panelRef}
+        onScroll={updateScrollState}
+        className={`relative min-w-0 md:max-h-(--media-h) md:self-start md:overflow-y-auto ${panelOrderClass}`}
+      >
+        <div className="flex flex-col p-5">
+          <p className="text-[15px] font-semibold text-gray-900">
+            <span className="font-semibold text-gray-500">Hosted at </span>
+            {venueVendor ? (
+              <Link href={`/vendors/${encodeURIComponent(venueVendor.username)}`} className="hover:text-gray-600">
+                {venueLabel}
+              </Link>
+            ) : (
+              venueLabel
+            )}
+          </p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-black/[0.45]">
+            <span>
+              {monthYear} · {stack.n_posts} post{stack.n_posts === 1 ? "" : "s"}
             </span>
-          )}
-          {activePost?.postType === "Sidecar" && (
-            <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-gray-600">
-              Carousel
-            </span>
-          )}
-          {openUrl && (
-            <>
-              <span aria-hidden>·</span>
-              <a
-                href={openUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-gray-600 hover:text-gray-900"
-              >
-                ↗ Open on Instagram
-              </a>
-            </>
-          )}
-          <span aria-hidden>·</span>
-          <button
-            type="button"
-            onClick={() => setCaptioned((c) => !c)}
-            aria-pressed={captioned}
-            className="font-medium text-gray-600 hover:text-gray-900"
-          >
-            {captioned ? "Hide caption" : "Show caption"}
-          </button>
-        </p>
+            {activePost?.postType === "Video" && (
+              <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                Reel
+              </span>
+            )}
+            {openUrl && (
+              <>
+                <span aria-hidden>·</span>
+                <a
+                  href={openUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-gray-600 hover:text-gray-900"
+                >
+                  ↗ Open on Instagram
+                </a>
+              </>
+            )}
+            <span aria-hidden>·</span>
+            <button
+              type="button"
+              onClick={() => setCaptioned((c) => !c)}
+              aria-pressed={captioned}
+              className="font-medium text-gray-600 hover:text-gray-900"
+            >
+              {captioned ? "Hide caption" : "Show caption"}
+            </button>
+          </p>
 
-        <div className={`mt-4 grid gap-y-2 [&>*]:min-w-0 ${tileCols === 2 && !compact ? "grid-cols-2 gap-x-3" : "grid-cols-1"}`}>
-          {visibleTiles.map((v) => (
-            <CardTile key={`${v.username}-${v.role}`} vendor={v} />
-          ))}
+          {/* Hairline separating the header/meta block from the vendor stack (user,
+              2026-09-11: "consider adding lines to separate the hosted the arbory part
+              and ... the vendor stack"). */}
+          <div className="mt-3 border-t border-black/[0.06] pt-3" />
+
+          <div className={`grid gap-y-2 [&>*]:min-w-0 ${tileCols === 2 && !compact ? "grid-cols-2 gap-x-3" : "grid-cols-1"}`}>
+            {tiles.map((v, i) => (
+              <div key={`${v.username}-${v.role}`} className={i >= TILE_CAP && !expanded ? "hidden md:block" : ""}>
+                <CardTile vendor={v} />
+              </div>
+            ))}
+          </div>
+
+          {hiddenCountMobile > 0 && !expanded && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900 md:hidden"
+            >
+              +{hiddenCountMobile} more vendor{hiddenCountMobile === 1 ? "" : "s"}
+            </button>
+          )}
+          {expanded && hiddenCountMobile > 0 && (
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900 md:hidden"
+            >
+              Show fewer
+            </button>
+          )}
         </div>
 
-        {hiddenCount > 0 && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900"
-          >
-            +{hiddenCount} more vendor{hiddenCount === 1 ? "" : "s"}
-          </button>
-        )}
-        {expanded && tiles.length > tileCap && (
-          <button
-            type="button"
-            onClick={() => setExpanded(false)}
-            className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900"
-          >
-            Show fewer
-          </button>
+        {/* Bottom scroll affordance -- only while the panel is actually capped and there's
+            more below the fold (user, 2026-09-11: offer a scroll instead of expanding).
+            `-mt-8` pulls it over the last 32px of content instead of adding scroll height
+            of its own; `sticky bottom-0` keeps it pinned while scrolling. */}
+        {canScrollMore && (
+          <div
+            aria-hidden
+            className="pointer-events-none sticky bottom-0 -mt-8 hidden h-8 bg-gradient-to-t from-white to-transparent md:block"
+          />
         )}
       </div>
     </article>
@@ -293,9 +406,13 @@ function FeedCardC({
  * stack as a 2-column grid of vendor tiles instead of a category-headed list — category
  * order is preserved (`groupStackByCategory`) but the category labels are no longer
  * drawn. `embedWidth`/`twoUp` (`FeedLab.tsx`'s Size/Layout controls, C and D only) still
- * drive a narrower/2-up card to a single-column tile grid; the panel is no longer
- * height-capped to the embed (that used a `ResizeObserver`, now removed) — it's simply
- * top-aligned (`md:items-start`) and the card is as tall as its taller column.
+ * drive a narrower/2-up card to a single-column tile grid. A further round the same day
+ * ("keep instagram post as the determining factor for the size of the card ... offer a
+ * scroll" / "have the caption take over the image") re-added a `ResizeObserver` on the
+ * media column (`FeedCardC`): at md+ the panel is capped to that height and scrolls
+ * internally instead of expanding the card, and "Show caption" flips the same column to
+ * a same-height caption card instead of remounting the embed captioned. Below md the
+ * panel keeps the old 6-tile fold, since there's no side-by-side height to respect there.
  */
 export function Card({
   stacks,
