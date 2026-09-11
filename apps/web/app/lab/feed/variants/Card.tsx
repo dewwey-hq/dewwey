@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Buildings, Quotes } from "@phosphor-icons/react";
+import { Buildings, Image as ImageIcon, TextAlignLeft } from "@phosphor-icons/react";
 import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { MeasuredCard } from "../components/MeasuredCard";
 import { VendorAvatar } from "../components/VendorAvatar";
@@ -352,13 +352,9 @@ function FeedCardC({
               onClick={() => setCaptioned((c) => !c)}
               aria-pressed={captioned}
               title={captioned ? "Back to the photo" : "Read the post's caption"}
-              className={`-mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ring-1 ring-inset transition-colors ${
-                captioned
-                  ? "bg-gray-900 text-white ring-gray-900"
-                  : "text-gray-600 ring-black/[0.12] hover:text-gray-900 hover:ring-black/[0.3]"
-              }`}
+              className="-mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-gray-600 ring-1 ring-inset ring-black/[0.12] transition-colors hover:text-gray-900 hover:ring-black/[0.3]"
             >
-              <Quotes size={12} weight="fill" />
+              {captioned ? <ImageIcon size={13} /> : <TextAlignLeft size={13} />}
               {captioned ? "Photo" : "Caption"}
             </button>
           </div>

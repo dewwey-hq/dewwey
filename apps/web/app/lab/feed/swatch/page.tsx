@@ -36,5 +36,12 @@ export default async function FeedSwatchPage({
   const stack = stacks[0];
   if (!stack) notFound();
 
-  return <Swatches stack={stack} />;
+  // Second section (D058 follow-on, 2026-09-11): "the experience for if there's multiple
+  // posts isn't ideal ... need a better design than just the dots underneath" — wedding 881
+  // (The Arbory, 3 posts) is the target demo stack; fall back to the first hosted stack with
+  // more than one post if 881 isn't in this venue's list (or render a note in Swatches).
+  const { stacks: hostedStacks } = await listWeddingStacks({ accountId: venue.id, hostedOnly: true, limit: 60 });
+  const multiStack = hostedStacks.find((s) => s.id === 881) ?? hostedStacks.find((s) => s.n_posts > 1) ?? null;
+
+  return <Swatches stack={stack} multiStack={multiStack} />;
 }

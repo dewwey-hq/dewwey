@@ -1,10 +1,15 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { Buildings, InstagramLogo, TextAlignLeft } from "@phosphor-icons/react/dist/ssr";
+import { Buildings, CaretLeft, CaretRight, InstagramLogo, TextAlignLeft } from "@phosphor-icons/react";
 import { VendorAvatar } from "../components/VendorAvatar";
+import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
-import { coverOrFirstPost, displayName, groupStackByCategory, isDerivedName } from "@/lib/feedDesign";
+import { Avatar } from "@/app/components/Avatar";
+import { coverOrFirstPost, coverPost, displayName, groupStackByCategory, isDerivedName } from "@/lib/feedDesign";
 import { roleLabel, contextLabel } from "@/lib/roles";
-import type { StackVendor, WeddingStack } from "@/lib/server/graph";
+import type { StackPostInfo, StackVendor, WeddingStack } from "@/lib/server/graph";
 
 /** "August 2026" — copied verbatim from `variants/Card.tsx` per the lab's per-file
  * duplication convention (see that file's own comment for the UTC rationale). */
@@ -216,6 +221,112 @@ function Option3Panel({ stack, venueHref, venueLabel, monthYear, tiles, openUrl 
   );
 }
 
+/** Option A · "Dots" (today) — the exact dots pager markup from `Card.tsx`'s `FeedCardC`,
+ * rose active dot, centered under the embed. */
+function DotsPager({ posts, idx, onSelect }: { posts: StackPostInfo[]; idx: number; onSelect: (i: number) => void }) {
+  return (
+    <div role="group" aria-label="Choose a post" className="flex items-center justify-center gap-2 py-3">
+      {posts.map((p, i) => (
+        <button
+          key={p.url}
+          type="button"
+          onClick={() => onSelect(i)}
+          aria-label={`View post ${i + 1} of ${posts.length}`}
+          aria-current={i === idx ? "true" : undefined}
+          className={`rounded-full transition-all ${
+            i === idx ? "h-2.5 w-2.5 bg-rose-400" : "h-2 w-2 bg-black/[0.15] hover:bg-black/[0.3]"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Option B · "Counter + arrows" — a left/right chevron either side of a plain "1 / 3"
+ * label; the arrows disable at the ends instead of wrapping. */
+function CounterPager({ posts, idx, onSelect }: { posts: StackPostInfo[]; idx: number; onSelect: (i: number) => void }) {
+  return (
+    <div className="flex items-center justify-center gap-3 px-3 py-2.5">
+      <button
+        type="button"
+        onClick={() => onSelect(idx - 1)}
+        disabled={idx === 0}
+        aria-label="Previous post"
+        className="rounded-full p-1 hover:bg-black/[0.05] disabled:opacity-30"
+      >
+        <CaretLeft size={16} />
+      </button>
+      <span className="text-xs tabular-nums text-black/[0.5]">
+        {idx + 1} / {posts.length}
+      </span>
+      <button
+        type="button"
+        onClick={() => onSelect(idx + 1)}
+        disabled={idx === posts.length - 1}
+        aria-label="Next post"
+        className="rounded-full p-1 hover:bg-black/[0.05] disabled:opacity-30"
+      >
+        <CaretRight size={16} />
+      </button>
+    </div>
+  );
+}
+
+/** Option C · "Posted by chips" — one pill per post, avatar + `@handle` of whoever posted
+ * it, so switching posts reads as switching between the people who posted them (not an
+ * abstract index). */
+function ChipsPager({ posts, idx, onSelect }: { posts: StackPostInfo[]; idx: number; onSelect: (i: number) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 px-3 py-2.5">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-black/[0.4]">Posted by</span>
+      {posts.map((p, i) => {
+        const active = i === idx;
+        const name = p.ownerName ?? p.ownerUsername ?? "Unknown";
+        return (
+          <button
+            key={p.url}
+            type="button"
+            onClick={() => onSelect(i)}
+            aria-pressed={active}
+            className={`flex items-center gap-1.5 rounded-full px-2 py-1 ring-1 ring-inset ${
+              active ? "bg-gray-900 text-white ring-gray-900" : "text-gray-700 ring-black/[0.12] hover:ring-black/[0.3]"
+            }`}
+          >
+            <Avatar src={p.ownerAvatarUrl} name={name} size={20} />
+            <span className="max-w-[140px] truncate text-xs">@{p.ownerUsername ?? "unknown"}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** One demo cell: the real, compliant `InstagramPostEmbed` of the active post (eager,
+ * `key`ed by url so switching posts remounts the embed) with the switcher chrome living
+ * UNDER it, never over the frame — its own `useState` over `embeddablePosts`. */
+function MultiPostCell({
+  posts,
+  initialIdx,
+  variant,
+}: {
+  posts: StackPostInfo[];
+  initialIdx: number;
+  variant: "dots" | "counter" | "chips";
+}) {
+  const [idx, setIdx] = useState(initialIdx);
+  const active = posts[idx] ?? null;
+  return (
+    <div className="mx-auto w-full max-w-[360px] overflow-hidden rounded-2xl border border-black/[0.07] bg-white">
+      <div className="w-full [&_iframe]:mb-0!">
+        <InstagramPostEmbed key={active?.url ?? "none"} post={active} eager />
+      </div>
+      {variant === "dots" && <DotsPager posts={posts} idx={idx} onSelect={setIdx} />}
+      {variant === "counter" && <CounterPager posts={posts} idx={idx} onSelect={setIdx} />}
+      {variant === "chips" && <ChipsPager posts={posts} idx={idx} onSelect={setIdx} />}
+    </div>
+  );
+}
+
 /**
  * D058 follow-on swatch: three treatments of the stack panel's top block ("Hosted at
  * {venue}" + the "↗ Open on Instagram"/"Show caption" meta line the user called "clunky",
@@ -225,7 +336,7 @@ function Option3Panel({ stack, venueHref, venueLabel, monthYear, tiles, openUrl 
  * swatch — every Open/Caption control here is inert (no state, `href="#"` where there's no
  * real post URL).
  */
-export function Swatches({ stack }: { stack: WeddingStack }) {
+export function Swatches({ stack, multiStack }: { stack: WeddingStack; multiStack: WeddingStack | null }) {
   const venueKey = stack.venue_username?.toLowerCase();
   const venueVendor = venueKey ? stack.vendors.find((v) => v.username.toLowerCase() === venueKey) : undefined;
   const others: StackVendor[] = venueVendor ? stack.vendors.filter((v) => v !== venueVendor) : stack.vendors;
@@ -241,6 +352,14 @@ export function Swatches({ stack }: { stack: WeddingStack }) {
   const openUrl = coverOrFirstPost(stack.post_infos)?.url ?? stack.post_urls[0] ?? null;
 
   const shared: PanelTopProps = { stack, venueHref, venueLabel, monthYear, openUrl };
+
+  // Multi-post switcher demo (D058 follow-on, 2026-09-11): "the experience for if there's
+  // multiple posts isn't ideal ... need a better design than just the dots underneath" —
+  // three switcher designs over the same real multi-post stack, each cell tracking its own
+  // active post so trying one option never affects the others.
+  const multiEmbeddable: StackPostInfo[] = multiStack ? multiStack.post_infos.filter((p) => p.ok && Boolean(p.url)) : [];
+  const multiCover = multiStack ? coverPost(multiStack.post_infos) : null;
+  const multiInitialIdx = multiCover ? Math.max(0, multiEmbeddable.findIndex((p) => p.url === multiCover.url)) : 0;
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -269,6 +388,37 @@ export function Swatches({ stack }: { stack: WeddingStack }) {
           </div>
         </div>
       </div>
+
+      <h2 className="mb-1 mt-12 text-lg font-semibold text-gray-900">
+        Multi-post switcher
+        {multiStack ? ` · wedding ${multiStack.id} (${multiStack.n_posts} post${multiStack.n_posts === 1 ? "" : "s"})` : ""}
+      </h2>
+      {multiStack ? (
+        <>
+          <p className="mb-6 text-sm text-black/[0.5]">
+            Three ways to move between posts on the same wedding — the dots pager alone (today) doesn&apos;t scale
+            past a couple of posts. Each cell below is independent.
+          </p>
+          <div className="grid gap-6 md:grid-cols-3">
+            <div>
+              <p className="mb-2 text-xs font-medium text-black/[0.45]">Option A · Dots (today)</p>
+              <MultiPostCell posts={multiEmbeddable} initialIdx={multiInitialIdx} variant="dots" />
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-medium text-black/[0.45]">Option B · Counter + arrows</p>
+              <MultiPostCell posts={multiEmbeddable} initialIdx={multiInitialIdx} variant="counter" />
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-medium text-black/[0.45]">Option C · Posted by chips</p>
+              <MultiPostCell posts={multiEmbeddable} initialIdx={multiInitialIdx} variant="chips" />
+            </div>
+          </div>
+        </>
+      ) : (
+        <p className="mb-6 text-sm text-black/[0.5]">
+          No hosted multi-post wedding found for this venue to demo the switcher on.
+        </p>
+      )}
     </div>
   );
 }
