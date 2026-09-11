@@ -58,3 +58,21 @@ export function parseLimit(v: string | null | undefined, variant: Variant): numb
   if (Number.isInteger(n) && n >= 1 && n <= 200) return n;
   return FRESH_VARIANTS.includes(variant) ? DEFAULT_LIMIT_FRESH : DEFAULT_LIMIT_CLASSIC;
 }
+
+/** Variant C tuning knobs (user, 2026-09-11: "play around with the ui dynamically like column
+ * 1 column 2 and like % e.g. 50% embed vs. 70% embed"). `split` = the embed's share of the
+ * card width; the stack column is derived (embed * (100-split)/split) because the embed
+ * itself can't exceed Meta's 540px. `tiles` = vendor tile columns in the stack panel. */
+export const SPLITS = [50, 55, 60, 65, 70] as const;
+export type Split = (typeof SPLITS)[number];
+export const DEFAULT_SPLIT: Split = 60;
+export function parseSplit(v: string | null | undefined): Split {
+  const n = Number(v);
+  return (SPLITS as readonly number[]).includes(n) ? (n as Split) : DEFAULT_SPLIT;
+}
+export const TILE_COLS = [1, 2] as const;
+export type TileCols = (typeof TILE_COLS)[number];
+export const DEFAULT_TILE_COLS: TileCols = 1;
+export function parseTileCols(v: string | null | undefined): TileCols {
+  return v === "2" ? 2 : DEFAULT_TILE_COLS;
+}

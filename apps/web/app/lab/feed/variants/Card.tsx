@@ -8,7 +8,7 @@ import { VendorAvatar } from "../components/VendorAvatar";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
 import { coverPost, coverOrFirstPost, groupStackByCategory, displayName, isDerivedName } from "@/lib/feedDesign";
 import { roleLabel, contextLabel } from "@/lib/roles";
-import type { EmbedSize } from "../variant";
+import type { EmbedSize, Split, TileCols } from "../variant";
 import type { StackVendor, WeddingStack } from "@/lib/server/graph";
 
 /** "July 2026" — no couple names anywhere in this variant (user feedback, 2026-09-11:
@@ -22,21 +22,22 @@ function monthYearLabel(date: string | null): string {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-/** Static, fully-written-out class names per size (Tailwind's JIT scans source text, not
- * runtime-interpolated strings) — the side-by-side grid template used in 1-up mode only;
- * 2-up stacks media above the panel instead (see `cardLayoutClass` below). */
-const SIDE_BY_SIDE_GRID_CLASS: Record<EmbedSize, string> = {
-  360: "md:grid md:grid-cols-[minmax(0,360px)_minmax(0,340px)]",
-  400: "md:grid md:grid-cols-[minmax(0,400px)_minmax(0,360px)]",
-  470: "md:grid md:grid-cols-[minmax(0,470px)_minmax(0,380px)]",
-  540: "md:grid md:grid-cols-[minmax(0,540px)_minmax(0,400px)]",
-};
+/** Side-by-side grid template as a CSS variable (`--card-cols`), so the embed share
+ * (`split`, user 2026-09-11) can be any of the allowed percentages without a static class
+ * per combination: the embed column is `embedWidth`, the stack column is derived from the
+ * share (`embedWidth * (100 - split) / split`) because the embed itself can't grow past
+ * Meta's 540px. Tailwind only needs the one arbitrary-property class below. */
+const SIDE_BY_SIDE_CLASS = "md:grid md:[grid-template-columns:var(--card-cols)]";
+function panelWidthFor(embedWidth: number, split: number): number {
+  return Math.round((embedWidth * (100 - split)) / split);
+}
 
 /** Tiles visible before the "+N more vendors" fold. One column of tiles (the stack column is
  * capped at 340-400px beside the embed, so two columns truncated every name); the cap is
  * higher when the embed is tall (540/470 in 1-up) so the column fills the embed's height. */
 const TILE_CAP = 6;
 const TILE_CAP_TALL = 9;
+const TILE_CAP_TALL_2COL = 12;
 
 /** One tile in the stack grid — avatar, name (+ `@handle` when the name had to be
  * derived from it, large screens only), role/context subtitle, small `AddToTeamButton`.
@@ -89,11 +90,15 @@ function FeedCardC({
   eagerCover,
   embedWidth,
   twoUp,
+  split,
+  tileCols,
 }: {
   stack: WeddingStack;
   eagerCover: boolean;
   embedWidth: EmbedSize;
   twoUp: boolean;
+  split: Split;
+  tileCols: TileCols;
 }) {
   const embeddablePosts = stack.post_infos.filter((p) => p.ok && Boolean(p.url));
   const cover = coverPost(stack.post_infos);
@@ -123,14 +128,17 @@ function FeedCardC({
   const others: StackVendor[] = venueVendor ? stack.vendors.filter((v) => v !== venueVendor) : stack.vendors;
   const groups = groupStackByCategory(others);
   const tiles = groups.flatMap((g) => g.vendors);
-  const tileCap = compact ? TILE_CAP : TILE_CAP_TALL;
+  const tileCap = compact ? TILE_CAP : tileCols === 2 ? TILE_CAP_TALL_2COL : TILE_CAP_TALL;
   const visibleTiles = expanded ? tiles : tiles.slice(0, tileCap);
   const hiddenCount = tiles.length - visibleTiles.length;
   // Card has no `venue` prop (unlike Roster's `venueFallbackName`) -- `stack.venue_name`
   // is already the per-wedding fallback straight from the query, so no new prop is needed.
   const venueLabel = venueVendor ? displayName(venueVendor.name, venueVendor.username) : (stack.venue_name ?? "Unknown venue");
 
-  const cardLayoutClass = twoUp ? "" : `${SIDE_BY_SIDE_GRID_CLASS[embedWidth]} md:items-start`;
+  const cardLayoutClass = twoUp ? "" : `${SIDE_BY_SIDE_CLASS} md:items-start`;
+  const cardStyle = twoUp
+    ? undefined
+    : ({ "--card-cols": `${embedWidth}px ${panelWidthFor(embedWidth, split)}px` } as React.CSSProperties);
   const mediaBorderClass = twoUp
     ? "border-b border-black/[0.06]"
     : "border-b border-black/[0.06] md:border-b-0 md:border-r";
@@ -140,12 +148,15 @@ function FeedCardC({
       className={`w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-white ${
         twoUp ? "" : "md:mx-auto md:w-fit md:max-w-full"
       } ${cardLayoutClass}`}
+      style={cardStyle}
     >
       {/* Media -- flush against the card's own edges (no padding) so the card's rounded
           corners clip the embed's own white border on the left/top/bottom-left; nothing
           else drawn over it. Dots pager (Roster-style) directly under the embed. */}
       <div className={`flex flex-col ${mediaBorderClass}`}>
-        <div className="w-full" style={{ maxWidth: embedWidth }}>
+        {/* embed.js puts an inline `margin: 0 0 12px` on the iframe it injects -- that was the
+            "tail" under the post (user, 2026-09-11); zero it here, scoped to this column only. */}
+        <div className="w-full [&_iframe]:mb-0!" style={{ maxWidth: embedWidth }}>
           <InstagramPostEmbed
             key={`${activePost?.url ?? "none"}-${captioned ? "cap" : "nocap"}`}
             post={activePost}
@@ -225,7 +236,7 @@ function FeedCardC({
           </button>
         </p>
 
-        <div className="mt-4 grid grid-cols-1 gap-y-2">
+        <div className={`mt-4 grid gap-y-2 [&>*]:min-w-0 ${tileCols === 2 && !compact ? "grid-cols-2 gap-x-3" : "grid-cols-1"}`}>
           {visibleTiles.map((v) => (
             <CardTile key={`${v.username}-${v.role}`} vendor={v} />
           ))}
@@ -275,10 +286,14 @@ export function Card({
   stacks,
   embedWidth,
   twoUp,
+  split,
+  tileCols,
 }: {
   stacks: WeddingStack[];
   embedWidth: EmbedSize;
   twoUp: boolean;
+  split: Split;
+  tileCols: TileCols;
 }) {
   return (
     <div
@@ -290,7 +305,14 @@ export function Card({
     >
       {stacks.map((stack, i) => (
         <MeasuredCard key={stack.id} id={stack.id}>
-          <FeedCardC stack={stack} eagerCover={i < 2} embedWidth={embedWidth} twoUp={twoUp} />
+          <FeedCardC
+            stack={stack}
+            eagerCover={i < 2}
+            embedWidth={embedWidth}
+            twoUp={twoUp}
+            split={split}
+            tileCols={tileCols}
+          />
         </MeasuredCard>
       ))}
     </div>

@@ -3,7 +3,15 @@ import { notFound } from "next/navigation";
 import { getPool } from "@/lib/server/db";
 import { listWeddingStacks } from "@/lib/server/graph";
 import { FeedLab } from "./FeedLab";
-import { isVariant, parseEmbedSize, parseLayout, parseLimit, type Variant } from "./variant";
+import {
+  isVariant,
+  parseEmbedSize,
+  parseLayout,
+  parseLimit,
+  parseSplit,
+  parseTileCols,
+  type Variant,
+} from "./variant";
 
 export const metadata: Metadata = {
   title: "Feed design lab",
@@ -28,6 +36,8 @@ export default async function FeedLabPage({
   const embedSize = parseEmbedSize(typeof sp.size === "string" ? sp.size : undefined);
   const layout = parseLayout(typeof sp.layout === "string" ? sp.layout : undefined);
   const limit = parseLimit(typeof sp.n === "string" ? sp.n : undefined, variant);
+  const split = parseSplit(typeof sp.split === "string" ? sp.split : undefined);
+  const tileCols = parseTileCols(typeof sp.tiles === "string" ? sp.tiles : undefined);
 
   const { rows } = await getPool().query<{ id: number; username: string; name: string }>(
     `SELECT id::int, username::text, COALESCE(full_name, username::text) AS name
@@ -56,6 +66,8 @@ export default async function FeedLabPage({
       initialVariant={variant}
       initialEmbedSize={embedSize}
       initialLayout={layout}
+      initialSplit={split}
+      initialTileCols={tileCols}
     />
   );
 }
