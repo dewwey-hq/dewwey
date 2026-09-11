@@ -1886,3 +1886,39 @@ create table if not exists discovered_venue_leads (
   updated_at       timestamptz default now()
 );
 comment on table discovered_venue_leads is 'D055 venue-discovery reader downstream, resolveDiscoveredVenues.ts tier C: candidate NEW venues the pool-b reader surfaced with no existing accounts match, aggregated by normalized venue name. Never auto-minted into accounts/account_locations -- see the D052 "independent geography check before it enters the graph" rule. status is a human review flag (default ''new''), not written by the resolver beyond that default.';
+
+-- D056 stage 1 (2026-09-10, parser v10 "stack-parser-ts-v10", scripts/graph/stackParser.ts's
+-- parseCaptionV2 / scripts/graph/runStackParserV10.ts) -- additive re-parse of the SAME corpus
+-- using the D056 two-level taxonomy (scripts/graph/vendorRoleRules.ts classifyLabel()) instead of
+-- v1-v9's flat 23-value normRole() map, plus two Next-list items bundled in: emoji-keyed credit
+-- lines ("💐 @handle", no text label) and a non-wedding-event-title flag (baby/bridal shower,
+-- birthday, ...). Parallel to, and never touching, stack_extraction_runs/stack_extraction_entries
+-- above -- applied via scripts/graph/applyStackEntriesV2Schema.ts (idempotent, create table if not
+-- exists). See docs/decisions.md D056.
+create table if not exists stack_extraction_entries_v2 (
+  post_url       text not null,
+  parser_version text not null,
+  line_no        int not null,
+  label_raw      text not null,
+  handle         text not null,
+  role           text not null,          -- a VENDOR_ROLES slug, or 'participant:<role>' for a participant row
+  event_context  text not null default 'wedding_day',
+  source         text not null,          -- credit_line | inline_at | venue_hashtag | emoji_line
+  rule_id        text,
+  extracted_at   timestamptz default now()
+);
+comment on table stack_extraction_entries_v2 is 'D056 stage 1 (parser v10, stack-parser-ts-v10): one row per (post, credit-line, role, handle) using the D056 two-level taxonomy (vendorRoleRules.ts classifyLabel()), NOT the v1-v9 23-value normRole() map. role is a VENDOR_ROLES slug or participant:<role> for a participant-label row (bride/groom/couple/host_family/model/muse -- never a vendor). event_context is the phase (wedding_day/ceremony/reception/getting_ready/rehearsal_dinner/...). source is credit_line/inline_at/venue_hashtag/emoji_line. Additive alongside stack_extraction_entries (v1-v9) -- that table is never modified. See docs/decisions.md D056, scripts/graph/runStackParserV10.ts.';
+create index if not exists idx_stack_extraction_entries_v2_post_version on stack_extraction_entries_v2 (post_url, parser_version);
+create index if not exists idx_stack_extraction_entries_v2_handle on stack_extraction_entries_v2 (handle);
+create index if not exists idx_stack_extraction_entries_v2_role on stack_extraction_entries_v2 (role);
+
+create table if not exists stack_extraction_runs_v2 (
+  post_url                text not null,
+  parser_version          text not null,
+  has_stack               boolean not null,  -- >=1 credit line detected (NOT v9's >=3-distinct-role notion)
+  n_credits               int not null,
+  non_wedding_event_title text,
+  parsed_at               timestamptz default now(),
+  primary key (post_url, parser_version)
+);
+comment on table stack_extraction_runs_v2 is 'D056 stage 1 (parser v10): one row per (post, parser_version) -- has_stack mirrors v9''s >=1-credit-line notion (NOT v9''s >=3-distinct-role has_stack), n_credits is stack_extraction_entries_v2''s row count for this post+version, non_wedding_event_title is set when the caption reads as a non-wedding event (baby/bridal shower, birthday, ...) with no wedding-recap signal alongside it -- flagged, not dropped. Written by runStackParserV10.ts, resumable (skips post_urls already present under the running parser_version). See docs/decisions.md D056.';

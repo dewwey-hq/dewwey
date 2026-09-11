@@ -21,6 +21,7 @@
  * different semantics for different jobs — this file matches pipeline.py's
  * actual behavior, not prefilter.ts's.
  */
+import { classifyLabel, type EventContext, type ParticipantRole } from "./vendorRoleRules";
 
 // v4 (D047 follow-on, 2026-09-06): "Venue Partners:"/"Preferred Venues:"/"Featured Venues:"
 // boilerplate lines no longer classify as role=venue -- see normRole()'s VENUE_LIST_MARKER
@@ -370,4 +371,236 @@ export function parseCaption(caption: string | null, opts?: { venueHandles?: Set
 
   const distinctRoles = new Set(stack.map((s) => s.role));
   return { stack, has_stack: distinctRoles.size >= 3 };
+}
+
+// ---------------------------------------------------------------------------
+// v10 (D056 stage 1, 2026-09-10): parseCaptionV2 -- richer nomenclature on
+// top of the SAME line-detection/segment-splitting machinery as v9 above
+// (LINE, NOCOLON_LINE, splitCreditSegments, INLINE_AT, buildVenueHashtagRegex,
+// SECONDARY_EVENT_VENUE_MARKER). v9's normRole() (a flat 23-value substring
+// map) is NOT reused here -- classifyLabel() (scripts/graph/vendorRoleRules.ts,
+// D056 stage 0) is, unmodified, for every "Label: @handle" credit. v9 itself
+// is untouched: this is a parallel, additive export, a new parser_version
+// (STACK_PARSER_V2_VERSION), writing to NEW tables
+// (stack_extraction_entries_v2/stack_extraction_runs_v2), never
+// stack_extraction_entries/_runs. See docs/decisions.md D056 "Next" and the
+// D056 plan file's "Stage 1 parser v10" note for what's bundled here: emoji-
+// keyed credit lines (backlog #1) and the non-wedding-event-title rule
+// (backlog #2), both sized/approved before this file existed.
+export const STACK_PARSER_V2_VERSION = "stack-parser-ts-v10";
+
+export type CreditV2Source = "credit_line" | "inline_at" | "venue_hashtag" | "emoji_line";
+
+export interface CreditV2 {
+  label_raw: string;
+  handle: string;
+  role: string; // a VENDOR_ROLES slug (vendorRoleRules.ts) -- 'other'/'noise'/'press_feature' included
+  event_context: EventContext;
+  line_no: number;
+  source: CreditV2Source;
+  rule_id: string;
+}
+
+export interface ParticipantV2 {
+  label_raw: string;
+  handle: string;
+  participant: ParticipantRole;
+  line_no: number;
+  source: CreditV2Source;
+}
+
+export interface ParsedStackV2 {
+  credits: CreditV2[];
+  participants: ParticipantV2[];
+  nonWeddingEventTitle: string | null;
+  hasStack: boolean;
+}
+
+// Backlog #1 (D056 Next): a credit line keyed by a leading emoji instead of a text label --
+// "💐 @villageflowershopplainfield" -- never matched by LINE/NOCOLON_LINE (both require an
+// A-Za-z label). Tried only as a fallback, after LINE/NOCOLON_LINE both fail on a segment. The
+// leading-emoji capture group allows a modifier sequence (skin tone, ZWJ + variation selector,
+// e.g. "💇🏻‍♀️") up to 7 extra code points so a single compound emoji doesn't get truncated:
+// verified live against the LaPapa post (DBsBZcev0Bh) fixture below, whose "👰🏻‍♀️"/"💇🏻‍♀️" lines
+// would otherwise fail to match at all. Requires the ENTIRE rest of the line to be @handle(s) --
+// same "no interspersed prose" discipline as NOCOLON_LINE -- so it never false-triggers on a
+// caption sentence that merely contains an emoji.
+const EMOJI_LINE =
+  /^\s*(\p{Extended_Pictographic}[\p{Extended_Pictographic}‍️\p{Emoji_Modifier}]{0,7})\s*[:|\-–—]?\s*((?:@[A-Za-z0-9._]{2,30}[\s/,&]*)+)$/u;
+
+// Backlog #1: first-match-wins groups, in the order the user specified. 🏨 is carved out of the
+// general venue glyph set into its own, earlier-tested group so "🏨 @somehotel" resolves to
+// accommodations, not venue -- mirrors the labeled-line "Hotel:" -> accommodations rule.
+// null = role 'other' (🥂🎉✨🥳 -- toast/celebration glyphs, not a vendor category) and is also
+// the fallback for any leading emoji this table doesn't recognize at all.
+const EMOJI_ROLE_GROUPS: Array<{ chars: string[]; role: string | null }> = [
+  { chars: ["📸", "📷"], role: "photographer" },
+  { chars: ["🎥", "📽", "🎞️", "🎬"], role: "videographer" },
+  { chars: ["💐", "🌸", "🌷", "🌹"], role: "florist" },
+  { chars: ["💄"], role: "makeup" },
+  { chars: ["💇"], role: "hair" },
+  { chars: ["📋", "🗓️", "📝", "📅"], role: "planner" },
+  { chars: ["🎧", "💽"], role: "dj" },
+  { chars: ["🎻", "🎷", "🎺", "🎸", "🎹"], role: "live_music" },
+  { chars: ["🎤", "🎶", "🎵"], role: "band" },
+  { chars: ["🍽️", "🍴", "🥗", "🍸", "🍹"], role: "catering" },
+  { chars: ["🍰", "🎂", "🧁"], role: "cake" },
+  { chars: ["👗", "👰", "🤵", "👔"], role: "attire" },
+  { chars: ["💍"], role: "jewelry" },
+  { chars: ["💌", "✉️"], role: "stationery" },
+  { chars: ["🪑", "🎀"], role: "rentals" },
+  { chars: ["💡"], role: "lighting_production" },
+  { chars: ["🚌", "🚎", "🚐", "🚗"], role: "transportation" },
+  { chars: ["🏨"], role: "accommodations" },
+  { chars: ["💒", "⛪", "🏡", "🏛️", "🏰", "📍"], role: "venue" },
+  { chars: ["🥂", "🎉", "✨", "🥳"], role: null },
+];
+
+function classifyEmojiRun(run: string): string | null {
+  for (const group of EMOJI_ROLE_GROUPS) {
+    if (group.chars.some((c) => run.includes(c))) return group.role;
+  }
+  return null;
+}
+
+// Backlog #2 (D056 Next): a non-wedding event (baby/bridal shower, birthday, quinceañera, ...)
+// posted by a wedding-adjacent vendor, using the SAME "Label: @handle" stack shape -- the credits
+// are real, but the post itself isn't a wedding and shouldn't seed/confirm one downstream. Flagged
+// (not dropped) so a later stage decides; gated on a wedding-recap signal so a caption that
+// mentions "baby shower" in passing on an otherwise-clearly-a-wedding post isn't misflagged.
+const NON_WEDDING_EVENT_TITLE_RX =
+  /(baby|bridal|wedding) shower|birthday|quincea|sweet 16|corporate|gala|retirement|anniversary party|bar mitzvah|bat mitzvah|graduation|prom|networking|holiday party/i;
+const WEDDING_RECAP_SIGNAL_RX =
+  /wedding day|newlyweds|mr\.? (&|and) mrs|just married|tied the knot|said i do|our wedding|their wedding/i;
+
+function findNonWeddingEventTitle(text: string, lines: string[]): string | null {
+  if (WEDDING_RECAP_SIGNAL_RX.test(text)) return null;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.length > 60 || line.includes("@")) continue;
+    if (NON_WEDDING_EVENT_TITLE_RX.test(line)) return line;
+  }
+  return null;
+}
+
+/** classifyLabel() applied once per label, fanned out to one row per (role, handle) pair --
+ * a compound label ("Hair & Makeup") yields one credit row per role for EACH handle on the line,
+ * a participant label yields a participant row per handle instead (roles is always [] there). */
+function creditsFromLabelLine(
+  labelRaw: string,
+  rest: string,
+  lineNo: number,
+  source: CreditV2Source
+): { credits: CreditV2[]; participants: ParticipantV2[] } {
+  const cls = classifyLabel(labelRaw);
+  const credits: CreditV2[] = [];
+  const participants: ParticipantV2[] = [];
+  for (const hm of rest.matchAll(HANDLE)) {
+    const handle = hm[1].toLowerCase();
+    if (cls.participant) {
+      participants.push({ label_raw: labelRaw, handle, participant: cls.participant, line_no: lineNo, source });
+    } else {
+      for (const role of cls.roles) {
+        credits.push({ label_raw: labelRaw, handle, role, event_context: cls.eventContext, line_no: lineNo, source, rule_id: cls.ruleId });
+      }
+    }
+  }
+  return { credits, participants };
+}
+
+/** Same SECONDARY_EVENT_VENUE_MARKER phrases v9 uses to demote a labeled secondary-event venue
+ * line to 'other' -- here they instead pick a specific EventContext, since v2 has a real place to
+ * put it. Anything outside that named set but still inside v9's broader
+ * INLINE_AT_SECONDARY_CONTEXT (afterparty, brunch, a hotel stay, ...) keeps v9's proven demotion
+ * to role='other' rather than guessing a context v9 never validated for this pattern. */
+function classifyInlineAtWindow(lineText: string): { role: string; eventContext: EventContext; labelRaw: string } {
+  if (/\brehearsal( dinner)?\b/i.test(lineText)) return { role: "venue", eventContext: "rehearsal_dinner", labelRaw: "at @" };
+  if (/\bwelcome party\b/i.test(lineText)) return { role: "venue", eventContext: "welcome_party", labelRaw: "at @" };
+  if (/\b(sangeet|mehndi|mehendi|haldi)\b/i.test(lineText)) return { role: "venue", eventContext: "sangeet_mehndi", labelRaw: "at @" };
+  if (/\b(getting ready|got ready)\b/i.test(lineText)) {
+    return { role: /\bhotel\b/i.test(lineText) ? "accommodations" : "venue", eventContext: "getting_ready", labelRaw: "at @" };
+  }
+  if (/\b(bridal shower|baby shower)\b/i.test(lineText)) return { role: "venue", eventContext: "shower", labelRaw: "at @" };
+  if (INLINE_AT_SECONDARY_CONTEXT.test(lineText)) return { role: "other", eventContext: "wedding_day", labelRaw: "at @ (secondary/stay)" };
+  return { role: "venue", eventContext: "wedding_day", labelRaw: "at @" };
+}
+
+export function parseCaptionV2(caption: string | null, opts?: { venueHandles?: Set<string> }): ParsedStackV2 {
+  const text = caption ?? "";
+  const credits: CreditV2[] = [];
+  const participants: ParticipantV2[] = [];
+  const lines = text.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    const segments = splitCreditSegments(line);
+    for (const segment of segments) {
+      const m = LINE.exec(segment) ?? NOCOLON_LINE.exec(segment);
+      if (m) {
+        const { credits: c, participants: p } = creditsFromLabelLine(m[1].trim(), m[2], i, "credit_line");
+        credits.push(...c);
+        participants.push(...p);
+        continue;
+      }
+      const em = EMOJI_LINE.exec(segment);
+      if (!em) continue;
+      const emojiRun = em[1];
+      const role = classifyEmojiRun(emojiRun) ?? "other";
+      for (const hm of em[2].matchAll(HANDLE)) {
+        credits.push({
+          label_raw: emojiRun,
+          handle: hm[1].toLowerCase(),
+          role,
+          event_context: "wedding_day",
+          line_no: i,
+          source: "emoji_line",
+          rule_id: "emoji",
+        });
+      }
+    }
+  }
+
+  // Same "a labeled/emoji credit always wins" discipline as v9's inline_at/venue_hashtag guards.
+  const creditedHandles = new Set<string>([...credits.map((c) => c.handle), ...participants.map((p) => p.handle)]);
+  const lineNoAt = (idx: number): number => (text.slice(0, idx).match(/\n/g) ?? []).length;
+  const lineHasNonVenueLabel = (lineIdx: number): boolean => {
+    const lm = LINE.exec((lines[lineIdx] ?? "").trim());
+    if (!lm) return false;
+    return !classifyLabel(lm[1].trim()).roles.includes("venue");
+  };
+
+  for (const hm of text.matchAll(INLINE_AT)) {
+    const handle = hm[1].toLowerCase();
+    if (creditedHandles.has(handle)) continue;
+    const lineIdx = lineNoAt(hm.index ?? 0);
+    if (lineHasNonVenueLabel(lineIdx)) continue;
+    const { role, eventContext, labelRaw } = classifyInlineAtWindow(lines[lineIdx] ?? "");
+    credits.push({ label_raw: labelRaw, handle, role, event_context: eventContext, line_no: lineIdx, source: "inline_at", rule_id: "inline_at" });
+  }
+
+  if (opts?.venueHandles && opts.venueHandles.size > 0) {
+    const venueHashtag = buildVenueHashtagRegex(opts.venueHandles);
+    for (const hm of text.matchAll(venueHashtag)) {
+      const handle = hm[1].toLowerCase();
+      if (creditedHandles.has(handle)) continue;
+      const lineIdx = lineNoAt(hm.index ?? 0);
+      if (lineHasNonVenueLabel(lineIdx)) continue;
+      credits.push({
+        label_raw: "#hashtag",
+        handle,
+        role: "venue",
+        event_context: "wedding_day",
+        line_no: lineIdx,
+        source: "venue_hashtag",
+        rule_id: "venue_hashtag",
+      });
+    }
+  }
+
+  return {
+    credits,
+    participants,
+    nonWeddingEventTitle: findNonWeddingEventTitle(text, lines),
+    hasStack: credits.length > 0 || participants.length > 0,
+  };
 }
