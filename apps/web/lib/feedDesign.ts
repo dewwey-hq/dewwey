@@ -8,6 +8,100 @@
 
 import { ROLE_CATEGORIES, roleCategory } from "./roles";
 
+// ---- Display name from handle (46% of vendor credits have no real `full_name`) --------
+
+/** Strips `.`/`_` and lowercases, for comparing a `full_name` against its own handle —
+ * mirrors `showHandle` in `lib/slots.ts` but also ignores the punctuation IG handles
+ * commonly use as word separators, so "Bea Quach Designs" still counts as "the same as"
+ * `bea.quach.designs`. Hyphens are deliberately NOT stripped here (spec: "ignoring
+ * dots/underscores") even though `deriveFromHandle` below does split on them too. */
+function normalizeForCompare(s: string): string {
+  return s.toLowerCase().replace(/[._]/g, "");
+}
+
+/** True when `name` is real (non-empty and not just the handle spelled out with spaces
+ * instead of punctuation) — i.e. `displayName` can use it verbatim. */
+function hasUsableName(name: string | null | undefined, username: string): boolean {
+  const trimmed = (name ?? "").trim();
+  if (!trimmed) return false;
+  return normalizeForCompare(trimmed) !== normalizeForCompare(username);
+}
+
+/** "DJ" stays "DJ" (an already-uppercase short token — handles are almost always
+ * lowercase, so this only fires for the rare handle that isn't), everything else is
+ * plain Title Case. */
+function titleCaseToken(token: string): string {
+  if (token.length <= 3 && token === token.toUpperCase() && /[A-Z]/.test(token)) {
+    return token;
+  }
+  return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+}
+
+/**
+ * Splits one `.`/`_`/`-`-delimited segment of a handle into word tokens, treating digit
+ * runs as noise rather than words: a digit run only becomes a separator (dropped, the
+ * letters on each side becoming their own tokens) when there's a real word — 2+ letters —
+ * on BOTH sides ("hairs2thebride" -> "hairs", "thebride"). A digit run touching only a
+ * single letter on one side stays merged into that word instead of being torn out
+ * ("f4dweddings" -> one token "f4dweddings", so a rogue "F" never appears alone). A digit
+ * run with no letters on one side at all (handle-generation cruft like a trailing
+ * "_marmoura14") is just dropped, not kept and not split into its own token.
+ */
+function splitSegmentIntoTokens(segment: string): string[] {
+  const runs = segment.match(/[A-Za-z]+|[0-9]+/g) ?? [];
+  const tokens: string[] = [];
+  let current = "";
+  for (let i = 0; i < runs.length; i++) {
+    const run = runs[i];
+    if (!/^[0-9]+$/.test(run)) {
+      current += run;
+      continue;
+    }
+    const prevLen = i > 0 ? runs[i - 1].length : 0;
+    const nextLen = i < runs.length - 1 ? runs[i + 1].length : 0;
+    const hasBothSides = i > 0 && i < runs.length - 1;
+    if (hasBothSides && prevLen >= 2 && nextLen >= 2) {
+      if (current) tokens.push(current);
+      current = "";
+      // digit run dropped as a separator
+    } else if (hasBothSides) {
+      current += run; // single-letter side -- keep merged, e.g. "f4dweddings"
+    }
+    // else: digit run touches a segment boundary -- dropped entirely
+  }
+  if (current) tokens.push(current);
+  return tokens;
+}
+
+/** Derives a readable name from a handle with no usable `full_name`: split on `.`/`_`/`-`
+ * and (selectively — see `splitSegmentIntoTokens`) digit runs, title-case each token, join
+ * with spaces. */
+function deriveFromHandle(username: string): string {
+  const segments = username.split(/[._-]/).filter((s) => s.length > 0);
+  const tokens = segments.flatMap(splitSegmentIntoTokens);
+  return tokens.map(titleCaseToken).join(" ");
+}
+
+/**
+ * The name to show for a vendor credit. Uses `name` (`accounts.full_name`) verbatim when
+ * it's real; 46% of live credits have a null/empty/handle-equal `full_name`, so this falls
+ * back to deriving a readable name from the IG handle itself (`bea.quach.designs` ->
+ * "Bea Quach Designs"). Pair with `isDerivedName` to decide whether to also show the raw
+ * `@handle` as a subtitle (redundant once the "name" IS the handle, spelled out).
+ */
+export function displayName(name: string | null | undefined, username: string): string {
+  const trimmed = (name ?? "").trim();
+  if (hasUsableName(name, username)) return trimmed;
+  return deriveFromHandle(username);
+}
+
+/** True when `displayName` had to derive its result from the handle rather than using a
+ * real `full_name` — UIs use this to decide whether showing "@handle" alongside the name
+ * would be redundant. */
+export function isDerivedName(name: string | null | undefined, username: string): boolean {
+  return !hasUsableName(name, username);
+}
+
 // ---- Cover selection (design principle 2: "a rule, not chance") -----------------------
 
 export interface CoverPostCandidate {
@@ -282,18 +376,43 @@ export interface StackCategoryGroup<V extends StackVendorLike = StackVendorLike>
   vendors: V[];
 }
 
-/** Vendors bucketed by `ROLE_CATEGORIES`, in that list's order — venue is first in
+/**
+ * Vendors bucketed by `ROLE_CATEGORIES`, in that list's order — venue is first in
  * `ROLE_CATEGORIES` itself, so ordering by category position alone puts venue-category
- * credits first. Categories with no vendors on this stack are omitted. */
-export function groupStackByCategory<V extends StackVendorLike>(vendors: V[]): StackCategoryGroup<V>[] {
-  const bySlug = new Map<string, V[]>();
+ * credits first. Categories with no vendors on this stack are omitted.
+ *
+ * One account can hold two roles on the same wedding (catering + bar service,
+ * photography + videography) and would otherwise show up twice ("chicchefcatering,
+ * chicchefcatering"). Deduped here by `username` (case-insensitive): only the FIRST
+ * occurrence's role decides the vendor's category (so the highest-priority category
+ * wins), and every role after the first is collected onto that single entry's
+ * `extraRoles` instead of producing a second row.
+ */
+export function groupStackByCategory<V extends StackVendorLike>(
+  vendors: V[],
+): StackCategoryGroup<V & { extraRoles: string[] }>[] {
+  type Deduped = V & { extraRoles: string[] };
+  const indexByUsername = new Map<string, number>();
+  const deduped: Deduped[] = [];
   for (const v of vendors) {
+    const key = v.username.toLowerCase();
+    const existingIdx = indexByUsername.get(key);
+    if (existingIdx !== undefined) {
+      deduped[existingIdx].extraRoles.push(v.role);
+      continue;
+    }
+    indexByUsername.set(key, deduped.length);
+    deduped.push({ ...v, extraRoles: [] });
+  }
+
+  const bySlug = new Map<string, Deduped[]>();
+  for (const v of deduped) {
     const slug = roleCategory(v.role) ?? "other";
     const list = bySlug.get(slug);
     if (list) list.push(v);
     else bySlug.set(slug, [v]);
   }
-  const groups: StackCategoryGroup<V>[] = [];
+  const groups: StackCategoryGroup<Deduped>[] = [];
   for (const cat of ROLE_CATEGORIES) {
     const list = bySlug.get(cat.slug);
     if (list && list.length > 0) groups.push({ slug: cat.slug, label: cat.label, vendors: list });

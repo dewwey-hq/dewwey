@@ -5,11 +5,13 @@ import Link from "next/link";
 import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { MeasuredCard } from "../components/MeasuredCard";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
-import { coverPost, coverOrFirstPost, groupStackByCategory } from "@/lib/feedDesign";
-import { contextLabel } from "@/lib/roles";
+import { coverPost, coverOrFirstPost, groupStackByCategory, displayName } from "@/lib/feedDesign";
+import { contextLabel, roleLabel } from "@/lib/roles";
 import type { EmbedSize } from "../variant";
 import type { StackCategoryGroup } from "@/lib/feedDesign";
 import type { StackPostInfo, StackVendor, WeddingStack } from "@/lib/server/graph";
+
+type LedgerVendor = StackVendor & { extraRoles: string[] };
 
 /** "November 2025" — same local helper as `Card.tsx`/`Recipe.tsx` (not centralized;
  * same-rules addition per variant). Read as UTC since wedding dates are date-only. */
@@ -55,7 +57,7 @@ function CategoryLine({
   compact,
   showSave,
 }: {
-  group: StackCategoryGroup<StackVendor>;
+  group: StackCategoryGroup<LedgerVendor>;
   compact: boolean;
   showSave: boolean;
 }) {
@@ -75,15 +77,21 @@ function CategoryLine({
           const ctx = v.contexts
             .map((c) => contextLabel(c))
             .filter((c): c is string => Boolean(c))[0];
+          // A second role earned by dedupe (e.g. "Catering · Bar service") shares the
+          // same parenthetical the context modifier already uses on this line.
+          const extraRoleChip = v.extraRoles.map((r) => roleLabel(r)).join(" · ");
+          const parenthetical = [extraRoleChip, ctx].filter(Boolean).join(" · ");
           return (
             <span key={v.username}>
               <Link
                 href={`/vendors/${encodeURIComponent(v.username)}`}
                 className="font-medium text-gray-900 hover:text-gray-600"
               >
-                {v.name}
+                {displayName(v.name, v.username)}
               </Link>
-              {ctx && <span className="text-xs font-normal text-black/[0.4]"> ({ctx})</span>}
+              {parenthetical && (
+                <span className="text-xs font-normal text-black/[0.4]"> ({parenthetical})</span>
+              )}
               {i < visible.length - 1 ? ", " : ""}
             </span>
           );
@@ -208,7 +216,7 @@ function LedgerRow({
               href={`/vendors/${encodeURIComponent(venueVendor.username)}`}
               className="hover:text-gray-600"
             >
-              {venueVendor.name}
+              {displayName(venueVendor.name, venueVendor.username)}
             </Link>
           </p>
         )}

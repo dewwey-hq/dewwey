@@ -6,6 +6,8 @@ import {
   seasonLabel,
   groupStackByCategory,
   stackRail,
+  displayName,
+  isDerivedName,
   type CoverPostCandidate,
   type StackVendorLike,
 } from "./feedDesign";
@@ -185,6 +187,118 @@ describe("groupStackByCategory", () => {
     const groups = groupStackByCategory(vendors);
     const photoVideo = groups.find((g) => g.slug === "photo_video");
     expect(photoVideo?.vendors.map((v) => v.username).sort()).toEqual(["photog", "videog"]);
+  });
+});
+
+describe("displayName", () => {
+  it("uses a real name verbatim, trimmed", () => {
+    expect(displayName("  Bea Quach  ", "bea.quach.designs")).toBe("Bea Quach");
+  });
+
+  it("treats a name equal to the handle (punctuation/case aside) as not real", () => {
+    expect(displayName("bea.quach.designs", "bea.quach.designs")).toBe("Bea Quach Designs");
+    expect(displayName("BEA_QUACH_DESIGNS", "bea.quach.designs")).toBe("Bea Quach Designs");
+  });
+
+  it("treats null/undefined/empty name as not real", () => {
+    expect(displayName(null, "spinvxn")).toBe("Spinvxn");
+    expect(displayName(undefined, "spinvxn")).toBe("Spinvxn");
+    expect(displayName("   ", "spinvxn")).toBe("Spinvxn");
+  });
+
+  it("splits a dotted handle into title-cased words", () => {
+    expect(displayName(null, "bea.quach.designs")).toBe("Bea Quach Designs");
+  });
+
+  it("just capitalizes a handle with no splittable punctuation", () => {
+    expect(displayName(null, "lulacafeevents")).toBe("Lulacafeevents");
+    expect(displayName(null, "spinvxn")).toBe("Spinvxn");
+    expect(displayName(null, "alliancebakeryweddingcakes")).toBe("Alliancebakeryweddingcakes");
+  });
+
+  it("drops a leading underscore and a trailing digit run with no letters after it", () => {
+    expect(displayName(null, "_marmoura14")).toBe("Marmoura");
+  });
+
+  it("splits on a digit run between two real words", () => {
+    expect(displayName(null, "hairs2thebride")).toBe("Hairs Thebride");
+  });
+
+  it("keeps a digit run merged into its token when only a single letter sits on one side", () => {
+    expect(displayName(null, "f4dweddings")).toBe("F4dweddings");
+  });
+
+  it("keeps a short all-caps token as-is", () => {
+    expect(displayName(null, "DJ.Mike")).toBe("DJ Mike");
+  });
+});
+
+describe("isDerivedName", () => {
+  it("is false for a real name", () => {
+    expect(isDerivedName("Bea Quach", "bea.quach.designs")).toBe(false);
+  });
+
+  it("is true when the name is empty/null/undefined", () => {
+    expect(isDerivedName("", "spinvxn")).toBe(true);
+    expect(isDerivedName(null, "spinvxn")).toBe(true);
+    expect(isDerivedName(undefined, "spinvxn")).toBe(true);
+  });
+
+  it("is true when the name is just the handle spelled out", () => {
+    expect(isDerivedName("bea.quach.designs", "bea.quach.designs")).toBe(true);
+    expect(isDerivedName("Bea_Quach_Designs", "bea.quach.designs")).toBe(true);
+  });
+});
+
+describe("groupStackByCategory dedupe", () => {
+  it("collapses a repeat username into one entry with the extra role attached", () => {
+    const vendors = [
+      vendor({ username: "chicchefcatering", role: "catering", accountId: 9 }),
+      vendor({ username: "chicchefcatering", role: "bar_service", accountId: 9 }),
+    ];
+    const groups = groupStackByCategory(vendors);
+    const foodDrink = groups.find((g) => g.slug === "food_drink");
+    expect(foodDrink?.vendors).toHaveLength(1);
+    expect(foodDrink?.vendors[0].role).toBe("catering");
+    expect(foodDrink?.vendors[0].extraRoles).toEqual(["bar_service"]);
+  });
+
+  it("matches the repeat username case-insensitively", () => {
+    const vendors = [
+      vendor({ username: "ChicChefCatering", role: "photographer", accountId: 9 }),
+      vendor({ username: "chicchefcatering", role: "videographer", accountId: 9 }),
+    ];
+    const groups = groupStackByCategory(vendors);
+    const photoVideo = groups.find((g) => g.slug === "photo_video");
+    expect(photoVideo?.vendors).toHaveLength(1);
+    expect(photoVideo?.vendors[0].extraRoles).toEqual(["videographer"]);
+  });
+
+  it("buckets the deduped entry under the FIRST occurrence's (highest-priority) category", () => {
+    const vendors = [
+      vendor({ username: "dualrole", role: "venue", accountId: 5 }),
+      vendor({ username: "dualrole", role: "catering", accountId: 5 }),
+    ];
+    const groups = groupStackByCategory(vendors);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].slug).toBe("venue");
+    expect(groups[0].vendors[0].extraRoles).toEqual(["catering"]);
+  });
+
+  it("gives every vendor an extraRoles array, empty when there's no duplicate", () => {
+    const groups = groupStackByCategory([vendor({ username: "solo", role: "dj" })]);
+    expect(groups[0].vendors[0].extraRoles).toEqual([]);
+  });
+
+  it("does not affect distinct-username vendors, even in the same category", () => {
+    const vendors = [
+      vendor({ username: "photog1", role: "photographer", accountId: 1 }),
+      vendor({ username: "photog2", role: "photographer", accountId: 2 }),
+    ];
+    const groups = groupStackByCategory(vendors);
+    const photoVideo = groups.find((g) => g.slug === "photo_video");
+    expect(photoVideo?.vendors.map((v) => v.username).sort()).toEqual(["photog1", "photog2"]);
+    expect(photoVideo?.vendors.every((v) => v.extraRoles.length === 0)).toBe(true);
   });
 });
 

@@ -5,11 +5,10 @@ import Link from "next/link";
 import { InstagramLogo } from "@phosphor-icons/react";
 import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { MeasuredCard } from "../components/MeasuredCard";
-import { Avatar } from "@/app/components/Avatar";
+import { VendorAvatar } from "../components/VendorAvatar";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
-import { coverPost, coverOrFirstPost, groupStackByCategory } from "@/lib/feedDesign";
+import { coverPost, coverOrFirstPost, groupStackByCategory, displayName, isDerivedName } from "@/lib/feedDesign";
 import { roleLabel, contextLabel } from "@/lib/roles";
-import { showHandle } from "@/lib/slots";
 import type { EmbedSize } from "../variant";
 import type { StackVendor, WeddingStack } from "@/lib/server/graph";
 
@@ -184,11 +183,11 @@ function FeedCardC({
               href={`/vendors/${encodeURIComponent(venueVendor.username)}`}
               className="mb-4 flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 ring-1 ring-black/[0.06] transition-colors hover:ring-black/[0.16]"
             >
-              <Avatar src={venueVendor.avatar_url} name={venueVendor.name} size={28} className="text-xs" />
+              <VendorAvatar src={venueVendor.avatar_url} name={venueVendor.name} role={venueVendor.role} size={28} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-gray-900">
-                  {venueVendor.name}
-                  {showHandle(venueVendor.name, venueVendor.username) && (
+                  {displayName(venueVendor.name, venueVendor.username)}
+                  {!isDerivedName(venueVendor.name, venueVendor.username) && (
                     <span className="hidden text-xs font-normal text-black/[0.45] lg:inline"> @{venueVendor.username}</span>
                   )}
                 </span>
@@ -219,9 +218,18 @@ function FeedCardC({
                         .map((c) => contextLabel(c))
                         .filter((c): c is string => Boolean(c))
                         .join(" / ");
-                      const subLine = [showRoleLabel ? roleLabel(v.role) : null, contextChip]
-                        .filter(Boolean)
-                        .join(" · ");
+                      // A second (or third) role on the same account -- "Catering · Bar
+                      // service" -- always shows once dedupe found extra roles, even when
+                      // `showRoleLabel` alone wouldn't have (the group could otherwise be
+                      // all one role by chance).
+                      const roleChip =
+                        v.extraRoles.length > 0
+                          ? [v.role, ...v.extraRoles].map((r) => roleLabel(r)).join(" · ")
+                          : showRoleLabel
+                            ? roleLabel(v.role)
+                            : null;
+                      const subLine = [roleChip, contextChip].filter(Boolean).join(" · ");
+                      const vName = displayName(v.name, v.username);
                       return (
                         <li
                           key={`${v.username}-${v.role}`}
@@ -231,11 +239,11 @@ function FeedCardC({
                             href={`/vendors/${encodeURIComponent(v.username)}`}
                             className="flex min-w-0 flex-1 items-center gap-2.5 text-gray-900 hover:text-gray-600"
                           >
-                            <Avatar src={v.avatar_url} name={v.name} size={24} className="text-[10px]" />
+                            <VendorAvatar src={v.avatar_url} name={v.name} role={v.role} size={24} />
                             <span className="min-w-0">
                               <span className="block truncate text-sm font-medium">
-                                {v.name}
-                                {showHandle(v.name, v.username) && (
+                                {vName}
+                                {!isDerivedName(v.name, v.username) && (
                                   <span className="text-xs font-normal text-black/[0.45] lg:inline hidden">
                                     {" "}
                                     @{v.username}

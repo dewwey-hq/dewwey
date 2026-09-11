@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/app/components/Avatar";
-import { groupStackByCategory } from "@/lib/feedDesign";
+import { VendorAvatar } from "./VendorAvatar";
+import { groupStackByCategory, displayName } from "@/lib/feedDesign";
 import { roleLabel } from "@/lib/roles";
 import type { StackVendor } from "@/lib/server/graph";
 
@@ -41,7 +42,9 @@ export function StackRail({
         >
           <Avatar src={venue.avatar_url} name={venue.name} size={28} className="text-xs" />
           <span className="min-w-0">
-            <span className="block truncate text-sm font-medium text-gray-900">{venue.name}</span>
+            <span className="block truncate text-sm font-medium text-gray-900">
+              {displayName(venue.name, venue.username)}
+            </span>
             <span className="block text-[11px] font-medium text-rose-500">Hosted</span>
           </span>
         </Link>
@@ -49,24 +52,27 @@ export function StackRail({
       {groups.flatMap((g) =>
         g.vendors
           .filter((v) => visibleSet.has(v.username))
-          .map((v) => (
-            <Link
-              key={v.username}
-              href={`/vendors/${encodeURIComponent(v.username)}`}
-              title={`${v.name} · ${roleLabel(v.role)}`}
-              className="group relative"
-            >
-              <Avatar
-                src={v.avatar_url}
-                name={v.name}
-                size={28}
-                className="text-xs ring-1 ring-inset ring-black/[0.08] transition-shadow group-hover:ring-black/[0.25]"
-              />
-              <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-[11px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
-                {roleLabel(v.role)}
-              </span>
-            </Link>
-          )),
+          .map((v) => {
+            const roleText = [v.role, ...v.extraRoles].map((r) => roleLabel(r)).join(" · ");
+            return (
+              <Link
+                key={v.username}
+                href={`/vendors/${encodeURIComponent(v.username)}`}
+                title={`${displayName(v.name, v.username)} · ${roleText}`}
+                className="group relative"
+              >
+                <VendorAvatar
+                  src={v.avatar_url}
+                  name={v.name}
+                  role={v.role}
+                  size={28}
+                />
+                <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-[11px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  {roleText}
+                </span>
+              </Link>
+            );
+          }),
       )}
       {overflow > 0 && (
         <button

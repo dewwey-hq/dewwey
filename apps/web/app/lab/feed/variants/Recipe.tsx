@@ -4,10 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { MeasuredCard } from "../components/MeasuredCard";
-import { Avatar } from "@/app/components/Avatar";
+import { VendorAvatar } from "../components/VendorAvatar";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
-import { coverPost, coverOrFirstPost, groupStackByCategory } from "@/lib/feedDesign";
-import { contextLabel } from "@/lib/roles";
+import { coverPost, coverOrFirstPost, groupStackByCategory, displayName } from "@/lib/feedDesign";
+import { contextLabel, roleLabel } from "@/lib/roles";
 import type { EmbedSize } from "../variant";
 import type { StackPostInfo, StackVendor, WeddingStack } from "@/lib/server/graph";
 
@@ -157,7 +157,7 @@ function FeedCardRecipe({
                 href={`/vendors/${encodeURIComponent(venueVendor.username)}`}
                 className="hover:text-neutral-600"
               >
-                {venueVendor.name}
+                {displayName(venueVendor.name, venueVendor.username)}
               </Link>
             </p>
           )}
@@ -182,19 +182,26 @@ function FeedCardRecipe({
                       .map((c) => contextLabel(c))
                       .filter((c): c is string => Boolean(c))
                       .join(" / ");
+                    // Recipe otherwise never labels a role (the category header does that
+                    // job) -- a second role earned by dedupe is the one exception, e.g.
+                    // "Catering · Bar service".
+                    const roleChip = v.extraRoles.length > 0
+                      ? [v.role, ...v.extraRoles].map((r) => roleLabel(r)).join(" · ")
+                      : null;
+                    const subLine = [roleChip, contextChip].filter(Boolean).join(" · ");
                     return (
                       <li
                         key={`${v.username}-${v.role}`}
                         className={`grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 ${compact ? "py-1" : "py-1.5"}`}
                       >
-                        <Avatar src={v.avatar_url} name={v.name} size={24} className="text-[10px]" />
+                        <VendorAvatar src={v.avatar_url} name={v.name} role={v.role} size={24} />
                         <Link
                           href={`/vendors/${encodeURIComponent(v.username)}`}
                           className="min-w-0 truncate text-sm font-medium text-neutral-900 hover:text-neutral-600"
                         >
-                          {v.name}
-                          {contextChip && (
-                            <span className="font-normal text-neutral-400"> · {contextChip}</span>
+                          {displayName(v.name, v.username)}
+                          {subLine && (
+                            <span className="font-normal text-neutral-400"> · {subLine}</span>
                           )}
                         </Link>
                         <span className="flex items-center justify-center">

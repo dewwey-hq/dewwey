@@ -8,8 +8,16 @@
  * D · Recipe (same day, spec brought in from outside): a structured wedding record —
  * venue as "Hosted at", vendors grouped by category, no couple names or captions.
  * E · Ledger (same day): no outer card at all — the embed alone beside a plain bordered
- * "stack card" whose content is one line per vendor category, comma-separated names. */
-export const VARIANTS = ["a", "b", "c", "d", "e"] as const;
+ * "stack card" whose content is one line per vendor category, comma-separated names.
+ *
+ * Fresh direction (user, 2026-09-11: none of C/D/E is right yet — all four failures apply:
+ * space per wedding, stack reads as data, photo doesn't own the screen, embed-beside-text
+ * structure itself). Four scrappy concepts over 12 weddings each:
+ * F · Roster — vertical card at embed width, tile grid of vendors under the embed, 2-3 across.
+ * G · Scroll — pure column of embeds; the in-view wedding drives ONE sticky team panel.
+ * H · Chip grid — 3-across masonry, category chips with counts under each embed.
+ * I · Photo wall — 3-4 across wall of 326px embeds; tap a wedding → full team sheet. */
+export const VARIANTS = ["a", "b", "c", "d", "e", "f", "g", "h", "i"] as const;
 export type Variant = (typeof VARIANTS)[number];
 
 export function isVariant(v: string | null | undefined): v is Variant {
@@ -37,4 +45,15 @@ export const DEFAULT_LAYOUT: Layout = "1-up";
 
 export function parseLayout(v: string | null | undefined): Layout {
   return v === "2-up" ? "2-up" : DEFAULT_LAYOUT;
+}
+
+/** Fresh-direction variants (F-I) are scrappy: 12 weddings by default so the page stays
+ * quick to judge; the earlier variants keep 60 (see `page.tsx`). `?n=` overrides both. */
+export const FRESH_VARIANTS: readonly Variant[] = ["f", "g", "h", "i"];
+export const DEFAULT_LIMIT_FRESH = 12;
+export const DEFAULT_LIMIT_CLASSIC = 60;
+export function parseLimit(v: string | null | undefined, variant: Variant): number {
+  const n = Number(v);
+  if (Number.isInteger(n) && n >= 1 && n <= 200) return n;
+  return FRESH_VARIANTS.includes(variant) ? DEFAULT_LIMIT_FRESH : DEFAULT_LIMIT_CLASSIC;
 }

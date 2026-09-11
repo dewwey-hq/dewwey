@@ -11,6 +11,10 @@ import { Grid } from "./variants/Grid";
 import { Card } from "./variants/Card";
 import { Recipe } from "./variants/Recipe";
 import { Ledger } from "./variants/Ledger";
+import { Roster } from "./variants/Roster";
+import { Scroll } from "./variants/Scroll";
+import { ChipGrid } from "./variants/ChipGrid";
+import { PhotoWall } from "./variants/PhotoWall";
 import type { WeddingStack } from "@/lib/server/graph";
 import { EMBED_SIZES, LAYOUTS, type EmbedSize, type Layout, type Variant } from "./variant";
 
@@ -20,6 +24,10 @@ const VARIANT_LABELS: Record<Variant, string> = {
   c: "C · Card",
   d: "D · Recipe",
   e: "E · Ledger",
+  f: "F · Roster",
+  g: "G · Scroll",
+  h: "H · Chips",
+  i: "I · Wall",
 };
 
 /**
@@ -206,6 +214,10 @@ export function FeedLab({
           {variant === "c" && <Card stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} />}
           {variant === "d" && <Recipe stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} />}
           {variant === "e" && <Ledger stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} />}
+          {variant === "f" && <Roster stacks={stacks} venue={venue} />}
+          {variant === "g" && <Scroll stacks={stacks} venue={venue} />}
+          {variant === "h" && <ChipGrid stacks={stacks} venue={venue} />}
+          {variant === "i" && <PhotoWall stacks={stacks} venue={venue} />}
         </MeasurementContext.Provider>
       </main>
     </div>
