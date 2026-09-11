@@ -26,11 +26,26 @@
  *     --dry-run to see the match count and before/after credit counts without writing anything --
  *     --ungated/plain --limit N (still honored, as a cap on the matched set) are irrelevant.
  *
+ * D057 (Ben's crawl audit): a THIRD corpus source, orthogonal to --ungated/score>=12 and
+ * --refresh-matching.
+ *   --source ben: parse Ben's original-crawl posts instead of staging.instagram_posts -- every
+ *     `weddings` row with no `jeremy_weddings_created` row (his phase_dedup rule), joined
+ *     wedding_posts -> posts (source='venue_tagged'; these posts are NEVER in
+ *     staging.instagram_posts, which is why the default corpus walk above never reaches them).
+ *     Caption comes from `posts.caption`, keyed by `posts.url` (not staging.instagram_posts.
+ *     post_url) -- same stack_extraction_entries_v2/stack_extraction_runs_v2 tables, same
+ *     resumable skip-if-already-parsed-under-this-version discipline, same report. This is the
+ *     "1,536 weddings with no labeled stack" gap for Ben's side specifically -- runExtract.ts
+ *     --mode ben-weddings reads stack_extraction_entries_v2 back out for its credit-stack
+ *     context, so this should run before (or alongside) that mode.
+ *
  * Usage (from apps/web):
  *   bun run scripts/graph/runStackParserV10.ts --dry-run --limit 300
  *   bun run scripts/graph/runStackParserV10.ts --limit 300
  *   bun run scripts/graph/runStackParserV10.ts --ungated
  *   bun run scripts/graph/runStackParserV10.ts --refresh-matching '<posix regex>' --dry-run
+ *   bun run scripts/graph/runStackParserV10.ts --source ben --dry-run --limit 300
+ *   bun run scripts/graph/runStackParserV10.ts --source ben
  */
 import type { Pool } from "pg";
 import { getPool, closePool } from "../classify/db";
@@ -192,55 +207,18 @@ async function runRefreshMatching(pool: Pool, pattern: string, dryRun: boolean, 
   for (const s of samples) console.log(`  ${s.post_url}  ${s.before} -> ${s.after}`);
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  const ungated = args.includes("--ungated");
-  const dryRun = args.includes("--dry-run");
-  const limitArg = args.find((a) => a.startsWith("--limit"));
-  const limit = limitArg
-    ? Number(limitArg.includes("=") ? limitArg.split("=")[1] : args[args.indexOf(limitArg) + 1])
-    : undefined;
-  const refreshIdx = args.indexOf("--refresh-matching");
-  const refreshPattern = refreshIdx >= 0 ? args[refreshIdx + 1] : undefined;
-
-  const pool = getPool();
-  await pool.query(`set statement_timeout='300s'`);
-
-  // Same venue-handle preload as runStackParserBaseline.ts -- venue_hashtag needs a lookup list of
-  // known venue account usernames, built once and reused for every parseCaptionV2() call.
-  const { rows: venueHandleRows } = await pool.query<{ username: string }>(
-    `select lower(a.username::text) as username
-     from accounts a
-     where exists (select 1 from v_account_role r where r.account_id = a.id and r.role = 'venue')
-        or exists (select 1 from vendors v where v.account_id = a.id and v.category = 'venue')`
-  );
-  const venueHandles = new Set(venueHandleRows.map((r) => r.username));
-  console.log(`[stack-v10] loaded ${venueHandles.size} known venue handles for venue_hashtag`);
-
-  if (refreshPattern !== undefined) {
-    console.log(`[stack-v10-refresh] version=${STACK_PARSER_V2_VERSION} ${dryRun ? "DRY RUN " : ""}pattern=${JSON.stringify(refreshPattern)}`);
-    await runRefreshMatching(pool, refreshPattern, dryRun, limit, venueHandles);
-    await closePool();
-    return;
-  }
-
-  const { rows } = await pool.query<{ post_url: string; caption_raw: string | null }>(
-    `select sp.post_url, sp.caption_raw
-     from staging.instagram_posts sp
-     ${ungated ? "" : "join candidate_scores cs on cs.post_url = sp.post_url and cs.candidate_generation_version = 'candidate-score-v1' and cs.score >= 12"}
-     where sp.caption_raw is not null and sp.caption_raw <> ''
-       and not exists (
-         select 1 from stack_extraction_runs_v2 sr
-         where sr.post_url = sp.post_url and sr.parser_version = $1
-       )
-     order by sp.post_url
-     ${limit ? `limit ${Math.trunc(limit)}` : ""}`,
-    [STACK_PARSER_V2_VERSION]
-  );
-  console.log(
-    `[stack-v10] version=${STACK_PARSER_V2_VERSION} mode=${ungated ? "ungated" : "score>=12"} ${dryRun ? "DRY RUN " : ""}posts=${rows.length}`
-  );
-
+/** Shared parse-write-report loop, factored out (D057) so the default staging.instagram_posts
+ *  corpus walk and --source ben's Ben's-crawl walk (posts.caption, keyed by posts.url) print the
+ *  exact same report shape under their own log label -- same has_stack/n_credits/credits-by-
+ *  role/participants/non-wedding-title/emoji-sample breakdown either way. `dryRun` parses and
+ *  counts but writes nothing (writeBatch is never called). */
+async function runParseLoop(
+  pool: Pool,
+  rows: { post_url: string; caption_raw: string | null }[],
+  dryRun: boolean,
+  venueHandles: Set<string>,
+  label: string
+): Promise<void> {
   let processed = 0;
   let withStack = 0;
   let creditsTotal = 0;
@@ -322,40 +300,125 @@ async function main() {
     }
 
     if (!dryRun) await writeBatch(pool, runs, entryRows);
-    console.log(`[stack-v10] ${processed}/${rows.length}`);
+    console.log(`[${label}] ${processed}/${rows.length}`);
   }
 
   // ---- Report ----
-  console.log(`\n[stack-v10] ${dryRun ? "DRY RUN " : ""}DONE`);
-  console.log(`[stack-v10] posts parsed: ${processed}`);
-  console.log(`[stack-v10] with stack (>=1 credit line): ${withStack}`);
-  console.log(`[stack-v10] credits total: ${creditsTotal}`);
-  console.log(`[stack-v10] participants total: ${participantsTotal}`);
+  console.log(`\n[${label}] ${dryRun ? "DRY RUN " : ""}DONE`);
+  console.log(`[${label}] posts parsed: ${processed}`);
+  console.log(`[${label}] with stack (>=1 credit line): ${withStack}`);
+  console.log(`[${label}] credits total: ${creditsTotal}`);
+  console.log(`[${label}] participants total: ${participantsTotal}`);
 
   const topN = (m: Map<string, number>, n: number) =>
     Array.from(m.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, n);
 
-  console.log(`\n[stack-v10] credits by role (top 30):`);
+  console.log(`\n[${label}] credits by role (top 30):`);
   for (const [role, n] of topN(creditsByRole, 30)) console.log(`  ${role}: ${n}`);
   const otherN = creditsByRole.get("other") ?? 0;
-  console.log(`[stack-v10] 'other' share: ${creditsTotal > 0 ? ((otherN / creditsTotal) * 100).toFixed(1) : "0.0"}% (${otherN}/${creditsTotal})`);
+  console.log(`[${label}] 'other' share: ${creditsTotal > 0 ? ((otherN / creditsTotal) * 100).toFixed(1) : "0.0"}% (${otherN}/${creditsTotal})`);
 
-  console.log(`\n[stack-v10] participants by role:`);
+  console.log(`\n[${label}] participants by role:`);
   for (const [role, n] of topN(participantsByRole, participantsByRole.size)) console.log(`  ${role}: ${n}`);
 
-  console.log(`\n[stack-v10] credits by source:`);
+  console.log(`\n[${label}] credits by source:`);
   for (const [source, n] of topN(creditsBySource, creditsBySource.size)) console.log(`  ${source}: ${n}`);
 
-  console.log(`\n[stack-v10] emoji_line credits by marker (top 15):`);
+  console.log(`\n[${label}] emoji_line credits by marker (top 15):`);
   for (const [marker, n] of topN(emojiByMarker, 15)) console.log(`  ${JSON.stringify(marker)}: ${n}`);
 
-  console.log(`\n[stack-v10] non-wedding-event titles found: ${nonWeddingCount}`);
+  console.log(`\n[${label}] non-wedding-event titles found: ${nonWeddingCount}`);
   for (const s of nonWeddingSamples) console.log(`  ${s.post_url}  ${JSON.stringify(s.title)}`);
 
-  console.log(`\n[stack-v10] emoji-line credit sample (up to 20, for a precision eye-check):`);
+  console.log(`\n[${label}] emoji-line credit sample (up to 20, for a precision eye-check):`);
   for (const s of emojiSample) console.log(`  ${s.post_url}  ${JSON.stringify(s.emoji)} -> @${s.handle} (${s.role})`);
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  const ungated = args.includes("--ungated");
+  const dryRun = args.includes("--dry-run");
+  const limitArg = args.find((a) => a.startsWith("--limit"));
+  const limit = limitArg
+    ? Number(limitArg.includes("=") ? limitArg.split("=")[1] : args[args.indexOf(limitArg) + 1])
+    : undefined;
+  const refreshIdx = args.indexOf("--refresh-matching");
+  const refreshPattern = refreshIdx >= 0 ? args[refreshIdx + 1] : undefined;
+  const sourceIdx = args.indexOf("--source");
+  const source = sourceIdx >= 0 ? args[sourceIdx + 1] : undefined;
+  if (source !== undefined && source !== "ben") {
+    throw new Error(`--source must be "ben" (got "${source}")`);
+  }
+
+  const pool = getPool();
+  await pool.query(`set statement_timeout='300s'`);
+
+  // Same venue-handle preload as runStackParserBaseline.ts -- venue_hashtag needs a lookup list of
+  // known venue account usernames, built once and reused for every parseCaptionV2() call.
+  const { rows: venueHandleRows } = await pool.query<{ username: string }>(
+    `select lower(a.username::text) as username
+     from accounts a
+     where exists (select 1 from v_account_role r where r.account_id = a.id and r.role = 'venue')
+        or exists (select 1 from vendors v where v.account_id = a.id and v.category = 'venue')`
+  );
+  const venueHandles = new Set(venueHandleRows.map((r) => r.username));
+  console.log(`[stack-v10] loaded ${venueHandles.size} known venue handles for venue_hashtag`);
+
+  if (refreshPattern !== undefined) {
+    console.log(`[stack-v10-refresh] version=${STACK_PARSER_V2_VERSION} ${dryRun ? "DRY RUN " : ""}pattern=${JSON.stringify(refreshPattern)}`);
+    await runRefreshMatching(pool, refreshPattern, dryRun, limit, venueHandles);
+    await closePool();
+    return;
+  }
+
+  if (source === "ben") {
+    // D057: Ben's original crawl -- every `weddings` row with no `jeremy_weddings_created` row,
+    // via wedding_posts -> posts (source='venue_tagged'). Caption is posts.caption, keyed by
+    // posts.url -- these posts are NEVER in staging.instagram_posts, so the default query below
+    // never reaches them. `distinct` because a post could in principle be attached to more than
+    // one wedding row (shared post_id is UNIQUE on wedding_posts, so this is belt-and-suspenders,
+    // not load-bearing).
+    const { rows } = await pool.query<{ post_url: string; caption_raw: string | null }>(
+      `select distinct p.url as post_url, p.caption as caption_raw
+       from weddings w
+       join wedding_posts wp on wp.wedding_id = w.id
+       join posts p on p.id = wp.post_id
+       where not exists (select 1 from jeremy_weddings_created j where j.wedding_id = w.id)
+         and p.source = 'venue_tagged'
+         and p.caption is not null and p.caption <> ''
+         and not exists (
+           select 1 from stack_extraction_runs_v2 sr
+           where sr.post_url = p.url and sr.parser_version = $1
+         )
+       order by p.url
+       ${limit ? `limit ${Math.trunc(limit)}` : ""}`,
+      [STACK_PARSER_V2_VERSION]
+    );
+    console.log(`[stack-v10-ben] version=${STACK_PARSER_V2_VERSION} ${dryRun ? "DRY RUN " : ""}source=ben posts=${rows.length}`);
+    await runParseLoop(pool, rows, dryRun, venueHandles, "stack-v10-ben");
+    await closePool();
+    return;
+  }
+
+  const { rows } = await pool.query<{ post_url: string; caption_raw: string | null }>(
+    `select sp.post_url, sp.caption_raw
+     from staging.instagram_posts sp
+     ${ungated ? "" : "join candidate_scores cs on cs.post_url = sp.post_url and cs.candidate_generation_version = 'candidate-score-v1' and cs.score >= 12"}
+     where sp.caption_raw is not null and sp.caption_raw <> ''
+       and not exists (
+         select 1 from stack_extraction_runs_v2 sr
+         where sr.post_url = sp.post_url and sr.parser_version = $1
+       )
+     order by sp.post_url
+     ${limit ? `limit ${Math.trunc(limit)}` : ""}`,
+    [STACK_PARSER_V2_VERSION]
+  );
+  console.log(
+    `[stack-v10] version=${STACK_PARSER_V2_VERSION} mode=${ungated ? "ungated" : "score>=12"} ${dryRun ? "DRY RUN " : ""}posts=${rows.length}`
+  );
+  await runParseLoop(pool, rows, dryRun, venueHandles, "stack-v10");
 
   await closePool();
 }

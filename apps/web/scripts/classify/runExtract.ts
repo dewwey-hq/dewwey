@@ -78,6 +78,25 @@
  * printPoolBDiscoveryReport. Does NOT build the resolver that turns these into real venues --
  * that is separate, later work.
  *
+ * Fifth mode, ben-weddings -- D057 candidate ("go through Ben's posts and make sure they pass
+ * our bar for real credible documented wedding too"): Ben's original crawl produced 1,325
+ * `weddings` rows with NO `jeremy_weddings_created` row (his phase_dedup rule -- a post with >=3
+ * distinct vendor roles becomes a wedding; no model or human ever read those posts), 1,602 posts
+ * total via `wedding_posts` -> `posts` (source='venue_tagged', NEVER in staging.instagram_posts).
+ * Reads each post the same "is this a real wedding at the anchored venue" question as corpus
+ * mode, anchored to `weddings.venue_id` instead of a jeremy_wedding_candidates row --
+ * venue_anchor_source is the literal 'ben_crawl', candidate_id is always NULL (see
+ * fetchBenWeddingsContexts). Same EXTRACT_SYSTEM_PROMPT, same --escalate-band/--escalate-model/
+ * --max-cost-usd discipline as every other mode. Stored under EXTRACT_PROMPT_VERSION (or
+ * ESCALATED_PROMPT_VERSION) with pool='ben-weddings' -- resumable via the same
+ * not-already-extracted-under-this-prompt_version-and-pool discipline. Does NOT write
+ * post_venue_verdicts (there is no jeremy_wedding_candidates row to verdict against; the D057
+ * audit script, auditBenWeddings.ts, makes the retire/keep/human call per wedding from these
+ * runs). Credit stack comes from stack_extraction_entries_v2 (STACK_PARSER_V2_VERSION) --
+ * runStackParserV10.ts --source ben is this mode's sibling, parsing Ben's posts into that same
+ * table. location_tag is always null: unlike staging.instagram_posts, `posts` has no
+ * location_tag column for Ben's crawl.
+ *
  * Usage (from apps/web):
  *   bun run scripts/classify/runExtract.ts --mode calibration --limit 20 --dry-run
  *   bun run scripts/classify/runExtract.ts --mode calibration --limit 500
@@ -90,6 +109,9 @@
  *   bun run scripts/classify/runExtract.ts --mode pool-b --limit 5 --dry-run
  *   bun run scripts/classify/runExtract.ts --mode pool-b --limit 500 --max-cost-usd 5
  *   bun run scripts/classify/runExtract.ts --mode pool-b --limit 500 --escalate-band 0.5-0.8 --escalate-model anthropic/claude-sonnet-5
+ *   bun run scripts/classify/runExtract.ts --mode ben-weddings --limit 20 --dry-run
+ *   bun run scripts/classify/runExtract.ts --mode ben-weddings --limit 1602 --max-cost-usd 10
+ *   bun run scripts/classify/runExtract.ts --mode ben-weddings --limit 500 --escalate-band 0.5-0.8
  */
 import type { Pool } from "pg";
 import { getPool, closePool } from "./db";
@@ -104,6 +126,7 @@ import {
   type CaptionVenueSignal,
 } from "./venueAttribution";
 import { STRUCTURAL_CLUSTERING_VERSION as DEFAULT_STRUCTURAL_CLUSTERING_VERSION } from "../../lib/server/structuralVersion";
+import { STACK_PARSER_V2_VERSION } from "../graph/stackParser";
 import {
   EXTRACT_PROMPT_VERSION,
   EXTRACT_SYSTEM_PROMPT,
@@ -138,7 +161,7 @@ const ESCALATED_PROMPT_VERSION = `${EXTRACT_PROMPT_VERSION}+sonnet`;
 const VENUECAL_PROMPT_VERSION = `${EXTRACT_PROMPT_VERSION}-venuecal`;
 
 interface Args {
-  mode: "calibration" | "corpus" | "venue-calibration" | "pool-b";
+  mode: "calibration" | "corpus" | "venue-calibration" | "pool-b" | "ben-weddings";
   limit: number;
   dryRun: boolean;
   threshold: number;
@@ -173,8 +196,14 @@ function parseArgs(): Args {
     return i >= 0 ? a[i + 1] : undefined;
   };
   const mode = get("--mode");
-  if (mode !== "calibration" && mode !== "corpus" && mode !== "venue-calibration" && mode !== "pool-b") {
-    throw new Error(`--mode calibration|corpus|venue-calibration|pool-b is required (got ${mode ?? "(none)"})`);
+  if (
+    mode !== "calibration" &&
+    mode !== "corpus" &&
+    mode !== "venue-calibration" &&
+    mode !== "pool-b" &&
+    mode !== "ben-weddings"
+  ) {
+    throw new Error(`--mode calibration|corpus|venue-calibration|pool-b|ben-weddings is required (got ${mode ?? "(none)"})`);
   }
   return {
     mode,
@@ -1342,6 +1371,224 @@ async function runPoolB(pool: Pool, args: Args): Promise<void> {
   printPoolBDiscoveryReport(records, resolver, spendState.total);
 }
 
+// --- ben-weddings mode (D057, Ben's crawl audit) -----------------------------
+
+interface BenWeddingMeta {
+  post_url: string;
+  wedding_id: number;
+  venue_account_id: number | null;
+}
+
+/** Ben's original crawl: every `weddings` row with NO `jeremy_weddings_created` row (his
+ *  phase_dedup rule -- a post with >=3 distinct vendor roles becomes a wedding; no model or
+ *  human ever read the post). 1,602 posts total via wedding_posts -> posts (source=
+ *  'venue_tagged', never in staging.instagram_posts). Resumable: skips a post that already has a
+ *  pool='ben-weddings' row under EXTRACT_PROMPT_VERSION, unless --force. */
+async function selectBenWeddingsMeta(pool: Pool, limit: number, force: boolean): Promise<BenWeddingMeta[]> {
+  const { rows } = await pool.query(
+    `select p.url as post_url, w.id as wedding_id, w.venue_id as venue_account_id
+     from weddings w
+     join wedding_posts wp on wp.wedding_id = w.id
+     join posts p on p.id = wp.post_id
+     where not exists (select 1 from jeremy_weddings_created j where j.wedding_id = w.id)
+       and p.source = 'venue_tagged'
+       and ($2::boolean or not exists (
+         select 1 from post_extraction_runs per
+         where per.post_url = p.url and per.prompt_version = $3 and per.pool = 'ben-weddings'
+       ))
+     order by w.id asc, p.url asc
+     limit $1`,
+    [limit, force, EXTRACT_PROMPT_VERSION]
+  );
+  return rows.map((r) => ({
+    post_url: r.post_url,
+    wedding_id: Number(r.wedding_id),
+    venue_account_id: r.venue_account_id != null ? Number(r.venue_account_id) : null,
+  }));
+}
+
+/** Batched, post_url-scoped context fetch (same discipline as fetchExtractContexts) -- caption
+ *  from `posts.caption` (Ben's crawl posts are never in staging.instagram_posts), credit stack
+ *  from stack_extraction_entries_v2 (STACK_PARSER_V2_VERSION -- this mode's sibling,
+ *  runStackParserV10.ts --source ben, is what populates it for these posts; empty until that has
+ *  actually run for a given post, same as any not-yet-parsed post elsewhere). Participant rows
+ *  (role like 'participant:%') are excluded from the credit stack shown to the model -- same
+ *  concept split as toRows() in runStackParserV10.ts, StackEntry means vendor credits only.
+ *  venue_anchor_source is the literal 'ben_crawl' -- the venue comes straight off the wedding
+ *  row, not a jeremy_wedding_candidates anchor. */
+async function fetchBenWeddingsContexts(pool: Pool, metaRows: BenWeddingMeta[]): Promise<ExtractPostContext[]> {
+  if (metaRows.length === 0) return [];
+  const postUrls = metaRows.map((m) => m.post_url);
+  const venueAccountIds = [...new Set(metaRows.map((m) => m.venue_account_id).filter((id): id is number => id != null))];
+
+  const [{ rows: postRows }, { rows: venueRows }, { rows: stackRows }] = await Promise.all([
+    pool.query(
+      `select
+         p.url as post_url, p.caption as caption_raw, a.username::text as owner_username, p.posted_at::text as post_timestamp,
+         (case
+            when cx.raw_match is not null and cx.raw_match !~* '${COUPLE_BUSINESS_WORD_VETO_SQL}'
+            then lower(cx.raw_match) else null
+          end) as couple_guess,
+         coalesce(p.caption ~* '${NON_WEDDING_EVENT_KEYWORD_SQL}', false) as has_non_wedding_event_keyword
+       from posts p
+       join accounts a on a.id = p.owner_id
+       left join lateral (
+         select substring(p.caption from '${COUPLE_RAW_MATCH_SQL}') as raw_match
+       ) cx on true
+       where p.url = any($1::text[])`,
+      [postUrls]
+    ),
+    venueAccountIds.length
+      ? pool.query(
+          `select id as account_id, username::text as username, full_name, biography
+           from accounts where id = any($1::bigint[])`,
+          [venueAccountIds]
+        )
+      : Promise.resolve({ rows: [] }),
+    pool.query(
+      `select post_url, label_raw as role_raw, role, handle, line_no
+       from stack_extraction_entries_v2
+       where post_url = any($1::text[]) and parser_version = $2 and role not like 'participant:%'
+       order by post_url, line_no asc`,
+      [postUrls, STACK_PARSER_V2_VERSION]
+    ),
+  ]);
+
+  const postByUrl = new Map<string, (typeof postRows)[number]>();
+  for (const r of postRows) postByUrl.set(r.post_url, r);
+
+  const venueById = new Map<number, (typeof venueRows)[number]>();
+  for (const r of venueRows) venueById.set(Number(r.account_id), r);
+
+  const stackByUrl = new Map<string, StackEntry[]>();
+  for (const r of stackRows) {
+    const list = stackByUrl.get(r.post_url) ?? [];
+    list.push({ role_raw: r.role_raw, role: r.role, handle: r.handle });
+    stackByUrl.set(r.post_url, list);
+  }
+
+  return metaRows.map((m) => {
+    const p = postByUrl.get(m.post_url);
+    const v = m.venue_account_id != null ? venueById.get(m.venue_account_id) : undefined;
+    return {
+      post_url: m.post_url,
+      caption_raw: p?.caption_raw ?? null,
+      location_tag: null,
+      owner_username: p?.owner_username ?? null,
+      post_timestamp: p?.post_timestamp ?? null,
+      // Stand-in only (same pattern as pool-b/venue-calibration): ben-weddings has no
+      // jeremy_wedding_candidates row at all -- wedding_id carries provenance, never treated as
+      // a real candidate_id. saveExtractionRun is always called below with an explicit
+      // {candidateId: null, poolTag: 'ben-weddings'} override.
+      candidate_id: m.wedding_id,
+      venue_anchor_source: "ben_crawl",
+      venue_username: v?.username ?? null,
+      venue_full_name: v?.full_name ?? null,
+      venue_biography: truncateBio(v?.biography ?? null),
+      stack: stackByUrl.get(m.post_url) ?? [],
+      couple_guess: p?.couple_guess ?? null,
+      has_non_wedding_event_keyword: Boolean(p?.has_non_wedding_event_keyword),
+    };
+  });
+}
+
+/** Self-contained (does not touch selectCorpusMeta/selectCalibrationMeta/fetchExtractContexts or
+ *  the corpus/calibration worker loop below), same shape as runPoolB. NEVER calls
+ *  writeVerdictIfEligible -- ben-weddings posts have no candidate_id, so there is nothing to
+ *  write a post_venue_verdicts row against (the D057 audit script, auditBenWeddings.ts, makes
+ *  the retire/keep/human call per wedding by reading these runs back out). saveExtractionRun is
+ *  called with an explicit {candidateId:null, poolTag:'ben-weddings'} override on every write
+ *  (first-pass AND any escalated pass). */
+async function runBenWeddings(pool: Pool, args: Args): Promise<void> {
+  const metaRows = await selectBenWeddingsMeta(pool, args.limit, args.force);
+  console.log(`[extract] selected ${metaRows.length} posts (ben-weddings)`);
+  if (metaRows.length === 0) {
+    console.log(
+      "[extract] nothing to do (all of Ben's posts already extracted under this prompt_version/pool, or the queue is empty)"
+    );
+    return;
+  }
+
+  const contexts = await fetchBenWeddingsContexts(pool, metaRows);
+
+  if (args.dryRun) {
+    console.log(`[extract] --dry-run (ben-weddings): printing up to 3 prompts, no LLM calls, no writes`);
+    for (const ctx of contexts.slice(0, 3)) {
+      console.log(`\n=== SYSTEM PROMPT (mode=ben-weddings, ${EXTRACT_PROMPT_VERSION}) ===\n${EXTRACT_SYSTEM_PROMPT}`);
+      console.log(
+        `\n=== USER PROMPT: ${ctx.post_url} (venue_anchor_source=ben_crawl, wedding_id=${ctx.candidate_id}, candidate_id=NULL) ===\n${buildExtractUserPrompt(ctx)}`
+      );
+    }
+    return;
+  }
+
+  const spendState = { total: 0 };
+  let processed = 0;
+  let errored = 0;
+  let consecutiveFailures = 0;
+  let aborted = false;
+  let escalatedCount = 0;
+  let escalatedCostTotal = 0;
+  const verdictCounts: Record<string, number> = {};
+
+  const queue = [...contexts];
+  const workers = Array.from({ length: args.concurrency }, () =>
+    (async () => {
+      while (queue.length) {
+        if (spendState.total >= args.maxCostUsd) {
+          console.log(`[extract] hit --max-cost-usd ${args.maxCostUsd}, stopping`);
+          queue.length = 0;
+          return;
+        }
+        const ctx = queue.shift();
+        if (!ctx) return;
+
+        try {
+          const run = await callExtractWithRetry(ctx, MODEL_CHEAP);
+          spendState.total += run.costUsd ?? 0;
+          await saveExtractionRun(pool, run, EXTRACT_PROMPT_VERSION, { candidateId: null, poolTag: "ben-weddings" });
+
+          let effective = run;
+          if (shouldEscalate(run.result, args.escalateBand)) {
+            const escalateRun = await callExtractWithRetry(ctx, args.escalateModel);
+            spendState.total += escalateRun.costUsd ?? 0;
+            escalatedCostTotal += escalateRun.costUsd ?? 0;
+            escalatedCount++;
+            await saveExtractionRun(pool, escalateRun, ESCALATED_PROMPT_VERSION, { candidateId: null, poolTag: "ben-weddings" });
+            effective = escalateRun;
+          }
+
+          verdictCounts[effective.result.verdict] = (verdictCounts[effective.result.verdict] ?? 0) + 1;
+
+          processed++;
+          consecutiveFailures = 0;
+          if (processed % 50 === 0) {
+            console.log(`[extract] processed=${processed}/${contexts.length} running_cost=$${spendState.total.toFixed(4)}`);
+          }
+        } catch (e) {
+          errored++;
+          consecutiveFailures++;
+          const msg = e instanceof OpenRouterError ? `${e.status} ${e.body.slice(0, 200)}` : String(e);
+          console.error(`[extract] ERROR ${ctx.post_url}: ${msg}`);
+          if (consecutiveFailures >= 5) {
+            console.error(`[extract] 5 consecutive failures — aborting run (likely API/credits issue)`);
+            aborted = true;
+            queue.length = 0;
+            return;
+          }
+        }
+      }
+    })()
+  );
+  await Promise.all(workers);
+
+  console.log("[extract] DONE" + (aborted ? " (ABORTED EARLY)" : ""));
+  console.log(`  processed: ${processed}, errored: ${errored}, of ${contexts.length} selected`);
+  console.log(`  verdict counts (post-escalation, i.e. the effective result actually used):`, verdictCounts);
+  console.log(`  escalated: ${escalatedCount} of ${processed} (cost $${escalatedCostTotal.toFixed(4)})`);
+  console.log(`  total cost this run (Haiku + escalation): $${spendState.total.toFixed(4)}`);
+}
+
 // --- main -------------------------------------------------------------------
 
 async function main() {
@@ -1349,7 +1596,9 @@ async function main() {
   const pool = getPool();
 
   if (args.writeVerdicts && args.mode !== "corpus") {
-    throw new Error("--write-verdicts is only valid with --mode corpus (calibration/venue-calibration never write verdicts)");
+    throw new Error(
+      "--write-verdicts is only valid with --mode corpus (calibration/venue-calibration/pool-b/ben-weddings never write verdicts)"
+    );
   }
 
   console.log(
@@ -1367,6 +1616,12 @@ async function main() {
 
   if (args.mode === "pool-b") {
     await runPoolB(pool, args);
+    await closePool();
+    return;
+  }
+
+  if (args.mode === "ben-weddings") {
+    await runBenWeddings(pool, args);
     await closePool();
     return;
   }
