@@ -30,6 +30,7 @@ export function InstagramPostEmbed({
   post,
   className,
   eager = false,
+  captioned = false,
 }: {
   post: StackPostInfo | null;
   className?: string;
@@ -39,6 +40,12 @@ export function InstagramPostEmbed({
    * server-rendered HTML instead of waiting on client-only lazy mount. Everything else
    * stays lazy so a 24+ wedding page never has more than a handful of live embeds. */
   eager?: boolean;
+  /** Sets `data-instgrm-captioned` so Instagram renders the caption inside its own
+   * frame — off by default (uniform, uncaptioned tiles). A caller that wants to toggle
+   * this after the blockquote has already been processed must change this component's
+   * `key` too (e.g. include `captioned` in it) — embed.js doesn't reprocess a blockquote
+   * it's already turned into an iframe, so the only reliable way to switch is a remount. */
+  captioned?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
@@ -149,12 +156,14 @@ export function InstagramPostEmbed({
     >
       {visible ? (
         <div ref={mountRef}>
-          {/* Uncaptioned (no data-instgrm-captioned attribute) -- our own CaptionStrip/
-              strip supplies the title, date, and stack instead. */}
+          {/* `data-instgrm-captioned` only when the caller asks -- default uncaptioned
+              (uniform tiles); our own strip supplies title/date/stack instead. Never the
+              scraped caption text itself -- only Instagram's own rendering of it. */}
           <blockquote
             className="instagram-media"
             data-instgrm-permalink={post.url}
             data-instgrm-version="14"
+            {...(captioned ? { "data-instgrm-captioned": true } : {})}
             style={{
               background: "#FFF",
               border: 0,
