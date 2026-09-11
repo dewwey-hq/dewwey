@@ -36,8 +36,8 @@ user spot-checks and says "create" for every batch.
 
 ## Blocked on the user
 
-1. **D056 stage 0 is done** — settle the 20 judgment calls in
-   `apps/web/scripts/graph/tmp_analysis/d056_golden_disagreements.csv` (fill `your_call`), then stage 1 (parser v10) can start. Stage 2 migration later needs your "run it".
+1. **D056 stage 2 migration** will need your `!` for the schema script and the migration script once
+   the dry-run is reviewed (judgment calls settled 2026-09-10: user aligned with Fable's labels).
 2. Decisions: (a) `/venues` bar — recommend venue-or-hotel top role AND ≥1 documented
    wedding (today 0-wedding venue accounts still list, 148 of them); (b) coverage items 2-5
    after 09-11 Apify credits (thin-venue text read + vision slice; own + tagged crawl);
@@ -47,8 +47,13 @@ user spot-checks and says "create" for every batch.
 
 ## Next actions (Claude, when unblocked)
 
-1. **D056 stage 1** after the user settles the disagreements: parser v10 (Sonnet), additive re-parse,
-   coverage report; stage 2 migration dry-run on the local Docker copy.
+1. **D056 stage 1 done** (2026-09-10 19:30 CT): parser v10 (`parseCaptionV2`, emoji-keyed lines,
+   event-title flag, inline-at contexts) re-parsed 46,838 posts into `stack_extraction_entries_v2`
+   (additive): 96,965 credits (v9: 89,337), 5,761 from emoji lines, `other` 3.7%, 2,572 participants,
+   500 non-wedding titles flagged. **Stage 2 next**: `applyVendorTaxonomySchema.ts` +
+   `migrateVendorRolesV2.ts` (built by Sonnet; dry-run reviewed by Fable) → user's "run it" (the
+   classifier blocks DDL/bulk updates; the user runs both with `!`) → `refreshAccountRoleTagsFromWeddings.ts
+   --apply` → `refresh materialized view edges` → re-pin tests → stage 3 UI.
 2. (done) D055 Phase 3 residue table written — D055 closed as a mining mission; leftovers are image-only, out of market, or a ~830-post human pass.
 3. Duplicate merge pass (same couple at the same venue; participants table in D056 will make
    this exact) — $0.
@@ -94,6 +99,8 @@ user spot-checks and says "create" for every batch.
   `backfillAccountLocationsFromPlaces.ts`, `backfillVenueLocationsViaWebSearch.ts` (batch 3),
   `applyPoolBLeadMap.ts` + `tmp_analysis/poolb_lead_map_2026-09-10.json`.
 - D056 taxonomy: `docs/decisions.md` D056 + plan file section; `scripts/graph/vendorRoleRules.ts` (+test),
+  `stackParser.ts` `parseCaptionV2` (+`stackParserV2.test.ts`), `runStackParserV10.ts`,
+  `applyStackEntriesV2Schema.ts` (tables `stack_extraction_entries_v2`, `stack_extraction_runs_v2`),
   `reportLabelCoverage.ts`; `tmp_analysis/d056_labels_v9.csv`, `d056_label_map.csv`, `d056_golden_sample.csv`, `d056_golden_disagreements.csv`.
 - Review UI: `/label/candidates` (`?spotcheck=<reviewer>&n=20`, `?post=a,b,c`).
 - Provenance: `jeremy_weddings_created.batch_id`, `jeremy_wedding_post_attachments`,
