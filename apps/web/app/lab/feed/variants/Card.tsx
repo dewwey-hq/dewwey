@@ -300,7 +300,7 @@ export function Card({
       className={
         twoUp
           ? "grid grid-cols-1 gap-4 xl:grid-cols-2"
-          : "mx-auto flex max-w-5xl flex-col gap-6"
+          : "mx-auto flex max-w-6xl flex-col gap-6"
       }
     >
       {stacks.map((stack, i) => (
