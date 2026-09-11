@@ -8,12 +8,14 @@ import { coverPost } from "@/lib/feedDesign";
 import { MeasurementContext, type MeasurementApi } from "./measurement-context";
 import { CleanList } from "./variants/CleanList";
 import { Grid } from "./variants/Grid";
+import { Card } from "./variants/Card";
 import type { WeddingStack } from "@/lib/server/graph";
 import type { Variant } from "./variant";
 
 const VARIANT_LABELS: Record<Variant, string> = {
   a: "A2 · Clean list",
   b: "B2 · Grid",
+  c: "C · Card",
 };
 
 /**
@@ -132,6 +134,7 @@ export function FeedLab({
         <MeasurementContext.Provider value={measurement}>
           {variant === "a" && <CleanList stacks={stacks} />}
           {variant === "b" && <Grid stacks={stacks} />}
+          {variant === "c" && <Card stacks={stacks} />}
         </MeasurementContext.Provider>
       </main>
     </div>
