@@ -142,16 +142,53 @@ function FeedCardC({
   mediaSide: Side;
 }) {
   const embeddablePosts = stack.post_infos.filter((p) => p.ok && Boolean(p.url));
+  const n = embeddablePosts.length;
   const cover = coverPost(stack.post_infos);
   const initialIdx = cover ? Math.max(0, embeddablePosts.findIndex((p) => p.url === cover.url)) : 0;
   const [idx, setIdx] = useState(initialIdx);
-  const [interacted, setInteracted] = useState(false);
   const [captioned, setCaptioned] = useState(false);
   const [expanded, setExpanded] = useState(false);
+
+  // Carousel track (D058 user pick, 2026-09-11: swipeable snap carousel over the
+  // flip-through deck) -- one full-width slide per embeddable post, ported from the
+  // swatch's `CarouselCard`. Mount-only jump to the cover slide (no smooth scroll, so it
+  // never fights a later programmatic/manual scroll); after that, `goToPost`'s smooth
+  // `scrollTo` and native swipes both land on this same rAF-debounced scroll listener,
+  // which derives `idx` from `scrollLeft` so the pager's bars stay in sync either way.
+  const trackRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || track.clientWidth === 0) return;
+    track.scrollLeft = initialIdx * track.clientWidth;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial position only
+  }, []);
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    let raf: number | null = null;
+    const onScroll = () => {
+      if (raf != null) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        const width = track.clientWidth;
+        if (width <= 0) return;
+        const i = Math.min(n - 1, Math.max(0, Math.round(track.scrollLeft / width)));
+        setIdx((prev) => (prev === i ? prev : i));
+      });
+    };
+    track.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      track.removeEventListener("scroll", onScroll);
+      if (raf != null) cancelAnimationFrame(raf);
+    };
+  }, [n]);
+
   const goToPost = (i: number) => {
     beginPostSwitch();
-    setIdx(i);
-    setInteracted(true);
+    const clamped = ((i % n) + n) % n;
+    const track = trackRef.current;
+    if (track) track.scrollTo({ left: clamped * track.clientWidth, behavior: "smooth" });
+    setIdx(clamped);
   };
 
   // Media column height, fed to the stack panel's `--media-h` cap (below) and reused as
@@ -299,20 +336,38 @@ function FeedCardC({
             it takes over this same column at the column's last-measured height instead of
             growing it (user, 2026-09-11: "have the caption take over the image"). */}
         <div ref={swapRef} hidden={captioned}>
-          {/* embed.js puts an inline `margin: 0 0 12px` on the iframe it injects -- that was the
-              "tail" under the post (user, 2026-09-11); zero it here, scoped to this column only. */}
-          <div className="w-full [&_iframe]:mb-0!" style={{ maxWidth: embedWidth }}>
-            <InstagramPostEmbed key={activePost?.url ?? "none"} post={activePost} eager={eagerCover || interacted} />
+          {/* Snap track -- one full-width slide per embeddable post, swipeable natively on
+              touch, ported from the swatch's `CarouselCard`. `overflow-x-hidden` on the
+              outer wrapper is a guard so the track's own horizontal scroll never leaks into
+              the page; `items-start` on the non-wrapping flex row is what makes the row's
+              height track the tallest loaded slide. Only the cover slide is `eager` --
+              every other slide relies on `InstagramPostEmbed`'s own IntersectionObserver
+              lazy mount, which fires naturally as it's scrolled into view. embed.js puts an
+              inline `margin: 0 0 12px` on the iframe it injects -- that was the "tail" under
+              the post (user, 2026-09-11); zero it here, scoped to this column only. */}
+          <div className="overflow-x-hidden">
+            <div
+              ref={trackRef}
+              className="scrollbar-none flex items-start overflow-x-auto snap-x snap-mandatory overscroll-x-contain"
+            >
+              {embeddablePosts.map((p, i) => (
+                <div key={p.url} className="w-full shrink-0 snap-center">
+                  <div className="w-full [&_iframe]:mb-0!" style={{ maxWidth: embedWidth }}>
+                    <InstagramPostEmbed post={p} eager={i === initialIdx && eagerCover} />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           {/* Post switcher -- the concept page's deck pager (user, 2026-09-11: "i prefer
               what we did with galleria marchetti, the dots and lines and arrows"): round
               arrow buttons either side, a pill indicator per post with the active one
-              stretched rose. Under the embed, never over it. */}
-          {embeddablePosts.length > 1 && (
+              stretched rose. Under the embed, never over it. `goToPost` wraps at the ends. */}
+          {n > 1 && (
             <div role="group" aria-label="Choose a post" className="flex items-center justify-center gap-4 py-3">
               <button
                 type="button"
-                onClick={() => goToPost((idx - 1 + embeddablePosts.length) % embeddablePosts.length)}
+                onClick={() => goToPost(idx - 1)}
                 className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
                 aria-label="Previous post"
               >
@@ -324,7 +379,7 @@ function FeedCardC({
                     key={p.url}
                     type="button"
                     onClick={() => goToPost(i)}
-                    aria-label={`View post ${i + 1} of ${embeddablePosts.length}`}
+                    aria-label={`View post ${i + 1} of ${n}`}
                     aria-current={i === idx ? "true" : undefined}
                     className={`h-1.5 rounded-full transition-all ${i === idx ? "w-5 bg-rose-400" : "w-1.5 bg-gray-200 hover:bg-gray-300"}`}
                   />
@@ -332,7 +387,7 @@ function FeedCardC({
               </div>
               <button
                 type="button"
-                onClick={() => goToPost((idx + 1) % embeddablePosts.length)}
+                onClick={() => goToPost(idx + 1)}
                 className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
                 aria-label="Next post"
               >
