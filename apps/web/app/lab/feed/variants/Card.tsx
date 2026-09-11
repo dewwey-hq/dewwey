@@ -246,8 +246,14 @@ function FeedCardC({
     ...(venueVendor ? [{ ...venueVendor, extraRoles: [] as string[] }] : []),
     ...groups.flatMap((g) => g.vendors),
   ];
-  // Mobile-only fold (md+ shows every tile, scrolling instead -- see the panel below).
-  const hiddenCountMobile = Math.max(0, tiles.length - TILE_CAP);
+  // Fold (user, 2026-09-11: "if the vendor stack is too long, naturally condense it and add
+  // the show-more button ... so it doesn't show the scroll bar"): the cap is however many
+  // tiles fit beside the embed -- derived from the measured media height minus the panel's
+  // header/divider/button chrome (~150px) at ~44px per tile -- so the folded panel never
+  // needs to scroll. Expanded, the panel still can't outgrow the embed; it scrolls with the
+  // scrollbar hidden (`scrollbar-none`) and the fade below as the only affordance.
+  const tileCap = mediaHeight != null ? Math.max(4, Math.floor((mediaHeight - 150) / 44)) : TILE_CAP;
+  const hiddenCount = Math.max(0, tiles.length - tileCap);
   // Card has no `venue` prop (unlike Roster's `venueFallbackName`) -- `stack.venue_name`
   // is already the per-wedding fallback straight from the query, so no new prop is needed.
   const venueLabel = venueVendor ? displayName(venueVendor.name, venueVendor.username) : (stack.venue_name ?? "Unknown venue");
@@ -347,7 +353,7 @@ function FeedCardC({
       <div
         ref={panelRef}
         onScroll={updateScrollState}
-        className={`relative min-w-0 md:max-h-(--media-h) md:self-start md:overflow-y-auto ${panelOrderClass}`}
+        className={`scrollbar-none relative min-w-0 md:max-h-(--media-h) md:self-start md:overflow-y-auto ${panelOrderClass}`}
       >
         <div className="flex flex-col p-5">
           {/* Swatch Option 3 (user pick, 2026-09-11) with a building icon so "venue" isn't
@@ -399,26 +405,26 @@ function FeedCardC({
 
           <div className={`grid gap-y-2 [&>*]:min-w-0 ${tileCols === 2 && !compact ? "grid-cols-2 gap-x-3" : "grid-cols-1"}`}>
             {tiles.map((v, i) => (
-              <div key={`${v.username}-${v.role}`} className={i >= TILE_CAP && !expanded ? "hidden md:block" : ""}>
+              <div key={`${v.username}-${v.role}`} className={i >= tileCap && !expanded ? "hidden" : ""}>
                 <CardTile vendor={v} />
               </div>
             ))}
           </div>
 
-          {hiddenCountMobile > 0 && !expanded && (
+          {hiddenCount > 0 && !expanded && (
             <button
               type="button"
               onClick={() => setExpanded(true)}
-              className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900 md:hidden"
+              className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900"
             >
-              +{hiddenCountMobile} more vendor{hiddenCountMobile === 1 ? "" : "s"}
+              +{hiddenCount} more vendor{hiddenCount === 1 ? "" : "s"}
             </button>
           )}
-          {expanded && hiddenCountMobile > 0 && (
+          {expanded && hiddenCount > 0 && (
             <button
               type="button"
               onClick={() => setExpanded(false)}
-              className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900 md:hidden"
+              className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900"
             >
               Show fewer
             </button>
