@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { Buildings, CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { VendorAvatar } from "../components/VendorAvatar";
@@ -101,155 +101,9 @@ function VenuePanel({ stack }: { stack: WeddingStack }) {
   );
 }
 
-/** Tracks the front card's real, measured height for `PostDeck` below — a `ResizeObserver`
- * on `frontRef`, with the same "floor while switching" idea as `Card.tsx`'s
- * `switchFloorRef`: when a post switch remounts the embed, its loading placeholder is
- * shorter than the loaded frame, so the height never drops below the pre-switch height
- * until the column has been still for 3s (otherwise the stage visibly collapses and
- * springs back). Never sets an explicit height on the observed element itself — only
- * reports the number for a caller to apply elsewhere — so the front card's own content
- * (the embed) is never constrained or cropped. */
-function useFrontCardHeight() {
-  const frontRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | null>(null);
-  const floorRef = useRef<number | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const beginSwitch = useCallback(() => {
-    floorRef.current = frontRef.current ? Math.round(frontRef.current.getBoundingClientRect().height) : null;
-  }, []);
-
-  useEffect(() => {
-    const el = frontRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver(([entry]) => {
-      const h = Math.round(entry.contentRect.height);
-      const floor = floorRef.current;
-      setHeight(floor != null && h < floor ? floor : h);
-      if (floor != null) {
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => {
-          floorRef.current = null;
-          setHeight(Math.round(el.getBoundingClientRect().height));
-        }, 3000);
-      }
-    });
-    observer.observe(el);
-    return () => {
-      observer.disconnect();
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  return { frontRef, height, beginSwitch };
-}
-
-/**
- * The concept page's ("galleria-marchetti-v3") `CardDeck` feel, applied to compliant
- * Instagram embeds: a front card with one peeking above-left and one peeking below-right,
- * a pager underneath. Unlike `CardDeck`, the front card's height is never a fixed prop —
- * it's measured live (`useFrontCardHeight`) because a real embed's height varies by post
- * and can't be guessed, and ONLY the front card ever holds content: the two peeks are
- * always empty white cards that merely suggest more, so nothing Instagram delivers is ever
- * cropped, resized, or covered. The stage's own height is the front card's own natural
- * flow height (`renderFront` renders in normal flow, offset by `peekAbove`/`peekBelow`
- * margins) — the measured height only sizes the two decorative peek cards, so a
- * still-loading front card is never clipped even for a single frame.
- */
-function PostDeck({
-  posts,
-  idx,
-  onSelect,
-  renderFront,
-  peekAbove = 14,
-  peekBelow = 18,
-  maxWidth,
-}: {
-  posts: StackPostInfo[];
-  idx: number;
-  onSelect: (i: number) => void;
-  renderFront: (post: StackPostInfo | null) => ReactNode;
-  peekAbove?: number;
-  peekBelow?: number;
-  maxWidth: number;
-}) {
-  const n = posts.length;
-  const { frontRef, height, beginSwitch } = useFrontCardHeight();
-  if (n === 0) return null;
-  const active = posts[idx] ?? null;
-
-  const goTo = (i: number) => {
-    beginSwitch();
-    onSelect(((i % n) + n) % n);
-  };
-
-  return (
-    <div>
-      <div className="relative mx-auto" style={{ maxWidth }}>
-        {n > 1 && (
-          <div
-            aria-hidden
-            className="absolute inset-x-0 top-0 rounded-2xl border border-black/[0.06] bg-white shadow-lg transition-all duration-300"
-            style={{ height: height ?? undefined, transform: "rotate(-3.5deg) scale(0.96)", opacity: 0.6, zIndex: 20 }}
-          />
-        )}
-        {n > 1 && (
-          <div
-            aria-hidden
-            className="absolute inset-x-0 rounded-2xl border border-black/[0.06] bg-white shadow-lg transition-all duration-300"
-            style={{
-              top: peekAbove + peekBelow,
-              height: height ?? undefined,
-              transform: "rotate(4deg) scale(0.94)",
-              opacity: 0.4,
-              zIndex: 10,
-            }}
-          />
-        )}
-        <div ref={frontRef} className="relative z-30" style={{ marginTop: peekAbove, marginBottom: peekBelow }}>
-          {renderFront(active)}
-        </div>
-      </div>
-
-      {n > 1 && (
-        <div className="mt-5 flex items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={() => goTo(idx - 1)}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
-            aria-label="Previous post"
-          >
-            <CaretLeft size={14} />
-          </button>
-          <div className="flex gap-1.5">
-            {posts.map((p, i) => (
-              <button
-                key={p.url}
-                type="button"
-                onClick={() => goTo(i)}
-                aria-label={`View post ${i + 1} of ${n}`}
-                aria-current={i === idx ? "true" : undefined}
-                className={`h-1.5 rounded-full transition-all ${i === idx ? "w-5 bg-rose-400" : "w-1.5 bg-gray-200"}`}
-              />
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => goTo(idx + 1)}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
-            aria-label="Next post"
-          >
-            <CaretRight size={14} />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /** Every post on the stack that's actually embeddable, falling back to the full list (so a
- * fully-blocked stack still shows `InstagramPostEmbed`'s own fallback card in the deck
- * rather than an empty deck) — same fallback idea as `Card.tsx`'s `coverOrFirstPost`. */
+ * fully-blocked stack still shows `InstagramPostEmbed`'s own fallback card rather than an
+ * empty track) — same fallback idea as `Card.tsx`'s `coverOrFirstPost`. */
 function embeddableOrAll(stack: WeddingStack): StackPostInfo[] {
   const embeddable = stack.post_infos.filter((p) => p.ok && Boolean(p.url));
   return embeddable.length > 0 ? embeddable : stack.post_infos;
@@ -260,63 +114,25 @@ function initialIdxFor(stack: WeddingStack, posts: StackPostInfo[]): number {
   return cover ? Math.max(0, posts.findIndex((p) => p.url === cover.url)) : 0;
 }
 
-/** Option A · "Photo deck" — today's `Card.tsx` card (embed at 360, static stack panel at
- * 240) with the MEDIA COLUMN turned into the deck: the embed is the deck's front card,
- * blank cards peek behind it inside the column, and the pager sits under the column. The
- * stack panel to the right never changes as posts flip. */
-function PhotoDeckCard({ stack }: { stack: WeddingStack }) {
-  const posts = embeddableOrAll(stack);
-  const [idx, setIdx] = useState(() => initialIdxFor(stack, posts));
-
-  return (
-    <article className="w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-white md:flex md:items-start">
-      <div className="border-b border-black/[0.06] p-4 md:w-[360px] md:shrink-0 md:border-b-0 md:border-r">
-        <PostDeck
-          posts={posts}
-          idx={idx}
-          onSelect={setIdx}
-          maxWidth={360}
-          renderFront={(post) => (
-            <div className="w-full [&_iframe]:mb-0!">
-              <InstagramPostEmbed key={post?.url ?? "none"} post={post} eager />
-            </div>
-          )}
-        />
-      </div>
-      <div className="min-w-0 flex-1 p-5 md:w-[240px] md:shrink-0">
-        <VenuePanel stack={stack} />
-      </div>
-    </article>
-  );
-}
-
-/** "Carousel" cell — the same card shell as `PhotoDeckCard` (360 media column, 240 static
- * panel, same `VenuePanel`), but the media column is a horizontal snap-scroll track
- * instead of a flip deck: one full-width slide per embeddable post, swipeable natively on
- * touch, with the same arrows-and-bars pager as `Card.tsx` driving `track.scrollTo`. A
- * `scroll` listener (rAF-debounced) derives the active index from `scrollLeft` so a manual
- * swipe keeps the bars in sync. `overflow-x-hidden` on the column wrapper is a guard so the
- * track's own horizontal scroll never leaks into the page; `items-start` on the flex track
- * (rather than a `ResizeObserver`) is what makes the row's height track the tallest loaded
- * slide, since a non-wrapping flex row's auto height is already the max of its children. */
-function CarouselCard({ stack }: { stack: WeddingStack }) {
-  const posts = embeddableOrAll(stack);
+/** Shared carousel-track state for all three pager placements below: mounts the track at
+ * `initialIdx` (jump, no smooth scroll, once the track has a real width — mount only, so a
+ * later programmatic/manual scroll never gets overridden), then a `scroll` listener
+ * (rAF-debounced so a fast swipe doesn't spam `setIdx` mid-gesture) derives the active index
+ * from `scrollLeft` so a manual swipe keeps the pager's bars in sync, and `goTo` drives
+ * `track.scrollTo` with wrap-around for the arrows/bars. Only the pager's on-screen position
+ * differs between the three cells — the track, the scroll math, and this hook are identical. */
+function useCarouselTrack(posts: StackPostInfo[], initialIdx: number) {
   const n = posts.length;
   const trackRef = useRef<HTMLDivElement>(null);
-  const [idx, setIdx] = useState(() => initialIdxFor(stack, posts));
+  const [idx, setIdx] = useState(initialIdx);
 
-  // Jump (no smooth scroll) to the initial post once the track has a real width — mount
-  // only, so a later programmatic/manual scroll never gets overridden.
   useEffect(() => {
     const track = trackRef.current;
     if (!track || track.clientWidth === 0) return;
-    track.scrollLeft = idx * track.clientWidth;
+    track.scrollLeft = initialIdx * track.clientWidth;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial position only
   }, []);
 
-  // Swiping (or a trackpad) scrolls the track directly; this only keeps the pager's bars
-  // in sync with wherever the track actually lands. rAF-debounced so a fast swipe doesn't
-  // spam `setIdx` mid-gesture.
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
@@ -338,107 +154,178 @@ function CarouselCard({ stack }: { stack: WeddingStack }) {
     };
   }, [n]);
 
-  const goTo = (i: number) => {
-    const clamped = ((i % n) + n) % n;
-    const track = trackRef.current;
-    if (track) track.scrollTo({ left: clamped * track.clientWidth, behavior: "smooth" });
-    setIdx(clamped);
-  };
+  const goTo = useCallback(
+    (i: number) => {
+      const clamped = ((i % n) + n) % n;
+      const track = trackRef.current;
+      if (track) track.scrollTo({ left: clamped * track.clientWidth, behavior: "smooth" });
+      setIdx(clamped);
+    },
+    [n],
+  );
 
+  return { trackRef, idx, goTo };
+}
+
+/** The horizontal snap-scroll media track itself — one full-width slide per embeddable
+ * post, swipeable natively on touch, no peek. `overflow-x-hidden` on the wrapper is a guard
+ * so the track's own horizontal scroll never leaks into the page; `items-start` on the flex
+ * track (rather than a `ResizeObserver`) is what makes the row's height track the tallest
+ * loaded slide, since a non-wrapping flex row's auto height is already the max of its
+ * children. Identical across all three pager placements — never renders a pager itself. */
+function CarouselTrack({ posts, trackRef }: { posts: StackPostInfo[]; trackRef: RefObject<HTMLDivElement | null> }) {
   return (
-    <article className="w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-white md:flex md:items-start">
-      <div className="border-b border-black/[0.06] p-4 md:w-[360px] md:shrink-0 md:border-b-0 md:border-r">
-        <div className="overflow-x-hidden">
-          <div
-            ref={trackRef}
-            className="scrollbar-none flex items-start overflow-x-auto snap-x snap-mandatory overscroll-x-contain"
-          >
-            {posts.map((post) => (
-              <div key={post.url} className="w-full shrink-0 snap-center">
-                <div className="w-full [&_iframe]:mb-0!">
-                  <InstagramPostEmbed post={post} eager />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        {n > 1 && (
-          <div className="mt-5 flex items-center justify-center gap-4">
-            <button
-              type="button"
-              onClick={() => goTo(idx - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
-              aria-label="Previous post"
-            >
-              <CaretLeft size={14} />
-            </button>
-            <div className="flex gap-1.5">
-              {posts.map((p, i) => (
-                <button
-                  key={p.url}
-                  type="button"
-                  onClick={() => goTo(i)}
-                  aria-label={`View post ${i + 1} of ${n}`}
-                  aria-current={i === idx ? "true" : undefined}
-                  className={`h-1.5 rounded-full transition-all ${i === idx ? "w-5 bg-rose-400" : "w-1.5 bg-gray-200"}`}
-                />
-              ))}
+    <div className="overflow-x-hidden">
+      <div ref={trackRef} className="scrollbar-none flex items-start overflow-x-auto snap-x snap-mandatory overscroll-x-contain">
+        {posts.map((post) => (
+          <div key={post.url} className="w-full shrink-0 snap-center">
+            <div className="w-full [&_iframe]:mb-0!">
+              <InstagramPostEmbed post={post} eager />
             </div>
-            <button
-              type="button"
-              onClick={() => goTo(idx + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
-              aria-label="Next post"
-            >
-              <CaretRight size={14} />
-            </button>
           </div>
-        )}
+        ))}
       </div>
-      <div className="min-w-0 flex-1 p-5 md:w-[240px] md:shrink-0">
-        <VenuePanel stack={stack} />
-      </div>
-    </article>
+    </div>
   );
 }
 
+/** The arrows-and-bars pager, identical markup in all three cells — only where a caller
+ * places this component differs. Renders nothing for a single-post stack. */
+function CarouselPager({ posts, idx, goTo }: { posts: StackPostInfo[]; idx: number; goTo: (i: number) => void }) {
+  if (posts.length <= 1) return null;
+  return (
+    <div className="flex items-center justify-center gap-4">
+      <button
+        type="button"
+        onClick={() => goTo(idx - 1)}
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
+        aria-label="Previous post"
+      >
+        <CaretLeft size={14} />
+      </button>
+      <div className="flex gap-1.5">
+        {posts.map((p, i) => (
+          <button
+            key={p.url}
+            type="button"
+            onClick={() => goTo(i)}
+            aria-label={`View post ${i + 1} of ${posts.length}`}
+            aria-current={i === idx ? "true" : undefined}
+            className={`h-1.5 rounded-full transition-all ${i === idx ? "w-5 bg-rose-400" : "w-1.5 bg-gray-200"}`}
+          />
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => goTo(idx + 1)}
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
+        aria-label="Next post"
+      >
+        <CaretRight size={14} />
+      </button>
+    </div>
+  );
+}
+
+type PagerPlacement = "media" | "outside" | "footer";
+
+/** The one carousel card (360 media column + 240 static `VenuePanel`, same track, same
+ * panel) rendered three ways per `pagerPlacement` — the only thing that changes:
+ * - "media": today's placement, pager under the media column, inside the card.
+ * - "outside": pager outside the card entirely, centered beneath the full card width.
+ * - "footer": pager inside the card as a full-width footer row under both columns (the
+ *   card becomes a two-column grid so the footer can span both with `md:col-span-2`).
+ * The `VenuePanel` never changes between placements or between posts — same stack, same
+ * tiles, same order — only the pager moves. */
+function CarouselCard({ stack, pagerPlacement }: { stack: WeddingStack; pagerPlacement: PagerPlacement }) {
+  const posts = embeddableOrAll(stack);
+  const { trackRef, idx, goTo } = useCarouselTrack(posts, initialIdxFor(stack, posts));
+  const showPager = posts.length > 1;
+  const isFooter = pagerPlacement === "footer";
+
+  const card = (
+    <article
+      className={`w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-white md:items-start ${
+        isFooter ? "md:grid md:grid-cols-[360px_240px]" : "md:flex"
+      }`}
+    >
+      <div
+        className={`border-b border-black/[0.06] p-4 md:border-b-0 md:border-r ${isFooter ? "" : "md:w-[360px] md:shrink-0"}`}
+      >
+        <CarouselTrack posts={posts} trackRef={trackRef} />
+        {pagerPlacement === "media" && showPager && (
+          <div className="mt-5">
+            <CarouselPager posts={posts} idx={idx} goTo={goTo} />
+          </div>
+        )}
+      </div>
+      <div className={`min-w-0 p-5 ${isFooter ? "" : "flex-1 md:w-[240px] md:shrink-0"}`}>
+        <VenuePanel stack={stack} />
+      </div>
+      {isFooter && showPager && (
+        <div className="flex justify-center border-t border-black/[0.06] py-2.5 md:col-span-2">
+          <CarouselPager posts={posts} idx={idx} goTo={goTo} />
+        </div>
+      )}
+    </article>
+  );
+
+  if (pagerPlacement === "outside") {
+    return (
+      <div>
+        {card}
+        {showPager && (
+          <div className="mt-3 flex justify-center">
+            <CarouselPager posts={posts} idx={idx} goTo={goTo} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return card;
+}
+
 /**
- * D058 follow-on swatch: "the experience for if there's multiple posts isn't ideal ...
- * need a better design than just the dots underneath" (user, 2026-09-11) — followed by
- * "if there's three posts then show another one behind it and we can let the user flip
- * through like the ui ux we have here" pointing at the concept page's `CardDeck`. This
- * replaces the earlier panel-top, multi-post-switcher, and photo-deck/whole-card-deck
- * swatch rounds with a head-to-head: the flip-through stack (`PhotoDeckCard`) against a
- * horizontal snap carousel (`CarouselCard`) over the SAME real hosted, multi-post stack —
- * wedding 881 (The Arbory, 3 posts) by default.
+ * D058 follow-on swatch: the user picked the carousel, then asked "can i see what it'd
+ * look like if we had the carousel for the whole card, not just the post ... so like if
+ * the arrows were underneath the full card" (2026-09-11), expecting "only the instagram
+ * post side changes, the vendor stack should be the same regardless." This replaces the
+ * earlier stack-vs-carousel head-to-head with three cells of the SAME carousel card over
+ * the SAME real hosted, multi-post stack — wedding 881 (The Arbory, 3 posts) by default —
+ * differing only in where `CarouselCard`'s `pagerPlacement` puts the arrows-and-bars pager.
  */
 export function Swatches({ multiStack }: { multiStack: WeddingStack | null }) {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-1 text-lg font-semibold text-gray-900">
-        Multi-post · Stack vs Carousel
+        Carousel · where the pager lives
         {multiStack ? ` · wedding ${multiStack.id} (${multiStack.n_posts} post${multiStack.n_posts === 1 ? "" : "s"})` : ""}
       </h1>
       {multiStack ? (
         <>
           <p className="mb-6 text-sm text-black/[0.5]">
-            Stack flips through peeking cards behind the front post; carousel swipes (or uses the arrows) between
-            full-width slides in a snap track — both keep every embed full-width and compliant.
+            The vendor stack panel — venue pinned, tiles grouped by category — is identical across all three by
+            design; only the pager&apos;s placement relative to the card changes.
           </p>
           <div className="grid gap-8 lg:grid-cols-2">
             <div>
-              <p className="mb-2 text-xs font-medium text-black/[0.45]">Stack · photo deck</p>
-              <PhotoDeckCard stack={multiStack} />
+              <p className="mb-2 text-xs font-medium text-black/[0.45]">A · Under the photo (today)</p>
+              <CarouselCard stack={multiStack} pagerPlacement="media" />
             </div>
             <div>
-              <p className="mb-2 text-xs font-medium text-black/[0.45]">Carousel</p>
-              <CarouselCard stack={multiStack} />
+              <p className="mb-2 text-xs font-medium text-black/[0.45]">B · Under the whole card</p>
+              <CarouselCard stack={multiStack} pagerPlacement="outside" />
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-medium text-black/[0.45]">C · Card footer</p>
+              <CarouselCard stack={multiStack} pagerPlacement="footer" />
             </div>
           </div>
         </>
       ) : (
         <p className="mb-6 text-sm text-black/[0.5]">
-          No hosted multi-post wedding found for this venue to demo the deck on.
+          No hosted multi-post wedding found for this venue to demo the carousel on.
         </p>
       )}
     </div>
