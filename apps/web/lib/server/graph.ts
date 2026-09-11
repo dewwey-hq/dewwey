@@ -22,6 +22,29 @@ export interface StackVendor {
   contexts: string[];
 }
 
+/**
+ * Per-post detail for the D058 feed design lab (`app/lab/feed`) — additive to the
+ * `post_urls`/`embed_urls` arrays every existing caller (`WeddingFeedCard`, `/weddings`,
+ * the vendor page) already reads; those are untouched. `postType` is only populated for
+ * the ~14k posts Jeremy's crawl also captured (`staging.instagram_posts`, joined by URL) —
+ * null for the rest, which is most of Ben's `venue_tagged` corpus.
+ */
+export interface StackPostInfo {
+  url: string;
+  /** Owner allows embedding (61/816 accounts opt out). */
+  ok: boolean;
+  postedAt: string | null;
+  shortcode: string | null;
+  caption: string | null;
+  ownerUsername: string | null;
+  ownerName: string | null;
+  ownerAvatarUrl: string | null;
+  /** 'Image' | 'Sidecar' | 'Video' | null (unknown — not in staging.instagram_posts). */
+  postType: string | null;
+  mediaWidth: number | null;
+  mediaHeight: number | null;
+}
+
 export interface WeddingStack {
   id: number;
   event_date_est: string | null;
@@ -34,6 +57,8 @@ export interface WeddingStack {
   embed_urls: string[];
   caption: string | null;
   vendors: StackVendor[];
+  /** D058: every post on this wedding with its embed/media/caption/owner detail. */
+  post_infos: StackPostInfo[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,7 +74,20 @@ function toStack(row: any): WeddingStack {
     contexts: (v.contexts ?? []) as string[],
   }));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const infos = (row.post_infos ?? []) as { url: string; ok: boolean }[];
+  const rawInfos = (row.post_infos ?? []) as any[];
+  const postInfos: StackPostInfo[] = rawInfos.map((i) => ({
+    url: i.url,
+    ok: Boolean(i.ok),
+    postedAt: i.posted_at ?? null,
+    shortcode: i.shortcode ?? null,
+    caption: i.caption ?? null,
+    ownerUsername: i.owner_username ?? null,
+    ownerName: i.owner_name ?? null,
+    ownerAvatarUrl: avatarUrl(i.owner_avatar ?? null),
+    postType: i.post_type ?? null,
+    mediaWidth: i.media_width ?? null,
+    mediaHeight: i.media_height ?? null,
+  }));
   return {
     id: row.id,
     event_date_est: row.event_date_est,
@@ -57,10 +95,11 @@ function toStack(row: any): WeddingStack {
     venue_name: row.venue_name,
     venue_avatar_url: avatarUrl(row.venue_avatar),
     n_posts: row.n_posts,
-    post_urls: infos.map((i) => i.url),
-    embed_urls: infos.filter((i) => i.ok).map((i) => i.url),
+    post_urls: rawInfos.map((i) => i.url),
+    embed_urls: rawInfos.filter((i) => i.ok).map((i) => i.url),
     caption: row.caption ?? null,
     vendors,
+    post_infos: postInfos,
   };
 }
 
@@ -73,10 +112,23 @@ const STACK_SELECT = `
     venue.avatar_path AS venue_avatar,
     (SELECT COUNT(*) FROM wedding_posts wp WHERE wp.wedding_id = w.id)::int AS n_posts,
     (SELECT jsonb_agg(jsonb_build_object(
-        'url', p.url, 'ok', (ao.embeds_disabled IS DISTINCT FROM true)
+        'url', p.url, 'ok', (ao.embeds_disabled IS DISTINCT FROM true),
+        -- D058 feed design lab (app/lab/feed): everything the lab's cover-selection,
+        -- caption-title, and media-badge logic needs, additive to url/ok above so every
+        -- existing caller (post_urls/embed_urls) is unaffected.
+        'posted_at', p.posted_at,
+        'shortcode', p.shortcode,
+        'caption', p.caption,
+        'owner_username', ao.username,
+        'owner_name', COALESCE(ao.full_name, ao.username::text),
+        'owner_avatar', ao.avatar_path,
+        'post_type', sip.post_type,
+        'media_width', sip.media_width,
+        'media_height', sip.media_height
       ) ORDER BY (ao.embeds_disabled IS TRUE), p.posted_at)
        FROM wedding_posts wp JOIN posts p ON p.id = wp.post_id
        JOIN accounts ao ON ao.id = p.owner_id
+       LEFT JOIN staging.instagram_posts sip ON sip.post_url = p.url
       WHERE wp.wedding_id = w.id) AS post_infos,
     (SELECT p.caption FROM wedding_posts wp JOIN posts p ON p.id = wp.post_id
       WHERE wp.wedding_id = w.id AND p.caption IS NOT NULL

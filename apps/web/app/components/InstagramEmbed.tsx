@@ -276,6 +276,8 @@ export default function InstagramEmbed({
   compact = false,
   className,
   onLoad,
+  onTimeout,
+  timeoutMs = 8000,
   imageCount = 1,
   scrollIframe = false,
   mediaWidth,
@@ -292,6 +294,10 @@ export default function InstagramEmbed({
   compact?: boolean;
   className?: string;
   onLoad?: () => void;
+  /** Fires once if `onLoad` hasn't happened within `timeoutMs` (default 8s) — a dead or
+   * removed post never calls back. Does not fire once `onLoad` has already happened. */
+  onTimeout?: () => void;
+  timeoutMs?: number;
   imageCount?: number;
   scrollIframe?: boolean;
   mediaWidth?: number | null;
@@ -306,6 +312,14 @@ export default function InstagramEmbed({
   useEffect(() => {
     setIframeLoaded(false);
   }, [postUrl]);
+
+  useEffect(() => {
+    if (!onTimeout || iframeLoaded) return;
+    const timer = setTimeout(() => {
+      onTimeout();
+    }, timeoutMs);
+    return () => clearTimeout(timer);
+  }, [postUrl, iframeLoaded, onTimeout, timeoutMs]);
 
   const text = caption?.trim();
   const captioned = lightboxMedia || compact ? false : lightbox ? true : !text;
