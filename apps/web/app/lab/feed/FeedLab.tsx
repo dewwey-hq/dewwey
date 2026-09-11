@@ -6,10 +6,7 @@ import { pillClassName } from "@/lib/typography";
 import { siteContainerClass } from "@/lib/site-layout";
 import { coverPost } from "@/lib/feedDesign";
 import { MeasurementContext, type MeasurementApi } from "./measurement-context";
-import { CleanList } from "./variants/CleanList";
-import { Grid } from "./variants/Grid";
 import { Card } from "./variants/Card";
-import { Recipe } from "./variants/Recipe";
 import { Ledger } from "./variants/Ledger";
 import { Roster } from "./variants/Roster";
 import { Scroll } from "./variants/Scroll";
@@ -31,10 +28,7 @@ import {
 } from "./variant";
 
 const VARIANT_LABELS: Record<Variant, string> = {
-  a: "A2 · Clean list",
-  b: "B2 · Grid",
   c: "C · Card",
-  d: "D · Recipe",
   e: "E · Ledger",
   f: "F · Roster",
   g: "G · Scroll",
@@ -182,7 +176,7 @@ export function FeedLab({
             ))}
           </div>
         </div>
-        {(variant === "c" || variant === "d" || variant === "e") && (
+        {(variant === "c" || variant === "e") && (
           <div
             className={`${siteContainerClass} flex flex-wrap items-center gap-x-4 gap-y-1.5 pb-2.5 text-xs`}
           >
@@ -306,8 +300,6 @@ export function FeedLab({
 
       <main className={`${siteContainerClass} mt-8`}>
         <MeasurementContext.Provider value={measurement}>
-          {variant === "a" && <CleanList stacks={stacks} />}
-          {variant === "b" && <Grid stacks={stacks} />}
           {variant === "c" && (
             <Card
               stacks={stacks}
@@ -318,7 +310,6 @@ export function FeedLab({
               mediaSide={side}
             />
           )}
-          {variant === "d" && <Recipe stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} />}
           {variant === "e" && <Ledger stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} />}
           {variant === "f" && <Roster stacks={stacks} venue={venue} />}
           {variant === "g" && <Scroll stacks={stacks} venue={venue} />}

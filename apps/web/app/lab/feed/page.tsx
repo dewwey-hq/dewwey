@@ -32,8 +32,8 @@ export default async function FeedLabPage({
 }) {
   const sp = await searchParams;
   const venueUsername = typeof sp.venue === "string" && sp.venue.length > 0 ? sp.venue : "the.arbory";
-  const rawVariant = typeof sp.variant === "string" ? sp.variant.toLowerCase() : "a";
-  const variant: Variant = isVariant(rawVariant) ? rawVariant : "a";
+  const rawVariant = typeof sp.variant === "string" ? sp.variant.toLowerCase() : "c";
+  const variant: Variant = isVariant(rawVariant) ? rawVariant : "c";
   const embedSize = parseEmbedSize(typeof sp.size === "string" ? sp.size : undefined);
   const layout = parseLayout(typeof sp.layout === "string" ? sp.layout : undefined);
   const limit = parseLimit(typeof sp.n === "string" ? sp.n : undefined, variant);

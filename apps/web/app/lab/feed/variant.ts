@@ -17,7 +17,9 @@
  * G · Scroll — pure column of embeds; the in-view wedding drives ONE sticky team panel.
  * H · Chip grid — 3-across masonry, category chips with counts under each embed.
  * I · Photo wall — 3-4 across wall of 326px embeds; tap a wedding → full team sheet. */
-export const VARIANTS = ["a", "b", "c", "d", "e", "f", "g", "h", "i"] as const;
+/** A2 Clean list, B2 Grid and D Recipe deleted 2026-09-11 (user: "i like the card the most") —
+ * see git history before this commit for their code. */
+export const VARIANTS = ["c", "e", "f", "g", "h", "i"] as const;
 export type Variant = (typeof VARIANTS)[number];
 
 export function isVariant(v: string | null | undefined): v is Variant {
@@ -28,10 +30,10 @@ export function isVariant(v: string | null | undefined): v is Variant {
  * `size`/`layout` (user, 2026-09-11: "the cards and recipes are too large... make them
  * smaller"): URL-backed controls for variants C, D, and E only — A/B ignore them (never
  * passed down). Instagram's only hard rule is a 326px minimum embed width; 360 is the
- * smallest step above that, 470 the old default ceiling, 540 Meta's maximum (user, 2026-09-11:
+ * smallest step above that (326 itself added 2026-09-11 on request), 470 the old default ceiling, 540 Meta's maximum (user, 2026-09-11:
  * "showing more of the image than the text" — the image should be the wider half).
  */
-export const EMBED_SIZES = [360, 400, 470, 540] as const;
+export const EMBED_SIZES = [326, 360, 400, 470, 540] as const;
 export type EmbedSize = (typeof EMBED_SIZES)[number];
 export const DEFAULT_EMBED_SIZE: EmbedSize = 540;
 
