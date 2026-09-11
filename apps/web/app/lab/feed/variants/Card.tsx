@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Buildings, Image as ImageIcon, TextAlignLeft } from "@phosphor-icons/react";
+import { Buildings, CaretLeft, CaretRight, Image as ImageIcon, TextAlignLeft } from "@phosphor-icons/react";
 import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { MeasuredCard } from "../components/MeasuredCard";
 import { VendorAvatar } from "../components/VendorAvatar";
@@ -148,6 +148,11 @@ function FeedCardC({
   const [interacted, setInteracted] = useState(false);
   const [captioned, setCaptioned] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const goToPost = (i: number) => {
+    beginPostSwitch();
+    setIdx(i);
+    setInteracted(true);
+  };
 
   // Media column height, fed to the stack panel's `--media-h` cap (below) and reused as
   // the caption card's fixed height on flip -- same state either way, so the two always
@@ -293,24 +298,40 @@ function FeedCardC({
           <div className="w-full [&_iframe]:mb-0!" style={{ maxWidth: embedWidth }}>
             <InstagramPostEmbed key={activePost?.url ?? "none"} post={activePost} eager={eagerCover || interacted} />
           </div>
+          {/* Post switcher -- the concept page's deck pager (user, 2026-09-11: "i prefer
+              what we did with galleria marchetti, the dots and lines and arrows"): round
+              arrow buttons either side, a pill indicator per post with the active one
+              stretched rose. Under the embed, never over it. */}
           {embeddablePosts.length > 1 && (
-            <div role="group" aria-label="Choose a post" className="flex items-center justify-center gap-2 py-3">
-              {embeddablePosts.map((p, i) => (
-                <button
-                  key={p.url}
-                  type="button"
-                  onClick={() => {
-                    beginPostSwitch();
-                    setIdx(i);
-                    setInteracted(true);
-                  }}
-                  aria-label={`View post ${i + 1} of ${embeddablePosts.length}`}
-                  aria-current={i === idx ? "true" : undefined}
-                  className={`rounded-full transition-all ${
-                    i === idx ? "h-2.5 w-2.5 bg-rose-400" : "h-2 w-2 bg-black/[0.15] hover:bg-black/[0.3]"
-                  }`}
-                />
-              ))}
+            <div role="group" aria-label="Choose a post" className="flex items-center justify-center gap-4 py-3">
+              <button
+                type="button"
+                onClick={() => goToPost((idx - 1 + embeddablePosts.length) % embeddablePosts.length)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
+                aria-label="Previous post"
+              >
+                <CaretLeft size={14} />
+              </button>
+              <div className="flex gap-1.5">
+                {embeddablePosts.map((p, i) => (
+                  <button
+                    key={p.url}
+                    type="button"
+                    onClick={() => goToPost(i)}
+                    aria-label={`View post ${i + 1} of ${embeddablePosts.length}`}
+                    aria-current={i === idx ? "true" : undefined}
+                    className={`h-1.5 rounded-full transition-all ${i === idx ? "w-5 bg-rose-400" : "w-1.5 bg-gray-200 hover:bg-gray-300"}`}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => goToPost((idx + 1) % embeddablePosts.length)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
+                aria-label="Next post"
+              >
+                <CaretRight size={14} />
+              </button>
             </div>
           )}
         </div>
