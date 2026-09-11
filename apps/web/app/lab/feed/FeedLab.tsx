@@ -8,22 +8,21 @@ import { coverPost } from "@/lib/feedDesign";
 import { MeasurementContext, type MeasurementApi } from "./measurement-context";
 import { CleanList } from "./variants/CleanList";
 import { Grid } from "./variants/Grid";
-import { Story } from "./variants/Story";
-import { SeasonMagazine } from "./variants/SeasonMagazine";
 import type { WeddingStack } from "@/lib/server/graph";
 import type { Variant } from "./variant";
 
 const VARIANT_LABELS: Record<Variant, string> = {
-  a: "A · Clean list",
-  b: "B · Grid",
-  c: "C · Story",
-  d: "D · Season magazine",
+  a: "A2 · Clean list",
+  b: "B2 · Grid",
 };
 
 /**
- * Client half of the D058 lab: a sticky A/B/C/D toggle that updates the URL, a
- * measurement strip (live iframes, median card height, ms to first embed load — see
+ * Client half of the D058 lab: a sticky A/B toggle that updates the URL, a measurement
+ * strip (live iframes, median card height, ms to first embed load — see
  * `measurement-context.tsx`), and a "data notes" line so the comparison isn't taste-only.
+ * D058 compliance pass (2026-09-11): Story/Season magazine dropped, both remaining
+ * variants render Instagram's official `embed.js` embed untouched (see
+ * `InstagramPostEmbed.tsx`).
  */
 export function FeedLab({
   venue,
@@ -133,8 +132,6 @@ export function FeedLab({
         <MeasurementContext.Provider value={measurement}>
           {variant === "a" && <CleanList stacks={stacks} />}
           {variant === "b" && <Grid stacks={stacks} />}
-          {variant === "c" && <Story stacks={stacks} />}
-          {variant === "d" && <SeasonMagazine stacks={stacks} />}
         </MeasurementContext.Provider>
       </main>
     </div>

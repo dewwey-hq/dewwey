@@ -1,10 +1,13 @@
 import { InstagramLogo } from "@phosphor-icons/react/dist/ssr";
 import { Avatar } from "@/app/components/Avatar";
 
-/** Design principle 5: "failure is a card, not a hole" — same square footprint as
- * `EmbedFrame`, shown for a blocked owner, a load timeout, or (from a variant) when
- * `coverPost()` found nothing embeddable at all. Never renders Instagram's own error text
- * or a white box. */
+/** Design principle 5: "failure is a card, not a hole" — same responsive footprint as
+ * `InstagramPostEmbed` (100% width, capped at `maxWidth`), shown for a blocked owner, a
+ * load timeout, or (from a variant) when `coverPost()` found nothing embeddable at all.
+ * Never renders Instagram's own error text or a white box. D058 compliance pass
+ * (2026-09-11): no fixed square crop — a real embed's height varies with its media, so
+ * the fallback uses a plain portrait aspect instead of pretending to match a crop that no
+ * longer exists. */
 export function excerptCaption(caption: string | null | undefined, max = 160): string | null {
   if (!caption) return null;
   const trimmed = caption.trim();
@@ -14,7 +17,7 @@ export function excerptCaption(caption: string | null | undefined, max = 160): s
 }
 
 export function FallbackCard({
-  width,
+  maxWidth = 540,
   ownerName,
   ownerUsername,
   ownerAvatarUrl,
@@ -24,7 +27,7 @@ export function FallbackCard({
   reason = "none",
   className,
 }: {
-  width: number;
+  maxWidth?: number;
   ownerName: string | null;
   ownerUsername: string | null;
   ownerAvatarUrl: string | null;
@@ -44,8 +47,8 @@ export function FallbackCard({
 
   return (
     <div
-      className={`flex aspect-square w-full flex-col justify-between overflow-hidden rounded-xl border border-black/[0.07] bg-black/[0.02] p-4 ${className ?? ""}`}
-      style={{ width }}
+      className={`mx-auto flex aspect-[4/5] w-full flex-col justify-between overflow-hidden rounded-xl border border-black/[0.07] bg-black/[0.02] p-4 ${className ?? ""}`}
+      style={{ maxWidth, minWidth: Math.min(maxWidth, 260) }}
     >
       <div className="flex items-center gap-2">
         <Avatar
