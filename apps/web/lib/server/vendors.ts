@@ -7,30 +7,79 @@ import { avatarUrl } from "./graph";
 // exists. Until that layer is populated, Places-only fields come back null
 // and the UI falls back (avatar instead of Places photo, no rating).
 
-// vendor_role enum values (see pipeline/schema.sql).
+// vendor_role enum values (see pipeline/schema.sql). D056 stage 2 (2026-09-10): the enum was
+// renamed (beauty_other -> beauty_services, jeweler -> jewelry, photobooth -> photo_booth,
+// musician -> live_music) and ~30 new values were added. This is a copy, not an import, of the
+// `isVendor: true` slugs from `VENDOR_ROLES` in `scripts/graph/vendorRoleRules.ts` (that source
+// of truth) — `scripts/` is excluded from the production tsconfig/build, so this file doesn't
+// reach across that boundary; keep the two lists in sync by hand. `hotel` is kept alongside
+// `accommodations` even though it isn't in VENDOR_ROLES: it's a live legacy role value the query
+// below still filters on directly (see the "hotel" comment on CARD_JOINS' WHERE clause).
 export const VALID_CATEGORIES = new Set([
+  // venue
   "venue",
+  "venue_management",
+  "accommodations",
+  "hotel",
+  // planning
   "planner",
+  "coordinator",
+  "event_design",
+  // photo / video
   "photographer",
+  "second_shooter",
   "videographer",
+  "content_creator",
+  "photo_booth",
+  "drone",
+  "album_editing",
+  // florals / decor
   "florist",
-  "hair",
-  "makeup",
+  "lighting_production",
+  "rentals",
+  "tent",
+  "signage",
+  "decor_other",
+  // food / drink
+  "catering",
+  "bar_service",
+  "cake",
+  "desserts",
+  // music / entertainment
   "dj",
   "band",
-  "musician",
+  "live_music",
+  "mc",
+  "cultural_performers",
+  "dancers_choreography",
+  "entertainment_other",
+  // beauty
+  "hair",
+  "makeup",
+  "beauty_services",
+  // attire
   "attire",
+  "accessories",
+  "alterations",
+  "jewelry",
+  // paper
   "stationery",
-  "cake",
-  "catering",
-  "rentals",
+  "calligraphy",
+  // art / keepsakes
+  "live_painter",
+  "guest_book",
+  "favors_gifts",
+  // logistics / services
   "transportation",
-  "photobooth",
+  "valet",
   "officiant",
-  "hotel",
-  "jeweler",
-  "content_creator",
-  "beauty_other",
+  "security",
+  "childcare",
+  "pet_attendant",
+  "travel_honeymoon",
+  "website_registry",
+  "staffing",
+  // other
   "other",
 ]);
 

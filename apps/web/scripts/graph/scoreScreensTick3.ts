@@ -15,7 +15,7 @@
  *      it stays on the serving graph exactly like an INCLUDE would.
  *   2. caption heuristic (same regex as the sizer/pool builder) — NOT a rule,
  *      just measured for comparison.
- *   3. role-shape (wedding_vendors role set subset of {venue, band, musician})
+ *   3. role-shape (wedding_vendors role set subset of {venue, band, live_music})
  *
  * Usage (from apps/web): bun run scripts/graph/scoreScreensTick3.ts
  */
@@ -128,7 +128,7 @@ async function main() {
   function roleShapeExcludes(roles: string | null): boolean {
     if (!roles) return false;
     const set = roles.split(",");
-    return set.length > 0 && set.every((r) => r === "venue" || r === "band" || r === "musician");
+    return set.length > 0 && set.every((r) => r === "venue" || r === "band" || r === "live_music");
   }
 
   type Scored = {

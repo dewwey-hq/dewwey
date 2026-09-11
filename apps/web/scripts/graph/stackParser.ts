@@ -97,7 +97,7 @@ const NOCOLON_LINE = /^\s*[•\-*]?\s*([A-Z][A-Za-z &+/'’]{0,34})\s*((?:@[A-Za
 // pipe-delimited multi-credit lines) — those change the LINE-matching logic
 // itself, not just ROLE_MAP, and belong in their own iteration.
 const ROLE_MAP: Array<[string, string[]]> = [
-  ["photobooth", ["photo booth", "photobooth"]],
+  ["photo_booth", ["photo booth", "photobooth"]],
   // "band"/"content_creator" are real vendor_role enum values v1 never
   // targeted at all (verified: 0 posts mapped to either across the whole
   // corpus) — 35 + 3 (dj->band) + 10 (videographer->content_creator)
@@ -129,12 +129,12 @@ const ROLE_MAP: Array<[string, string[]]> = [
   ["hair", ["hair"]],
   ["makeup", ["makeup"]],
   // "mua" (Makeup Artist(s), a common industry abbreviation) seen in eval.
-  ["beauty_other", ["hmu", "beauty", "mua"]],
+  ["beauty_services", ["hmu", "beauty", "mua"]],
   // "flow" (bare "Flowers", missing the existing "flor"/"bloom" keywords by
   // one letter) — 9 eval mismatches.
   ["florist", ["flor", "bloom", "flow"]],
   ["dj", ["dj", "entertainment"]],
-  ["musician", ["music", "sax", "strings"]],
+  ["live_music", ["music", "sax", "strings"]],
   // shoe/outfit/menswear/alteration: attire-adjacent labels seen in eval
   // that aren't the ambiguous Bridesmaids/groom cases (see note above).
   ["attire", ["dress", "gown", "suit", "tux", "attire", "bridal", "shoe", "outfit", "menswear", "alteration"]],
@@ -147,7 +147,7 @@ const ROLE_MAP: Array<[string, string[]]> = [
   ["rentals", ["rental", "linen", "decor"]],
   ["transportation", ["transport", "limo"]],
   ["officiant", ["officiant"]],
-  ["jeweler", ["ring", "jewel"]],
+  ["jewelry", ["ring", "jewel"]],
 ];
 
 // Whitelist, not a substring/fuzzy check on purpose — see the comment on

@@ -33,7 +33,7 @@ async function main() {
     join wedding_posts wp on wp.wedding_id = w.id
     join posts p on p.id = wp.post_id
     where exists (select 1 from wedding_vendors wv where wv.wedding_id = w.id
-                    and wv.role::text not in ('venue', 'band', 'musician')) = false
+                    and wv.role::text not in ('venue', 'band', 'live_music')) = false
       and exists (select 1 from wedding_vendors wv where wv.wedding_id = w.id)
       and not exists (select 1 from jeremy_weddings_created j where j.wedding_id = w.id)
       and exists (

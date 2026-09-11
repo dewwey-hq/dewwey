@@ -104,7 +104,7 @@ async function main() {
   merge(captionHits, "caption_heuristic");
 
   // Bucket 3: role-shape — wedding_vendors role set is a non-empty subset of
-  // {venue, band, musician} only (no planner/florist/photo+video wedding-day
+  // {venue, band, live_music} only (no planner/florist/photo+video wedding-day
   // stack). Concerts are expected to cluster here; the labeled sample must
   // check this doesn't also catch real weddings that only credited a band.
   const { rows: roleShape } = await pool.query(`
@@ -121,7 +121,7 @@ async function main() {
       and not exists (
         select 1 from wedding_vendors wv
         where wv.wedding_id = w.id
-          and wv.role::text not in ('venue', 'band', 'musician')
+          and wv.role::text not in ('venue', 'band', 'live_music')
       )
   `);
   merge(roleShape, "role_shape");

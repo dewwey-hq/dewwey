@@ -17,9 +17,9 @@ import psycopg2
 
 HERE = Path(__file__).parent
 ROLES = ['venue','planner','photographer','videographer','florist','hair','makeup',
-         'dj','band','musician','attire','stationery','cake','catering','rentals',
-         'transportation','photobooth','officiant','hotel','jeweler','content_creator',
-         'beauty_other','other']
+         'dj','band','live_music','attire','stationery','cake','catering','rentals',
+         'transportation','photo_booth','officiant','hotel','jewelry','content_creator',
+         'beauty_services','other']
 
 PROMPT = """You extract wedding vendor credits from an Instagram caption.
 

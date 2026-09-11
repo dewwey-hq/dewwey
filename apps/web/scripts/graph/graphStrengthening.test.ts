@@ -1216,7 +1216,7 @@ describe("graph ingestion — D023 (DB)", () => {
 });
 
 // --- non-wedding-posts mission (D040): role_shape_v1 gate. Locked tick 4: a wedding's role
-// set being a non-empty subset of {venue, band, musician} is a 100%-precision, 0-false-EXCLUDE
+// set being a non-empty subset of {venue, band, live_music} is a 100%-precision, 0-false-EXCLUDE
 // signal (measured on tune, known-good, and heldout — see docs/engineering/
 // graph-strengthening/non-wedding-posts.md). This test is the tick 6 gate: it locks the RULE
 // ITSELF (so a future edit can't silently loosen it), not a fresh application of it — tick 5
@@ -1228,7 +1228,7 @@ describe("non-wedding-posts role_shape_v1 gate — D040 (DB)", () => {
   // pool is closed in the last describe block below, not here (shared pool singleton).
 
   function roleShapeV1Excludes(roles: string[]): boolean {
-    return roles.length > 0 && roles.every((r) => r === "venue" || r === "band" || r === "musician");
+    return roles.length > 0 && roles.every((r) => r === "venue" || r === "band" || r === "live_music");
   }
 
   it("role_shape_v1 excludes the 11 original user-flagged seeds' one true positive (DcNx6TSnMb2, wedding 1371 pre-retirement roles) and none of the other 10 seeds' role shapes", () => {
@@ -1236,17 +1236,17 @@ describe("non-wedding-posts role_shape_v1 gate — D040 (DB)", () => {
     // tick 5 already retired these weddings — this test locks the RULE against the recorded
     // shapes, it does not re-derive them from a now-empty wedding_vendors join.
     const seedRoleShapes: Record<string, string[]> = {
-      "DcNUEvvMvIk": ["musician", "other", "venue"],
-      "DcNx6TSnMb2": ["band", "musician", "venue"],
+      "DcNUEvvMvIk": ["live_music", "other", "venue"],
+      "DcNx6TSnMb2": ["band", "live_music", "venue"],
       "DcOHR6qx7kB": ["officiant", "other", "venue"],
       "DcLmlMnNS91": ["catering", "florist", "other", "venue"],
-      "DcKuJQ-NDop": ["musician", "photographer", "venue"],
-      "DcKp-bOjpUb": ["content_creator", "musician", "venue"],
-      "DcL46UADhss": ["band", "musician", "photographer", "venue"],
-      "DcJvqkRt-1X": ["cake", "catering", "musician", "rentals", "venue"],
+      "DcKuJQ-NDop": ["live_music", "photographer", "venue"],
+      "DcKp-bOjpUb": ["content_creator", "live_music", "venue"],
+      "DcL46UADhss": ["band", "live_music", "photographer", "venue"],
+      "DcJvqkRt-1X": ["cake", "catering", "live_music", "rentals", "venue"],
       "DcMEf72FUi8": ["band", "photographer", "venue"],
       "DcJQjFJgIbN": ["catering", "planner", "rentals", "venue"],
-      "DcJhXRTET86": ["content_creator", "musician", "venue"],
+      "DcJhXRTET86": ["content_creator", "live_music", "venue"],
     };
     const excluded = Object.entries(seedRoleShapes).filter(([, roles]) => roleShapeV1Excludes(roles));
     expect(excluded.map(([sc]) => sc)).toEqual(["DcNx6TSnMb2"]);
@@ -1255,12 +1255,12 @@ describe("non-wedding-posts role_shape_v1 gate — D040 (DB)", () => {
   it("role_shape_v1 does not exclude any of the 21-post known-good regression slice from tick 2 (0 false EXCLUDEs, the locked precision bar)", () => {
     // A representative sample of the known-good roles recorded in tick 2/3 (full 21-post
     // slice lives in scripts/graph/data/non_wedding_labels.json) — every one has a role
-    // outside {venue, band, musician} (planner/photographer/florist/etc.), which is exactly
+    // outside {venue, band, live_music} (planner/photographer/florist/etc.), which is exactly
     // why the rule doesn't false-EXCLUDE them.
     const knownGoodRoleShapes: string[][] = [
       ["band", "florist", "photographer", "planner", "rentals", "venue", "videographer"],
-      ["beauty_other", "florist", "photographer", "planner", "rentals", "venue"],
-      ["catering", "dj", "florist", "musician", "other", "photographer", "planner", "venue", "videographer"],
+      ["beauty_services", "florist", "photographer", "planner", "rentals", "venue"],
+      ["catering", "dj", "florist", "live_music", "other", "photographer", "planner", "venue", "videographer"],
       ["florist", "other", "photographer", "planner", "venue"],
       ["attire", "florist", "makeup", "photographer", "planner", "venue"],
     ];
@@ -1278,7 +1278,7 @@ describe("non-wedding-posts role_shape_v1 gate — D040 (DB)", () => {
         and exists (select 1 from wedding_vendors wv where wv.wedding_id = w.id)
         and not exists (
           select 1 from wedding_vendors wv
-          where wv.wedding_id = w.id and wv.role::text not in ('venue', 'band', 'musician')
+          where wv.wedding_id = w.id and wv.role::text not in ('venue', 'band', 'live_music')
         )
     `);
     expect(Number(rows[0].n)).toBe(0);

@@ -88,17 +88,17 @@ LINE = re.compile(r"^\s*[•\-\*]?\s*([A-Za-z][A-Za-z &+/'’]{1,35}?)\s*[:|\-�
 HANDLE = re.compile(r'@([A-Za-z0-9._]{2,30})')
 
 ROLE_MAP = [
-    ('photobooth', ['photo booth', 'photobooth']), ('venue', ['venue']),
+    ('photo_booth', ['photo booth', 'photobooth']), ('venue', ['venue']),
     ('hotel', ['hotel']), ('planner', ['plann']),
     ('photographer', ['photo']), ('videographer', ['video', 'film', 'content']),
-    ('hair', ['hair']), ('makeup', ['makeup']), ('beauty_other', ['hmu', 'beauty']),
+    ('hair', ['hair']), ('makeup', ['makeup']), ('beauty_services', ['hmu', 'beauty']),
     ('florist', ['flor', 'bloom']), ('dj', ['dj', 'entertainment']),
-    ('musician', ['music', 'sax', 'strings', 'band']),
+    ('live_music', ['music', 'sax', 'strings', 'band']),
     ('attire', ['dress', 'gown', 'suit', 'tux', 'attire', 'bridal']),
     ('stationery', ['stationery', 'invitation', 'paper']), ('cake', ['cake', 'dessert']),
     ('catering', ['cater', 'dinner', 'drinks', 'food']),
     ('rentals', ['rental', 'linen', 'decor']), ('transportation', ['transport', 'limo']),
-    ('officiant', ['officiant']), ('jeweler', ['ring', 'jewel']),
+    ('officiant', ['officiant']), ('jewelry', ['ring', 'jewel']),
 ]
 
 def norm(role_raw):
@@ -374,7 +374,7 @@ def phase_enrich(cap=1200, chunk=100):
 # concerts, galas, and birthdays, which are structurally identical to a
 # wedding credit stack. The mission locked one narrow, measured rule
 # (role_shape_v1: exclude when a wedding's wedding_vendors role set is a
-# non-empty subset of {venue, band, musician}, 100% precision / 0 false
+# non-empty subset of {venue, band, live_music}, 100% precision / 0 false
 # EXCLUDEs on real weddings across every slice tested) and retired the 46
 # posts it and a hand-labeled sample already caught -- see the mission doc's
 # tick 4/5 findings and scripts/graph/graphStrengthening.test.ts's

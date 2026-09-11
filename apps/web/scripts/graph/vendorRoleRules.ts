@@ -285,7 +285,7 @@ const EXACT: Record<string, string[]> = {
   "event producer": ["planner"], production: ["lighting_production"], "executive production team": ["planner"],
   // photo / video
   photography: ["photographer"], photographer: ["photographer"], photographers: ["photographer"], photo: ["photographer"], photos: ["photographer"],
-  "photo credit": ["photographer"], "photography by": ["photographer"], "photos by": ["photographer"], "photo by": ["photographer"],
+  "photography by": ["photographer"], "photos by": ["photographer"], "photo by": ["photographer"],
   "photo team": ["photographer"], "cover photo": ["photographer"], "cover photo by": ["photographer"], photog: ["photographer"], pc: ["photographer"],
   "lead photographer": ["photographer"], "main photographer": ["photographer"], "lead photography": ["photographer"], "photo lead": ["photographer"],
   "photographed by": ["photographer"], "wedding photography": ["photographer"], "photo director": ["photographer"], "lead photographer and host": ["photographer"],
