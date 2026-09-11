@@ -416,6 +416,42 @@ export interface ParsedStackV2 {
   hasStack: boolean;
 }
 
+// D056 stage-1 follow-up (2026-09-10, user-caught, post Db4EM4tGRGf): v9's LINE/NOCOLON_LINE
+// label character class is plain [A-Za-z &+/'’] -- a label immediately decorated with its own
+// display emoji ("Planner📝:", "Venue 💒:", "HMU💄 💇🏼‍♀️:", skin-tone/ZWJ sequences included)
+// never matches at all, so the whole credit line was silently dropped. Fixed here (v2 ONLY, v9's
+// LINE/NOCOLON_LINE below are untouched) with an emoji-admitting label class reused across three
+// v2-only regexes.
+//
+// Second, independent bug the same post exposed: "Catering/Bar 🥗:@chicchefcatering" DID match
+// v9's LINE (its separator class is `[:|\-–—/]+`, which includes "/"), but LINE is greedy from
+// the front and grabs the FIRST separator char it reaches -- so "/" (inside "Catering/Bar", before
+// the real colon) won it, splitting the label to "Catering" and silently dropping "Bar" entirely
+// (classifyLabel never saw it -- "/" never reaches classifyLabel's own compound-split logic,
+// which DOES handle "Catering/Bar" correctly once it gets the whole label text). Fixed by trying
+// the colon separator FIRST and unconditionally -- an embedded "/" (or "&", "+") is then always
+// part of the label text, and classifyLabel's existing compound-split fans it out correctly
+// ("Catering/Bar" -> catering + bar_service). Only when a line has NO colon anywhere does v2 fall
+// back to v9's other separators (|, -, --, ---, /), same separator set, emoji-admitting label class.
+const LABEL_CHARS_V2 =
+  "[A-Za-z][A-Za-z &+/'’\\p{Extended_Pictographic}\\u{FE0F}\\u{200D}\\p{Emoji_Modifier}\\p{Emoji_Component}]{1,40}?";
+// Tried FIRST, unconditionally -- see the comment above for why colon must win over an embedded "/".
+const LINE_V2_COLON = new RegExp(`^\\s*[•\\-*]?\\s*(${LABEL_CHARS_V2})\\s*:\\s*(.*@.*)$`, "u");
+// Only tried when the line has no colon at all -- v9's non-colon separator set, emoji-aware label.
+const LINE_V2_OTHER = new RegExp(`^\\s*[•\\-*]?\\s*(${LABEL_CHARS_V2})\\s*[|\\-–—/]+\\s*(.*@.*)$`, "u");
+// v9's NOCOLON_LINE ("Role @handle", no punctuation separator at all), emoji-aware label.
+const NOCOLON_LINE_V2 = new RegExp(
+  "^\\s*[•\\-*]?\\s*([A-Z][A-Za-z &+/'’\\p{Extended_Pictographic}\\u{FE0F}\\u{200D}\\p{Emoji_Modifier}\\p{Emoji_Component}]{0,39})\\s*((?:@[A-Za-z0-9._]{2,30}[\\s/,&]*)+)$",
+  "u"
+);
+
+/** v2's line-match cascade: colon-preferred, then v9's other separators, then no-separator-at-all.
+ * Shared by the main per-line loop and lineHasNonVenueLabel's inline_at/venue_hashtag guard below,
+ * so both agree on what counts as "this line already has its own label". */
+function matchLineV2(segment: string): RegExpExecArray | null {
+  return LINE_V2_COLON.exec(segment) ?? LINE_V2_OTHER.exec(segment) ?? NOCOLON_LINE_V2.exec(segment);
+}
+
 // Backlog #1 (D056 Next): a credit line keyed by a leading emoji instead of a text label --
 // "💐 @villageflowershopplainfield" -- never matched by LINE/NOCOLON_LINE (both require an
 // A-Za-z label). Tried only as a fallback, after LINE/NOCOLON_LINE both fail on a segment. The
@@ -535,7 +571,7 @@ export function parseCaptionV2(caption: string | null, opts?: { venueHandles?: S
     const line = lines[i].trim();
     const segments = splitCreditSegments(line);
     for (const segment of segments) {
-      const m = LINE.exec(segment) ?? NOCOLON_LINE.exec(segment);
+      const m = matchLineV2(segment);
       if (m) {
         const { credits: c, participants: p } = creditsFromLabelLine(m[1].trim(), m[2], i, "credit_line");
         credits.push(...c);
@@ -564,7 +600,7 @@ export function parseCaptionV2(caption: string | null, opts?: { venueHandles?: S
   const creditedHandles = new Set<string>([...credits.map((c) => c.handle), ...participants.map((p) => p.handle)]);
   const lineNoAt = (idx: number): number => (text.slice(0, idx).match(/\n/g) ?? []).length;
   const lineHasNonVenueLabel = (lineIdx: number): boolean => {
-    const lm = LINE.exec((lines[lineIdx] ?? "").trim());
+    const lm = matchLineV2((lines[lineIdx] ?? "").trim());
     if (!lm) return false;
     return !classifyLabel(lm[1].trim()).roles.includes("venue");
   };

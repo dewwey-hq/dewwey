@@ -7,7 +7,10 @@
  * (https://www.instagram.com/p/DBsBZcev0Bh/, post_url like '%DBsBZcev0Bh%') fetched read-only
  * from staging.instagram_posts.caption_raw and pasted in below (its emoji-keyed lines, including
  * the skin-tone/ZWJ compound "👰🏻‍♀️"/"💇🏻‍♀️", are what backlog #1 targets), plus a constructed
- * baby-shower caption for backlog #2 (non-wedding-event-title flag).
+ * baby-shower caption for backlog #2 (non-wedding-event-title flag), plus the Pieters post
+ * (https://www.instagram.com/p/Db4EM4tGRGf/, post_url like '%Db4EM4tGRGf%') for the D056 stage-1
+ * follow-up: TEXT labels decorated with their own trailing emoji before the colon (not emoji-only
+ * lines -- those are the LaPapa fixture above) and a label with an embedded "/" before the colon.
  *
  * All exact counts/pairs below were verified against the actual parseCaptionV2 output (not
  * hand-guessed) before being written as assertions -- see the D056 stage-1 task's own worked
@@ -96,6 +99,13 @@ const CAPTION_BABY_SHOWER = `Koeplin Baby Shower
 
 Venue: @somevenue
 Photographer: @somephotographer`;
+
+// Pieters wedding post, Db4EM4tGRGf -- pasted verbatim from staging.instagram_posts.caption_raw.
+// D056 stage-1 follow-up fixture (user-caught): every label here is decorated with its own
+// trailing emoji before the colon (some with no space, "Planner📝:"; one a skin-tone/ZWJ compound,
+// "HMU💄 💇🏼‍♀️:"), and one label has an embedded "/" BEFORE the real colon ("Catering/Bar 🥗:").
+const CAPTION_PIETERS =
+  "7/31/26 - Still not over the Pieters wedding \u{1f90d}\u{2728}\n\nTruly one of the most smitten, head-over-heels-in-love couples—and you could feel it all day long. From the nonstop smiles to a WILD dance floor, this was the kind of wedding that had our cheeks hurting from smiling right along with them. \u{1f942}\u{1f483}\u{1f3fc}\n\nMr. & Mrs. Pieters, your love is something special. What a joy it was to celebrate you! \u{1f90d}\u{2728}\n\nPlanner\u{1f4dd}: @peoniesandproseccoevents\nVenue \u{1f492}: @the.arbory\nFlowers \u{1f339}: @f4dweddings\nCatering/Bar \u{1f957}:@chicchefcatering\nPhotography \u{1f4f8}: @foxandivory - @jennifer_echiburu \nVideographer \u{1f3a5}: @foxandivory\nDJ \u{1f3b6}: @yazzevents\nHMU\u{1f484} \u{1f487}\u{1f3fc}‍♀️: @anomaliebeautyagency\n\n#MrAndMrsPieters #PeoniesAndProseccoEvents #WeddingDayMagic #HappilyEverAfter #ChicagoWedding";
 
 describe("parseCaptionV2 -- Caption A (Post 433, D056 stage-1 fixture)", () => {
   it("produces 25 credit rows, 0 participants, no non-wedding-event flag", async () => {
@@ -286,6 +296,56 @@ describe("parseCaptionV2 -- emoji-keyed lines (backlog #1, LaPapa post DBsBZcev0
     expect(r.credits).toContainEqual(
       expect.objectContaining({ handle: "alphalitchicago", role: "other", label_raw: "\u{1f520}", rule_id: "emoji" })
     );
+  });
+});
+
+describe("parseCaptionV2 -- text label decorated with its own emoji before the colon (D056 stage-1 follow-up, Pieters post Db4EM4tGRGf)", () => {
+  it("produces 11 credit rows over 8 lines, 0 participants, wedding_day throughout (no non-wedding-event flag)", async () => {
+    const r = await parse(CAPTION_PIETERS);
+    expect(r.credits).toHaveLength(11);
+    expect(r.participants).toHaveLength(0);
+    expect(r.nonWeddingEventTitle).toBeNull();
+    expect(r.credits.every((c) => c.event_context === "wedding_day")).toBe(true);
+    expect(r.credits.every((c) => c.source === "credit_line")).toBe(true);
+  });
+
+  it("'Planner📝:' (no space before the emoji) still matches -- planner", async () => {
+    const r = await parse(CAPTION_PIETERS);
+    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "peoniesandproseccoevents", role: "planner" }));
+  });
+
+  it("'Venue 💒:' -- venue", async () => {
+    const r = await parse(CAPTION_PIETERS);
+    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "the.arbory", role: "venue" }));
+  });
+
+  it("'Flowers 🌹:' -- florist", async () => {
+    const r = await parse(CAPTION_PIETERS);
+    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "f4dweddings", role: "florist" }));
+  });
+
+  it("'Catering/Bar 🥗:@x' (embedded '/' BEFORE the colon, no space before '@') -- catering + bar_service, not a truncated 'Catering' label that drops Bar", async () => {
+    const r = await parse(CAPTION_PIETERS);
+    const roles = r.credits.filter((c) => c.handle === "chicchefcatering").map((c) => c.role).sort();
+    expect(roles).toEqual(["bar_service", "catering"]);
+  });
+
+  it("'Photography 📸: @a - @b' -- two photographer credits from one label", async () => {
+    const r = await parse(CAPTION_PIETERS);
+    const photographers = r.credits.filter((c) => c.role === "photographer").map((c) => c.handle).sort();
+    expect(photographers).toEqual(["foxandivory", "jennifer_echiburu"]);
+  });
+
+  it("'Videographer 🎥:' -- videographer, 'DJ 🎶:' -- dj", async () => {
+    const r = await parse(CAPTION_PIETERS);
+    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "foxandivory", role: "videographer" }));
+    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "yazzevents", role: "dj" }));
+  });
+
+  it("'HMU💄 💇🏼‍♀️:' (two emoji, one a skin-tone/ZWJ compound, no space before the first) -- hair + makeup", async () => {
+    const r = await parse(CAPTION_PIETERS);
+    const roles = r.credits.filter((c) => c.handle === "anomaliebeautyagency").map((c) => c.role).sort();
+    expect(roles).toEqual(["hair", "makeup"]);
   });
 });
 

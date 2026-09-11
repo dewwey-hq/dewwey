@@ -132,7 +132,13 @@ export interface LabelClassification {
 // Normalization
 // ---------------------------------------------------------------------------
 
-const EMOJI = /[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu;
+// D056 stage-1 follow-up (2026-09-10, user-caught, post Db4EM4tGRGf): a compound emoji lead like
+// "HMU💄 💇🏼‍♀️" left a stray skin-tone modifier (U+1F3FC, \p{Emoji_Modifier}) behind after
+// stripping -- "hmu 🏼" never matches the "hmu" exact/head rule, so the whole line fell through to
+// 'other'/'unmatched'. \p{Emoji_Modifier} and \p{Emoji_Component} (keycap digits and similar) added
+// alongside the existing Extended_Pictographic/VS16/ZWJ strip so a label decorated with its own
+// display emoji -- any of these code point classes -- normalizes the same as the bare text label.
+const EMOJI = /[\p{Extended_Pictographic}\u{FE0F}\u{200D}\p{Emoji_Modifier}\p{Emoji_Component}]/gu;
 
 export function normalizeLabel(raw: string): string {
   return raw
