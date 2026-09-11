@@ -6,8 +6,10 @@
  * day per user feedback ("labeled Role · Name rows are the discovery tool, hover is
  * slow"): C · Card, today's `WeddingFeedCard` shape made compliant and sharpened.
  * D · Recipe (same day, spec brought in from outside): a structured wedding record —
- * venue as "Hosted at", vendors grouped by category, no couple names or captions. */
-export const VARIANTS = ["a", "b", "c", "d"] as const;
+ * venue as "Hosted at", vendors grouped by category, no couple names or captions.
+ * E · Ledger (same day): no outer card at all — the embed alone beside a plain bordered
+ * "stack card" whose content is one line per vendor category, comma-separated names. */
+export const VARIANTS = ["a", "b", "c", "d", "e"] as const;
 export type Variant = (typeof VARIANTS)[number];
 
 export function isVariant(v: string | null | undefined): v is Variant {
@@ -16,7 +18,7 @@ export function isVariant(v: string | null | undefined): v is Variant {
 
 /**
  * `size`/`layout` (user, 2026-09-11: "the cards and recipes are too large... make them
- * smaller"): URL-backed controls for variants C and D only — A/B ignore them (never
+ * smaller"): URL-backed controls for variants C, D, and E only — A/B ignore them (never
  * passed down). Instagram's only hard rule is a 326px minimum embed width; 360 is the
  * smallest step above that, 470 the old default ceiling.
  */
