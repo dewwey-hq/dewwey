@@ -8,7 +8,7 @@ import { VendorAvatar } from "../components/VendorAvatar";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
 import { coverPost, coverOrFirstPost, groupStackByCategory, displayName, isDerivedName } from "@/lib/feedDesign";
 import { roleLabel, contextLabel } from "@/lib/roles";
-import type { EmbedSize, Split, TileCols } from "../variant";
+import type { EmbedSize, Side, Split, TileCols } from "../variant";
 import type { StackVendor, WeddingStack } from "@/lib/server/graph";
 
 /** "July 2026" — no couple names anywhere in this variant (user feedback, 2026-09-11:
@@ -92,6 +92,7 @@ function FeedCardC({
   twoUp,
   split,
   tileCols,
+  mediaSide,
 }: {
   stack: WeddingStack;
   eagerCover: boolean;
@@ -99,6 +100,7 @@ function FeedCardC({
   twoUp: boolean;
   split: Split;
   tileCols: TileCols;
+  mediaSide: Side;
 }) {
   const embeddablePosts = stack.post_infos.filter((p) => p.ok && Boolean(p.url));
   const cover = coverPost(stack.post_infos);
@@ -135,13 +137,23 @@ function FeedCardC({
   // is already the per-wedding fallback straight from the query, so no new prop is needed.
   const venueLabel = venueVendor ? displayName(venueVendor.name, venueVendor.username) : (stack.venue_name ?? "Unknown venue");
 
-  const cardLayoutClass = twoUp ? "" : `${SIDE_BY_SIDE_CLASS} md:items-start`;
-  const cardStyle = twoUp
-    ? undefined
-    : ({ "--card-cols": `${embedWidth}px ${panelWidthFor(embedWidth, split)}px` } as React.CSSProperties);
-  const mediaBorderClass = twoUp
-    ? "border-b border-black/[0.06]"
+  // Side by side at md+ in BOTH layouts (user, 2026-09-11: in 2-up "the hosted at ... just
+  // shows at the bottom unfortunately"). 1-up: fixed px columns (embed at `embedWidth`, stack
+  // derived from `split`). 2-up: the cell is ~half the page, so fractional columns in the
+  // same ratio with the embed's 326px floor; the embed fills its column (≤540). `mediaSide`
+  // flips the column order (and the template) — the card's overflow-hidden rounds whichever
+  // corners the embed ends up on.
+  const flipped = mediaSide === "right";
+  const embedCol = twoUp ? `minmax(326px, ${split}fr)` : `${embedWidth}px`;
+  const panelCol = twoUp ? `minmax(0, ${100 - split}fr)` : `${panelWidthFor(embedWidth, split)}px`;
+  const cardLayoutClass = `${SIDE_BY_SIDE_CLASS} md:items-start`;
+  const cardStyle = {
+    "--card-cols": flipped ? `${panelCol} ${embedCol}` : `${embedCol} ${panelCol}`,
+  } as React.CSSProperties;
+  const mediaBorderClass = flipped
+    ? "border-b border-black/[0.06] md:order-2 md:border-b-0 md:border-l"
     : "border-b border-black/[0.06] md:border-b-0 md:border-r";
+  const panelOrderClass = flipped ? "md:order-1" : "";
 
   return (
     <article
@@ -187,7 +199,7 @@ function FeedCardC({
 
       {/* Stack panel -- white (no grey), Roster's Hosted-at header + meta line + tile
           grid, venue excluded (already the Hosted line), 6-tile fold. */}
-      <div className="flex min-w-0 flex-col p-5 md:self-start">
+      <div className={`flex min-w-0 flex-col p-5 md:self-start ${panelOrderClass}`}>
         <p className="text-[15px] font-semibold text-gray-900">
           <span className="font-semibold text-gray-500">Hosted at </span>
           {venueVendor ? (
@@ -288,12 +300,14 @@ export function Card({
   twoUp,
   split,
   tileCols,
+  mediaSide,
 }: {
   stacks: WeddingStack[];
   embedWidth: EmbedSize;
   twoUp: boolean;
   split: Split;
   tileCols: TileCols;
+  mediaSide: Side;
 }) {
   return (
     <div
@@ -312,6 +326,7 @@ export function Card({
             twoUp={twoUp}
             split={split}
             tileCols={tileCols}
+            mediaSide={mediaSide}
           />
         </MeasuredCard>
       ))}

@@ -19,10 +19,12 @@ import type { WeddingStack } from "@/lib/server/graph";
 import {
   EMBED_SIZES,
   LAYOUTS,
+  SIDES,
   SPLITS,
   TILE_COLS,
   type EmbedSize,
   type Layout,
+  type Side,
   type Split,
   type TileCols,
   type Variant,
@@ -56,6 +58,7 @@ export function FeedLab({
   initialLayout,
   initialSplit,
   initialTileCols,
+  initialSide,
 }: {
   venue: { id: number; username: string; name: string };
   stacks: WeddingStack[];
@@ -64,6 +67,7 @@ export function FeedLab({
   initialLayout: Layout;
   initialSplit: Split;
   initialTileCols: TileCols;
+  initialSide: Side;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -72,6 +76,7 @@ export function FeedLab({
   const [layout, setLayout] = useState<Layout>(initialLayout);
   const [split, setSplit] = useState<Split>(initialSplit);
   const [tileCols, setTileCols] = useState<TileCols>(initialTileCols);
+  const [side, setSide] = useState<Side>(initialSide);
 
   useEffect(() => {
     setVariant(initialVariant);
@@ -79,23 +84,26 @@ export function FeedLab({
     setLayout(initialLayout);
     setSplit(initialSplit);
     setTileCols(initialTileCols);
-  }, [initialVariant, initialEmbedSize, initialLayout, initialSplit, initialTileCols]);
+    setSide(initialSide);
+  }, [initialVariant, initialEmbedSize, initialLayout, initialSplit, initialTileCols, initialSide]);
 
   // One URL-sync helper for all three toggles (variant/size/layout) — size and layout
   // only matter for C/D, but staying in the URL regardless means switching back to C or
   // D later remembers the last choice instead of resetting to the default.
   const updateQuery = useCallback(
-    (overrides: { variant?: Variant; size?: EmbedSize; layout?: Layout; split?: Split; tiles?: TileCols }) => {
+    (overrides: { variant?: Variant; size?: EmbedSize; layout?: Layout; split?: Split; tiles?: TileCols; side?: Side }) => {
       const nextVariant = overrides.variant ?? variant;
       const nextSize = overrides.size ?? embedSize;
       const nextLayout = overrides.layout ?? layout;
       const nextSplit = overrides.split ?? split;
       const nextTiles = overrides.tiles ?? tileCols;
+      const nextSide = overrides.side ?? side;
       setVariant(nextVariant);
       setEmbedSize(nextSize);
       setLayout(nextLayout);
       setSplit(nextSplit);
       setTileCols(nextTiles);
+      setSide(nextSide);
       const sp = new URLSearchParams();
       sp.set("venue", venue.username);
       sp.set("variant", nextVariant);
@@ -103,9 +111,10 @@ export function FeedLab({
       sp.set("layout", nextLayout);
       sp.set("split", String(nextSplit));
       sp.set("tiles", String(nextTiles));
+      sp.set("side", nextSide);
       router.push(`${pathname}?${sp.toString()}`, { scroll: false });
     },
-    [pathname, router, venue.username, variant, embedSize, layout, split, tileCols],
+    [pathname, router, venue.username, variant, embedSize, layout, split, tileCols, side],
   );
 
   // -- Measurement strip: mounted iframes, median card height, ms to first embed load.
@@ -259,6 +268,26 @@ export function FeedLab({
                     ))}
                   </span>
                 </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-black/[0.4]">Embed side</span>
+                  <span className="flex gap-1">
+                    {SIDES.map((sd) => (
+                      <button
+                        key={sd}
+                        type="button"
+                        onClick={() => updateQuery({ side: sd })}
+                        aria-pressed={sd === side}
+                        className={`rounded-full px-2.5 py-1 font-medium ring-1 ring-inset transition-colors ${
+                          sd === side
+                            ? "bg-gray-900 text-white ring-gray-900"
+                            : "bg-white text-gray-600 ring-black/[0.10] hover:ring-black/[0.25]"
+                        }`}
+                      >
+                        {sd}
+                      </button>
+                    ))}
+                  </span>
+                </span>
               </>
             )}
           </div>
@@ -280,7 +309,14 @@ export function FeedLab({
           {variant === "a" && <CleanList stacks={stacks} />}
           {variant === "b" && <Grid stacks={stacks} />}
           {variant === "c" && (
-            <Card stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} split={split} tileCols={tileCols} />
+            <Card
+              stacks={stacks}
+              embedWidth={embedSize}
+              twoUp={layout === "2-up"}
+              split={split}
+              tileCols={tileCols}
+              mediaSide={side}
+            />
           )}
           {variant === "d" && <Recipe stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} />}
           {variant === "e" && <Ledger stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} />}

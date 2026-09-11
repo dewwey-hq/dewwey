@@ -8,6 +8,7 @@ import {
   parseEmbedSize,
   parseLayout,
   parseLimit,
+  parseSide,
   parseSplit,
   parseTileCols,
   type Variant,
@@ -38,6 +39,7 @@ export default async function FeedLabPage({
   const limit = parseLimit(typeof sp.n === "string" ? sp.n : undefined, variant);
   const split = parseSplit(typeof sp.split === "string" ? sp.split : undefined);
   const tileCols = parseTileCols(typeof sp.tiles === "string" ? sp.tiles : undefined);
+  const side = parseSide(typeof sp.side === "string" ? sp.side : undefined);
 
   const { rows } = await getPool().query<{ id: number; username: string; name: string }>(
     `SELECT id::int, username::text, COALESCE(full_name, username::text) AS name
@@ -68,6 +70,7 @@ export default async function FeedLabPage({
       initialLayout={layout}
       initialSplit={split}
       initialTileCols={tileCols}
+      initialSide={side}
     />
   );
 }

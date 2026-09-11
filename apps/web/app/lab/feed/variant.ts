@@ -76,3 +76,12 @@ export const DEFAULT_TILE_COLS: TileCols = 1;
 export function parseTileCols(v: string | null | undefined): TileCols {
   return v === "2" ? 2 : DEFAULT_TILE_COLS;
 }
+
+/** Which side the embed sits on in variant C (user, 2026-09-11: "curious if i flip the hosted
+ * at the arbory part to the left side and the instagram post to the right"). */
+export const SIDES = ["left", "right"] as const;
+export type Side = (typeof SIDES)[number];
+export const DEFAULT_SIDE: Side = "left";
+export function parseSide(v: string | null | undefined): Side {
+  return v === "right" ? "right" : DEFAULT_SIDE;
+}
