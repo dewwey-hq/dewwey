@@ -58,6 +58,10 @@ export function pickTopRoles(rows: RoleVote[]): Map<number, TopRole> {
       (a, b) =>
         b.evidenceCount - a.evidenceCount ||
         b.confidence - a.confidence ||
+        // D056 (2026-09-10): on an exact tie, a venue-category role wins -- "Venue & Catering"
+        // compound credits give a venue equal catering evidence, and listing it as a venue is the
+        // more specific, more useful claim. Mirrors the ORDER BY in v_account_role.
+        Number(b.role === "venue") - Number(a.role === "venue") ||
         a.role.localeCompare(b.role)
     )[0];
     result.set(accountId, {

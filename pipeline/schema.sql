@@ -199,7 +199,9 @@ create view v_account_role as
 select distinct on (account_id)
   account_id, role, confidence, evidence_count
 from account_tags
-order by account_id, evidence_count desc, confidence desc;
+-- D056 (2026-09-10): on an exact tie a venue-category role wins (mirrors pickTopRoles in
+-- apps/web/scripts/graph/accountRoleTags.ts); applied live by applyVendorTaxonomySchema.ts.
+order by account_id, evidence_count desc, confidence desc, (role = 'venue') desc, role;
 
 -- ============================================================
 -- IDENTITY: Google Places-seeded business layer (Jeremy's, slimmed).
@@ -1922,3 +1924,145 @@ create table if not exists stack_extraction_runs_v2 (
   primary key (post_url, parser_version)
 );
 comment on table stack_extraction_runs_v2 is 'D056 stage 1 (parser v10): one row per (post, parser_version) -- has_stack mirrors v9''s >=1-credit-line notion (NOT v9''s >=3-distinct-role has_stack), n_credits is stack_extraction_entries_v2''s row count for this post+version, non_wedding_event_title is set when the caption reads as a non-wedding event (baby/bridal shower, birthday, ...) with no wedding-recap signal alongside it -- flagged, not dropped. Written by runStackParserV10.ts, resumable (skips post_urls already present under the running parser_version). See docs/decisions.md D056.';
+
+-- ============================================================
+-- D056 stage 2 (2026-09-10) -- the two-level vendor taxonomy schema + the one revertable
+-- migration that applies it. Applied via scripts/graph/applyVendorTaxonomySchema.ts (schema
+-- half, idempotent) and scripts/graph/migrateVendorRolesV2.ts (data half, one transaction,
+-- provenance in vendor_role_migrations below). See docs/decisions.md D056 and the plan file's
+-- "Vendor-stack nomenclature" section (Design D/E, "Execution -- Stage 2", "Protecting venues
+-- that are already right"). Neither script has been run with --apply yet as of this comment --
+-- stage 1 (the v10 parser / stack_extraction_entries_v2 above) landed first and is still
+-- re-parsing the corpus; stage 2 dry-runs against that live, in-progress data.
+-- ============================================================
+
+-- Reference table for the taxonomy itself (category -> role, display name, sort order, and
+-- whether a role is a real vendor at all) -- seeded/upserted from VENDOR_ROLES
+-- (scripts/graph/vendorRoleRules.ts), the single source of truth for the taxonomy. Distinct from
+-- the `vendor_role` enum below: this table also carries `press_feature`/`noise` (is_vendor=false
+-- -- never a wedding_vendors/wedding_vendor_credits row), which the enum never needs to hold.
+create table if not exists vendor_roles (
+  slug          text primary key,
+  category      text not null,
+  display_name  text not null,
+  sort_order    int not null,
+  is_vendor     boolean not null default true
+);
+
+-- Event-phase context a credit or venue applies to (D056 Design C) -- parsed from label
+-- modifiers by vendorRoleRules.ts's extractContext(); a venue credited for two phases (ceremony
+-- + reception) yields two separate wedding_vendor_credits rows, see below.
+create type wedding_event as enum (
+  'wedding_day', 'ceremony', 'reception', 'cocktail_hour', 'getting_ready', 'rehearsal_dinner',
+  'welcome_party', 'after_party', 'brunch', 'engagement', 'shower', 'sangeet_mehndi'
+);
+
+-- `vendor_role` renames (D056 decision 7): beauty_other -> beauty_services, jeweler -> jewelry,
+-- photobooth -> photo_booth, musician -> live_music. Each `rename value` is metadata-only -- it
+-- changes what an EXISTING row already reads as with zero data-row churn, which is why the
+-- migration reconciles wedding_vendors by DIFFING role sets rather than rewriting every row.
+-- `hotel` is deliberately NOT renamed or dropped -- it stays in the enum, retired from USE by
+-- migrateVendorRolesV2.ts's hotel rule (an existing 'hotel' credit becomes 'venue' when the
+-- account IS the wedding's venue_id, else 'accommodations'), not by a rename.
+alter type vendor_role rename value 'beauty_other' to 'beauty_services';
+alter type vendor_role rename value 'jeweler' to 'jewelry';
+alter type vendor_role rename value 'photobooth' to 'photo_booth';
+alter type vendor_role rename value 'musician' to 'live_music';
+
+-- The 30 new D056 vendor slugs not already in the (post-rename) enum -- the full role list minus
+-- the 23 legacy values above and minus `press_feature`/`noise` (VENDOR_ROLES rows with
+-- is_vendor=false, which never need a vendor_role enum value). Each `add value` runs as its own
+-- committed statement outside any transaction that might try to USE it (Postgres restriction --
+-- see applyVendorTaxonomySchema.ts's header).
+alter type vendor_role add value if not exists 'venue_management';
+alter type vendor_role add value if not exists 'accommodations';
+alter type vendor_role add value if not exists 'coordinator';
+alter type vendor_role add value if not exists 'event_design';
+alter type vendor_role add value if not exists 'second_shooter';
+alter type vendor_role add value if not exists 'drone';
+alter type vendor_role add value if not exists 'album_editing';
+alter type vendor_role add value if not exists 'lighting_production';
+alter type vendor_role add value if not exists 'tent';
+alter type vendor_role add value if not exists 'signage';
+alter type vendor_role add value if not exists 'decor_other';
+alter type vendor_role add value if not exists 'bar_service';
+alter type vendor_role add value if not exists 'desserts';
+alter type vendor_role add value if not exists 'mc';
+alter type vendor_role add value if not exists 'cultural_performers';
+alter type vendor_role add value if not exists 'dancers_choreography';
+alter type vendor_role add value if not exists 'entertainment_other';
+alter type vendor_role add value if not exists 'accessories';
+alter type vendor_role add value if not exists 'alterations';
+alter type vendor_role add value if not exists 'calligraphy';
+alter type vendor_role add value if not exists 'live_painter';
+alter type vendor_role add value if not exists 'guest_book';
+alter type vendor_role add value if not exists 'favors_gifts';
+alter type vendor_role add value if not exists 'valet';
+alter type vendor_role add value if not exists 'security';
+alter type vendor_role add value if not exists 'childcare';
+alter type vendor_role add value if not exists 'pet_attendant';
+alter type vendor_role add value if not exists 'travel_honeymoon';
+alter type vendor_role add value if not exists 'website_registry';
+alter type vendor_role add value if not exists 'staffing';
+
+-- The granular truth wedding_vendors' aggregate is derived from: one row per (post, account,
+-- role, event_context) credit, derived from stack_extraction_entries_v2 x wedding_posts by
+-- migrateVendorRolesV2.ts, re-derivable and additive (on conflict do nothing). A venue credited
+-- for two phases (Ceremony: @a / Reception: @b, or the same account at both) yields two rows.
+create table if not exists wedding_vendor_credits (
+  wedding_id      bigint not null references weddings(id),
+  post_id         bigint not null references posts(id),
+  account_id      bigint not null references accounts(id),
+  role            vendor_role not null,
+  event_context   wedding_event not null default 'wedding_day',
+  label_raw       text,
+  source          text not null,          -- credit_line | inline_at | venue_hashtag | emoji_line | mention_inferred
+  parser_version  text not null,
+  created_at      timestamptz default now(),
+  primary key (wedding_id, post_id, account_id, role, event_context)
+);
+
+-- Bride/groom/couple/host_family/model/muse -- recognised, stored, NEVER rendered and NEVER a
+-- wedding_vendors row. Used for duplicate detection (the same participant handles on two
+-- weddings is a stronger merge signal than vendor-set Jaccard alone) and to exclude these
+-- accounts from `edges`. An account can be a participant on one wedding and a real vendor
+-- (credited by role) on another -- no conflict, see D056 decision 4.
+create table if not exists wedding_participants (
+  wedding_id        bigint references weddings(id),
+  account_id        bigint references accounts(id),
+  participant_role  text not null,
+  source            text not null,
+  created_at        timestamptz default now(),
+  primary key (wedding_id, account_id, participant_role)
+);
+
+-- `venue_id` stays the reception/primary venue; `ceremony_venue_id` is set ONLY when a wedding's
+-- v10 credits name a ceremony venue distinct from the reception venue (migrateVendorRolesV2.ts
+-- step 2e) -- the one case allowed to move `venue_id` itself (to the reception account, if
+-- `venue_id` previously pointed at the ceremony account). `accounts.venue_type` is an optional
+-- filter facet (house_of_worship | hotel | restaurant | event_space | country_club | museum |
+-- park_outdoor | farm_estate | other), never a counting rule -- D056 decision 1 (no
+-- religion-specific ROLE; the kind of place is this facet instead).
+alter table weddings add column if not exists ceremony_venue_id bigint references accounts(id);
+alter table accounts add column if not exists venue_type text;
+
+-- Provenance + printed-revert log for migrateVendorRolesV2.ts, same shape as
+-- recreditManagementCompany.ts's wedding_vendor_recredits / remapWeddingsToCanonicalAccounts.ts's
+-- account_alias_remaps: one row per changed wedding_vendors role (old_role/new_role, new_role
+-- null on a delete, old_role null on a plain insert), one row per weddings.venue_id move
+-- (old_venue_id/new_venue_id, table_name='weddings'), one row per wedding_participants insert
+-- (table_name='wedding_participants').
+create table if not exists vendor_role_migrations (
+  id             bigserial primary key,
+  batch_id       text not null,
+  table_name     text not null,
+  wedding_id     bigint,
+  account_id     bigint,
+  old_role       text,
+  new_role       text,
+  old_venue_id   bigint,
+  new_venue_id   bigint,
+  note           text,
+  created_at     timestamptz default now()
+);
+comment on table vendor_role_migrations is 'D056 stage 2: provenance + printed-revert log for migrateVendorRolesV2.ts -- see that script''s header for the exact revert SQL it prints per batch_id. See docs/decisions.md D056.';
