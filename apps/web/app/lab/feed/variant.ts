@@ -4,8 +4,10 @@
  * D058 compliance pass (2026-09-11): Story and Season magazine are dropped — the two
  * compliant, photo-first designs remain (A2 Clean list, B2 Grid). Added back the same
  * day per user feedback ("labeled Role · Name rows are the discovery tool, hover is
- * slow"): C · Card, today's `WeddingFeedCard` shape made compliant and sharpened. */
-export const VARIANTS = ["a", "b", "c"] as const;
+ * slow"): C · Card, today's `WeddingFeedCard` shape made compliant and sharpened.
+ * D · Recipe (same day, spec brought in from outside): a structured wedding record —
+ * venue as "Hosted at", vendors grouped by category, no couple names or captions. */
+export const VARIANTS = ["a", "b", "c", "d"] as const;
 export type Variant = (typeof VARIANTS)[number];
 
 export function isVariant(v: string | null | undefined): v is Variant {

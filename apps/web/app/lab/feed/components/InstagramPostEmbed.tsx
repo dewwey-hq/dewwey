@@ -31,6 +31,7 @@ export function InstagramPostEmbed({
   className,
   eager = false,
   captioned = false,
+  renderFallback,
 }: {
   post: StackPostInfo | null;
   className?: string;
@@ -46,6 +47,14 @@ export function InstagramPostEmbed({
    * `key` too (e.g. include `captioned` in it) — embed.js doesn't reprocess a blockquote
    * it's already turned into an iframe, so the only reliable way to switch is a remount. */
   captioned?: boolean;
+  /** Optional override for the blocked/timeout presentation — used by variant D
+   * ("Recipe") for its own fallback copy without touching `FallbackCard`'s default
+   * (still used by A/B/C). Reuses all the same detection here (lazy mount, MutationObserver
+   * load detection, 8s timeout, blocked-owner check) — only the rendered content changes. */
+  renderFallback?: (args: {
+    reason: "blocked" | "timeout" | "none";
+    post: StackPostInfo | null;
+  }) => React.ReactNode;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
@@ -130,20 +139,26 @@ export function InstagramPostEmbed({
   }, [visible, blocked, loaded, reportLoad]);
 
   const showFallback = blocked || timedOut;
+  const fallbackReason: "blocked" | "timeout" | "none" =
+    timedOut ? "timeout" : blocked && post ? "blocked" : "none";
 
   if (showFallback) {
     return (
       <div ref={rootRef} className={className}>
-        <FallbackCard
-          maxWidth={MAX_WIDTH}
-          ownerName={post?.ownerName ?? null}
-          ownerUsername={post?.ownerUsername ?? null}
-          ownerAvatarUrl={post?.ownerAvatarUrl ?? null}
-          title={null}
-          caption={post?.caption ?? null}
-          postUrl={post?.url ?? null}
-          reason={timedOut ? "timeout" : blocked && post ? "blocked" : "none"}
-        />
+        {renderFallback ? (
+          renderFallback({ reason: fallbackReason, post })
+        ) : (
+          <FallbackCard
+            maxWidth={MAX_WIDTH}
+            ownerName={post?.ownerName ?? null}
+            ownerUsername={post?.ownerUsername ?? null}
+            ownerAvatarUrl={post?.ownerAvatarUrl ?? null}
+            title={null}
+            caption={post?.caption ?? null}
+            postUrl={post?.url ?? null}
+            reason={fallbackReason}
+          />
+        )}
       </div>
     );
   }
