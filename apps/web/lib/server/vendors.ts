@@ -168,7 +168,11 @@ export async function searchVendors(params: VendorSearchParams) {
      ${CARD_JOINS}
      WHERE (
          $1::text IS NULL
-         OR var.role = $1::vendor_role
+         OR ($1::text <> 'venue' AND var.role = $1::vendor_role)
+         -- Listing bar (user, 2026-09-11): a venue lists only when it is the venue of at least
+         -- one documented wedding. Zero-wedding venue-tagged accounts keep their vendor page but
+         -- stay out of the browse until something is documented there.
+         OR ($1::text = 'venue' AND var.role = 'venue' AND COALESCE(wc.n_weddings, 0) > 0)
          -- Product rule (user, 2026-09-10): a hotel (D056: accommodations) belongs under "venue" when it was
          -- used as one, i.e. it is the venue of at least one documented wedding. Its top
          -- role tag stays 'hotel' (that is what the credit lines say); the wedding count

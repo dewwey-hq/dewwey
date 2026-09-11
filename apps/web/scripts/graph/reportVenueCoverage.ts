@@ -5,8 +5,8 @@
  *
  * "Listed" (Universe A) uses the EXACT same predicate `/venues` does
  * (`searchVendors` in lib/server/vendors.ts, CARD_JOINS + `AND al.in_metro`):
- * `v_account_role.role = 'venue'` (or 'hotel' with >=1 hosted wedding, product rule 2026-09-10)
- * AND `account_locations.in_metro`. Weddings per account is
+ * top role venue/hotel/accommodations AND >=1 documented wedding anchored on the account (bar set
+ * by the user 2026-09-11) AND `account_locations.in_metro`. Weddings per account is
  * `count(*) from weddings where venue_id = account` -- that's literally what the page shows
  * (`wc.n_weddings` in CARD_SELECT); no alias-resolving through account_aliases, because the
  * page itself doesn't either.
@@ -102,7 +102,7 @@ async function main() {
        -- Same predicate as searchVendors(category='venue'), including the 2026-09-10 product
        -- rule: a hotel-top account lists under venues when it hosted >=1 documented wedding.
        where al.in_metro
-         and (var.role = 'venue' or (var.role::text in ('hotel', 'accommodations') and coalesce(wc.n_weddings, 0) > 0))
+         and (var.role::text in ('venue', 'hotel', 'accommodations') and coalesce(wc.n_weddings, 0) > 0)
          and not exists (select 1 from account_aliases x where x.alias_account_id = a.id)`
     );
     const listed: VenueRow[] = listedRaw.map((r) => ({ id: r.id, username: r.username, weddings: r.weddings }));
