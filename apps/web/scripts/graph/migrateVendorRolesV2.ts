@@ -558,8 +558,6 @@ async function main() {
       // the hotel rule's whole point is to retire `hotel` from use everywhere in this one batch
       // (D056 decision E names "338 rows / 116 accounts migrate by that rule" -- not "the v10-
       // covered subset of them").
-      const hasV10 = weddingsWithAnyV10Row.has(weddingId);
-      if (!hasV10) noV10CoverageWeddings++;
 
       // Group this wedding's existing rows by account.
       const byAccount = new Map<string, ExistingVendorRow[]>();
@@ -575,6 +573,11 @@ async function main() {
         [...creditsByWeddingAccount.keys()].filter((k) => k.startsWith(`${weddingId}|`)).map((k) => k.split("|")[1])
       );
       const allAccountIds = new Set([...byAccount.keys(), ...creditedAccountIds]);
+      // A wedding counts as covered when it has any v10 row OR any derived credit (mention-inferred
+      // credits land on posts with ZERO v10 rows by construction -- without this, none of them
+      // ever reached wedding_vendors; found 2026-09-11 after run 1 left 1,258 of them orphaned).
+      const hasV10 = weddingsWithAnyV10Row.has(weddingId) || creditedAccountIds.size > 0;
+      if (!hasV10) noV10CoverageWeddings++;
 
       for (const accountId of allAccountIds) {
         const existing = byAccount.get(accountId) ?? [];
@@ -631,6 +634,12 @@ async function main() {
             for (const r of nonVenueExisting) finalRoles.add(translate(r.role));
           } else {
             const diff = diffRoleSets(nonVenueExisting.map((r) => translate(r.role)), targetRoles);
+            // Never propose an insert for a role this pair already holds through a venue-category
+            // row (venue / hotel->accommodations): run 1 logged 4,033 no-op "insert venue" rows
+            // that way, which would have made the printed revert delete real venue credits.
+            const alreadyHeld = new Set(existing.map((r) => translate(r.role)));
+            if (hotelRow) alreadyHeld.add(applyHotelRule(Number(accountId), venueId != null ? Number(venueId) : null));
+            diff.toInsert = diff.toInsert.filter((r) => !alreadyHeld.has(r));
             for (const r of diff.unchanged) finalRoles.add(r);
             for (const r of diff.toInsert) {
               finalRoles.add(r);
