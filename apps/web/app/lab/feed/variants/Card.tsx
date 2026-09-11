@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Buildings, InstagramLogo, TextAlignLeft } from "@phosphor-icons/react";
 import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { MeasuredCard } from "../components/MeasuredCard";
 import { VendorAvatar } from "../components/VendorAvatar";
@@ -82,16 +83,14 @@ function CardTile({ vendor }: { vendor: StackVendor & { extraRoles: string[] } }
 /** FLIP target for "Show caption" (user, 2026-09-11: "instead of it elongating the post,
  * if we have the caption take over the image") — replaces the embed+dots content in the
  * media column at the SAME height that column was last measured at, so toggling never
- * resizes the card. Owner row (avatar + `@handle`, linked to the post) plus a "Back to
- * photo" button up top, caption text scrolling within the fixed height below. */
+ * resizes the card. Owner row (avatar + `@handle`, linked to the post) up top (the Photo pill
+ * in the action row flips back), caption text scrolling within the fixed height below. */
 function PostCaptionCard({
   post,
   height,
-  onBack,
 }: {
   post: StackPostInfo | null;
   height: number;
-  onBack: () => void;
 }) {
   const ownerName = post?.ownerName ?? post?.ownerUsername ?? "Unknown";
   return (
@@ -112,13 +111,6 @@ function PostCaptionCard({
             <span className="truncate text-sm font-medium text-gray-900">Unknown owner</span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onBack}
-          className="shrink-0 text-xs font-medium text-gray-600 hover:text-gray-900"
-        >
-          Back to photo
-        </button>
       </div>
       <div className="mt-3 min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
         {post?.caption || "No caption on this post."}
@@ -167,6 +159,20 @@ function FeedCardC({
   // agree and the card never resizes when "Show caption" is toggled.
   const mediaRef = useRef<HTMLDivElement>(null);
   const [mediaHeight, setMediaHeight] = useState<number | null>(null);
+  // The embed+dots region alone (the part the caption card replaces) -- the media column
+  // also holds the action row below it, which stays visible while the caption shows.
+  const swapRef = useRef<HTMLDivElement>(null);
+  const [swapHeight, setSwapHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const el = swapRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const h = Math.round(entry.contentRect.height);
+      if (h > 0) setSwapHeight(h);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     const el = mediaRef.current;
     if (!el) return;
@@ -261,7 +267,7 @@ function FeedCardC({
             never reloads embed.js's iframe) but hidden while the caption card is showing --
             it takes over this same column at the column's last-measured height instead of
             growing it (user, 2026-09-11: "have the caption take over the image"). */}
-        <div hidden={captioned}>
+        <div ref={swapRef} hidden={captioned}>
           {/* embed.js puts an inline `margin: 0 0 12px` on the iframe it injects -- that was the
               "tail" under the post (user, 2026-09-11); zero it here, scoped to this column only. */}
           <div className="w-full [&_iframe]:mb-0!" style={{ maxWidth: embedWidth }}>
@@ -288,8 +294,42 @@ function FeedCardC({
           )}
         </div>
         {captioned && (
-          <PostCaptionCard post={activePost} height={mediaHeight ?? 480} onBack={() => setCaptioned(false)} />
+          <PostCaptionCard post={activePost} height={swapHeight ?? 480} />
         )}
+        {/* Action row -- OUR chrome under Instagram's frame, never over it (user, 2026-09-11:
+            "putting those by the instagram embed ... that's the action area"): Open on
+            Instagram + the caption/photo flip as small outline pills (swatch Option 1). */}
+        <div className="flex items-center gap-2 border-t border-black/[0.06] px-3 py-2.5">
+          {openUrl && (
+            <a
+              href={openUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-black/[0.12] transition-colors hover:ring-black/[0.3]"
+            >
+              <InstagramLogo size={14} />
+              Open
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={() => setCaptioned((c) => !c)}
+            aria-pressed={captioned}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 ring-inset transition-colors ${
+              captioned
+                ? "bg-gray-900 text-white ring-gray-900"
+                : "text-gray-700 ring-black/[0.12] hover:ring-black/[0.3]"
+            }`}
+          >
+            <TextAlignLeft size={14} />
+            {captioned ? "Photo" : "Caption"}
+          </button>
+          {activePost?.postType === "Video" && (
+            <span className="ml-auto rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-gray-600">
+              Reel
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Stack panel -- white (no grey), Roster's Hosted-at header + meta line + tile
@@ -302,47 +342,23 @@ function FeedCardC({
         className={`relative min-w-0 md:max-h-(--media-h) md:self-start md:overflow-y-auto ${panelOrderClass}`}
       >
         <div className="flex flex-col p-5">
-          <p className="text-[15px] font-semibold text-gray-900">
-            <span className="font-semibold text-gray-500">Hosted at </span>
+          {/* Swatch Option 3 (user pick, 2026-09-11) with a building icon so "venue" isn't
+              undersold: the venue name IS the panel title; one subtitle line. */}
+          <p className="flex min-w-0 items-center gap-1.5 text-[17px] font-semibold tracking-tight text-gray-900">
+            <Buildings size={18} className="shrink-0 text-black/[0.45]" aria-hidden />
             {venueVendor ? (
-              <Link href={`/vendors/${encodeURIComponent(venueVendor.username)}`} className="hover:text-gray-600">
+              <Link
+                href={`/vendors/${encodeURIComponent(venueVendor.username)}`}
+                className="truncate hover:text-gray-600"
+              >
                 {venueLabel}
               </Link>
             ) : (
-              venueLabel
+              <span className="truncate">{venueLabel}</span>
             )}
           </p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-black/[0.45]">
-            <span>
-              {monthYear} · {stack.n_posts} post{stack.n_posts === 1 ? "" : "s"}
-            </span>
-            {activePost?.postType === "Video" && (
-              <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-gray-600">
-                Reel
-              </span>
-            )}
-            {openUrl && (
-              <>
-                <span aria-hidden>·</span>
-                <a
-                  href={openUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-gray-600 hover:text-gray-900"
-                >
-                  ↗ Open on Instagram
-                </a>
-              </>
-            )}
-            <span aria-hidden>·</span>
-            <button
-              type="button"
-              onClick={() => setCaptioned((c) => !c)}
-              aria-pressed={captioned}
-              className="font-medium text-gray-600 hover:text-gray-900"
-            >
-              {captioned ? "Hide caption" : "Show caption"}
-            </button>
+          <p className="mt-0.5 text-xs text-black/[0.45]">
+            Venue · {monthYear} · {stack.n_posts} post{stack.n_posts === 1 ? "" : "s"}
           </p>
 
           {/* Hairline separating the header/meta block from the vendor stack (user,
