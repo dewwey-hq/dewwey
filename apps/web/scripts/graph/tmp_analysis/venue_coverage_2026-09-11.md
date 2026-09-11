@@ -7,12 +7,12 @@ the page doesn't either).
 
 ## Universe A summary
 
-- Listed venues: **626**
-- Total weddings (anchored to a listed venue): **5564**
-- Buckets: 0=150  1-5=307  6-15=77  16-49=65  50+=27
-- Median weddings/venue: **2**
-- Top 50 share: 3243 / 5564 (58.3%)
-- Top 100 share: 4323 / 5564 (77.7%)
+- Listed venues: **476**
+- Total weddings (anchored to a listed venue): **5523**
+- Buckets: 0=0  1-5=307  6-15=78  16-49=64  50+=27
+- Median weddings/venue: **3**
+- Top 50 share: 3225 / 5523 (58.4%)
+- Top 100 share: 4295 / 5523 (77.8%)
 
 ## Hidden B -- venue-top, no account_locations row at all (268 accounts, 93 weddings)
 
@@ -59,7 +59,7 @@ Product question: hotels don't currently appear under /venues' category=venue fi
 Top 15 by weddings:
 - magmilemarriott -- 3 weddings
 
-## Hidden E -- mis-anchored: venue_id account's top role is neither venue nor hotel (26 accounts, 41 weddings)
+## Hidden E -- mis-anchored: venue_id account's top role is neither venue nor hotel (22 accounts, 36 weddings)
 
 Includes accounts with no account_tags row at all (top role shown as "(none)").
 
@@ -68,14 +68,14 @@ Top 15 by weddings:
 - renchicagodowntown -- top role: accommodations -- 4 weddings
 - ambassadorchicago -- top role: accommodations -- 3 weddings
 - venuelogic -- top role: other -- 3 weddings
-- lmcateringchi -- top role: catering -- 2 weddings
 - eeeventco -- top role: other -- 2 weddings
 - thelasallechicago -- top role: accommodations -- 2 weddings
 - westinchicagorivernorth -- top role: accommodations -- 2 weddings
 - therobeychicago -- top role: accommodations -- 2 weddings
 - frostchicago -- top role: lighting_production -- 1 weddings
-- revel_decor -- top role: florist -- 1 weddings
 - art_imagination -- top role: event_design -- 1 weddings
 - revelglobalevents -- top role: planner -- 1 weddings
 - clementinechicago -- top role: planner -- 1 weddings
-- entertaining_co -- top role: catering -- 1 weddings
+- vendadorchicago -- top role: catering -- 1 weddings
+- lolaeventpros -- top role: planner -- 1 weddings
+- cageandaquarium -- top role: dj -- 1 weddings

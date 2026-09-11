@@ -79,6 +79,32 @@ hosted vs also-credited); 1,838 weddings with no labeled stack at all (mention i
 365 posts; the rest need the reader's credits[] pass); 26 mis-anchored accounts / 41 weddings;
 `venue_type` facet not yet seeded.
 
+**Stage 3 + maintenance batch executed (2026-09-11 01:15 → 02:05 CT; user approved threads 5-10).**
+Pushed `297ac5e..ee8d232` (production = `dewwey.com` on the `dewwey-hq` Vercel team; the old
+`dewwey-ben-wallaces-projects` URL is a stale hobby project). `/venues` bar: a venue lists only
+with ≥1 documented wedding (626 → 476 listed, countable weddings unchanged). **Stage 3 UI**:
+event-context chips on wedding stacks, "credited as" distribution on vendor pages, hosted vs
+also-credited venue view with a feed toggle, partner role taken from the shared weddings, browse
+categories from the taxonomy (three new slots), `/venues?type=` facet. **Parser v10 patch**
+(user-caught, post `Db4EM4tGRGf`): labels with trailing emoji before the colon and slash labels
+("Catering/Bar 🥗:") — 960 posts re-parsed, +1,354 credits; `--refresh-matching` mode.
+**Migration pass 2** (`d056-migration-2`): 1,940 vendor rows inserted (incl. 1,258 mention-
+inferred credits that pass 1 had derived but never written — pass 1 treated mention-only
+weddings as "no v10 coverage"), 40 superseded rows removed; pass 1's log also held 4,037 no-op
+"insert" rows for venue/accommodations rows that pre-existed (its diff ignored venue-category
+rows; the printed revert would have deleted real venue credits) — removed by
+`fixMigrationProvenance.ts` against the 00:54 snapshot; both defects fixed in the script.
+**Re-anchor** (`d056-reanchor-1`): 103 weddings whose anchor is a real venue got their missing
+venue credit; 5 weddings moved off caterer/decor anchors to the credited venue; 5 protected +
+17 ambiguous listed. **Dedupe** (`d056-dedupe-1`): 46 duplicate weddings merged (39 same couple
+name, 7 shared bride/groom handle; absorbed rows snapshotted in `wedding_merges`); weddings
+6,018 → **5,972**. **Venue types** (`d056-venue-type-1`): 1,037 accounts classified (event
+space 327, hotel 133, park 53, farm/estate 52, restaurant 48, museum 29, country club 29,
+house of worship 25, other 341). Close-of-night counts: `wedding_vendors` 51,275, credits
+43,500, participants 74, edges 144,413, `/venues` 476 venues / 5,523 countable weddings, zero
+weddings without posts or without a venue credit for their anchor. Lesson recorded: reconcile a
+migration's logged inserts against the pre-run snapshot before calling it verified.
+
 **Next.** Stage 1 parser v10 (Sonnet build; emoji-keyed lines and the event-title rule
 bundled; additive re-parse), stage 2 schema + one revertable migration, stage 3 UI — each on
 the user's word. Related: D055 (plan file), D049 (styled-shoot signal — models/SP couple now

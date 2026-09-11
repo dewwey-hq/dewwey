@@ -868,7 +868,10 @@ describe("reconciliation evidence floor — reconcile-v2 (DB)", () => {
         // +269 weddings / +281 posts from the D055 pool-B batches (d055-poolb-structural-v2 202,
     // d055-poolb-structural-v3-a1 67; 2026-09-10 evening, user: "create"): venue-discovery reader
     // (pool B) + resolver + hand-verified lead map (18 new metro venues minted). Zero orphans.
-    expect(Number(rows[0].weddings)).toBe(6018);
+        // 5972 (D056 dedupe, d056-dedupe-1, 2026-09-11): 46 duplicate weddings merged into their older twin
+    // (same venue + same couple: 39 by couple name, 7 by shared bride/groom handle); posts moved, absorbed
+    // rows snapshotted in wedding_merges. wedding_posts unchanged (6842) -- posts moved, not dropped.
+    expect(Number(rows[0].weddings)).toBe(5972);
     expect(Number(rows[0].wedding_posts)).toBe(6842);
   });
 });
@@ -1058,8 +1061,11 @@ describe("graph ingestion — D023 (DB)", () => {
     // +8,449 from the D056 stage-2 migration (d056-migration-1, 2026-09-11 00:57 CT): 12,740 credit rows
     // inserted from the v10 re-parse + 1,447 mention-inferred, 255 deleted (37 participant accounts,
     // superseded non-venue roles), 339 hotel rows re-roled in place; provenance in vendor_role_migrations.
-    expect(Number(rows[0].untouched)).toBe(49378);
-    expect(Number(rows[0].total)).toBe(49487);
+    // +1,788 net from migration pass 2 (1,940 inserted incl. 1,258 mention-inferred credits, 40 deleted),
+    // the re-anchor pass (103 missing venue credits backfilled + 5 moves) and the dedupe (46 absorbed
+    // weddings' credits merged into survivors) -- 2026-09-11 01:30-02:00 CT.
+    expect(Number(rows[0].untouched)).toBe(51168);
+    expect(Number(rows[0].total)).toBe(51275);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -1145,7 +1151,10 @@ describe("graph ingestion — D023 (DB)", () => {
         // +269 weddings / +281 posts from the D055 pool-B batches (d055-poolb-structural-v2 202,
     // d055-poolb-structural-v3-a1 67; 2026-09-10 evening, user: "create"): venue-discovery reader
     // (pool B) + resolver + hand-verified lead map (18 new metro venues minted). Zero orphans.
-    expect(Number(rows[0].weddings)).toBe(6018);
+        // 5972 (D056 dedupe, d056-dedupe-1, 2026-09-11): 46 duplicate weddings merged into their older twin
+    // (same venue + same couple: 39 by couple name, 7 by shared bride/groom handle); posts moved, absorbed
+    // rows snapshotted in wedding_merges. wedding_posts unchanged (6842) -- posts moved, not dropped.
+    expect(Number(rows[0].weddings)).toBe(5972);
     expect(Number(rows[0].wedding_posts)).toBe(6842);
     // accounts +6 (14334->14340): Tier 1's 159 candidates credited a few vendor handles never
     // seen before in `accounts` -- unlike Batch 5/6, whose venue accounts always pre-existed
@@ -1309,10 +1318,11 @@ describe("vendor feed count invariant (DB)", () => {
     // Haiku reader's verdicts on the venue's own posts and credit-line stacks.
     // 91 (D055 pool-B batches, 2026-09-10 evening): 2 more Galleria Marchetti weddings.
     // 97 (D056 stage-2 migration, 2026-09-11): 6 more Galleria credit rows (compound "Venue & Catering"
+    // 100 (2026-09-11 02:00): +1 from the re-anchor backfill (wedding 4225), +2 from migration pass 2.
     // lines now emit a catering credit on the venue account, plus event-context rows).
     // 89 (D055 batch 6 + A1 batch, 2026-09-10): 1 + 7 more Galleria weddings, reader verdicts on
     // the venue-authored A1 pool and the residue re-read; +1 from a second-role row.
-    expect(rows[0].n).toBe(97);
+    expect(rows[0].n).toBe(100);
   });
 
   it("ulcchicago has a venue credit on wedding 1352 (the Case A index bug, D027)", async () => {
@@ -1361,7 +1371,9 @@ describe("D055 batch provenance/reversibility (DB)", () => {
       select count(*)::int as n from weddings w
       where not exists (select 1 from jeremy_weddings_created j where j.wedding_id = w.id)
     `);
-    expect(rows[0].n).toBe(1326);
+    // 1325 (D056 dedupe, 2026-09-11): pair (224, 281) at Cuneo Mansion were both Ben-era rows for the same
+    // wedding (shared bride/groom handles); 281 was absorbed into 224 (wedding_merges, batch d056-dedupe-1).
+    expect(rows[0].n).toBe(1325);
   });
 });
 

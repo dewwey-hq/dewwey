@@ -15,7 +15,7 @@ checkpoint. Run `git log --oneline -12` and `git status` to confirm before trust
 **D055 — "squeeze the 47k"**: turn Jeremy's 47,623-post Instagram corpus into as many real,
 credible, venue-anchored documented weddings as possible, then write the residue table and move
 on. Plan: `~/.claude/plans/i-have-a-prompt-flickering-creek.md` (the "Coverage strategy" section
-at the top: **D056 stages 0-2 done, stage 3 UI next**; coverage item 1 done, items 2-8
+at the top: **D056 stages 0-3 done + maintenance batch**; coverage item 1 done, items 2-8
 not approved). Roles (cost rule): Fable strategizes/reviews, Sonnet builds, Haiku reads; the
 user spot-checks and says "create" for every batch.
 
@@ -23,13 +23,13 @@ user spot-checks and says "create" for every batch.
 
 | | |
 |---|---|
-| `weddings` | **6,018** (3,541 at D055 start; +2,477; est. 1-3% duplicate pairs) |
-| `wedding_posts` / `wedding_vendors` / `accounts` | 6,842 / 49,487 / 22,974 |
-| D056 tables | `wedding_vendor_credits` 42,656 · `wedding_participants` 82 · `ceremony_venue_id` set on 63 · `vendor_roles` 54 · `edges` 141,714 |
+| `weddings` | **5,972** (3,541 at D055 start; 46 duplicates merged 2026-09-11) |
+| `wedding_posts` / `wedding_vendors` / `accounts` | 6,842 / 51,275 / 22,974 |
+| D056 tables | `wedding_vendor_credits` 43,500 · `wedding_participants` 74 · `ceremony_venue_id` on 63 · `vendor_roles` 54 · `wedding_merges` 46 · `accounts.venue_type` on 1,037 · `edges` 144,413 |
 | Batches (revertable by `batch_id`) | b1 13 · b2 60 · b3 651 · b4 371 · b5 641 · rescue 72 · b6 172 · a1-batch1 228 · **poolb-v2 202 · poolb-a1 67** |
 | Other provenance tables | `wedding_vendor_recredits` (venuelogic, 189), `account_alias_remaps` (548, alias remap applied) |
-| **`/venues` listing** | **626 venues / 5,564 countable weddings** (417 / 4,178 on the morning of 09-10) — role tags from wedding credits (+anchor bonus, venue tie-break), hotels/accommodations-as-venues rule, alias cards excluded, 64 location rows added, 18 new venues minted |
-| Still hidden from `/venues` | 268 venue accounts with no location row (93 weddings) · 39 not-metro (45) · 26 mis-anchored (41) · 105 old weddings whose anchored venue has no credit row |
+| **`/venues` listing** | **476 venues / 5,523 countable weddings** — bar = venue/accommodations top role AND ≥1 documented wedding (user, 09-11); 626 tagged venues would list without the bar |
+| Still hidden from `/venues` | 268 venue accounts with no location row (93 weddings) · 39 not-metro · 22 mis-anchored (36; 17 in the re-anchor human queue) · 150 zero-wedding venue accounts (by the bar) |
 | Reader verdicts | user 744 W / 234 N / 20 V · Fable 600 W · Haiku 1,309 W written |
 | Pool-B venue discovery | 2,013 posts read ($11.42) → 334 resolver anchors + 54 hand-mapped + 18 new venues → 269 weddings; 226 leads: 44 existing, 18 new, 15 not metro, 40 unclear |
 | OpenRouter spend, whole reader effort | $42.95 (`post_extraction_runs.cost_usd`, 6,393 posts read) |
@@ -37,24 +37,22 @@ user spot-checks and says "create" for every batch.
 
 ## Blocked on the user
 
-1. **D056 stage 3 (UI)** — separate approval: context chips on wedding stacks ("Reception venue",
-   "Getting-ready hotel"), vendor page "credited as" + per-wedding role in "worked with", venue
-   page hosted vs also-credited, `/vendors` browse by category, `/venues` `venue_type` filter.
-2. Decisions: (a) `/venues` bar (recommend venue/accommodations top role AND ≥1 documented
-   wedding; 150 zero-wedding venues still list); (b) coverage items 2-5 after Apify credits
-   (09-11): thin-venue text read + vision slice, own + tagged crawl; (c) push of the local commits
-   (17 unpushed).
+1. Apify credits (09-11): coverage items 1-2 (vision slice on ~11,300 image-only venue-anchored
+   posts, ~$57; own + tagged crawl of ~99 thin venues, ~$50).
+2. Re-anchor human queue: 17 weddings anchored on caterers/planners/photographers with no
+   alternative credit (list in the `d056-reanchor-1` output; e.g. ashyanabanquets ×4, venuelogic
+   ×3, blueplatechicago, boweryandbash) — `/label/candidates?post=` on their posts.
 3. Bulk DB writes are refused by the auto-mode classifier; run Claude's `!` commands from
-   `apps/web`.
+   `apps/web` (your shell usually sits there already).
 
 ## Next actions (Claude, when unblocked)
 
-1. D056 stage 3 UI on approval; reader `extract-v1.3` with `credits[]` in the D056 vocabulary
-   for the 1,838 weddings with no labeled stack (mention inference covered 365 posts).
-2. Re-anchor pass: 26 mis-anchored accounts (41 weddings) + 105 old weddings whose anchored venue
-   has no credit row; seed `accounts.venue_type` (house_of_worship/hotel/restaurant/…).
-3. Duplicate merge pass using `wedding_participants` (same bride/groom handles = same wedding).
-4. 09-11: Apify crawl of thin venues' own + tagged feeds; vision slice by coverage bucket.
+1. Reader `extract-v1.3` with `credits[]` in the D056 vocabulary for the 1,536 documented
+   weddings with no labeled stack (mention inference covered 362 posts) — ~$2, approval.
+2. 68 mention-inferred credits still without a `wedding_vendors` row (small; find why).
+3. Venue-type rules round 2 (341 "other": City Cruises, whirlyball, wisconsinunion…) and the
+   `/venues` type chips in the toolbar.
+4. Coverage items 1-2 when Apify credits land.
 
 ## Landmines (things that bit us; check before repeating)
 
@@ -62,6 +60,8 @@ user spot-checks and says "create" for every batch.
   not by Places rows. Wedding creation must be followed by
   `refreshAccountRoleTagsFromWeddings.ts --apply` or new venues stay invisible. The refresh gives
   the venue role an anchor bonus and the view breaks ties toward venue (D056).
+- A migration is verified only after its LOGGED inserts are reconciled against the pre-run snapshot
+  (pass 1 logged 4,037 no-op inserts whose revert would have deleted real venue credits).
 - `vendor_role` enum is now the D056 vocabulary (`beauty_services`, `jewelry`, `photo_booth`,
   `live_music`, 30 new values; `hotel` retired from use). Any script inserting roles must use it.
 - A dev-server 500 on `/venues` after a role change usually means a text literal compared to the
@@ -99,6 +99,9 @@ user spot-checks and says "create" for every batch.
   `backfillAccountLocationsFromPlaces.ts`, `backfillVenueLocationsViaWebSearch.ts` (batch 3),
   `applyPoolBLeadMap.ts` + `tmp_analysis/poolb_lead_map_2026-09-10.json`.
 - D056: `vendorRoleRules.ts` (+test), `applyVendorTaxonomySchema.ts`, `migrateVendorRolesV2.ts` (+`vendorRoleMigration.ts`, test),
+  `fixMigrationProvenance.ts`, `reanchorWeddings.ts`, `mergeDuplicateWeddings.ts`, `seedVenueTypes.ts` (+`weddingMaintenance.ts`, test),
+  `runStackParserV10.ts --refresh-matching`; provenance in `vendor_role_migrations` (batches d056-migration-1/2,
+  d056-reanchor-1, d056-venue-type-1) and `wedding_merges` (d056-dedupe-1),
   revert SQL printed by the migration (provenance `vendor_role_migrations`, batch `d056-migration-1`),
   `stackParser.ts` `parseCaptionV2` (+`stackParserV2.test.ts`), `runStackParserV10.ts`,
   `applyStackEntriesV2Schema.ts` (tables `stack_extraction_entries_v2`, `stack_extraction_runs_v2`),

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T01:07:52.605Z",
+  "generatedAt": "2026-09-11T03:13:29.762Z",
   "listed": [
     {
       "id": "31",
@@ -34,7 +34,7 @@
     {
       "id": "119",
       "username": "thegwenchicago",
-      "weddings": 9
+      "weddings": 8
     },
     {
       "id": "127",
@@ -102,24 +102,9 @@
       "weddings": 3
     },
     {
-      "id": "378",
-      "username": "foundationroomchicago",
-      "weddings": 0
-    },
-    {
-      "id": "471",
-      "username": "grandterracebanquets",
-      "weddings": 0
-    },
-    {
       "id": "472",
       "username": "garden_banquets_chicago",
       "weddings": 1
-    },
-    {
-      "id": "473",
-      "username": "venue4343",
-      "weddings": 0
     },
     {
       "id": "474",
@@ -132,19 +117,9 @@
       "weddings": 10
     },
     {
-      "id": "476",
-      "username": "lmaycreations",
-      "weddings": 0
-    },
-    {
       "id": "477",
       "username": "greenhouseloft",
       "weddings": 30
-    },
-    {
-      "id": "478",
-      "username": "l.a_aguilar_",
-      "weddings": 0
     },
     {
       "id": "480",
@@ -159,7 +134,7 @@
     {
       "id": "482",
       "username": "wildmanbt",
-      "weddings": 68
+      "weddings": 67
     },
     {
       "id": "483",
@@ -175,16 +150,6 @@
       "id": "486",
       "username": "gooseisland",
       "weddings": 1
-    },
-    {
-      "id": "487",
-      "username": "wedicity",
-      "weddings": 0
-    },
-    {
-      "id": "488",
-      "username": "_thefirehouse_",
-      "weddings": 0
     },
     {
       "id": "489",
@@ -207,16 +172,6 @@
       "weddings": 24
     },
     {
-      "id": "503",
-      "username": "2226studiochicago",
-      "weddings": 0
-    },
-    {
-      "id": "506",
-      "username": "rockefellerchapel",
-      "weddings": 0
-    },
-    {
       "id": "507",
       "username": "thegeraghty",
       "weddings": 46
@@ -229,7 +184,7 @@
     {
       "id": "509",
       "username": "revelspace",
-      "weddings": 47
+      "weddings": 48
     },
     {
       "id": "511",
@@ -240,16 +195,6 @@
       "id": "512",
       "username": "venuewestchicago",
       "weddings": 3
-    },
-    {
-      "id": "513",
-      "username": "chezeventspace",
-      "weddings": 0
-    },
-    {
-      "id": "514",
-      "username": "citypointloft_",
-      "weddings": 0
     },
     {
       "id": "515",
@@ -269,7 +214,7 @@
     {
       "id": "519",
       "username": "salvatoreschicago",
-      "weddings": 54
+      "weddings": 53
     },
     {
       "id": "520",
@@ -279,7 +224,7 @@
     {
       "id": "521",
       "username": "morgansonfulton",
-      "weddings": 54
+      "weddings": 53
     },
     {
       "id": "522",
@@ -294,22 +239,17 @@
     {
       "id": "524",
       "username": "thelibraryat190",
-      "weddings": 53
+      "weddings": 52
     },
     {
       "id": "525",
       "username": "thedalcy",
-      "weddings": 98
+      "weddings": 97
     },
     {
       "id": "526",
       "username": "chezeventvenue",
       "weddings": 9
-    },
-    {
-      "id": "528",
-      "username": "thesinclairchicago",
-      "weddings": 0
     },
     {
       "id": "529",
@@ -327,11 +267,6 @@
       "weddings": 44
     },
     {
-      "id": "532",
-      "username": "lacunabycatalystsuites",
-      "weddings": 0
-    },
-    {
       "id": "534",
       "username": "charcoalfactoryloft",
       "weddings": 19
@@ -340,11 +275,6 @@
       "id": "535",
       "username": "moonlightstudioschicago",
       "weddings": 2
-    },
-    {
-      "id": "536",
-      "username": "chicagobocceclub",
-      "weddings": 0
     },
     {
       "id": "537",
@@ -369,12 +299,7 @@
     {
       "id": "541",
       "username": "salon61events",
-      "weddings": 10
-    },
-    {
-      "id": "542",
-      "username": "blackallevents",
-      "weddings": 0
+      "weddings": 11
     },
     {
       "id": "543",
@@ -384,12 +309,7 @@
     {
       "id": "544",
       "username": "buildersbldg",
-      "weddings": 12
-    },
-    {
-      "id": "545",
-      "username": "depaulu",
-      "weddings": 0
+      "weddings": 11
     },
     {
       "id": "546",
@@ -400,11 +320,6 @@
       "id": "547",
       "username": "universityclubofchicago",
       "weddings": 86
-    },
-    {
-      "id": "548",
-      "username": "thefultontable",
-      "weddings": 0
     },
     {
       "id": "550",
@@ -437,29 +352,9 @@
       "weddings": 5
     },
     {
-      "id": "558",
-      "username": "fwe_experience",
-      "weddings": 0
-    },
-    {
-      "id": "559",
-      "username": "pavisluxuryevents",
-      "weddings": 0
-    },
-    {
       "id": "560",
       "username": "lincolnparkzoo",
       "weddings": 22
-    },
-    {
-      "id": "562",
-      "username": "luc_conferences",
-      "weddings": 0
-    },
-    {
-      "id": "563",
-      "username": "815weedst",
-      "weddings": 0
     },
     {
       "id": "566",
@@ -467,39 +362,14 @@
       "weddings": 2
     },
     {
-      "id": "567",
-      "username": "afrodeadmusic",
-      "weddings": 0
-    },
-    {
-      "id": "570",
-      "username": "kitchen_chicago",
-      "weddings": 0
-    },
-    {
-      "id": "572",
-      "username": "challenge",
-      "weddings": 0
-    },
-    {
       "id": "573",
       "username": "homesteadontheroof",
-      "weddings": 9
-    },
-    {
-      "id": "575",
-      "username": "navypiereventcenter",
-      "weddings": 0
-    },
-    {
-      "id": "576",
-      "username": "alhambrachicago",
-      "weddings": 0
+      "weddings": 8
     },
     {
       "id": "577",
       "username": "salvageone",
-      "weddings": 59
+      "weddings": 58
     },
     {
       "id": "578",
@@ -522,19 +392,9 @@
       "weddings": 19
     },
     {
-      "id": "582",
-      "username": "glessnerhouse",
-      "weddings": 0
-    },
-    {
       "id": "583",
       "username": "chicagoculturalcenter",
-      "weddings": 89
-    },
-    {
-      "id": "584",
-      "username": "cielodulceeventvenue",
-      "weddings": 0
+      "weddings": 87
     },
     {
       "id": "586",
@@ -544,7 +404,7 @@
     {
       "id": "587",
       "username": "colvinevents",
-      "weddings": 40
+      "weddings": 39
     },
     {
       "id": "588",
@@ -569,7 +429,7 @@
     {
       "id": "592",
       "username": "artifacteventschicago",
-      "weddings": 75
+      "weddings": 73
     },
     {
       "id": "594",
@@ -602,59 +462,14 @@
       "weddings": 1
     },
     {
-      "id": "600",
-      "username": "chicagohotelcollection",
-      "weddings": 0
-    },
-    {
       "id": "601",
       "username": "theavenuechicago",
       "weddings": 1
     },
     {
-      "id": "602",
-      "username": "parkway.social",
-      "weddings": 0
-    },
-    {
-      "id": "603",
-      "username": "room85venue",
-      "weddings": 0
-    },
-    {
       "id": "604",
       "username": "rlm_chicago",
       "weddings": 3
-    },
-    {
-      "id": "605",
-      "username": "irvinghallbanquets",
-      "weddings": 0
-    },
-    {
-      "id": "606",
-      "username": "lillianroseevents",
-      "weddings": 0
-    },
-    {
-      "id": "610",
-      "username": "forurevents",
-      "weddings": 0
-    },
-    {
-      "id": "611",
-      "username": "croatianculturalcenterchicago",
-      "weddings": 0
-    },
-    {
-      "id": "613",
-      "username": "copernicuscenter",
-      "weddings": 0
-    },
-    {
-      "id": "617",
-      "username": "lh_schubas",
-      "weddings": 0
     },
     {
       "id": "618",
@@ -667,34 +482,14 @@
       "weddings": 8
     },
     {
-      "id": "622",
-      "username": "ancora_themes",
-      "weddings": 0
-    },
-    {
-      "id": "625",
-      "username": "oldnorthfilmcompany",
-      "weddings": 0
-    },
-    {
       "id": "629",
       "username": "lavillarestaurants",
       "weddings": 1
     },
     {
-      "id": "630",
-      "username": "casadetreschicago",
-      "weddings": 0
-    },
-    {
       "id": "631",
       "username": "celebrateatbloom",
       "weddings": 7
-    },
-    {
-      "id": "632",
-      "username": "annes_haven",
-      "weddings": 0
     },
     {
       "id": "633",
@@ -717,24 +512,9 @@
       "weddings": 1
     },
     {
-      "id": "643",
-      "username": "lespacechicago",
-      "weddings": 0
-    },
-    {
       "id": "645",
       "username": "bellalunabh",
       "weddings": 1
-    },
-    {
-      "id": "646",
-      "username": "zhoubevents",
-      "weddings": 0
-    },
-    {
-      "id": "647",
-      "username": "360eventcenter",
-      "weddings": 0
     },
     {
       "id": "648",
@@ -745,21 +525,6 @@
       "id": "649",
       "username": "theeverlykc",
       "weddings": 10
-    },
-    {
-      "id": "650",
-      "username": "vfwhq",
-      "weddings": 0
-    },
-    {
-      "id": "651",
-      "username": "theamericanlegion",
-      "weddings": 0
-    },
-    {
-      "id": "652",
-      "username": "3700ironlab",
-      "weddings": 0
     },
     {
       "id": "653",
@@ -797,11 +562,6 @@
       "weddings": 4
     },
     {
-      "id": "665",
-      "username": "cocopazzochicago",
-      "weddings": 0
-    },
-    {
       "id": "666",
       "username": "theexchangechicago",
       "weddings": 38
@@ -812,74 +572,19 @@
       "weddings": 1
     },
     {
-      "id": "668",
-      "username": "erischicago",
-      "weddings": 0
-    },
-    {
-      "id": "671",
-      "username": "chioldhouse",
-      "weddings": 0
-    },
-    {
-      "id": "672",
-      "username": "wix",
-      "weddings": 0
-    },
-    {
-      "id": "673",
-      "username": "wildblossommeadery",
-      "weddings": 0
-    },
-    {
-      "id": "674",
-      "username": "botanicochicago",
-      "weddings": 0
-    },
-    {
-      "id": "677",
-      "username": "stapledevents_venue",
-      "weddings": 0
-    },
-    {
       "id": "678",
       "username": "thaliahallchicago",
       "weddings": 3
     },
     {
-      "id": "679",
-      "username": "universal_entertainment_",
-      "weddings": 0
-    },
-    {
-      "id": "681",
-      "username": "luxyevents",
-      "weddings": 0
-    },
-    {
-      "id": "684",
-      "username": "zinsflowershop",
-      "weddings": 0
-    },
-    {
-      "id": "686",
-      "username": "womanmadegallery",
-      "weddings": 0
-    },
-    {
       "id": "687",
       "username": "adlerplanet",
-      "weddings": 96
+      "weddings": 93
     },
     {
       "id": "690",
       "username": "congressplazahotel",
       "weddings": 3
-    },
-    {
-      "id": "691",
-      "username": "theparkwayatmichigan.com",
-      "weddings": 0
     },
     {
       "id": "693",
@@ -892,19 +597,9 @@
       "weddings": 6
     },
     {
-      "id": "697",
-      "username": "artroomevents",
-      "weddings": 0
-    },
-    {
       "id": "698",
       "username": "citywinerychi",
       "weddings": 6
-    },
-    {
-      "id": "699",
-      "username": "thefultonstreetcollective",
-      "weddings": 0
     },
     {
       "id": "700",
@@ -917,24 +612,9 @@
       "weddings": 3
     },
     {
-      "id": "703",
-      "username": "nia.restaurant",
-      "weddings": 0
-    },
-    {
-      "id": "704",
-      "username": "squarespace",
-      "weddings": 0
-    },
-    {
       "id": "706",
       "username": "hangoutlighting",
       "weddings": 1
-    },
-    {
-      "id": "707",
-      "username": "thetonkchicago",
-      "weddings": 0
     },
     {
       "id": "708",
@@ -947,119 +627,9 @@
       "weddings": 3
     },
     {
-      "id": "717",
-      "username": "spertusinst",
-      "weddings": 0
-    },
-    {
-      "id": "720",
-      "username": "thequarrychi",
-      "weddings": 0
-    },
-    {
-      "id": "722",
-      "username": "projectsimeon2k",
-      "weddings": 0
-    },
-    {
-      "id": "723",
-      "username": "garcias_chicago",
-      "weddings": 0
-    },
-    {
-      "id": "725",
-      "username": "qodeinteractive",
-      "weddings": 0
-    },
-    {
-      "id": "731",
-      "username": "yjdecorating",
-      "weddings": 0
-    },
-    {
-      "id": "732",
-      "username": "uiclife",
-      "weddings": 0
-    },
-    {
-      "id": "735",
-      "username": "yvettesdecorservices",
-      "weddings": 0
-    },
-    {
-      "id": "741",
-      "username": "jparkerchicago",
-      "weddings": 0
-    },
-    {
-      "id": "743",
-      "username": "keeping_tradition_fresh",
-      "weddings": 0
-    },
-    {
-      "id": "746",
-      "username": "fpdcc",
-      "weddings": 0
-    },
-    {
-      "id": "749",
-      "username": "jseventdecor7",
-      "weddings": 0
-    },
-    {
-      "id": "750",
-      "username": "rivendelltheatre",
-      "weddings": 0
-    },
-    {
-      "id": "752",
-      "username": "villadcitta",
-      "weddings": 0
-    },
-    {
-      "id": "753",
-      "username": "buonaterrachicago",
-      "weddings": 0
-    },
-    {
-      "id": "756",
-      "username": "swaydancebrookfield",
-      "weddings": 0
-    },
-    {
-      "id": "759",
-      "username": "harborsideinternational",
-      "weddings": 0
-    },
-    {
-      "id": "761",
-      "username": "vitosvaultchi",
-      "weddings": 0
-    },
-    {
-      "id": "763",
-      "username": "ramovachicago",
-      "weddings": 0
-    },
-    {
-      "id": "765",
-      "username": "sofivesoccer",
-      "weddings": 0
-    },
-    {
       "id": "766",
       "username": "moodytongue",
       "weddings": 2
-    },
-    {
-      "id": "768",
-      "username": "marzbrewing",
-      "weddings": 0
-    },
-    {
-      "id": "769",
-      "username": "convene",
-      "weddings": 0
     },
     {
       "id": "771",
@@ -1070,11 +640,6 @@
       "id": "772",
       "username": "centreproductions_",
       "weddings": 2
-    },
-    {
-      "id": "773",
-      "username": "extraholidays",
-      "weddings": 0
     },
     {
       "id": "775",
@@ -1097,16 +662,6 @@
       "weddings": 1
     },
     {
-      "id": "780",
-      "username": "tuscanyrestaurants",
-      "weddings": 0
-    },
-    {
-      "id": "782",
-      "username": "nvcc_chicago",
-      "weddings": 0
-    },
-    {
       "id": "783",
       "username": "loewshotels",
       "weddings": 1
@@ -1122,64 +677,9 @@
       "weddings": 1
     },
     {
-      "id": "786",
-      "username": "loyolachicago",
-      "weddings": 0
-    },
-    {
       "id": "787",
       "username": "eastbankclub",
       "weddings": 2
-    },
-    {
-      "id": "788",
-      "username": "reggieslive",
-      "weddings": 0
-    },
-    {
-      "id": "789",
-      "username": "huntingtonbankpavilion",
-      "weddings": 0
-    },
-    {
-      "id": "790",
-      "username": "__present_company__",
-      "weddings": 0
-    },
-    {
-      "id": "792",
-      "username": "filamentplays",
-      "weddings": 0
-    },
-    {
-      "id": "793",
-      "username": "galestreetinn",
-      "weddings": 0
-    },
-    {
-      "id": "795",
-      "username": "justinebursoniphoto",
-      "weddings": 0
-    },
-    {
-      "id": "798",
-      "username": "punchhousechicago",
-      "weddings": 0
-    },
-    {
-      "id": "799",
-      "username": "pilsenyards",
-      "weddings": 0
-    },
-    {
-      "id": "801",
-      "username": "bonvivantcakes",
-      "weddings": 0
-    },
-    {
-      "id": "804",
-      "username": "matthewjamesorchestra",
-      "weddings": 0
     },
     {
       "id": "830",
@@ -1234,7 +734,7 @@
     {
       "id": "1132",
       "username": "cantignypark",
-      "weddings": 27
+      "weddings": 26
     },
     {
       "id": "1169",
@@ -1249,7 +749,7 @@
     {
       "id": "1205",
       "username": "brixonfox",
-      "weddings": 37
+      "weddings": 36
     },
     {
       "id": "1209",
@@ -1259,7 +759,7 @@
     {
       "id": "1212",
       "username": "montebello.estate",
-      "weddings": 28
+      "weddings": 27
     },
     {
       "id": "1219",
@@ -1299,7 +799,7 @@
     {
       "id": "1370",
       "username": "thegroveredfieldestate",
-      "weddings": 16
+      "weddings": 15
     },
     {
       "id": "1433",
@@ -1317,11 +817,6 @@
       "weddings": 2
     },
     {
-      "id": "1447",
-      "username": "parkdistrictofhighlandpark",
-      "weddings": 0
-    },
-    {
       "id": "1453",
       "username": "towneandoak",
       "weddings": 1
@@ -1329,12 +824,12 @@
     {
       "id": "1461",
       "username": "lacunaloftevents",
-      "weddings": 47
+      "weddings": 48
     },
     {
       "id": "1479",
       "username": "igniteeventschi",
-      "weddings": 11
+      "weddings": 10
     },
     {
       "id": "1480",
@@ -1427,11 +922,6 @@
       "weddings": 16
     },
     {
-      "id": "2242",
-      "username": "uchicago",
-      "weddings": 0
-    },
-    {
       "id": "2245",
       "username": "ambassadorchicago",
       "weddings": 3
@@ -1472,11 +962,6 @@
       "weddings": 12
     },
     {
-      "id": "2576",
-      "username": "catalystranchchicago",
-      "weddings": 0
-    },
-    {
       "id": "2626",
       "username": "communityhouse_winnetka",
       "weddings": 5
@@ -1487,44 +972,9 @@
       "weddings": 8
     },
     {
-      "id": "2697",
-      "username": "pilotprojectbrewing",
-      "weddings": 0
-    },
-    {
-      "id": "2734",
-      "username": "easydoesitchicago",
-      "weddings": 0
-    },
-    {
-      "id": "2738",
-      "username": "offhoursbeerco",
-      "weddings": 0
-    },
-    {
       "id": "2753",
       "username": "swigchicago",
       "weddings": 1
-    },
-    {
-      "id": "2757",
-      "username": "momshousechicago",
-      "weddings": 0
-    },
-    {
-      "id": "2761",
-      "username": "monochromebrew",
-      "weddings": 0
-    },
-    {
-      "id": "2764",
-      "username": "slipperysloped",
-      "weddings": 0
-    },
-    {
-      "id": "2771",
-      "username": "pennywhistletavern",
-      "weddings": 0
     },
     {
       "id": "2785",
@@ -1577,11 +1027,6 @@
       "weddings": 2
     },
     {
-      "id": "3298",
-      "username": "wearespin",
-      "weddings": 0
-    },
-    {
       "id": "3299",
       "username": "167eventschicago",
       "weddings": 7
@@ -1589,7 +1034,7 @@
     {
       "id": "3300",
       "username": "theateronthelakechicago",
-      "weddings": 40
+      "weddings": 39
     },
     {
       "id": "3379",
@@ -1605,16 +1050,6 @@
       "id": "3389",
       "username": "interconchicago",
       "weddings": 29
-    },
-    {
-      "id": "3407",
-      "username": "fadschicagolakeview",
-      "weddings": 0
-    },
-    {
-      "id": "3564",
-      "username": "raviniafestival",
-      "weddings": 0
     },
     {
       "id": "3654",
@@ -1647,11 +1082,6 @@
       "weddings": 1
     },
     {
-      "id": "3823",
-      "username": "dearlybelovedchicago",
-      "weddings": 0
-    },
-    {
       "id": "3827",
       "username": "mirurestaurant",
       "weddings": 1
@@ -1664,7 +1094,7 @@
     {
       "id": "3970",
       "username": "mortonarb",
-      "weddings": 84
+      "weddings": 83
     },
     {
       "id": "4151",
@@ -1754,7 +1184,7 @@
     {
       "id": "4551",
       "username": "mesonsabika",
-      "weddings": 27
+      "weddings": 25
     },
     {
       "id": "4563",
@@ -1804,17 +1234,12 @@
     {
       "id": "5065",
       "username": "deerpathinn",
-      "weddings": 10
+      "weddings": 9
     },
     {
       "id": "5079",
       "username": "bridgesofpoplarcreek",
       "weddings": 2
-    },
-    {
-      "id": "5115",
-      "username": "metrochicago",
-      "weddings": 0
     },
     {
       "id": "5178",
@@ -1830,16 +1255,6 @@
       "id": "5272",
       "username": "loewschicagohotel",
       "weddings": 23
-    },
-    {
-      "id": "5544",
-      "username": "jewishmuseumchicago",
-      "weddings": 0
-    },
-    {
-      "id": "5545",
-      "username": "buddy.chicago",
-      "weddings": 0
     },
     {
       "id": "5680",
@@ -1867,14 +1282,9 @@
       "weddings": 1
     },
     {
-      "id": "5931",
-      "username": "the.blkroom",
-      "weddings": 0
-    },
-    {
       "id": "5965",
       "username": "loyola_cuneomansion",
-      "weddings": 15
+      "weddings": 14
     },
     {
       "id": "5971",
@@ -1912,24 +1322,9 @@
       "weddings": 5
     },
     {
-      "id": "6145",
-      "username": "roofonthewit",
-      "weddings": 0
-    },
-    {
-      "id": "6146",
-      "username": "airechicago",
-      "weddings": 0
-    },
-    {
       "id": "6147",
       "username": "terrace16chicago",
       "weddings": 2
-    },
-    {
-      "id": "6148",
-      "username": "raisedbarchicago",
-      "weddings": 0
     },
     {
       "id": "6151",
@@ -1957,44 +1352,9 @@
       "weddings": 3
     },
     {
-      "id": "6509",
-      "username": "danztheatre",
-      "weddings": 0
-    },
-    {
-      "id": "6522",
-      "username": "ravenswood_workcenter",
-      "weddings": 0
-    },
-    {
       "id": "6586",
       "username": "401morganmfg",
       "weddings": 1
-    },
-    {
-      "id": "6631",
-      "username": "durtynellies",
-      "weddings": 0
-    },
-    {
-      "id": "6634",
-      "username": "cobralounge",
-      "weddings": 0
-    },
-    {
-      "id": "6721",
-      "username": "themontrosesaloon",
-      "weddings": 0
-    },
-    {
-      "id": "6725",
-      "username": "illuminatedbrewworks",
-      "weddings": 0
-    },
-    {
-      "id": "6726",
-      "username": "mysticrogueirishpub",
-      "weddings": 0
     },
     {
       "id": "6828",
@@ -2029,17 +1389,12 @@
     {
       "id": "7490",
       "username": "theallureonthelake",
-      "weddings": 9
+      "weddings": 8
     },
     {
       "id": "7581",
       "username": "drurylaneproductions",
       "weddings": 2
-    },
-    {
-      "id": "7592",
-      "username": "matilda.babyatlas",
-      "weddings": 0
     },
     {
       "id": "7600",
@@ -2055,11 +1410,6 @@
       "id": "7693",
       "username": "theoakvillechicago",
       "weddings": 2
-    },
-    {
-      "id": "7768",
-      "username": "madegallery",
-      "weddings": 0
     },
     {
       "id": "7821",
@@ -2079,7 +1429,7 @@
     {
       "id": "8023",
       "username": "chicagomuseum",
-      "weddings": 69
+      "weddings": 68
     },
     {
       "id": "8024",
@@ -2087,24 +1437,9 @@
       "weddings": 1
     },
     {
-      "id": "8025",
-      "username": "115bourbonstreet",
-      "weddings": 0
-    },
-    {
       "id": "8026",
       "username": "parkridgecc",
       "weddings": 8
-    },
-    {
-      "id": "8094",
-      "username": "pollyannabrewingcompany",
-      "weddings": 0
-    },
-    {
-      "id": "8101",
-      "username": "beatkitchenbar",
-      "weddings": 0
     },
     {
       "id": "8124",
@@ -2122,26 +1457,6 @@
       "weddings": 1
     },
     {
-      "id": "8324",
-      "username": "electricfuneralbar",
-      "weddings": 0
-    },
-    {
-      "id": "8478",
-      "username": "murphysbleachers",
-      "weddings": 0
-    },
-    {
-      "id": "8486",
-      "username": "rreventschicago",
-      "weddings": 0
-    },
-    {
-      "id": "8511",
-      "username": "naiaontheriver",
-      "weddings": 0
-    },
-    {
       "id": "8524",
       "username": "wrigleyfieldevents",
       "weddings": 1
@@ -2155,11 +1470,6 @@
       "id": "8791",
       "username": "holyfamilycci",
       "weddings": 1
-    },
-    {
-      "id": "8828",
-      "username": "stmarkchicago",
-      "weddings": 0
     },
     {
       "id": "8836",
@@ -2179,17 +1489,7 @@
     {
       "id": "8953",
       "username": "the_carter_fultonmarket",
-      "weddings": 41
-    },
-    {
-      "id": "9038",
-      "username": "theathenaeum_chicago",
-      "weddings": 0
-    },
-    {
-      "id": "9051",
-      "username": "chicagoboatco",
-      "weddings": 0
+      "weddings": 39
     },
     {
       "id": "9070",
@@ -2219,37 +1519,12 @@
     {
       "id": "10056",
       "username": "surgicalmuseumchicago",
-      "weddings": 13
+      "weddings": 12
     },
     {
       "id": "10392",
       "username": "thedawsonchicago",
       "weddings": 3
-    },
-    {
-      "id": "10498",
-      "username": "boleochicago",
-      "weddings": 0
-    },
-    {
-      "id": "10611",
-      "username": "thehegewisch",
-      "weddings": 0
-    },
-    {
-      "id": "10644",
-      "username": "geraghtynorth_",
-      "weddings": 0
-    },
-    {
-      "id": "10678",
-      "username": "onceuponatimeeventsllc",
-      "weddings": 0
-    },
-    {
-      "id": "10714",
-      "username": "theelmlagrange",
-      "weddings": 0
     },
     {
       "id": "10773",
@@ -2265,11 +1540,6 @@
       "id": "11036",
       "username": "chateauritz",
       "weddings": 2
-    },
-    {
-      "id": "11044",
-      "username": "napersettlement",
-      "weddings": 0
     },
     {
       "id": "11081",
@@ -2290,16 +1560,6 @@
       "id": "11097",
       "username": "haleymansion",
       "weddings": 9
-    },
-    {
-      "id": "11108",
-      "username": "theatriachicago",
-      "weddings": 0
-    },
-    {
-      "id": "11109",
-      "username": "hellenicmuseum",
-      "weddings": 0
     },
     {
       "id": "11283",
@@ -2409,7 +1669,7 @@
     {
       "id": "18877",
       "username": "chicagoyachtclub",
-      "weddings": 3
+      "weddings": 2
     },
     {
       "id": "18892",
@@ -2424,7 +1684,7 @@
     {
       "id": "18945",
       "username": "concordebanquets",
-      "weddings": 19
+      "weddings": 18
     },
     {
       "id": "19194",
@@ -2462,14 +1722,9 @@
       "weddings": 1
     },
     {
-      "id": "19354",
-      "username": "floatingworldgallery",
-      "weddings": 0
-    },
-    {
       "id": "19428",
       "username": "gatherpingreegrove",
-      "weddings": 23
+      "weddings": 21
     },
     {
       "id": "19446",
@@ -2549,7 +1804,7 @@
     {
       "id": "20332",
       "username": "meyerscastle",
-      "weddings": 13
+      "weddings": 12
     },
     {
       "id": "20346",
@@ -2659,7 +1914,7 @@
     {
       "id": "21161",
       "username": "thebridgelemont",
-      "weddings": 14
+      "weddings": 13
     },
     {
       "id": "21169",
@@ -2734,17 +1989,12 @@
     {
       "id": "21383",
       "username": "warwick.allerton.chicago",
-      "weddings": 4
-    },
-    {
-      "id": "21415",
-      "username": "westinchicagons",
-      "weddings": 0
+      "weddings": 3
     },
     {
       "id": "21416",
       "username": "westinchicagonw",
-      "weddings": 10
+      "weddings": 9
     },
     {
       "id": "27389",
@@ -2899,7 +2149,7 @@
     {
       "id": "30273",
       "username": "fishermensinn",
-      "weddings": 11
+      "weddings": 10
     },
     {
       "id": "30491",
@@ -3014,7 +2264,7 @@
     {
       "id": "34971",
       "username": "thegracefulordinary",
-      "weddings": 2
+      "weddings": 1
     },
     {
       "id": "35112",
@@ -3064,7 +2314,7 @@
     {
       "id": "42416",
       "username": "buffalocreekbrewing",
-      "weddings": 2
+      "weddings": 1
     },
     {
       "id": "42417",
@@ -4704,12 +3954,6 @@
       "weddings": 3
     },
     {
-      "id": "664",
-      "username": "lmcateringchi",
-      "topRole": "catering",
-      "weddings": 2
-    },
-    {
       "id": "730",
       "username": "eeeventco",
       "topRole": "other",
@@ -4740,12 +3984,6 @@
       "weddings": 1
     },
     {
-      "id": "369",
-      "username": "revel_decor",
-      "topRole": "florist",
-      "weddings": 1
-    },
-    {
       "id": "284",
       "username": "art_imagination",
       "topRole": "event_design",
@@ -4764,20 +4002,8 @@
       "weddings": 1
     },
     {
-      "id": "115",
-      "username": "entertaining_co",
-      "topRole": "catering",
-      "weddings": 1
-    },
-    {
       "id": "762",
       "username": "vendadorchicago",
-      "topRole": "catering",
-      "weddings": 1
-    },
-    {
-      "id": "4204",
-      "username": "lettuceentertainyou",
       "topRole": "catering",
       "weddings": 1
     },
