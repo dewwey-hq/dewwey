@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Buildings, InstagramLogo, TextAlignLeft } from "@phosphor-icons/react";
+import { Buildings, TextAlignLeft } from "@phosphor-icons/react";
 import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { MeasuredCard } from "../components/MeasuredCard";
 import { VendorAvatar } from "../components/VendorAvatar";
@@ -206,7 +206,6 @@ function FeedCardC({
   const activePost = activeEmbeddable ?? coverOrFirstPost(stack.post_infos);
 
   const monthYear = monthYearLabel(stack.event_date_est);
-  const openUrl = activePost?.url ?? stack.post_urls[0] ?? null;
 
   // User feedback (2026-09-11): "the cards ... too large, make them smaller within
   // Instagram guidance" -- `embedWidth` (360/400/470, Instagram's floor is 326) drives
@@ -296,40 +295,6 @@ function FeedCardC({
         {captioned && (
           <PostCaptionCard post={activePost} height={swapHeight ?? 480} />
         )}
-        {/* Action row -- OUR chrome under Instagram's frame, never over it (user, 2026-09-11:
-            "putting those by the instagram embed ... that's the action area"): Open on
-            Instagram + the caption/photo flip as small outline pills (swatch Option 1). */}
-        <div className="flex items-center gap-2 border-t border-black/[0.06] px-3 py-2.5">
-          {openUrl && (
-            <a
-              href={openUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-black/[0.12] transition-colors hover:ring-black/[0.3]"
-            >
-              <InstagramLogo size={14} />
-              Open
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={() => setCaptioned((c) => !c)}
-            aria-pressed={captioned}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 ring-inset transition-colors ${
-              captioned
-                ? "bg-gray-900 text-white ring-gray-900"
-                : "text-gray-700 ring-black/[0.12] hover:ring-black/[0.3]"
-            }`}
-          >
-            <TextAlignLeft size={14} />
-            {captioned ? "Photo" : "Caption"}
-          </button>
-          {activePost?.postType === "Video" && (
-            <span className="ml-auto rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-gray-600">
-              Reel
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Stack panel -- white (no grey), Roster's Hosted-at header + meta line + tile
@@ -343,22 +308,45 @@ function FeedCardC({
       >
         <div className="flex flex-col p-5">
           {/* Swatch Option 3 (user pick, 2026-09-11) with a building icon so "venue" isn't
-              undersold: the venue name IS the panel title; one subtitle line. */}
-          <p className="flex min-w-0 items-center gap-1.5 text-[17px] font-semibold tracking-tight text-gray-900">
-            <Buildings size={18} className="shrink-0 text-black/[0.45]" aria-hidden />
-            {venueVendor ? (
-              <Link
-                href={`/vendors/${encodeURIComponent(venueVendor.username)}`}
-                className="truncate hover:text-gray-600"
-              >
-                {venueLabel}
-              </Link>
-            ) : (
-              <span className="truncate">{venueLabel}</span>
+              undersold: the venue name IS the panel title; one subtitle line. The only
+              action is the caption/photo flip, icon-only, top-right (no "Open" -- the embed's
+              own "View more on Instagram" covers it). */}
+          <div className="flex items-start justify-between gap-2">
+            <p className="flex min-w-0 items-center gap-1.5 text-[17px] font-semibold tracking-tight text-gray-900">
+              <Buildings size={18} className="shrink-0 text-black/[0.45]" aria-hidden />
+              {venueVendor ? (
+                <Link
+                  href={`/vendors/${encodeURIComponent(venueVendor.username)}`}
+                  className="truncate hover:text-gray-600"
+                >
+                  {venueLabel}
+                </Link>
+              ) : (
+                <span className="truncate">{venueLabel}</span>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() => setCaptioned((c) => !c)}
+              aria-pressed={captioned}
+              aria-label={captioned ? "Show photo" : "Show caption"}
+              title={captioned ? "Show photo" : "Show caption"}
+              className={`-mr-1.5 -mt-1 shrink-0 rounded-full p-1.5 transition-colors ${
+                captioned ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-black/[0.05] hover:text-gray-900"
+              }`}
+            >
+              <TextAlignLeft size={16} />
+            </button>
+          </div>
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-black/[0.45]">
+            <span>
+              Venue · {monthYear} · {stack.n_posts} post{stack.n_posts === 1 ? "" : "s"}
+            </span>
+            {activePost?.postType === "Video" && (
+              <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                Reel
+              </span>
             )}
-          </p>
-          <p className="mt-0.5 text-xs text-black/[0.45]">
-            Venue · {monthYear} · {stack.n_posts} post{stack.n_posts === 1 ? "" : "s"}
           </p>
 
           {/* Hairline separating the header/meta block from the vendor stack (user,
