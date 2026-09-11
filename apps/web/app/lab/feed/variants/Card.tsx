@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Buildings, TextAlignLeft } from "@phosphor-icons/react";
+import { Buildings, Quotes } from "@phosphor-icons/react";
 import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { MeasuredCard } from "../components/MeasuredCard";
 import { VendorAvatar } from "../components/VendorAvatar";
@@ -168,14 +168,35 @@ function FeedCardC({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  // Switching posts remounts the embed, and its loading placeholder is shorter than the
+  // loaded frame -- without a floor the panel cap collapsed and sprang back, which read as
+  // "the stack reloads" (user, 2026-09-11). While a switch is in flight the cap never drops
+  // below the previous height; the floor clears once the column has been still for 3 s.
+  const switchFloorRef = useRef<number | null>(null);
+  const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const beginPostSwitch = useCallback(() => {
+    switchFloorRef.current = mediaRef.current ? Math.round(mediaRef.current.getBoundingClientRect().height) : null;
+  }, []);
   useEffect(() => {
     const el = mediaRef.current;
     if (!el) return;
     const observer = new ResizeObserver(([entry]) => {
-      setMediaHeight(Math.round(entry.contentRect.height));
+      const h = Math.round(entry.contentRect.height);
+      const floor = switchFloorRef.current;
+      setMediaHeight(floor != null && h < floor ? floor : h);
+      if (floor != null) {
+        if (switchTimerRef.current) clearTimeout(switchTimerRef.current);
+        switchTimerRef.current = setTimeout(() => {
+          switchFloorRef.current = null;
+          setMediaHeight(Math.round(el.getBoundingClientRect().height));
+        }, 3000);
+      }
     });
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (switchTimerRef.current) clearTimeout(switchTimerRef.current);
+    };
   }, []);
 
   // Stack panel scroll state, for the bottom fade -- only shown at md+ while there's more
@@ -279,6 +300,7 @@ function FeedCardC({
                   key={p.url}
                   type="button"
                   onClick={() => {
+                    beginPostSwitch();
                     setIdx(i);
                     setInteracted(true);
                   }}
@@ -329,13 +351,15 @@ function FeedCardC({
               type="button"
               onClick={() => setCaptioned((c) => !c)}
               aria-pressed={captioned}
-              aria-label={captioned ? "Show photo" : "Show caption"}
-              title={captioned ? "Show photo" : "Show caption"}
-              className={`-mr-1.5 -mt-1 shrink-0 rounded-full p-1.5 transition-colors ${
-                captioned ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-black/[0.05] hover:text-gray-900"
+              title={captioned ? "Back to the photo" : "Read the post's caption"}
+              className={`-mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ring-1 ring-inset transition-colors ${
+                captioned
+                  ? "bg-gray-900 text-white ring-gray-900"
+                  : "text-gray-600 ring-black/[0.12] hover:text-gray-900 hover:ring-black/[0.3]"
               }`}
             >
-              <TextAlignLeft size={16} />
+              <Quotes size={12} weight="fill" />
+              {captioned ? "Photo" : "Caption"}
             </button>
           </div>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-black/[0.45]">
