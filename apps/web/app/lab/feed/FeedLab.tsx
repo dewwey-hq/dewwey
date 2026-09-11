@@ -7,11 +7,6 @@ import { siteContainerClass } from "@/lib/site-layout";
 import { coverPost } from "@/lib/feedDesign";
 import { MeasurementContext, type MeasurementApi } from "./measurement-context";
 import { Card } from "./variants/Card";
-import { Ledger } from "./variants/Ledger";
-import { Roster } from "./variants/Roster";
-import { Scroll } from "./variants/Scroll";
-import { ChipGrid } from "./variants/ChipGrid";
-import { PhotoWall } from "./variants/PhotoWall";
 import type { WeddingStack } from "@/lib/server/graph";
 import {
   EMBED_SIZES,
@@ -29,11 +24,6 @@ import {
 
 const VARIANT_LABELS: Record<Variant, string> = {
   c: "C · Card",
-  e: "E · Ledger",
-  f: "F · Roster",
-  g: "G · Scroll",
-  h: "H · Chips",
-  i: "I · Wall",
 };
 
 /**
@@ -176,7 +166,7 @@ export function FeedLab({
             ))}
           </div>
         </div>
-        {(variant === "c" || variant === "e") && (
+        {variant === "c" && (
           <div
             className={`${siteContainerClass} flex flex-wrap items-center gap-x-4 gap-y-1.5 pb-2.5 text-xs`}
           >
@@ -310,11 +300,6 @@ export function FeedLab({
               mediaSide={side}
             />
           )}
-          {variant === "e" && <Ledger stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} />}
-          {variant === "f" && <Roster stacks={stacks} venue={venue} />}
-          {variant === "g" && <Scroll stacks={stacks} venue={venue} />}
-          {variant === "h" && <ChipGrid stacks={stacks} venue={venue} />}
-          {variant === "i" && <PhotoWall stacks={stacks} venue={venue} />}
         </MeasurementContext.Provider>
       </main>
     </div>

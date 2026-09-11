@@ -17,9 +17,10 @@
  * G · Scroll — pure column of embeds; the in-view wedding drives ONE sticky team panel.
  * H · Chip grid — 3-across masonry, category chips with counts under each embed.
  * I · Photo wall — 3-4 across wall of 326px embeds; tap a wedding → full team sheet. */
-/** A2 Clean list, B2 Grid and D Recipe deleted 2026-09-11 (user: "i like the card the most") —
- * see git history before this commit for their code. */
-export const VARIANTS = ["c", "e", "f", "g", "h", "i"] as const;
+/** Only C · Card remains (user, 2026-09-11: "lets lock in 360 1 up 60%, 1 tile column and
+ * left side"). A2/B2/D deleted earlier that day, E-I right after — git history has them all.
+ * The toggle bar and URL params stay so the remaining knobs can still be played with. */
+export const VARIANTS = ["c"] as const;
 export type Variant = (typeof VARIANTS)[number];
 
 export function isVariant(v: string | null | undefined): v is Variant {
@@ -35,7 +36,7 @@ export function isVariant(v: string | null | undefined): v is Variant {
  */
 export const EMBED_SIZES = [326, 360, 400, 470, 540] as const;
 export type EmbedSize = (typeof EMBED_SIZES)[number];
-export const DEFAULT_EMBED_SIZE: EmbedSize = 540;
+export const DEFAULT_EMBED_SIZE: EmbedSize = 360;
 
 export function parseEmbedSize(v: string | null | undefined): EmbedSize {
   const n = Number(v);
@@ -50,15 +51,12 @@ export function parseLayout(v: string | null | undefined): Layout {
   return v === "2-up" ? "2-up" : DEFAULT_LAYOUT;
 }
 
-/** Fresh-direction variants (F-I) are scrappy: 12 weddings by default so the page stays
- * quick to judge; the earlier variants keep 60 (see `page.tsx`). `?n=` overrides both. */
-export const FRESH_VARIANTS: readonly Variant[] = ["f", "g", "h", "i"];
-export const DEFAULT_LIMIT_FRESH = 12;
-export const DEFAULT_LIMIT_CLASSIC = 60;
-export function parseLimit(v: string | null | undefined, variant: Variant): number {
+/** Weddings per page in the lab; `?n=` overrides. */
+export const DEFAULT_LIMIT = 60;
+export function parseLimit(v: string | null | undefined): number {
   const n = Number(v);
   if (Number.isInteger(n) && n >= 1 && n <= 200) return n;
-  return FRESH_VARIANTS.includes(variant) ? DEFAULT_LIMIT_FRESH : DEFAULT_LIMIT_CLASSIC;
+  return DEFAULT_LIMIT;
 }
 
 /** Variant C tuning knobs (user, 2026-09-11: "play around with the ui dynamically like column

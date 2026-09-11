@@ -36,7 +36,7 @@ export default async function FeedLabPage({
   const variant: Variant = isVariant(rawVariant) ? rawVariant : "c";
   const embedSize = parseEmbedSize(typeof sp.size === "string" ? sp.size : undefined);
   const layout = parseLayout(typeof sp.layout === "string" ? sp.layout : undefined);
-  const limit = parseLimit(typeof sp.n === "string" ? sp.n : undefined, variant);
+  const limit = parseLimit(typeof sp.n === "string" ? sp.n : undefined);
   const split = parseSplit(typeof sp.split === "string" ? sp.split : undefined);
   const tileCols = parseTileCols(typeof sp.tiles === "string" ? sp.tiles : undefined);
   const side = parseSide(typeof sp.side === "string" ? sp.side : undefined);
@@ -49,7 +49,6 @@ export default async function FeedLabPage({
   if (rows.length === 0) notFound();
   const venue = rows[0];
 
-  // Fresh variants F-I default to 12 (`parseLimit`); the note below is about the classic 60.
   // Plan text says "24 weddings"; the plan's own Verification section names wedding 4599
   // ("Shay & Marc", 3 posts) and 11229 (the two-couples data problem) as expected to be
   // visible by default -- checked against the real DB (read-only), The Arbory's 144 hosted
