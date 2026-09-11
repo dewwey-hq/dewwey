@@ -21,6 +21,7 @@ const SIDE_BY_SIDE_GRID_CLASS: Record<EmbedSize, string> = {
   360: "lg:grid-cols-[minmax(0,360px)_1fr]",
   400: "lg:grid-cols-[minmax(0,400px)_1fr]",
   470: "lg:grid-cols-[minmax(0,470px)_1fr]",
+  540: "lg:grid-cols-[minmax(0,540px)_1fr]",
 };
 
 /** "November 2025" — same local helper as `Card.tsx` (not centralized; each variant

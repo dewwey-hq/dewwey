@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { InstagramLogo } from "@phosphor-icons/react";
 import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
 import { MeasuredCard } from "../components/MeasuredCard";
 import { VendorAvatar } from "../components/VendorAvatar";
@@ -27,16 +26,64 @@ function monthYearLabel(date: string | null): string {
  * runtime-interpolated strings) — the side-by-side grid template used in 1-up mode only;
  * 2-up stacks media above the panel instead (see `cardLayoutClass` below). */
 const SIDE_BY_SIDE_GRID_CLASS: Record<EmbedSize, string> = {
-  360: "md:grid md:grid-cols-[minmax(0,360px)_1fr]",
-  400: "md:grid md:grid-cols-[minmax(0,400px)_1fr]",
-  470: "md:grid md:grid-cols-[minmax(0,470px)_1fr]",
+  360: "md:grid md:grid-cols-[minmax(0,360px)_minmax(0,340px)]",
+  400: "md:grid md:grid-cols-[minmax(0,400px)_minmax(0,360px)]",
+  470: "md:grid md:grid-cols-[minmax(0,470px)_minmax(0,380px)]",
+  540: "md:grid md:grid-cols-[minmax(0,540px)_minmax(0,400px)]",
 };
 
-const COMPACT_COLLAPSE_AT = 6;
+/** Tiles visible before the "+N more vendors" fold. One column of tiles (the stack column is
+ * capped at 340-400px beside the embed, so two columns truncated every name); the cap is
+ * higher when the embed is tall (540/470 in 1-up) so the column fills the embed's height. */
+const TILE_CAP = 6;
+const TILE_CAP_TALL = 9;
 
-/** One card's dots-pager (now folded into a single header-row control) + caption-toggle
- * state, plus the ResizeObserver that caps the stack panel's height at the embed's real
- * (post-load) height on md+. */
+/** One tile in the stack grid — avatar, name (+ `@handle` when the name had to be
+ * derived from it, large screens only), role/context subtitle, small `AddToTeamButton`.
+ * Roster's tile shape (`RosterTile`), duplicated here per the lab's per-variant
+ * convention, with Card's own `isDerivedName` `@handle` behavior kept. */
+function CardTile({ vendor }: { vendor: StackVendor & { extraRoles: string[] } }) {
+  const ctx = vendor.contexts
+    .map((c) => contextLabel(c))
+    .filter((c): c is string => Boolean(c))
+    .join(" / ");
+  const roleText = [vendor.role, ...vendor.extraRoles].map((r) => roleLabel(r)).join(" · ");
+  const subLine = [roleText, ctx].filter(Boolean).join(" · ");
+  const vName = displayName(vendor.name, vendor.username);
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <VendorAvatar src={vendor.avatar_url} name={vendor.name} role={vendor.role} size={36} />
+      <Link
+        href={`/vendors/${encodeURIComponent(vendor.username)}`}
+        className="min-w-0 flex-1 text-gray-900 hover:text-gray-600"
+      >
+        <span className="block truncate text-sm font-medium">
+          {vName}
+          {!isDerivedName(vendor.name, vendor.username) && (
+            <span className="hidden text-xs font-normal text-black/[0.45] lg:inline"> @{vendor.username}</span>
+          )}
+        </span>
+        {subLine && <span className="block truncate text-xs text-black/[0.45]">{subLine}</span>}
+      </Link>
+      <span className="inline-block shrink-0 scale-[0.83]">
+        <AddToTeamButton
+          accountId={vendor.accountId}
+          username={vendor.username}
+          name={vendor.name}
+          role={vendor.role}
+          avatarUrl={vendor.avatar_url}
+        />
+      </span>
+    </div>
+  );
+}
+
+/** One card: a compliant `embed.js` embed flush against the card's own edges (so the
+ * card's rounded corners clip the embed's own white border, nothing else) beside a
+ * Roster-styled stack panel — "Hosted at {venue}" header, muted meta line, 2-col tile
+ * grid with a 6-tile fold. Dots pager + "Show caption" toggle live under/near the embed.
+ * No ResizeObserver height cap — the card is simply as tall as the taller column, panel
+ * top-aligned via `md:items-start`. */
 function FeedCardC({
   stack,
   eagerCover,
@@ -62,58 +109,42 @@ function FeedCardC({
 
   const monthYear = monthYearLabel(stack.event_date_est);
   const openUrl = activePost?.url ?? stack.post_urls[0] ?? null;
-  const otherPostsCount = Math.max(0, embeddablePosts.length - 1);
 
   // User feedback (2026-09-11): "the cards ... too large, make them smaller within
   // Instagram guidance" -- `embedWidth` (360/400/470, Instagram's floor is 326) drives
   // the media column's max width; `twoUp` stacks media above the panel instead of beside
   // it so two cards fit side by side. Below 400px-equivalent-or-narrower, or in 2-up
-  // (where each card is already half-width), the stack panel switches to a compact
-  // density automatically.
+  // (where each card is already half-width), the stack panel switches to a single-column
+  // tile grid so vendor names don't truncate.
   const compact = embedWidth <= 400 || twoUp;
 
   const venueKey = stack.venue_username?.toLowerCase();
   const venueVendor = venueKey ? stack.vendors.find((v) => v.username.toLowerCase() === venueKey) : undefined;
   const others: StackVendor[] = venueVendor ? stack.vendors.filter((v) => v !== venueVendor) : stack.vendors;
-  const allGroups = groupStackByCategory(others);
-  const flatOrdered = allGroups.flatMap((g) => g.vendors);
-  const totalVendors = flatOrdered.length;
-  const collapsing = compact && totalVendors > COMPACT_COLLAPSE_AT;
-  const visibleSet = new Set(
-    collapsing && !expanded ? flatOrdered.slice(0, COMPACT_COLLAPSE_AT) : flatOrdered,
-  );
-  const groups = allGroups
-    .map((g) => ({ ...g, vendors: g.vendors.filter((v) => visibleSet.has(v)) }))
-    .filter((g) => g.vendors.length > 0);
+  const groups = groupStackByCategory(others);
+  const tiles = groups.flatMap((g) => g.vendors);
+  const tileCap = compact ? TILE_CAP : TILE_CAP_TALL;
+  const visibleTiles = expanded ? tiles : tiles.slice(0, tileCap);
+  const hiddenCount = tiles.length - visibleTiles.length;
+  // Card has no `venue` prop (unlike Roster's `venueFallbackName`) -- `stack.venue_name`
+  // is already the per-wedding fallback straight from the query, so no new prop is needed.
+  const venueLabel = venueVendor ? displayName(venueVendor.name, venueVendor.username) : (stack.venue_name ?? "Unknown venue");
 
-  // Cap the stack panel's height at the media column's real (post-load) height on md+ --
-  // mobile stays unconstrained (stacked layout). A CSS var + `md:max-h-[var(--card-media-h)]`
-  // keeps this out of JS entirely below the md breakpoint.
-  const mediaRef = useRef<HTMLDivElement>(null);
-  const [mediaHeight, setMediaHeight] = useState<number | null>(null);
-  useEffect(() => {
-    const el = mediaRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver(([entry]) => {
-      setMediaHeight(Math.round(entry.contentRect.height));
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  const cardLayoutClass = twoUp ? "" : SIDE_BY_SIDE_GRID_CLASS[embedWidth];
+  const cardLayoutClass = twoUp ? "" : `${SIDE_BY_SIDE_GRID_CLASS[embedWidth]} md:items-start`;
   const mediaBorderClass = twoUp
     ? "border-b border-black/[0.06]"
     : "border-b border-black/[0.06] md:border-b-0 md:border-r";
 
   return (
     <article
-      className={`overflow-hidden rounded-[1.4rem] border border-black/[0.07] bg-white ${cardLayoutClass}`}
-      style={mediaHeight ? ({ ["--card-media-h" as string]: `${mediaHeight}px` } as React.CSSProperties) : undefined}
+      className={`w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-white ${
+        twoUp ? "" : "md:mx-auto md:w-fit md:max-w-full"
+      } ${cardLayoutClass}`}
     >
-      {/* Media -- white, capped at `embedWidth`, min 326 (Instagram's own floor, via
-          InstagramPostEmbed), a hairline divider from the stack panel. */}
-      <div ref={mediaRef} className={`flex flex-col items-center justify-center bg-white p-3 ${mediaBorderClass}`}>
+      {/* Media -- flush against the card's own edges (no padding) so the card's rounded
+          corners clip the embed's own white border on the left/top/bottom-left; nothing
+          else drawn over it. Dots pager (Roster-style) directly under the embed. */}
+      <div className={`flex flex-col ${mediaBorderClass}`}>
         <div className="w-full" style={{ maxWidth: embedWidth }}>
           <InstagramPostEmbed
             key={`${activePost?.url ?? "none"}-${captioned ? "cap" : "nocap"}`}
@@ -122,15 +153,44 @@ function FeedCardC({
             captioned={captioned}
           />
         </div>
+        {embeddablePosts.length > 1 && (
+          <div role="group" aria-label="Choose a post" className="flex items-center justify-center gap-2 py-3">
+            {embeddablePosts.map((p, i) => (
+              <button
+                key={p.url}
+                type="button"
+                onClick={() => {
+                  setIdx(i);
+                  setInteracted(true);
+                }}
+                aria-label={`View post ${i + 1} of ${embeddablePosts.length}`}
+                aria-current={i === idx ? "true" : undefined}
+                className={`rounded-full transition-all ${
+                  i === idx ? "h-2.5 w-2.5 bg-rose-400" : "h-2 w-2 bg-black/[0.15] hover:bg-black/[0.3]"
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* The stack panel -- gray-50, venue pinned as a full-width row, everyone else
-          grouped by category (compact: single column, 6-vendor collapse, tighter rows). */}
-      <div
-        className={`flex min-w-0 flex-col bg-gray-50 ${twoUp ? "" : "md:h-full md:max-h-[var(--card-media-h,none)] md:min-h-0"}`}
-      >
-        <div className="flex flex-wrap items-center gap-2 border-b border-black/[0.06] px-5 py-3.5 md:px-6">
-          <span className="font-medium text-gray-900">{monthYear}</span>
+      {/* Stack panel -- white (no grey), Roster's Hosted-at header + meta line + tile
+          grid, venue excluded (already the Hosted line), 6-tile fold. */}
+      <div className="flex min-w-0 flex-col p-5 md:self-start">
+        <p className="text-[15px] font-semibold text-gray-900">
+          <span className="font-semibold text-gray-500">Hosted at </span>
+          {venueVendor ? (
+            <Link href={`/vendors/${encodeURIComponent(venueVendor.username)}`} className="hover:text-gray-600">
+              {venueLabel}
+            </Link>
+          ) : (
+            venueLabel
+          )}
+        </p>
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-black/[0.45]">
+          <span>
+            {monthYear} · {stack.n_posts} post{stack.n_posts === 1 ? "" : "s"}
+          </span>
           {activePost?.postType === "Video" && (
             <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-gray-600">
               Reel
@@ -141,147 +201,54 @@ function FeedCardC({
               Carousel
             </span>
           )}
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {otherPostsCount > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIdx((i) => (i + 1) % embeddablePosts.length);
-                  setInteracted(true);
-                }}
-                title={`Post ${idx + 1} of ${embeddablePosts.length}`}
-                className="rounded-full bg-black/[0.06] px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-black/[0.10]"
-              >
-                +{otherPostsCount} posts
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setCaptioned((c) => !c)}
-              aria-pressed={captioned}
-              className="rounded-full bg-black/[0.06] px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-black/[0.10]"
-            >
-              {captioned ? "Hide caption" : "Show caption"}
-            </button>
-            {openUrl && (
+          {openUrl && (
+            <>
+              <span aria-hidden>·</span>
               <a
                 href={openUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-gray-600 transition-colors hover:text-gray-900"
+                className="font-medium text-gray-600 hover:text-gray-900"
               >
-                <InstagramLogo size={14} />
-                Open on IG
+                ↗ Open on Instagram
               </a>
-            )}
-          </div>
+            </>
+          )}
+          <span aria-hidden>·</span>
+          <button
+            type="button"
+            onClick={() => setCaptioned((c) => !c)}
+            aria-pressed={captioned}
+            className="font-medium text-gray-600 hover:text-gray-900"
+          >
+            {captioned ? "Hide caption" : "Show caption"}
+          </button>
+        </p>
+
+        <div className="mt-4 grid grid-cols-1 gap-y-2">
+          {visibleTiles.map((v) => (
+            <CardTile key={`${v.username}-${v.role}`} vendor={v} />
+          ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5 md:p-6">
-          {venueVendor && (
-            <Link
-              href={`/vendors/${encodeURIComponent(venueVendor.username)}`}
-              className="mb-4 flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 ring-1 ring-black/[0.06] transition-colors hover:ring-black/[0.16]"
-            >
-              <VendorAvatar src={venueVendor.avatar_url} name={venueVendor.name} role={venueVendor.role} size={28} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-gray-900">
-                  {displayName(venueVendor.name, venueVendor.username)}
-                  {!isDerivedName(venueVendor.name, venueVendor.username) && (
-                    <span className="hidden text-xs font-normal text-black/[0.45] lg:inline"> @{venueVendor.username}</span>
-                  )}
-                </span>
-                <span className="text-xs font-semibold text-rose-500">Hosted</span>
-              </span>
-              <AddToTeamButton
-                accountId={venueVendor.accountId}
-                username={venueVendor.username}
-                name={venueVendor.name}
-                role={venueVendor.role}
-                avatarUrl={venueVendor.avatar_url}
-              />
-            </Link>
-          )}
-
-          <div className={`columns-1 gap-x-6 ${compact ? "" : "md:columns-2"}`}>
-            {groups.map((group) => {
-              const distinctRoles = new Set(group.vendors.map((v) => v.role));
-              const showRoleLabel = distinctRoles.size > 1;
-              return (
-                <div key={group.slug} className={`break-inside-avoid ${compact ? "mb-3" : "mb-4"}`}>
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-black/[0.4]">
-                    {group.label}
-                  </p>
-                  <ul className="mt-1.5 divide-y divide-black/[0.05]">
-                    {group.vendors.map((v) => {
-                      const contextChip = v.contexts
-                        .map((c) => contextLabel(c))
-                        .filter((c): c is string => Boolean(c))
-                        .join(" / ");
-                      // A second (or third) role on the same account -- "Catering · Bar
-                      // service" -- always shows once dedupe found extra roles, even when
-                      // `showRoleLabel` alone wouldn't have (the group could otherwise be
-                      // all one role by chance).
-                      const roleChip =
-                        v.extraRoles.length > 0
-                          ? [v.role, ...v.extraRoles].map((r) => roleLabel(r)).join(" · ")
-                          : showRoleLabel
-                            ? roleLabel(v.role)
-                            : null;
-                      const subLine = [roleChip, contextChip].filter(Boolean).join(" · ");
-                      const vName = displayName(v.name, v.username);
-                      return (
-                        <li
-                          key={`${v.username}-${v.role}`}
-                          className={`flex items-center gap-2 ${compact ? "py-1" : "py-2"}`}
-                        >
-                          <Link
-                            href={`/vendors/${encodeURIComponent(v.username)}`}
-                            className="flex min-w-0 flex-1 items-center gap-2.5 text-gray-900 hover:text-gray-600"
-                          >
-                            <VendorAvatar src={v.avatar_url} name={v.name} role={v.role} size={24} />
-                            <span className="min-w-0">
-                              <span className="block truncate text-sm font-medium">
-                                {vName}
-                                {!isDerivedName(v.name, v.username) && (
-                                  <span className="text-xs font-normal text-black/[0.45] lg:inline hidden">
-                                    {" "}
-                                    @{v.username}
-                                  </span>
-                                )}
-                              </span>
-                              {subLine && (
-                                <span className="block truncate text-xs text-black/[0.45]">{subLine}</span>
-                              )}
-                            </span>
-                          </Link>
-                          <AddToTeamButton
-                            accountId={v.accountId}
-                            username={v.username}
-                            name={v.name}
-                            role={v.role}
-                            avatarUrl={v.avatar_url}
-                          />
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-
-          {collapsing && (
-            <button
-              type="button"
-              onClick={() => setExpanded((e) => !e)}
-              aria-expanded={expanded}
-              className="mt-1 text-xs font-medium text-gray-600 hover:text-gray-900"
-            >
-              {expanded ? "Show fewer vendors" : `+ ${totalVendors - COMPACT_COLLAPSE_AT} more vendors`}
-            </button>
-          )}
-        </div>
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900"
+          >
+            +{hiddenCount} more vendor{hiddenCount === 1 ? "" : "s"}
+          </button>
+        )}
+        {expanded && tiles.length > tileCap && (
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900"
+          >
+            Show fewer
+          </button>
+        )}
       </div>
     </article>
   );
@@ -291,13 +258,18 @@ function FeedCardC({
  * C. Card — user feedback (2026-09-11): "labeled 'Role · Name' rows are the discovery
  * tool, hover is slow" — the shape of today's `WeddingFeedCard` (photo left, labeled
  * vendor list right, one card = one wedding), made compliant (official `embed.js` embed,
- * no crop) and, per a second round of feedback the same day, cleaner: no couple names
- * (month + year only), a white photo column next to a gray-50 stack panel, the venue
- * pinned as its own row, everyone else grouped by category, and an opt-in "Show caption"
- * toggle instead of us ever rendering the scraped caption text. A third round of feedback
- * ("too large... make them smaller within Instagram guidance") added `embedWidth`/`twoUp`
- * (`FeedLab.tsx`'s Size/Layout controls, C and D only): a narrower/2-up card switches its
- * stack panel to a compact density (single column, tighter rows, 6-vendor collapse).
+ * no crop). A later round the same day ("I like when the Instagram post has rounded edge
+ * on the left top corner and bottom left corner... I like Roster's Hosted at/date/post
+ * line and the way we did the stack there — I just want it beside the photo, not beneath
+ * it") pulled Roster's (variant F) header/meta/tile-grid styling in here: no couple names
+ * (month + year only), a flush, unpadded embed so the card's own rounding clips the
+ * embed's corner, "Hosted at {venue}" as plain text (no pinned avatar row/pill), and the
+ * stack as a 2-column grid of vendor tiles instead of a category-headed list — category
+ * order is preserved (`groupStackByCategory`) but the category labels are no longer
+ * drawn. `embedWidth`/`twoUp` (`FeedLab.tsx`'s Size/Layout controls, C and D only) still
+ * drive a narrower/2-up card to a single-column tile grid; the panel is no longer
+ * height-capped to the embed (that used a `ResizeObserver`, now removed) — it's simply
+ * top-aligned (`md:items-start`) and the card is as tall as its taller column.
  */
 export function Card({
   stacks,

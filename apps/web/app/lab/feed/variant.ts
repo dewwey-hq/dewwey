@@ -28,11 +28,12 @@ export function isVariant(v: string | null | undefined): v is Variant {
  * `size`/`layout` (user, 2026-09-11: "the cards and recipes are too large... make them
  * smaller"): URL-backed controls for variants C, D, and E only — A/B ignore them (never
  * passed down). Instagram's only hard rule is a 326px minimum embed width; 360 is the
- * smallest step above that, 470 the old default ceiling.
+ * smallest step above that, 470 the old default ceiling, 540 Meta's maximum (user, 2026-09-11:
+ * "showing more of the image than the text" — the image should be the wider half).
  */
-export const EMBED_SIZES = [360, 400, 470] as const;
+export const EMBED_SIZES = [360, 400, 470, 540] as const;
 export type EmbedSize = (typeof EMBED_SIZES)[number];
-export const DEFAULT_EMBED_SIZE: EmbedSize = 400;
+export const DEFAULT_EMBED_SIZE: EmbedSize = 540;
 
 export function parseEmbedSize(v: string | null | undefined): EmbedSize {
   const n = Number(v);
