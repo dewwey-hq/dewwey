@@ -3,6 +3,8 @@
  * v1 lives in localStorage; the shape is designed to sync to Supabase later.
  */
 
+import { categoryRoles } from "./roles";
+
 export type TeamEntryKind = "dewwey" | "custom";
 export type TeamEntryStatus = "considering" | "booked";
 
@@ -37,6 +39,9 @@ export const DEFAULT_SLOTS = [
   "Cake & Catering",
   "Attire",
   "Hair & Makeup",
+  "Paper",
+  "Art & Keepsakes",
+  "Logistics & Services",
 ] as const;
 
 /**
@@ -46,6 +51,14 @@ export const DEFAULT_SLOTS = [
  * (beauty_services/jewelry/photo_booth/live_music) and ~30 new values were added — see
  * `VENDOR_ROLES` in `scripts/graph/vendorRoleRules.ts`. Each slot below is extended with
  * the new slugs of the same category.
+ *
+ * D056 stage 3 (2026-09-10): three of the taxonomy's 12 categories (`paper`,
+ * `art_keepsakes`, `logistics_services` — see `ROLE_CATEGORIES` in `lib/roles.ts`) had no
+ * slot at all, so their roles (stationery, officiant, transportation, …) were unreachable
+ * from `/vendors` filtering. Added as their own slots below, named after the category
+ * label. `photo_video` and `florals_decor`/`food_drink` stay split across the pre-existing
+ * UI groupings (Photography/Video, Florals/Cake & Catering) rather than being collapsed to
+ * match category boundaries 1:1 — that's a deliberate, pre-D056 UI choice, not a gap.
  */
 export const SLOT_ROLES: Record<string, string[]> = {
   Venue: ["venue", "venue_management", "accommodations", "hotel"],
@@ -57,6 +70,11 @@ export const SLOT_ROLES: Record<string, string[]> = {
   Attire: ["attire", "jewelry", "accessories", "alterations"],
   "Hair & Makeup": ["hair", "makeup", "beauty_services"],
   "Cake & Catering": ["cake", "catering", "bar_service", "desserts"],
+  // Pulled straight from ROLE_CATEGORIES (lib/roles.ts) -- these three slots ARE their
+  // category, 1:1, so there's no separate literal to keep in sync by hand.
+  Paper: categoryRoles("paper") ?? [],
+  "Art & Keepsakes": categoryRoles("art_keepsakes") ?? [],
+  "Logistics & Services": categoryRoles("logistics_services") ?? [],
 };
 
 /** Slot a dewwey vendor_role naturally belongs to (for one-tap adds). */

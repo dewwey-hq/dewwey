@@ -323,7 +323,7 @@ export default function HomepageClient({
             Your team, slot by slot
           </h2>
           <p className="text-gray-600 text-[15px]">
-            Nine slots every wedding fills. Tap one to browse vendors ranked by documented work.
+            Every slot your wedding fills. Tap one to browse vendors ranked by documented work.
           </p>
         </div>
 

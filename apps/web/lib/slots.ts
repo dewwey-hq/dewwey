@@ -8,6 +8,9 @@ import {
   Dress,
   HairDryer,
   Cake,
+  Envelope,
+  PaintBrush,
+  Truck,
 } from "@phosphor-icons/react/dist/ssr";
 import type { Icon } from "@phosphor-icons/react";
 import { DEFAULT_SLOTS } from "./team";
@@ -24,6 +27,10 @@ export const SLOT_ICONS: Record<Slot, Icon> = {
   Attire: Dress,
   "Hair & Makeup": HairDryer,
   "Cake & Catering": Cake,
+  // D056 stage 3: the three categories that previously had no slot at all.
+  Paper: Envelope,
+  "Art & Keepsakes": PaintBrush,
+  "Logistics & Services": Truck,
 };
 
 export interface VendorsQuery {

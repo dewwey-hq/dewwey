@@ -108,6 +108,7 @@ const CARD_SELECT = `
   a.followers,
   COALESCE(al.lat, v.lat) AS lat,
   COALESCE(al.lng, v.lng) AS lng,
+  a.venue_type,
   COALESCE(wc.n_weddings, 0)::int AS n_weddings`;
 
 const CARD_JOINS = `
@@ -131,6 +132,8 @@ function toCard(row: any) {
 
 export interface VendorSearchParams {
   category?: string | null;
+  /** D056 facet on accounts.venue_type (house_of_worship, hotel, restaurant, …); null = no filter. */
+  venueType?: string | null;
   city?: string;
   q?: string;
   limit?: number;
@@ -161,6 +164,7 @@ export async function searchVendors(params: VendorSearchParams) {
   // Map view may request a few hundred venues once; list UI stays at pageSize 20.
   const safeLimit = Math.min(limit, 500);
   const searchPattern = q ? `%${q.replace(/[%_\\]/g, "\\$&")}%` : null;
+  const venueType = params.venueType && /^[a-z_]{1,32}$/.test(params.venueType) ? params.venueType : null;
 
   const { rows } = await getPool().query(
     `SELECT ${CARD_SELECT},
@@ -184,6 +188,7 @@ export async function searchVendors(params: VendorSearchParams) {
        -- second card (D055 count-honestly, 2026-09-10).
        AND NOT EXISTS (SELECT 1 FROM account_aliases x WHERE x.alias_account_id = a.id)
        AND al.in_metro
+       AND ($5::text IS NULL OR a.venue_type = $5::text)
        AND (
          $4::text IS NULL
          OR a.username::text ILIKE $4 ESCAPE '\\'
@@ -197,13 +202,13 @@ export async function searchVendors(params: VendorSearchParams) {
        a.followers DESC NULLS LAST,
        a.username
      LIMIT $2 OFFSET $3`,
-    [category, safeLimit, offset, searchPattern]
+    [category, safeLimit, offset, searchPattern, venueType]
   );
 
   const total = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
   const vendors = rows.map(({ total_count: _tc, ...row }) => toCard(row));
 
-  return { vendors, total, category, city, q: q || null, limit: safeLimit, offset };
+  return { vendors, total, category, city, q: q || null, venueType, limit: safeLimit, offset };
 }
 
 export async function getVendorDetail(id: number) {

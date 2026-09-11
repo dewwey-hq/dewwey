@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 async function getVenues(
   page: number,
   mapMode: boolean,
+  venueType: string | null = null,
 ): Promise<{ vendors: VenueVendor[]; total: number }> {
   const limit = mapMode ? MAP_FETCH_LIMIT : PAGE_SIZE;
   const offset = mapMode ? 0 : (page - 1) * PAGE_SIZE;
@@ -24,6 +25,7 @@ async function getVenues(
       offset,
       city: "Chicago",
       category: "venue",
+      venueType,
     });
     return { vendors: (vendors as VenueVendor[]) ?? [], total: total ?? 0 };
   } catch {
@@ -39,7 +41,7 @@ export default async function VenuesPage({
   const params = await searchParams;
   const viewMode = params.view === "map" ? "map" : "list";
   const currentPage = Math.max(1, parseInt((params.page as string) ?? "1", 10));
-  const { vendors, total } = await getVenues(currentPage, viewMode === "map");
+  const { vendors, total } = await getVenues(currentPage, viewMode === "map", typeof params.type === "string" ? params.type : null);
 
   return (
     <VenuesClient

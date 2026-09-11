@@ -6,7 +6,7 @@ import { InstagramLogo } from "@phosphor-icons/react";
 import { embedUrl } from "./InstagramEmbed";
 import { Avatar } from "./Avatar";
 import { AddToTeamButton } from "./team/AddToTeamButton";
-import { roleLabel } from "@/lib/roles";
+import { roleLabel, contextLabel } from "@/lib/roles";
 import { formatEventDate } from "@/lib/format-date";
 import { showHandle } from "@/lib/slots";
 import type { WeddingStack } from "@/lib/server/graph";
@@ -103,34 +103,51 @@ export function WeddingFeedCard({ stack }: { stack: WeddingStack }) {
         </div>
 
         <ul className="min-h-0 flex-1 divide-y divide-black/[0.04] overflow-y-auto px-5 py-1.5">
-          {stack.vendors.map((v) => (
-            <li key={`${v.username}-${v.role}`} className="flex items-center gap-2 py-2">
-              <span className="w-20 shrink-0 text-xs font-medium text-gray-600">
-                {roleLabel(v.role)}
-              </span>
-              <Link
-                href={`/vendors/${encodeURIComponent(v.username)}`}
-                className="flex min-w-0 items-center gap-2.5 text-gray-900 hover:text-gray-600"
-              >
-                <Avatar src={v.avatar_url} name={v.name} size={26} className="text-xs" />
-                <span className="truncate text-sm">{v.name}</span>
-                {showHandle(v.name, v.username) && (
-                  <span className="hidden truncate text-xs text-black/[0.56] lg:inline">
-                    @{v.username}
-                  </span>
-                )}
-              </Link>
-              <span className="ml-auto">
-                <AddToTeamButton
-                  accountId={v.accountId}
-                  username={v.username}
-                  name={v.name}
-                  role={v.role}
-                  avatarUrl={v.avatar_url}
-                />
-              </span>
-            </li>
-          ))}
+          {stack.vendors.map((v) => {
+            // D056 stage 3: contexts omit `role` here -- the role label right beside it
+            // already says "Venue", so the chip stays the plain event name ("Reception"),
+            // not the standalone "Reception venue" form. See contextLabel() in lib/roles.
+            const contextChip = v.contexts
+              .map((c) => contextLabel(c))
+              .filter((c): c is string => Boolean(c))
+              .join(" / ");
+            return (
+              <li key={`${v.username}-${v.role}`} className="flex items-center gap-2 py-2">
+                <span className="w-20 shrink-0 text-xs font-medium text-gray-600">
+                  {roleLabel(v.role)}
+                  {contextChip && (
+                    <span
+                      className="mt-0.5 block truncate font-normal text-black/[0.45]"
+                      title={contextChip}
+                    >
+                      · {contextChip}
+                    </span>
+                  )}
+                </span>
+                <Link
+                  href={`/vendors/${encodeURIComponent(v.username)}`}
+                  className="flex min-w-0 items-center gap-2.5 text-gray-900 hover:text-gray-600"
+                >
+                  <Avatar src={v.avatar_url} name={v.name} size={26} className="text-xs" />
+                  <span className="truncate text-sm">{v.name}</span>
+                  {showHandle(v.name, v.username) && (
+                    <span className="hidden truncate text-xs text-black/[0.56] lg:inline">
+                      @{v.username}
+                    </span>
+                  )}
+                </Link>
+                <span className="ml-auto">
+                  <AddToTeamButton
+                    accountId={v.accountId}
+                    username={v.username}
+                    name={v.name}
+                    role={v.role}
+                    avatarUrl={v.avatar_url}
+                  />
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </article>

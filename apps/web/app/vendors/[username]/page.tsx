@@ -49,19 +49,37 @@ export default async function VendorPage({
   const q = await searchParams;
   const page = Math.max(1, parseInt((q.page as string) ?? "1", 10) || 1);
   const PAGE_SIZE = 20;
+  // D056 stage 3: ?feed=hosted|all forces the venue Feed toggle; absent, getVendorProfile
+  // defaults to hosted-only for a venue-type profile (see isVenueView there).
+  const feedParam = typeof q.feed === "string" ? q.feed : null;
+  const hostedOnlyOverride = feedParam === "all" ? false : feedParam === "hosted" ? true : undefined;
   const data = await getVendorProfile(decodeURIComponent(username), {
     feedLimit: PAGE_SIZE,
     feedOffset: (page - 1) * PAGE_SIZE,
+    hostedOnly: hostedOnlyOverride,
   });
   if (!data) notFound();
   // account_aliases (D047 follow-on, 2026-09-06): getVendorProfile transparently resolves an
   // alias handle (e.g. artinstitutespecialevents) to its canonical account's data -- redirect
   // the URL to match so the address bar and the rendered profile never disagree.
   if (data.profile.username.toLowerCase() !== decodeURIComponent(username).toLowerCase()) {
-    redirect(`/vendors/${data.profile.username}${page > 1 ? `?page=${page}` : ""}`);
+    const redirectSp = new URLSearchParams();
+    if (feedParam) redirectSp.set("feed", feedParam);
+    if (page > 1) redirectSp.set("page", String(page));
+    const rs = redirectSp.toString();
+    redirect(`/vendors/${data.profile.username}${rs ? `?${rs}` : ""}`);
   }
-  const { profile: p, partners, stacks, enrichment, feedTotal } = data;
+  const { profile: p, partners, stacks, enrichment, feedTotal, roleDistribution, hostedOnly } = data;
   const totalPages = Math.max(1, Math.ceil(feedTotal / PAGE_SIZE));
+  const feedQuery = (over: { feed?: "hosted" | "all"; page?: number }): string => {
+    const sp = new URLSearchParams();
+    const feed = over.feed ?? feedParam;
+    if (feed) sp.set("feed", feed);
+    const pg = over.page ?? page;
+    if (pg > 1) sp.set("page", String(pg));
+    const s = sp.toString();
+    return `/vendors/${encodeURIComponent(p.username)}${s ? `?${s}` : ""}`;
+  };
 
   const detailRows: { label: string; value: string }[] = [];
   if (enrichment?.capacity_as_stated || enrichment?.capacity_max) {
@@ -160,6 +178,44 @@ export default async function VendorPage({
 
   const feed = (
     <div className="space-y-6">
+      {p.isVenueView && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            <span
+              className="rounded-full bg-black/[0.05] px-3 py-1 font-medium text-gray-700"
+              title="Weddings where this account is the ceremony and/or reception venue"
+            >
+              Hosted {p.nHosted}
+            </span>
+            {p.nAlsoCredited > 0 && (
+              <span
+                className="rounded-full bg-black/[0.05] px-3 py-1 font-medium text-gray-700"
+                title="Other wedding_vendors credits, on weddings it didn't host"
+              >
+                Also credited {p.nAlsoCredited}
+              </span>
+            )}
+          </div>
+          <div className="flex shrink-0 rounded-full border border-black/[0.10] p-0.5 text-xs">
+            <Link
+              href={feedQuery({ feed: "hosted", page: 1 })}
+              className={`rounded-full px-3 py-1.5 font-medium transition-colors ${
+                hostedOnly ? "bg-gray-900 text-white" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Hosted
+            </Link>
+            <Link
+              href={feedQuery({ feed: "all", page: 1 })}
+              className={`rounded-full px-3 py-1.5 font-medium transition-colors ${
+                !hostedOnly ? "bg-gray-900 text-white" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              All
+            </Link>
+          </div>
+        </div>
+      )}
       {stacks.length === 0 && (
         <p className="rounded-2xl border border-dashed border-black/[0.12] p-6 text-sm text-gray-500">
           No credited weddings in the graph yet.
@@ -172,7 +228,7 @@ export default async function VendorPage({
         <nav className="flex items-center justify-between text-sm">
           {page > 1 ? (
             <Link
-              href={`/vendors/${encodeURIComponent(p.username)}?page=${page - 1}`}
+              href={feedQuery({ page: page - 1 })}
               className="rounded-full border border-black/[0.10] px-4 py-2 text-gray-700 hover:border-black/[0.25]"
             >
               ← Newer
@@ -185,7 +241,7 @@ export default async function VendorPage({
           </span>
           {page < totalPages ? (
             <Link
-              href={`/vendors/${encodeURIComponent(p.username)}?page=${page + 1}`}
+              href={feedQuery({ page: page + 1 })}
               className="rounded-full border border-black/[0.10] px-4 py-2 text-gray-700 hover:border-black/[0.25]"
             >
               Older →
@@ -243,6 +299,22 @@ export default async function VendorPage({
                 <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-gray-600">
                   {p.biography}
                 </p>
+              )}
+              {/* D056 stage 3 "Credited as" -- the real distribution of wedding_vendors.role
+                  for this account (aliases merged), not just its single ranked top role
+                  (v_account_role can lag a role-tag refresh -- see docs/decisions.md D056). */}
+              {roleDistribution.length > 1 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-black/[0.45]">Credited as</span>
+                  {roleDistribution.map((r) => (
+                    <span
+                      key={r.role}
+                      className="rounded-full bg-black/[0.04] px-2.5 py-1 text-xs font-medium text-gray-600"
+                    >
+                      {roleLabel(r.role)} {r.n}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
             <div className="sm:ml-auto sm:self-start">

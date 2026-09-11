@@ -1,4 +1,5 @@
 import { getPool } from "./db";
+import { ROLE_ORDER, categoryRoles } from "../roles";
 
 // The graph-native surfaces: vendor profiles and wedding stacks. Chicago
 // membership is venue-anchored (weddings.is_chicago), not location-text.
@@ -16,6 +17,9 @@ export interface StackVendor {
   role: string;
   avatar_url: string | null;
   confirmations: number;
+  /** Distinct `wedding_vendor_credits.event_context` values for this (wedding, account),
+   * excluding the default `wedding_day` (D056 stage 3). Empty when none. */
+  contexts: string[];
 }
 
 export interface WeddingStack {
@@ -42,6 +46,7 @@ function toStack(row: any): WeddingStack {
     role: v.role,
     avatar_url: avatarUrl(v.avatar),
     confirmations: v.confirmations,
+    contexts: (v.contexts ?? []) as string[],
   }));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const infos = (row.post_infos ?? []) as { url: string; ok: boolean }[];
@@ -78,8 +83,19 @@ const STACK_SELECT = `
       ORDER BY p.posted_at LIMIT 1) AS caption,
     (SELECT jsonb_agg(jsonb_build_object(
         'id', a.id, 'username', a.username, 'name', COALESCE(a.full_name, a.username::text),
-        'role', wv.role, 'avatar', a.avatar_path, 'confirmations', wv.n_confirmations
-      ) ORDER BY array_position(enum_range(NULL::vendor_role), wv.role), a.username)
+        'role', wv.role, 'avatar', a.avatar_path, 'confirmations', wv.n_confirmations,
+        -- D056 stage 3: distinct event contexts credited for this (wedding, account),
+        -- excluding the default 'wedding_day' -- see StackVendor.contexts.
+        'contexts', COALESCE((
+          SELECT jsonb_agg(DISTINCT wvc.event_context::text)
+          FROM wedding_vendor_credits wvc
+          WHERE wvc.wedding_id = w.id AND wvc.account_id = a.id
+            AND wvc.event_context <> 'wedding_day'
+        ), '[]'::jsonb)
+      -- Venue-category roles first, then $4::text[] (ROLE_ORDER from lib/roles.ts,
+      -- passed in by the caller) -- ROLE_ORDER already starts with the venue category,
+      -- so ordering by its position alone satisfies both.
+      ) ORDER BY array_position($4::text[], wv.role::text), a.username)
        FROM wedding_vendors wv JOIN accounts a ON a.id = wv.account_id
       WHERE wv.wedding_id = w.id) AS vendors,
     COUNT(*) OVER() AS total_count
@@ -93,6 +109,10 @@ export async function listWeddingStacks(opts: {
   /** Alias account ids (account_aliases) whose wedding_vendors rows also count toward
    * accountId's Feed -- see resolveAccountIdentity(). Only meaningful when accountId is set. */
   aliasAccountIds?: number[];
+  /** D056 stage 3: restrict to weddings this account (or an alias) actually hosted --
+   * `venue_id`/`ceremony_venue_id` -- instead of every wedding it's credited on (any role).
+   * Only meaningful when accountId is set; ignored on the Chicago-wide Feed. */
+  hostedOnly?: boolean;
 } = {}) {
   const limit = Math.min(opts.limit ?? 20, 100);
   const offset = opts.offset ?? 0;
@@ -100,12 +120,14 @@ export async function listWeddingStacks(opts: {
   const { rows } = await getPool().query(
     `${STACK_SELECT}
      WHERE ($3::int[] IS NULL AND w.is_chicago)
-        OR ($3::int[] IS NOT NULL AND EXISTS (
+        OR ($3::int[] IS NOT NULL AND $5::boolean IS NOT TRUE AND EXISTS (
              SELECT 1 FROM wedding_vendors x
              WHERE x.wedding_id = w.id AND x.account_id = ANY($3::int[])))
+        OR ($3::int[] IS NOT NULL AND $5::boolean IS TRUE
+            AND (w.venue_id = ANY($3::int[]) OR w.ceremony_venue_id = ANY($3::int[])))
      ORDER BY w.event_date_est DESC NULLS LAST, w.id DESC
      LIMIT $1 OFFSET $2`,
-    [limit, offset, accountIds]
+    [limit, offset, accountIds, ROLE_ORDER, opts.hostedOnly ?? false]
   );
   const total = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
   return { stacks: rows.map(toStack), total, limit, offset };
@@ -134,7 +156,14 @@ async function resolveAccountIdentity(requestedId: number): Promise<{ canonicalI
 
 export async function getVendorProfile(
   username: string,
-  opts: { feedLimit?: number; feedOffset?: number } = {}
+  opts: {
+    feedLimit?: number;
+    feedOffset?: number;
+    /** D056 stage 3: force the Feed to hosted-only (true) or every credit (false).
+     * Omit to let the server default -- hosted-only for a venue-type profile, otherwise
+     * every credited wedding (unchanged prior behavior). */
+    hostedOnly?: boolean;
+  } = {}
 ) {
   const pool = getPool();
 
@@ -159,7 +188,19 @@ export async function getVendorProfile(
        (SELECT COUNT(*) FROM wedding_vendors wv JOIN weddings w ON w.id = wv.wedding_id
          WHERE wv.account_id = ANY($2::int[]))::int AS n_weddings,
        (SELECT COUNT(*) FROM wedding_vendors wv JOIN weddings w ON w.id = wv.wedding_id
-         WHERE wv.account_id = ANY($2::int[]) AND w.is_chicago)::int AS n_chicago_weddings
+         WHERE wv.account_id = ANY($2::int[]) AND w.is_chicago)::int AS n_chicago_weddings,
+       -- D056 stage 3 venue view: weddings this account (or an alias) actually hosted --
+       -- as the ceremony and/or reception venue -- vs. every OTHER wedding_vendors row it
+       -- holds (credited some other way, e.g. accommodations block on someone else's day).
+       (SELECT COUNT(DISTINCT w2.id) FROM weddings w2
+         WHERE w2.venue_id = ANY($2::int[]) OR w2.ceremony_venue_id = ANY($2::int[]))::int AS n_hosted,
+       (SELECT COUNT(*) FROM wedding_vendors wv2
+         WHERE wv2.account_id = ANY($2::int[])
+           AND wv2.wedding_id NOT IN (
+             SELECT id FROM weddings w3
+              WHERE w3.venue_id = ANY($2::int[]) OR w3.ceremony_venue_id = ANY($2::int[])
+           ))::int AS n_also_credited,
+       (SELECT COUNT(*) FROM weddings w4 WHERE w4.venue_id = ANY($2::int[]))::int AS n_venue_id_weddings
      FROM accounts a
      LEFT JOIN v_account_role var ON var.account_id = a.id
      LEFT JOIN account_locations al ON al.account_id = a.id
@@ -173,15 +214,26 @@ export async function getVendorProfile(
   if (rows.length === 0) return null;
   const a = rows[0];
 
+  // D056 stage 3: a venue view (Hosted/Also credited split + hosted-only Feed default)
+  // applies when this account's top role is venue-ish, OR it's the primary venue_id of
+  // at least one wedding even if some other role currently outranks it in v_account_role
+  // (e.g. a role-tag refresh hasn't run yet -- see docs/decisions.md D056).
+  const isVenueView = ["venue", "accommodations", "hotel"].includes(a.role ?? "") || a.n_venue_id_weddings > 0;
+  const hostedOnly = opts.hostedOnly ?? isVenueView;
+
   // The remaining queries only need a.id; run them together.
-  const [{ rows: partnerRows }, feed, { rows: enrichmentRows }] = await Promise.all([
+  const [{ rows: partnerRows }, feed, { rows: enrichmentRows }, { rows: roleRows }] = await Promise.all([
     pool.query(
       `SELECT
          partner.id::int,
          partner.username::text,
          CASE WHEN pv.name IS NULL OR pv.name IN (partner.username::text, '@' || partner.username::text)
               THEN COALESCE(partner.full_name, partner.username::text) ELSE pv.name END AS name,
-         pvar.role::text AS role,
+         -- D056 stage 3: show how the partner actually worked WITH this account -- the
+         -- mode of their wedding_vendors.role on weddings shared with it -- falling back
+         -- to their overall top role (v_account_role) when nothing shared has a role
+         -- (shouldn't happen given the edges join, but keeps this NOT NULL-safe).
+         COALESCE(shared_role.role, pvar.role::text) AS role,
          partner.avatar_path AS avatar,
          SUM(e.n_weddings)::int AS n_weddings, MAX(e.last_worked_together) AS last_worked_together
        FROM edges e
@@ -191,9 +243,18 @@ export async function getVendorProfile(
        LEFT JOIN LATERAL (
          SELECT name FROM vendors WHERE account_id = partner.id ORDER BY id LIMIT 1
        ) pv ON true
+       LEFT JOIN LATERAL (
+         SELECT wv2.role::text AS role
+         FROM wedding_vendors wv2
+         WHERE wv2.account_id = partner.id
+           AND wv2.wedding_id IN (SELECT wedding_id FROM wedding_vendors WHERE account_id = ANY($1::int[]))
+         GROUP BY wv2.role
+         ORDER BY COUNT(*) DESC, wv2.role
+         LIMIT 1
+       ) shared_role ON true
        WHERE (e.account_a = ANY($1::int[]) OR e.account_b = ANY($1::int[]))
          AND partner.id <> ALL($1::int[])
-       GROUP BY partner.id, partner.username, name, pvar.role, partner.avatar_path
+       GROUP BY partner.id, partner.username, name, pvar.role, partner.avatar_path, shared_role.role
        ORDER BY n_weddings DESC, last_worked_together DESC NULLS LAST
        LIMIT 24`,
       [allIds]
@@ -201,6 +262,7 @@ export async function getVendorProfile(
     listWeddingStacks({
       accountId: canonicalId,
       aliasAccountIds: aliasIds,
+      hostedOnly,
       limit: opts.feedLimit ?? 20,
       offset: opts.feedOffset ?? 0,
     }),
@@ -212,6 +274,17 @@ export async function getVendorProfile(
        JOIN vendors v ON v.id = ve.vendor_id
        WHERE v.account_id = $1`,
       [a.id]
+    ),
+    // D056 stage 3 "Credited as": how this account (aliases included) has actually been
+    // credited, by wedding_vendors.role -- the ground truth, independent of whatever
+    // v_account_role currently ranks as its single top role.
+    pool.query(
+      `SELECT role::text, COUNT(*)::int AS n
+       FROM wedding_vendors
+       WHERE account_id = ANY($1::int[])
+       GROUP BY role
+       ORDER BY n DESC, role`,
+      [allIds]
     ),
   ]);
 
@@ -232,7 +305,11 @@ export async function getVendorProfile(
       review_count: a.review_count,
       n_weddings: a.n_weddings,
       n_chicago_weddings: a.n_chicago_weddings,
+      isVenueView,
+      nHosted: a.n_hosted,
+      nAlsoCredited: a.n_also_credited,
     },
+    roleDistribution: roleRows.map((r) => ({ role: r.role as string, n: r.n as number })),
     partners: partnerRows.map((p) => ({
       id: p.id,
       username: p.username,
@@ -246,12 +323,17 @@ export async function getVendorProfile(
     feedTotal: feed.total,
     feedLimit: feed.limit,
     feedOffset: feed.offset,
+    hostedOnly,
   };
 }
 
 export async function listVendors(opts: {
   /** vendor_role values to include; null/empty = all roles. */
   roles?: string[] | null;
+  /** D056 stage 3: a ROLE_CATEGORIES slug (e.g. "photo_video"), expanded to its roles.
+   * Combined with `roles` as an intersection when both are given; alone, it's the same
+   * as passing every role in the category. */
+  category?: string | null;
   q?: string | null;
   /** Only vendors with at least this many documented Chicago weddings. */
   minWeddings?: number;
@@ -262,7 +344,12 @@ export async function listVendors(opts: {
 } = {}) {
   const limit = Math.min(opts.limit ?? 24, 100);
   const offset = opts.offset ?? 0;
-  const roles = opts.roles?.length ? opts.roles : null;
+  const categoryExpanded = opts.category ? categoryRoles(opts.category) : null;
+  const roles = opts.roles?.length
+    ? categoryExpanded
+      ? opts.roles.filter((r) => categoryExpanded.includes(r))
+      : opts.roles
+    : categoryExpanded;
   const teamIds = opts.teamIds?.length ? opts.teamIds.slice(0, 50) : null;
   // A "Chicago vendor" = worked at least one venue-verified Chicago wedding.
   const { rows } = await getPool().query(
