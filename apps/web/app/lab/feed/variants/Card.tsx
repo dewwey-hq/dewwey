@@ -8,7 +8,7 @@ import { MeasuredCard } from "../components/MeasuredCard";
 import { VendorAvatar } from "../components/VendorAvatar";
 import { Avatar } from "@/app/components/Avatar";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
-import { coverPost, coverOrFirstPost, groupStackByCategory, displayName, isDerivedName } from "@/lib/feedDesign";
+import { coverPost, coverOrFirstPost, groupStackByCategory, displayName } from "@/lib/feedDesign";
 import { roleLabel, contextLabel } from "@/lib/roles";
 import type { EmbedSize, Side, Split, TileCols } from "../variant";
 import type { StackPostInfo, StackVendor, WeddingStack } from "@/lib/server/graph";
@@ -43,7 +43,7 @@ const TILE_CAP = 6;
 /** One tile in the stack grid — avatar, name (+ `@handle` when the name had to be
  * derived from it, large screens only), role/context subtitle, small `AddToTeamButton`.
  * Roster's tile shape (`RosterTile`), duplicated here per the lab's per-variant
- * convention, with Card's own `isDerivedName` `@handle` behavior kept. */
+ * convention; no `@handle` suffix (user, 2026-09-11: "we don't need the instagram handles"). */
 function CardTile({ vendor }: { vendor: StackVendor & { extraRoles: string[] } }) {
   const ctx = vendor.contexts
     .map((c) => contextLabel(c))
@@ -59,12 +59,7 @@ function CardTile({ vendor }: { vendor: StackVendor & { extraRoles: string[] } }
         href={`/vendors/${encodeURIComponent(vendor.username)}`}
         className="min-w-0 flex-1 text-gray-900 hover:text-gray-600"
       >
-        <span className="block truncate text-sm font-medium">
-          {vName}
-          {!isDerivedName(vendor.name, vendor.username) && (
-            <span className="hidden text-xs font-normal text-black/[0.45] lg:inline"> @{vendor.username}</span>
-          )}
-        </span>
+        <span className="block truncate text-sm font-medium">{vName}</span>
         {subLine && <span className="block truncate text-xs text-black/[0.45]">{subLine}</span>}
       </Link>
       <span className="inline-block shrink-0 scale-[0.83]">
@@ -219,7 +214,12 @@ function FeedCardC({
   const venueVendor = venueKey ? stack.vendors.find((v) => v.username.toLowerCase() === venueKey) : undefined;
   const others: StackVendor[] = venueVendor ? stack.vendors.filter((v) => v !== venueVendor) : stack.vendors;
   const groups = groupStackByCategory(others);
-  const tiles = groups.flatMap((g) => g.vendors);
+  // The page's venue is pinned as the FIRST tile (user, 2026-09-11: "show the selected
+  // venue/whatever vendor as the top in the credit stack"), then everyone else by category.
+  const tiles = [
+    ...(venueVendor ? [{ ...venueVendor, extraRoles: [] as string[] }] : []),
+    ...groups.flatMap((g) => g.vendors),
+  ];
   // Mobile-only fold (md+ shows every tile, scrolling instead -- see the panel below).
   const hiddenCountMobile = Math.max(0, tiles.length - TILE_CAP);
   // Card has no `venue` prop (unlike Roster's `venueFallbackName`) -- `stack.venue_name`
@@ -339,9 +339,7 @@ function FeedCardC({
             </button>
           </div>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-black/[0.45]">
-            <span>
-              Venue · {monthYear} · {stack.n_posts} post{stack.n_posts === 1 ? "" : "s"}
-            </span>
+            <span>{monthYear}</span>
             {activePost?.postType === "Video" && (
               <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-gray-600">
                 Reel
