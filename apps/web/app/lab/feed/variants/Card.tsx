@@ -417,7 +417,7 @@ function FeedCardC({
               onClick={() => setExpanded(true)}
               className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900"
             >
-              +{hiddenCount} more vendor{hiddenCount === 1 ? "" : "s"}
+              Show more ({hiddenCount})
             </button>
           )}
           {expanded && hiddenCount > 0 && (
@@ -426,7 +426,7 @@ function FeedCardC({
               onClick={() => setExpanded(false)}
               className="mt-2 w-full rounded-lg border border-black/[0.07] py-1.5 text-xs font-medium text-black/[0.45] hover:bg-black/[0.02] hover:text-gray-900"
             >
-              Show fewer
+              Show less
             </button>
           )}
         </div>
