@@ -11,7 +11,7 @@ import { Grid } from "./variants/Grid";
 import { Card } from "./variants/Card";
 import { Recipe } from "./variants/Recipe";
 import type { WeddingStack } from "@/lib/server/graph";
-import type { Variant } from "./variant";
+import { EMBED_SIZES, LAYOUTS, type EmbedSize, type Layout, type Variant } from "./variant";
 
 const VARIANT_LABELS: Record<Variant, string> = {
   a: "A2 · Clean list",
@@ -32,27 +32,46 @@ export function FeedLab({
   venue,
   stacks,
   initialVariant,
+  initialEmbedSize,
+  initialLayout,
 }: {
   venue: { id: number; username: string; name: string };
   stacks: WeddingStack[];
   initialVariant: Variant;
+  initialEmbedSize: EmbedSize;
+  initialLayout: Layout;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [variant, setVariant] = useState<Variant>(initialVariant);
+  const [embedSize, setEmbedSize] = useState<EmbedSize>(initialEmbedSize);
+  const [layout, setLayout] = useState<Layout>(initialLayout);
 
   useEffect(() => {
     setVariant(initialVariant);
-  }, [initialVariant]);
+    setEmbedSize(initialEmbedSize);
+    setLayout(initialLayout);
+  }, [initialVariant, initialEmbedSize, initialLayout]);
 
-  const setVariantAndUrl = useCallback(
-    (v: Variant) => {
-      setVariant(v);
-      router.push(`${pathname}?venue=${encodeURIComponent(venue.username)}&variant=${v}`, {
-        scroll: false,
-      });
+  // One URL-sync helper for all three toggles (variant/size/layout) — size and layout
+  // only matter for C/D, but staying in the URL regardless means switching back to C or
+  // D later remembers the last choice instead of resetting to the default.
+  const updateQuery = useCallback(
+    (overrides: { variant?: Variant; size?: EmbedSize; layout?: Layout }) => {
+      const nextVariant = overrides.variant ?? variant;
+      const nextSize = overrides.size ?? embedSize;
+      const nextLayout = overrides.layout ?? layout;
+      setVariant(nextVariant);
+      setEmbedSize(nextSize);
+      setLayout(nextLayout);
+      const sp = new URLSearchParams();
+      sp.set("venue", venue.username);
+      sp.set("variant", nextVariant);
+      sp.set("size", String(nextSize));
+      sp.set("layout", nextLayout);
+      router.push(`${pathname}?${sp.toString()}`, { scroll: false });
     },
-    [pathname, router, venue.username],
+    [pathname, router, venue.username, variant, embedSize, layout],
   );
 
   // -- Measurement strip: mounted iframes, median card height, ms to first embed load.
@@ -112,7 +131,7 @@ export function FeedLab({
               <button
                 key={v}
                 type="button"
-                onClick={() => setVariantAndUrl(v)}
+                onClick={() => updateQuery({ variant: v })}
                 className={pillClassName(v === variant)}
               >
                 {VARIANT_LABELS[v]}
@@ -120,6 +139,52 @@ export function FeedLab({
             ))}
           </div>
         </div>
+        {(variant === "c" || variant === "d") && (
+          <div
+            className={`${siteContainerClass} flex flex-wrap items-center gap-x-4 gap-y-1.5 pb-2.5 text-xs`}
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="text-black/[0.4]">Size</span>
+              <span className="flex gap-1">
+                {EMBED_SIZES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => updateQuery({ size: s })}
+                    aria-pressed={s === embedSize}
+                    className={`rounded-full px-2.5 py-1 font-medium ring-1 ring-inset transition-colors ${
+                      s === embedSize
+                        ? "bg-gray-900 text-white ring-gray-900"
+                        : "bg-white text-gray-600 ring-black/[0.10] hover:ring-black/[0.25]"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-black/[0.4]">Layout</span>
+              <span className="flex gap-1">
+                {LAYOUTS.map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => updateQuery({ layout: l })}
+                    aria-pressed={l === layout}
+                    className={`rounded-full px-2.5 py-1 font-medium ring-1 ring-inset transition-colors ${
+                      l === layout
+                        ? "bg-gray-900 text-white ring-gray-900"
+                        : "bg-white text-gray-600 ring-black/[0.10] hover:ring-black/[0.25]"
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </span>
+            </span>
+          </div>
+        )}
         <div
           className={`${siteContainerClass} flex flex-wrap items-center gap-x-5 gap-y-1 pb-2.5 text-[11px] text-black/[0.5]`}
         >
@@ -136,8 +201,8 @@ export function FeedLab({
         <MeasurementContext.Provider value={measurement}>
           {variant === "a" && <CleanList stacks={stacks} />}
           {variant === "b" && <Grid stacks={stacks} />}
-          {variant === "c" && <Card stacks={stacks} />}
-          {variant === "d" && <Recipe stacks={stacks} />}
+          {variant === "c" && <Card stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} />}
+          {variant === "d" && <Recipe stacks={stacks} embedWidth={embedSize} twoUp={layout === "2-up"} />}
         </MeasurementContext.Provider>
       </main>
     </div>

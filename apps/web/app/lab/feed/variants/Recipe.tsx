@@ -8,9 +8,20 @@ import { Avatar } from "@/app/components/Avatar";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
 import { coverPost, coverOrFirstPost, groupStackByCategory } from "@/lib/feedDesign";
 import { contextLabel } from "@/lib/roles";
+import type { EmbedSize } from "../variant";
 import type { StackPostInfo, StackVendor, WeddingStack } from "@/lib/server/graph";
 
-const COLLAPSE_AT = 8;
+const DEFAULT_COLLAPSE_AT = 8;
+const COMPACT_COLLAPSE_AT = 6;
+
+/** Static, fully-written-out class names per size (Tailwind's JIT scans source text, not
+ * runtime-interpolated strings) — the side-by-side grid template used in 1-up mode only;
+ * 2-up stacks media above the panel instead. */
+const SIDE_BY_SIDE_GRID_CLASS: Record<EmbedSize, string> = {
+  360: "lg:grid-cols-[minmax(0,360px)_1fr]",
+  400: "lg:grid-cols-[minmax(0,400px)_1fr]",
+  470: "lg:grid-cols-[minmax(0,470px)_1fr]",
+};
 
 /** "November 2025" — same local helper as `Card.tsx` (not centralized; each variant
  * that wants a plain month+year label carries its own copy, same-rules addition). Read
@@ -44,7 +55,17 @@ function RecipeFallback({ post }: { post: StackPostInfo | null }) {
   );
 }
 
-function FeedCardRecipe({ stack, eagerCover }: { stack: WeddingStack; eagerCover: boolean }) {
+function FeedCardRecipe({
+  stack,
+  eagerCover,
+  embedWidth,
+  twoUp,
+}: {
+  stack: WeddingStack;
+  eagerCover: boolean;
+  embedWidth: EmbedSize;
+  twoUp: boolean;
+}) {
   const embeddablePosts = stack.post_infos.filter((p) => p.ok && Boolean(p.url));
   const cover = coverPost(stack.post_infos);
   const initialIdx = cover ? Math.max(0, embeddablePosts.findIndex((p) => p.url === cover.url)) : 0;
@@ -59,6 +80,14 @@ function FeedCardRecipe({ stack, eagerCover }: { stack: WeddingStack; eagerCover
   const monthYear = monthYearLabel(stack.event_date_est);
   const openUrl = activePost?.url ?? stack.post_urls[0] ?? null;
 
+  // User feedback (2026-09-11): "too large... make them smaller within Instagram
+  // guidance" -- `embedWidth` (360/400/470, Instagram's floor is 326) drives the media
+  // column's max width; `twoUp` stacks media above the panel so two cards fit side by
+  // side. Compact density (tighter rows, 12px group gap, 6-vendor collapse) kicks in
+  // automatically at 400px-or-narrower or in 2-up.
+  const compact = embedWidth <= 400 || twoUp;
+  const collapseAt = compact ? COMPACT_COLLAPSE_AT : DEFAULT_COLLAPSE_AT;
+
   const venueKey = stack.venue_username?.toLowerCase();
   const venueVendor = venueKey ? stack.vendors.find((v) => v.username.toLowerCase() === venueKey) : undefined;
   const others: StackVendor[] = venueVendor ? stack.vendors.filter((v) => v !== venueVendor) : stack.vendors;
@@ -66,23 +95,28 @@ function FeedCardRecipe({ stack, eagerCover }: { stack: WeddingStack; eagerCover
   const flatOrdered = allGroups.flatMap((g) => g.vendors);
   const totalVendors = flatOrdered.length;
   const visibleSet = new Set(
-    expanded || totalVendors <= COLLAPSE_AT ? flatOrdered : flatOrdered.slice(0, COLLAPSE_AT),
+    expanded || totalVendors <= collapseAt ? flatOrdered : flatOrdered.slice(0, collapseAt),
   );
   const visibleGroups = allGroups
     .map((g) => ({ ...g, vendors: g.vendors.filter((v) => visibleSet.has(v)) }))
     .filter((g) => g.vendors.length > 0);
 
+  const gridTemplateClass = twoUp ? "" : SIDE_BY_SIDE_GRID_CLASS[embedWidth];
+
   return (
     <article className="mx-auto w-full max-w-[1160px] rounded-[20px] border border-black/[0.07] bg-white p-4">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[500px_minmax(0,1fr)]">
-        {/* Media -- Instagram controls its own height; never crop/force. */}
-        <div className="flex flex-col">
-          <InstagramPostEmbed
-            key={activePost?.url ?? "none"}
-            post={activePost}
-            eager={eagerCover || interacted}
-            renderFallback={({ post }) => <RecipeFallback post={post} />}
-          />
+      <div className={`grid grid-cols-1 gap-4 ${gridTemplateClass}`}>
+        {/* Media -- Instagram controls its own height; never crop/force. Capped at
+            `embedWidth` (never below Instagram's own 326px floor). */}
+        <div className="flex flex-col items-center">
+          <div className="w-full" style={{ maxWidth: embedWidth }}>
+            <InstagramPostEmbed
+              key={activePost?.url ?? "none"}
+              post={activePost}
+              eager={eagerCover || interacted}
+              renderFallback={({ post }) => <RecipeFallback post={post} />}
+            />
+          </div>
           {embeddablePosts.length > 1 && (
             <div
               role="group"
@@ -136,7 +170,7 @@ function FeedCardRecipe({ stack, eagerCover }: { stack: WeddingStack; eagerCover
             THE TEAM
           </p>
 
-          <div className="mt-2 flex flex-col gap-4">
+          <div className={`mt-2 flex flex-col ${compact ? "gap-3" : "gap-4"}`}>
             {visibleGroups.map((group) => (
               <div key={group.slug}>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
@@ -151,7 +185,7 @@ function FeedCardRecipe({ stack, eagerCover }: { stack: WeddingStack; eagerCover
                     return (
                       <li
                         key={`${v.username}-${v.role}`}
-                        className="grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 py-1.5"
+                        className={`grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 ${compact ? "py-1" : "py-1.5"}`}
                       >
                         <Avatar src={v.avatar_url} name={v.name} size={24} className="text-[10px]" />
                         <Link
@@ -180,14 +214,14 @@ function FeedCardRecipe({ stack, eagerCover }: { stack: WeddingStack; eagerCover
             ))}
           </div>
 
-          {totalVendors > COLLAPSE_AT && (
+          {totalVendors > collapseAt && (
             <button
               type="button"
               onClick={() => setExpanded((e) => !e)}
               aria-expanded={expanded}
               className="mt-3 self-start text-xs font-medium text-neutral-600 hover:text-neutral-900"
             >
-              {expanded ? "Show fewer vendors" : `+ ${totalVendors - COLLAPSE_AT} more vendors`}
+              {expanded ? "Show fewer vendors" : `+ ${totalVendors - collapseAt} more vendors`}
             </button>
           )}
 
@@ -213,14 +247,24 @@ function FeedCardRecipe({ stack, eagerCover }: { stack: WeddingStack; eagerCover
  * No fixed card height, no couple names, no captions, no Reel/Carousel badges. The
  * venue reads as "Hosted at <name>" text (never a vendor row); everyone else is
  * grouped by category (`ROLE_CATEGORIES` priority order, already correct once venue is
- * excluded) with an inline "+N more vendors" expand past 8.
+ * excluded) with an inline "+N more vendors" expand past 8 (6 when compact). A later
+ * round of feedback ("too large... make them smaller within Instagram guidance") added
+ * `embedWidth`/`twoUp` (`FeedLab.tsx`'s Size/Layout controls, C and D only).
  */
-export function Recipe({ stacks }: { stacks: WeddingStack[] }) {
+export function Recipe({
+  stacks,
+  embedWidth,
+  twoUp,
+}: {
+  stacks: WeddingStack[];
+  embedWidth: EmbedSize;
+  twoUp: boolean;
+}) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className={twoUp ? "grid grid-cols-1 gap-4 xl:grid-cols-2" : "flex flex-col gap-6"}>
       {stacks.map((stack, i) => (
         <MeasuredCard key={stack.id} id={stack.id}>
-          <FeedCardRecipe stack={stack} eagerCover={i < 2} />
+          <FeedCardRecipe stack={stack} eagerCover={i < 2} embedWidth={embedWidth} twoUp={twoUp} />
         </MeasuredCard>
       ))}
     </div>

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getPool } from "@/lib/server/db";
 import { listWeddingStacks } from "@/lib/server/graph";
 import { FeedLab } from "./FeedLab";
-import { isVariant, type Variant } from "./variant";
+import { isVariant, parseEmbedSize, parseLayout, type Variant } from "./variant";
 
 export const metadata: Metadata = {
   title: "Feed design lab",
@@ -25,6 +25,8 @@ export default async function FeedLabPage({
   const venueUsername = typeof sp.venue === "string" && sp.venue.length > 0 ? sp.venue : "the.arbory";
   const rawVariant = typeof sp.variant === "string" ? sp.variant.toLowerCase() : "a";
   const variant: Variant = isVariant(rawVariant) ? rawVariant : "a";
+  const embedSize = parseEmbedSize(typeof sp.size === "string" ? sp.size : undefined);
+  const layout = parseLayout(typeof sp.layout === "string" ? sp.layout : undefined);
 
   const { rows } = await getPool().query<{ id: number; username: string; name: string }>(
     `SELECT id::int, username::text, COALESCE(full_name, username::text) AS name
@@ -45,5 +47,13 @@ export default async function FeedLabPage({
     limit: 60,
   });
 
-  return <FeedLab venue={venue} stacks={stacks} initialVariant={variant} />;
+  return (
+    <FeedLab
+      venue={venue}
+      stacks={stacks}
+      initialVariant={variant}
+      initialEmbedSize={embedSize}
+      initialLayout={layout}
+    />
+  );
 }

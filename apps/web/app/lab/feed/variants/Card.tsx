@@ -10,6 +10,7 @@ import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
 import { coverPost, coverOrFirstPost, groupStackByCategory } from "@/lib/feedDesign";
 import { roleLabel, contextLabel } from "@/lib/roles";
 import { showHandle } from "@/lib/slots";
+import type { EmbedSize } from "../variant";
 import type { StackVendor, WeddingStack } from "@/lib/server/graph";
 
 /** "July 2026" — no couple names anywhere in this variant (user feedback, 2026-09-11:
@@ -23,16 +24,38 @@ function monthYearLabel(date: string | null): string {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
+/** Static, fully-written-out class names per size (Tailwind's JIT scans source text, not
+ * runtime-interpolated strings) — the side-by-side grid template used in 1-up mode only;
+ * 2-up stacks media above the panel instead (see `cardLayoutClass` below). */
+const SIDE_BY_SIDE_GRID_CLASS: Record<EmbedSize, string> = {
+  360: "md:grid md:grid-cols-[minmax(0,360px)_1fr]",
+  400: "md:grid md:grid-cols-[minmax(0,400px)_1fr]",
+  470: "md:grid md:grid-cols-[minmax(0,470px)_1fr]",
+};
+
+const COMPACT_COLLAPSE_AT = 6;
+
 /** One card's dots-pager (now folded into a single header-row control) + caption-toggle
  * state, plus the ResizeObserver that caps the stack panel's height at the embed's real
  * (post-load) height on md+. */
-function FeedCardC({ stack, eagerCover }: { stack: WeddingStack; eagerCover: boolean }) {
+function FeedCardC({
+  stack,
+  eagerCover,
+  embedWidth,
+  twoUp,
+}: {
+  stack: WeddingStack;
+  eagerCover: boolean;
+  embedWidth: EmbedSize;
+  twoUp: boolean;
+}) {
   const embeddablePosts = stack.post_infos.filter((p) => p.ok && Boolean(p.url));
   const cover = coverPost(stack.post_infos);
   const initialIdx = cover ? Math.max(0, embeddablePosts.findIndex((p) => p.url === cover.url)) : 0;
   const [idx, setIdx] = useState(initialIdx);
   const [interacted, setInteracted] = useState(false);
   const [captioned, setCaptioned] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const activeEmbeddable = embeddablePosts[idx] ?? null;
   // Nothing embeddable at all -- fall back to the first post anyway so InstagramPostEmbed's
   // own blocked-owner path has the real owner/caption instead of showing nothing.
@@ -42,10 +65,27 @@ function FeedCardC({ stack, eagerCover }: { stack: WeddingStack; eagerCover: boo
   const openUrl = activePost?.url ?? stack.post_urls[0] ?? null;
   const otherPostsCount = Math.max(0, embeddablePosts.length - 1);
 
+  // User feedback (2026-09-11): "the cards ... too large, make them smaller within
+  // Instagram guidance" -- `embedWidth` (360/400/470, Instagram's floor is 326) drives
+  // the media column's max width; `twoUp` stacks media above the panel instead of beside
+  // it so two cards fit side by side. Below 400px-equivalent-or-narrower, or in 2-up
+  // (where each card is already half-width), the stack panel switches to a compact
+  // density automatically.
+  const compact = embedWidth <= 400 || twoUp;
+
   const venueKey = stack.venue_username?.toLowerCase();
   const venueVendor = venueKey ? stack.vendors.find((v) => v.username.toLowerCase() === venueKey) : undefined;
   const others: StackVendor[] = venueVendor ? stack.vendors.filter((v) => v !== venueVendor) : stack.vendors;
-  const groups = groupStackByCategory(others);
+  const allGroups = groupStackByCategory(others);
+  const flatOrdered = allGroups.flatMap((g) => g.vendors);
+  const totalVendors = flatOrdered.length;
+  const collapsing = compact && totalVendors > COMPACT_COLLAPSE_AT;
+  const visibleSet = new Set(
+    collapsing && !expanded ? flatOrdered.slice(0, COMPACT_COLLAPSE_AT) : flatOrdered,
+  );
+  const groups = allGroups
+    .map((g) => ({ ...g, vendors: g.vendors.filter((v) => visibleSet.has(v)) }))
+    .filter((g) => g.vendors.length > 0);
 
   // Cap the stack panel's height at the media column's real (post-load) height on md+ --
   // mobile stays unconstrained (stacked layout). A CSS var + `md:max-h-[var(--card-media-h)]`
@@ -62,28 +102,34 @@ function FeedCardC({ stack, eagerCover }: { stack: WeddingStack; eagerCover: boo
     return () => observer.disconnect();
   }, []);
 
+  const cardLayoutClass = twoUp ? "" : SIDE_BY_SIDE_GRID_CLASS[embedWidth];
+  const mediaBorderClass = twoUp
+    ? "border-b border-black/[0.06]"
+    : "border-b border-black/[0.06] md:border-b-0 md:border-r";
+
   return (
     <article
-      className="overflow-hidden rounded-[1.4rem] border border-black/[0.07] bg-white md:grid md:grid-cols-[minmax(0,470px)_1fr]"
+      className={`overflow-hidden rounded-[1.4rem] border border-black/[0.07] bg-white ${cardLayoutClass}`}
       style={mediaHeight ? ({ ["--card-media-h" as string]: `${mediaHeight}px` } as React.CSSProperties) : undefined}
     >
-      {/* Media -- white, 470px on md+, min 326 (fluid below that via InstagramPostEmbed's
-          own responsive width), a hairline divider from the stack panel. */}
-      <div
-        ref={mediaRef}
-        className="flex flex-col items-center justify-center border-b border-black/[0.06] bg-white p-3 md:border-b-0 md:border-r"
-      >
-        <InstagramPostEmbed
-          key={`${activePost?.url ?? "none"}-${captioned ? "cap" : "nocap"}`}
-          post={activePost}
-          eager={eagerCover || interacted}
-          captioned={captioned}
-        />
+      {/* Media -- white, capped at `embedWidth`, min 326 (Instagram's own floor, via
+          InstagramPostEmbed), a hairline divider from the stack panel. */}
+      <div ref={mediaRef} className={`flex flex-col items-center justify-center bg-white p-3 ${mediaBorderClass}`}>
+        <div className="w-full" style={{ maxWidth: embedWidth }}>
+          <InstagramPostEmbed
+            key={`${activePost?.url ?? "none"}-${captioned ? "cap" : "nocap"}`}
+            post={activePost}
+            eager={eagerCover || interacted}
+            captioned={captioned}
+          />
+        </div>
       </div>
 
       {/* The stack panel -- gray-50, venue pinned as a full-width row, everyone else
-          grouped by category in two columns on md+. */}
-      <div className="flex min-w-0 flex-col bg-gray-50 md:h-full md:max-h-[var(--card-media-h,none)] md:min-h-0">
+          grouped by category (compact: single column, 6-vendor collapse, tighter rows). */}
+      <div
+        className={`flex min-w-0 flex-col bg-gray-50 ${twoUp ? "" : "md:h-full md:max-h-[var(--card-media-h,none)] md:min-h-0"}`}
+      >
         <div className="flex flex-wrap items-center gap-2 border-b border-black/[0.06] px-5 py-3.5 md:px-6">
           <span className="font-medium text-gray-900">{monthYear}</span>
           {activePost?.postType === "Video" && (
@@ -158,12 +204,12 @@ function FeedCardC({ stack, eagerCover }: { stack: WeddingStack; eagerCover: boo
             </Link>
           )}
 
-          <div className="columns-1 gap-x-6 md:columns-2">
+          <div className={`columns-1 gap-x-6 ${compact ? "" : "md:columns-2"}`}>
             {groups.map((group) => {
               const distinctRoles = new Set(group.vendors.map((v) => v.role));
               const showRoleLabel = distinctRoles.size > 1;
               return (
-                <div key={group.slug} className="mb-4 break-inside-avoid">
+                <div key={group.slug} className={`break-inside-avoid ${compact ? "mb-3" : "mb-4"}`}>
                   <p className="text-[11px] font-medium uppercase tracking-wide text-black/[0.4]">
                     {group.label}
                   </p>
@@ -177,7 +223,10 @@ function FeedCardC({ stack, eagerCover }: { stack: WeddingStack; eagerCover: boo
                         .filter(Boolean)
                         .join(" · ");
                       return (
-                        <li key={`${v.username}-${v.role}`} className="flex items-center gap-2 py-2">
+                        <li
+                          key={`${v.username}-${v.role}`}
+                          className={`flex items-center gap-2 ${compact ? "py-1" : "py-2"}`}
+                        >
                           <Link
                             href={`/vendors/${encodeURIComponent(v.username)}`}
                             className="flex min-w-0 flex-1 items-center gap-2.5 text-gray-900 hover:text-gray-600"
@@ -213,6 +262,17 @@ function FeedCardC({ stack, eagerCover }: { stack: WeddingStack; eagerCover: boo
               );
             })}
           </div>
+
+          {collapsing && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              aria-expanded={expanded}
+              className="mt-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+            >
+              {expanded ? "Show fewer vendors" : `+ ${totalVendors - COMPACT_COLLAPSE_AT} more vendors`}
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -225,15 +285,32 @@ function FeedCardC({ stack, eagerCover }: { stack: WeddingStack; eagerCover: boo
  * vendor list right, one card = one wedding), made compliant (official `embed.js` embed,
  * no crop) and, per a second round of feedback the same day, cleaner: no couple names
  * (month + year only), a white photo column next to a gray-50 stack panel, the venue
- * pinned as its own row, everyone else grouped by category in two columns, and an
- * opt-in "Show caption" toggle instead of us ever rendering the scraped caption text.
+ * pinned as its own row, everyone else grouped by category, and an opt-in "Show caption"
+ * toggle instead of us ever rendering the scraped caption text. A third round of feedback
+ * ("too large... make them smaller within Instagram guidance") added `embedWidth`/`twoUp`
+ * (`FeedLab.tsx`'s Size/Layout controls, C and D only): a narrower/2-up card switches its
+ * stack panel to a compact density (single column, tighter rows, 6-vendor collapse).
  */
-export function Card({ stacks }: { stacks: WeddingStack[] }) {
+export function Card({
+  stacks,
+  embedWidth,
+  twoUp,
+}: {
+  stacks: WeddingStack[];
+  embedWidth: EmbedSize;
+  twoUp: boolean;
+}) {
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <div
+      className={
+        twoUp
+          ? "grid grid-cols-1 gap-4 xl:grid-cols-2"
+          : "mx-auto flex max-w-5xl flex-col gap-6"
+      }
+    >
       {stacks.map((stack, i) => (
         <MeasuredCard key={stack.id} id={stack.id}>
-          <FeedCardC stack={stack} eagerCover={i < 2} />
+          <FeedCardC stack={stack} eagerCover={i < 2} embedWidth={embedWidth} twoUp={twoUp} />
         </MeasuredCard>
       ))}
     </div>
