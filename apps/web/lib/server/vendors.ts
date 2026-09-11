@@ -120,11 +120,11 @@ export async function searchVendors(params: VendorSearchParams) {
      WHERE (
          $1::text IS NULL
          OR var.role = $1::vendor_role
-         -- Product rule (user, 2026-09-10): a hotel belongs under "venue" when it was
+         -- Product rule (user, 2026-09-10): a hotel (D056: accommodations) belongs under "venue" when it was
          -- used as one, i.e. it is the venue of at least one documented wedding. Its top
          -- role tag stays 'hotel' (that is what the credit lines say); the wedding count
          -- is the evidence. See D055 "count honestly" in docs/decisions.md.
-         OR ($1::text = 'venue' AND var.role = 'hotel' AND COALESCE(wc.n_weddings, 0) > 0)
+         OR ($1::text = 'venue' AND var.role IN ('hotel', 'accommodations') AND COALESCE(wc.n_weddings, 0) > 0)
        )
        -- An alias handle (account_aliases) is the same business as its canonical account;
        -- the detail page already resolves it, so the browse list must not show it as a

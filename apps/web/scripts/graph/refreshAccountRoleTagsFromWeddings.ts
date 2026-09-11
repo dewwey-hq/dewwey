@@ -16,7 +16,11 @@
  * is) and upsert one `account_tags` row per `(account_id, role)` present in
  * `wedding_vendors`, using the SAME confidence formula Ben's pipeline
  * already uses for stack evidence: `least(0.5 + 0.15*evidence_count, 0.95)`
- * where `evidence_count = count(distinct wedding_id)`
+ * where `evidence_count = count(distinct wedding_id)`, plus -- for the venue role only -- the
+ * number of weddings ANCHORED on the account (`weddings.venue_id`). D056 stage 2 (2026-09-10): an
+ * account that is the venue of a documented wedding must keep a venue-category top role; without
+ * the anchor bonus a single stray credit ("Vanue: @sheratonlisle" parsed to other) ties and can
+ * flip a real venue off /venues. Counted deliberately twice: the credit and the anchor.
  * (see accountRoleTags.ts / accountRoleTags.test.ts for the formula and the
  * top-role diff classifier, unit-tested there). `v_account_role`'s own
  * ordering (evidence_count desc, confidence desc) then just works -- no view
@@ -142,9 +146,11 @@ async function main() {
 
     // Target wedding_credit rows: one per (account_id, role) in wedding_vendors.
     const { rows: targetRows } = await client.query<WeddingCreditTargetRow>(
-      `select account_id, role, count(distinct wedding_id)::int as evidence_count
-       from wedding_vendors
-       group by account_id, role`
+      `select wv.account_id, wv.role,
+              (count(distinct wv.wedding_id)
+               + case when wv.role = 'venue' then (select count(*) from weddings w where w.venue_id = wv.account_id) else 0 end)::int as evidence_count
+       from wedding_vendors wv
+       group by wv.account_id, wv.role`
     );
     const targetByKey = new Map(targetRows.map((r) => [key(r.account_id, r.role), r]));
 
@@ -175,12 +181,17 @@ async function main() {
     if (apply && enumReady) {
       const insertResult = await client.query(
         `insert into account_tags (account_id, role, source, confidence, evidence_count, updated_at)
-         select account_id, role, 'wedding_credit'::tag_source,
-                least(0.5 + 0.15 * count(distinct wedding_id), 0.95),
-                count(distinct wedding_id),
+         select t.account_id, t.role, 'wedding_credit'::tag_source,
+                least(0.5 + 0.15 * t.evidence_count, 0.95),
+                t.evidence_count,
                 now()
-         from wedding_vendors
-         group by account_id, role
+         from (
+           select wv.account_id, wv.role,
+                  (count(distinct wv.wedding_id)
+                   + case when wv.role = 'venue' then (select count(*) from weddings w where w.venue_id = wv.account_id) else 0 end)::int as evidence_count
+           from wedding_vendors wv
+           group by wv.account_id, wv.role
+         ) t
          on conflict (account_id, role, source)
          do update set confidence = excluded.confidence,
                         evidence_count = excluded.evidence_count,

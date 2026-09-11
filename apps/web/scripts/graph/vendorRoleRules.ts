@@ -252,7 +252,7 @@ const EXACT: Record<string, string[]> = {
   "floral wholesaler": ["florist"], "floral purses": ["accessories"], "dress rentals": ["attire"], "veil by": ["accessories"], "bridal sari": ["attire"], "bridal assistant": ["staffing"],
   producer: ["planner"], "art director": ["event_design"], organizers: ["planner"], "entertainment director": ["dj"], "travel agency": ["travel_honeymoon"], "dog handler": ["pet_attendant"],
   "party guest phone": ["guest_book"], "at @ secondary/stay": ["accommodations"], "pr & marketing support": ["noise"], "um filme produzido por": ["videographer"],
-  venue: ["venue"], venues: ["venue"], "wedding venue": ["venue"], location: ["venue"], locations: ["venue"],
+  venue: ["venue"], venues: ["venue"], vanue: ["venue"], venu: ["venue"], vanues: ["venue"], "wedding venues": ["venue"], "event venue": ["venue"], "event space": ["venue"], "wedding venue": ["venue"], location: ["venue"], locations: ["venue"],
   "host property": ["venue"], "venue saturday": ["venue"], "at @": ["venue"], "#hashtag": ["venue"], hashtag: ["venue"], "at": ["venue"],
   "venue management & bar": ["venue_management", "bar_service"], "venue management": ["venue_management"],
   "venue & catering": ["venue", "catering"], "venue + catering": ["venue", "catering"], "venue and catering": ["venue", "catering"],

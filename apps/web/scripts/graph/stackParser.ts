@@ -448,7 +448,7 @@ const EMOJI_ROLE_GROUPS: Array<{ chars: string[]; role: string | null }> = [
   { chars: ["👗", "👰", "🤵", "👔"], role: "attire" },
   { chars: ["💍"], role: "jewelry" },
   { chars: ["💌", "✉️"], role: "stationery" },
-  { chars: ["🪑", "🎀"], role: "rentals" },
+  { chars: ["🪑", "🎀", "🧺"], role: "rentals" },
   { chars: ["💡"], role: "lighting_production" },
   { chars: ["🚌", "🚎", "🚐", "🚗"], role: "transportation" },
   { chars: ["🏨"], role: "accommodations" },
