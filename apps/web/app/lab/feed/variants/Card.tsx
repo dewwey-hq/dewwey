@@ -144,8 +144,11 @@ function FeedCardC({
   // flips the column order (and the template) — the card's overflow-hidden rounds whichever
   // corners the embed ends up on.
   const flipped = mediaSide === "right";
-  const embedCol = twoUp ? `minmax(326px, ${split}fr)` : `${embedWidth}px`;
-  const panelCol = twoUp ? `minmax(0, ${100 - split}fr)` : `${panelWidthFor(embedWidth, split)}px`;
+  // 2-up: the embed column is `split`% of the card but never wider than the embed itself can
+  // be (540px) -- below xl the 2-up grid collapses to one column, and without the cap the
+  // column outgrew the embed and left a blank strip before "Hosted at" (user, 2026-09-11).
+  const embedCol = twoUp ? `minmax(326px, min(${embedWidth}px, ${split}%))` : `${embedWidth}px`;
+  const panelCol = twoUp ? "minmax(0, 1fr)" : `${panelWidthFor(embedWidth, split)}px`;
   const cardLayoutClass = `${SIDE_BY_SIDE_CLASS} md:items-start`;
   const cardStyle = {
     "--card-cols": flipped ? `${panelCol} ${embedCol}` : `${embedCol} ${panelCol}`,
