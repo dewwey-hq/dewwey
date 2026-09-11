@@ -290,16 +290,110 @@ function PhotoDeckCard({ stack }: { stack: WeddingStack }) {
   );
 }
 
-/** The full compliant card (embed + stack panel), used as Option B's deck front — the
- * SAME embed/panel markup as `PhotoDeckCard`, just laid out as one unit so the whole thing
- * can be the thing that peeks/flips. */
-function WholeCard({ stack, post }: { stack: WeddingStack; post: StackPostInfo | null }) {
+/** "Carousel" cell — the same card shell as `PhotoDeckCard` (360 media column, 240 static
+ * panel, same `VenuePanel`), but the media column is a horizontal snap-scroll track
+ * instead of a flip deck: one full-width slide per embeddable post, swipeable natively on
+ * touch, with the same arrows-and-bars pager as `Card.tsx` driving `track.scrollTo`. A
+ * `scroll` listener (rAF-debounced) derives the active index from `scrollLeft` so a manual
+ * swipe keeps the bars in sync. `overflow-x-hidden` on the column wrapper is a guard so the
+ * track's own horizontal scroll never leaks into the page; `items-start` on the flex track
+ * (rather than a `ResizeObserver`) is what makes the row's height track the tallest loaded
+ * slide, since a non-wrapping flex row's auto height is already the max of its children. */
+function CarouselCard({ stack }: { stack: WeddingStack }) {
+  const posts = embeddableOrAll(stack);
+  const n = posts.length;
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [idx, setIdx] = useState(() => initialIdxFor(stack, posts));
+
+  // Jump (no smooth scroll) to the initial post once the track has a real width — mount
+  // only, so a later programmatic/manual scroll never gets overridden.
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || track.clientWidth === 0) return;
+    track.scrollLeft = idx * track.clientWidth;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial position only
+  }, []);
+
+  // Swiping (or a trackpad) scrolls the track directly; this only keeps the pager's bars
+  // in sync with wherever the track actually lands. rAF-debounced so a fast swipe doesn't
+  // spam `setIdx` mid-gesture.
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    let raf: number | null = null;
+    const onScroll = () => {
+      if (raf != null) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        const width = track.clientWidth;
+        if (width <= 0) return;
+        const i = Math.min(n - 1, Math.max(0, Math.round(track.scrollLeft / width)));
+        setIdx((prev) => (prev === i ? prev : i));
+      });
+    };
+    track.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      track.removeEventListener("scroll", onScroll);
+      if (raf != null) cancelAnimationFrame(raf);
+    };
+  }, [n]);
+
+  const goTo = (i: number) => {
+    const clamped = ((i % n) + n) % n;
+    const track = trackRef.current;
+    if (track) track.scrollTo({ left: clamped * track.clientWidth, behavior: "smooth" });
+    setIdx(clamped);
+  };
+
   return (
     <article className="w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-white md:flex md:items-start">
       <div className="border-b border-black/[0.06] p-4 md:w-[360px] md:shrink-0 md:border-b-0 md:border-r">
-        <div className="w-full [&_iframe]:mb-0!">
-          <InstagramPostEmbed key={post?.url ?? "none"} post={post} eager />
+        <div className="overflow-x-hidden">
+          <div
+            ref={trackRef}
+            className="scrollbar-none flex items-start overflow-x-auto snap-x snap-mandatory overscroll-x-contain"
+          >
+            {posts.map((post) => (
+              <div key={post.url} className="w-full shrink-0 snap-center">
+                <div className="w-full [&_iframe]:mb-0!">
+                  <InstagramPostEmbed post={post} eager />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+        {n > 1 && (
+          <div className="mt-5 flex items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => goTo(idx - 1)}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
+              aria-label="Previous post"
+            >
+              <CaretLeft size={14} />
+            </button>
+            <div className="flex gap-1.5">
+              {posts.map((p, i) => (
+                <button
+                  key={p.url}
+                  type="button"
+                  onClick={() => goTo(i)}
+                  aria-label={`View post ${i + 1} of ${n}`}
+                  aria-current={i === idx ? "true" : undefined}
+                  className={`h-1.5 rounded-full transition-all ${i === idx ? "w-5 bg-rose-400" : "w-1.5 bg-gray-200"}`}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => goTo(idx + 1)}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
+              aria-label="Next post"
+            >
+              <CaretRight size={14} />
+            </button>
+          </div>
+        )}
       </div>
       <div className="min-w-0 flex-1 p-5 md:w-[240px] md:shrink-0">
         <VenuePanel stack={stack} />
@@ -308,53 +402,37 @@ function WholeCard({ stack, post }: { stack: WeddingStack; post: StackPostInfo |
   );
 }
 
-/** Option B · "Whole-card deck" — the entire card (embed + panel) is the deck's front
- * card; blank cards peek behind the whole card, pager centered underneath. */
-function WholeCardDeck({ stack }: { stack: WeddingStack }) {
-  const posts = embeddableOrAll(stack);
-  const [idx, setIdx] = useState(() => initialIdxFor(stack, posts));
-
-  return (
-    <PostDeck
-      posts={posts}
-      idx={idx}
-      onSelect={setIdx}
-      maxWidth={600}
-      renderFront={(post) => <WholeCard stack={stack} post={post} />}
-    />
-  );
-}
-
 /**
  * D058 follow-on swatch: "the experience for if there's multiple posts isn't ideal ...
  * need a better design than just the dots underneath" (user, 2026-09-11) — followed by
  * "if there's three posts then show another one behind it and we can let the user flip
  * through like the ui ux we have here" pointing at the concept page's `CardDeck`. This
- * replaces the earlier panel-top and multi-post-switcher swatch rounds (both decided) with
- * one comparison: the concept deck's feel applied two ways over the SAME real hosted,
- * multi-post stack — wedding 881 (The Arbory, 3 posts) by default.
+ * replaces the earlier panel-top, multi-post-switcher, and photo-deck/whole-card-deck
+ * swatch rounds with a head-to-head: the flip-through stack (`PhotoDeckCard`) against a
+ * horizontal snap carousel (`CarouselCard`) over the SAME real hosted, multi-post stack —
+ * wedding 881 (The Arbory, 3 posts) by default.
  */
 export function Swatches({ multiStack }: { multiStack: WeddingStack | null }) {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-1 text-lg font-semibold text-gray-900">
-        Stacked posts
+        Multi-post · Stack vs Carousel
         {multiStack ? ` · wedding ${multiStack.id} (${multiStack.n_posts} post${multiStack.n_posts === 1 ? "" : "s"})` : ""}
       </h1>
       {multiStack ? (
         <>
           <p className="mb-6 text-sm text-black/[0.5]">
-            Two placements of the concept page&apos;s flip-through deck over the same real, multi-post wedding — only
-            the front card ever holds a real (uncropped) embed, the peeking cards behind it are always empty.
+            Stack flips through peeking cards behind the front post; carousel swipes (or uses the arrows) between
+            full-width slides in a snap track — both keep every embed full-width and compliant.
           </p>
           <div className="grid gap-8 lg:grid-cols-2">
             <div>
-              <p className="mb-2 text-xs font-medium text-black/[0.45]">Option A · Photo deck</p>
+              <p className="mb-2 text-xs font-medium text-black/[0.45]">Stack · photo deck</p>
               <PhotoDeckCard stack={multiStack} />
             </div>
             <div>
-              <p className="mb-2 text-xs font-medium text-black/[0.45]">Option B · Whole-card deck</p>
-              <WholeCardDeck stack={multiStack} />
+              <p className="mb-2 text-xs font-medium text-black/[0.45]">Carousel</p>
+              <CarouselCard stack={multiStack} />
             </div>
           </div>
         </>
