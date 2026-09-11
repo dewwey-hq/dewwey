@@ -176,7 +176,12 @@ export async function searchVendors(params: VendorSearchParams) {
          -- Listing bar (user, 2026-09-11): a venue lists only when it is the venue of at least
          -- one documented wedding. Zero-wedding venue-tagged accounts keep their vendor page but
          -- stay out of the browse until something is documented there.
-         OR ($1::text = 'venue' AND var.role = 'venue' AND COALESCE(wc.n_weddings, 0) > 0)
+         -- Bar refined (user, 2026-09-11): 2+ documented weddings, or 1 with a known venue type
+         -- (hotel, event space, park, farm/estate, museum, club, house of worship, restaurant);
+         -- single-wedding accounts with no venue signal in their name/bio stay off the browse.
+         OR ($1::text = 'venue' AND var.role = 'venue'
+             AND (COALESCE(wc.n_weddings, 0) >= 2
+                  OR (COALESCE(wc.n_weddings, 0) = 1 AND a.venue_type IS NOT NULL AND a.venue_type <> 'other')))
          -- Product rule (user, 2026-09-10): a hotel (D056: accommodations) belongs under "venue" when it was
          -- used as one, i.e. it is the venue of at least one documented wedding. Its top
          -- role tag stays 'hotel' (that is what the credit lines say); the wedding count

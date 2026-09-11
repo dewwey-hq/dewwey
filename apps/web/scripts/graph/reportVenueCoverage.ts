@@ -102,7 +102,11 @@ async function main() {
        -- Same predicate as searchVendors(category='venue'), including the 2026-09-10 product
        -- rule: a hotel-top account lists under venues when it hosted >=1 documented wedding.
        where al.in_metro
-         and (var.role::text in ('venue', 'hotel', 'accommodations') and coalesce(wc.n_weddings, 0) > 0)
+         and (
+           (var.role::text in ('hotel', 'accommodations') and coalesce(wc.n_weddings, 0) > 0)
+           or (var.role = 'venue' and (coalesce(wc.n_weddings, 0) >= 2
+                or (coalesce(wc.n_weddings, 0) = 1 and a.venue_type is not null and a.venue_type <> 'other')))
+         )
          and not exists (select 1 from account_aliases x where x.alias_account_id = a.id)`
     );
     const listed: VenueRow[] = listedRaw.map((r) => ({ id: r.id, username: r.username, weddings: r.weddings }));

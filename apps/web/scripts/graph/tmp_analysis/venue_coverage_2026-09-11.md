@@ -7,12 +7,12 @@ the page doesn't either).
 
 ## Universe A summary
 
-- Listed venues: **476**
-- Total weddings (anchored to a listed venue): **5523**
-- Buckets: 0=0  1-5=307  6-15=78  16-49=64  50+=27
-- Median weddings/venue: **3**
-- Top 50 share: 3225 / 5523 (58.4%)
-- Top 100 share: 4295 / 5523 (77.8%)
+- Listed venues: **421**
+- Total weddings (anchored to a listed venue): **5468**
+- Buckets: 0=0  1-5=252  6-15=78  16-49=64  50+=27
+- Median weddings/venue: **4**
+- Top 50 share: 3225 / 5468 (59.0%)
+- Top 100 share: 4295 / 5468 (78.5%)
 
 ## Hidden B -- venue-top, no account_locations row at all (268 accounts, 93 weddings)
 
