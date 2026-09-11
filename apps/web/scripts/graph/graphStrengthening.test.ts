@@ -1055,8 +1055,11 @@ describe("graph ingestion — D023 (DB)", () => {
     // to Bridgeport Art Center via its location tag gained a venue credit row; 189 rows changed role
     // venue->other in place (no count change). Provenance in wedding_vendor_recredits.
     // +363 from the D055 pool-B batches (269 weddings, 2026-09-10 evening); same provenance.
-    expect(Number(rows[0].untouched)).toBe(40927);
-    expect(Number(rows[0].total)).toBe(41038);
+    // +8,449 from the D056 stage-2 migration (d056-migration-1, 2026-09-11 00:57 CT): 12,740 credit rows
+    // inserted from the v10 re-parse + 1,447 mention-inferred, 255 deleted (37 participant accounts,
+    // superseded non-venue roles), 339 hotel rows re-roled in place; provenance in vendor_role_migrations.
+    expect(Number(rows[0].untouched)).toBe(49378);
+    expect(Number(rows[0].total)).toBe(49487);
   });
 
   it("Ben's weddings/wedding_posts/accounts are byte-identical in row count to before D023's ingestion (1585/1896/14334) — only wedding_vendors gained rows from D023 itself", async () => {
@@ -1305,9 +1308,11 @@ describe("vendor feed count invariant (DB)", () => {
     // 80 (D055 batches 4-5, 2026-09-09): 21 more Galleria Marchetti weddings, mostly from the
     // Haiku reader's verdicts on the venue's own posts and credit-line stacks.
     // 91 (D055 pool-B batches, 2026-09-10 evening): 2 more Galleria Marchetti weddings.
+    // 97 (D056 stage-2 migration, 2026-09-11): 6 more Galleria credit rows (compound "Venue & Catering"
+    // lines now emit a catering credit on the venue account, plus event-context rows).
     // 89 (D055 batch 6 + A1 batch, 2026-09-10): 1 + 7 more Galleria weddings, reader verdicts on
     // the venue-authored A1 pool and the residue re-read; +1 from a second-role row.
-    expect(rows[0].n).toBe(91);
+    expect(rows[0].n).toBe(97);
   });
 
   it("ulcchicago has a venue credit on wedding 1352 (the Case A index bug, D027)", async () => {

@@ -53,6 +53,32 @@ before/after may not lose a listed venue or a countable wedding; rehearsed on th
 Docker copy first; `account_locations`/`account_aliases`/`location_tag_venue_map`/
 `extracted_venue_anchors`/`post_venue_verdicts`/`human_post_labels` are never written.
 
+**Stages 1-2 executed (2026-09-10 19:30 → 2026-09-11 01:00 CT).** Stage 1: `parseCaptionV2`
+(stackParser.ts) on the D056 rules, emoji-keyed lines, event-title flag, inline-at contexts;
+35 fixture tests; full additive re-parse into `stack_extraction_entries_v2`: 46,838 posts,
+15,394 with a stack, 96,965 credits (v9 89,337), 5,761 from emoji lines, `other` 3.7%, 2,572
+participants, 500 non-wedding titles. Stage 2 (schema run by the user, then
+`migrateVendorRolesV2.ts --batch-id d056-migration-1 --accept-venue-loss windycityweddingdance`):
+`vendor_roles` (54), `wedding_event`, four enum renames + 30 additions, `wedding_vendor_credits`,
+`wedding_participants`, `weddings.ceremony_venue_id`, `accounts.venue_type`,
+`vendor_role_migrations`, and `v_account_role` with a venue tie-break; code renames landed in
+the same commit (`lib/roles.ts`, `CategoryIcon`, `team.ts`, `vendors.ts`, v9 parser,
+`pipeline.py`, `normalize.py`). Migration result: 42,656 credit rows, 82 participants, 12,740
+`wedding_vendors` inserted / 255 deleted / 339 hotel rows resolved (3 venue, 336
+accommodations), 1,447 mention-inferred credits on 365 unlabeled-stack posts, 63 ceremony
+venues recorded (15 `venue_id` moves on unprotected weddings, 14 ceremony-only on protected),
+13,489 provenance rows; hard stops clear after two rounds (anchored-venue evidence bonus in the
+tag refresh; venue tie-break in the view; `accommodations` listed like hotels). Post-steps:
+role-tag refresh (353 top-role changes), edges rebuilt (141,714). `/venues` 623 → **626 venues /
+5,564 countable weddings**; `wedding_vendors` 41,038 → 49,487. Verified: no wedding lost a
+venue credit (the 105 weddings whose anchored venue has no credit row pre-date D055 — 135 before
+the migration, 105 after — an old-pipeline anchor gap, listed for a re-anchor pass); the local
+Docker rehearsal was skipped (container not running) — the migration ran as one transaction
+behind a snapshot with a printed revert. Open: stage 3 UI (context chips, "credited as", venue
+hosted vs also-credited); 1,838 weddings with no labeled stack at all (mention inference covered
+365 posts; the rest need the reader's credits[] pass); 26 mis-anchored accounts / 41 weddings;
+`venue_type` facet not yet seeded.
+
 **Next.** Stage 1 parser v10 (Sonnet build; emoji-keyed lines and the event-title rule
 bundled; additive re-parse), stage 2 schema + one revertable migration, stage 3 UI — each on
 the user's word. Related: D055 (plan file), D049 (styled-shoot signal — models/SP couple now
