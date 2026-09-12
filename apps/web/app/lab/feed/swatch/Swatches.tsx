@@ -227,31 +227,23 @@ function CarouselPager({ posts, idx, goTo }: { posts: StackPostInfo[]; idx: numb
   );
 }
 
-type PagerPlacement = "media" | "outside" | "footer";
+type PagerPlacement = "media" | "beside";
 
 /** The one carousel card (360 media column + 240 static `VenuePanel`, same track, same
- * panel) rendered three ways per `pagerPlacement` — the only thing that changes:
+ * panel) rendered two ways per `pagerPlacement` — the only thing that changes:
  * - "media": today's placement, pager under the media column, inside the card.
- * - "outside": pager outside the card entirely, centered beneath the full card width.
- * - "footer": pager inside the card as a full-width footer row under both columns (the
- *   card becomes a two-column grid so the footer can span both with `md:col-span-2`).
+ * - "beside": arrows live outside the card entirely (absolutely positioned, vertically
+ *   centered on the card), and only the dash/dot indicator row sits underneath it.
  * The `VenuePanel` never changes between placements or between posts — same stack, same
  * tiles, same order — only the pager moves. */
 function CarouselCard({ stack, pagerPlacement }: { stack: WeddingStack; pagerPlacement: PagerPlacement }) {
   const posts = embeddableOrAll(stack);
   const { trackRef, idx, goTo } = useCarouselTrack(posts, initialIdxFor(stack, posts));
   const showPager = posts.length > 1;
-  const isFooter = pagerPlacement === "footer";
 
   const card = (
-    <article
-      className={`w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-white md:items-start ${
-        isFooter ? "md:grid md:grid-cols-[360px_240px]" : "md:flex"
-      }`}
-    >
-      <div
-        className={`border-b border-black/[0.06] p-4 md:border-b-0 md:border-r ${isFooter ? "" : "md:w-[360px] md:shrink-0"}`}
-      >
+    <article className="w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-white md:flex md:items-start">
+      <div className="border-b border-black/[0.06] p-4 md:w-[360px] md:shrink-0 md:border-b-0 md:border-r">
         <CarouselTrack posts={posts} trackRef={trackRef} />
         {pagerPlacement === "media" && showPager && (
           <div className="mt-5">
@@ -259,24 +251,50 @@ function CarouselCard({ stack, pagerPlacement }: { stack: WeddingStack; pagerPla
           </div>
         )}
       </div>
-      <div className={`min-w-0 p-5 ${isFooter ? "" : "flex-1 md:w-[240px] md:shrink-0"}`}>
+      <div className="min-w-0 flex-1 p-5 md:w-[240px] md:shrink-0">
         <VenuePanel stack={stack} />
       </div>
-      {isFooter && showPager && (
-        <div className="flex justify-center border-t border-black/[0.06] py-2.5 md:col-span-2">
-          <CarouselPager posts={posts} idx={idx} goTo={goTo} />
-        </div>
-      )}
     </article>
   );
 
-  if (pagerPlacement === "outside") {
+  if (pagerPlacement === "beside") {
     return (
       <div>
-        {card}
+        <div className="relative mx-11">
+          {card}
+          {showPager && (
+            <>
+              <button
+                type="button"
+                onClick={() => goTo(idx - 1)}
+                aria-label="Previous post"
+                className="absolute top-1/2 -left-11 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-black/[0.1] bg-white text-gray-500 hover:bg-gray-50"
+              >
+                <CaretLeft size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => goTo(idx + 1)}
+                aria-label="Next post"
+                className="absolute top-1/2 -right-11 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-black/[0.1] bg-white text-gray-500 hover:bg-gray-50"
+              >
+                <CaretRight size={14} />
+              </button>
+            </>
+          )}
+        </div>
         {showPager && (
-          <div className="mt-3 flex justify-center">
-            <CarouselPager posts={posts} idx={idx} goTo={goTo} />
+          <div className="mt-3 flex justify-center gap-1.5">
+            {posts.map((p, i) => (
+              <button
+                key={p.url}
+                type="button"
+                onClick={() => goTo(i)}
+                aria-label={`View post ${i + 1} of ${posts.length}`}
+                aria-current={i === idx ? "true" : undefined}
+                className={`rounded-full transition-all ${i === idx ? "h-1.5 w-5 bg-rose-400" : "h-1.5 w-1.5 bg-gray-200"}`}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -289,24 +307,25 @@ function CarouselCard({ stack, pagerPlacement }: { stack: WeddingStack; pagerPla
 /**
  * D058 follow-on swatch: the user picked the carousel, then asked "can i see what it'd
  * look like if we had the carousel for the whole card, not just the post ... so like if
- * the arrows were underneath the full card" (2026-09-11), expecting "only the instagram
- * post side changes, the vendor stack should be the same regardless." This replaces the
- * earlier stack-vs-carousel head-to-head with three cells of the SAME carousel card over
- * the SAME real hosted, multi-post stack — wedding 881 (The Arbory, 3 posts) by default —
- * differing only in where `CarouselCard`'s `pagerPlacement` puts the arrows-and-bars pager.
+ * the arrows were underneath the full card" (2026-09-11), then refined further: "instead
+ * of putting the arrows dots and dash underneath the embed, put the arrows OUTSIDE the
+ * card, to the left and right of it, and dashes underneath it and dots to signal that it
+ * moves." This compares the original "under the photo" placement against that new
+ * "arrows beside the card" idea over the SAME real hosted, multi-post stack — wedding 881
+ * (The Arbory, 3 posts) by default — via `CarouselCard`'s `pagerPlacement`.
  */
 export function Swatches({ multiStack }: { multiStack: WeddingStack | null }) {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-1 text-lg font-semibold text-gray-900">
-        Carousel · where the pager lives
-        {multiStack ? ` · wedding ${multiStack.id} (${multiStack.n_posts} post${multiStack.n_posts === 1 ? "" : "s"})` : ""}
+        Carousel · pager placement · wedding
+        {multiStack ? ` ${multiStack.id} (${multiStack.n_posts} post${multiStack.n_posts === 1 ? "" : "s"})` : ""}
       </h1>
       {multiStack ? (
         <>
           <p className="mb-6 text-sm text-black/[0.5]">
-            The vendor stack panel — venue pinned, tiles grouped by category — is identical across all three by
-            design; only the pager&apos;s placement relative to the card changes.
+            The vendor stack panel — venue pinned, tiles grouped by category — is identical across both by design;
+            only the pager&apos;s placement relative to the card changes.
           </p>
           <div className="grid gap-8 lg:grid-cols-2">
             <div>
@@ -314,12 +333,8 @@ export function Swatches({ multiStack }: { multiStack: WeddingStack | null }) {
               <CarouselCard stack={multiStack} pagerPlacement="media" />
             </div>
             <div>
-              <p className="mb-2 text-xs font-medium text-black/[0.45]">B · Under the whole card</p>
-              <CarouselCard stack={multiStack} pagerPlacement="outside" />
-            </div>
-            <div>
-              <p className="mb-2 text-xs font-medium text-black/[0.45]">C · Card footer</p>
-              <CarouselCard stack={multiStack} pagerPlacement="footer" />
+              <p className="mb-2 text-xs font-medium text-black/[0.45]">D · Arrows beside the card</p>
+              <CarouselCard stack={multiStack} pagerPlacement="beside" />
             </div>
           </div>
         </>
