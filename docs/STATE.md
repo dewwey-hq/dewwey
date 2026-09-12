@@ -5,12 +5,24 @@ working session; history lives in `decisions.md`, preferences in Claude's memory
 detail nowhere else. If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-11 ~01:05 CT** (after the D056 stage-2 migration). `origin/main` =
-`297ac5e` (pushed 2026-09-09 21:30 CT). Local commits since, NOT pushed: `7972972`, `c2b1893`,
-`5b3472f`, `39e29aa`, `c89cdb1`, `9c54d07`, `8b9d5d0`, `8ee9aa3`, `fba7e0a`, plus tonight's
-checkpoint. Run `git log --oneline -12` and `git status` to confirm before trusting this line.
+Last rewritten: **2026-09-11 ~19:30 CT** (after promoting the D058 feed card). `origin/main` =
+`297ac5e` (pushed 2026-09-09). Everything since is LOCAL and NOT pushed — ~50 commits, the
+latest `80ae5aa` (D058 promotion). Run `git log --oneline -12` and `git status` to confirm
+before trusting this line. No DB writes this session; the numbers below are unchanged.
 
-## Mission in flight
+## Mission in flight — UI (D058, 2026-09-11)
+
+The feed card was redesigned in `/lab/feed` and **promoted to production today**: every vendor
+page Feed tab and `/weddings` now render `app/components/feed/WeddingCard.tsx` (official
+embed.js embed, no crop, stack panel beside it, carousel for multi-post weddings, Caption/Photo
+flip). Full write-up: `docs/decisions.md` D058. Verified with headless screenshots at 1280 and
+400 on `/vendors/bridgeportartcenter`, `/vendors/abefernandez.fotos`, `/weddings`.
+**Not yet deployed**: nothing is pushed; production (dewwey.com) still runs the old card.
+Next UI round (user's call): the venue detail page around the card (`/lab/venue`), then the
+homepage `HeroStack`. Data follow-ups that improve the card: word-splitter for run-together
+handles; real names/avatars via profile scrape (Apify credits).
+
+## Data mission (paused while UI ran)
 
 **D055 — "squeeze the 47k"**: turn Jeremy's 47,623-post Instagram corpus into as many real,
 credible, venue-anchored documented weddings as possible, then write the residue table and move
@@ -47,6 +59,10 @@ user spot-checks and says "create" for every batch.
 
 ## Next actions (Claude, when unblocked)
 
+0. UI: on the user's word, push a `d058-card` branch for a Vercel preview (real-phone check),
+   then `main`. Then `/lab/venue` for the venue detail page. Screenshot tooling: memory
+   `headless-chromium-screenshots` + the CDP script pattern (`shot.ts`, session scratchpad —
+   recreate from that memory if needed).
 1. Reader `extract-v1.3` with `credits[]` in the D056 vocabulary for the 1,536 documented
    weddings with no labeled stack (mention inference covered 362 posts) — ~$2, approval.
 2. 68 mention-inferred credits still without a `wedding_vendors` row (small; find why).
@@ -56,6 +72,10 @@ user spot-checks and says "create" for every batch.
 
 ## Landmines (things that bit us; check before repeating)
 
+- Instagram embeds: never crop/overlay/resize the frame (Meta terms); embed.js sets a 12px
+  bottom margin on its iframe and reports its own (sometimes wrong) height; an unprocessed
+  blockquote is 56px tall — hold the placeholder height or lazy-mounting cascades down the
+  page. Headless screenshots need real-time waits (CDP), not `--virtual-time-budget`.
 - **`/venues` lists by `v_account_role` (top `account_tags` row) + `account_locations.in_metro`**,
   not by Places rows. Wedding creation must be followed by
   `refreshAccountRoleTagsFromWeddings.ts --apply` or new venues stay invisible. The refresh gives
@@ -91,6 +111,11 @@ user spot-checks and says "create" for every batch.
 
 ## Where things live
 
+- Feed card (production): `app/components/feed/WeddingCard.tsx` (+ `InstagramPostEmbed`,
+  `FallbackCard`, `VendorAvatar`, `embed-script`, `measurement-context`, `cardLayout`);
+  helpers `lib/feedDesign.ts` (+test, 51). Lab: `app/lab/feed` (Card wrapper with URL knobs,
+  `/lab/feed/swatch` for micro-decisions). Old `WeddingFeedCard` deleted; `InstagramEmbed.tsx`
+  (old primitive) remains for labeling tools + concept pages only.
 - Decision log: `docs/decisions.md` (D056 at the top with its stages 1-2 addendum; D055 closed with
   the residue table).
 - Coverage: `scripts/graph/reportVenueCoverage.ts` (standing metric; output in
