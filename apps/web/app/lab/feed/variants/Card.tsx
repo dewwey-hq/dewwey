@@ -321,10 +321,32 @@ function FeedCardC({
   const panelOrderClass = flipped ? "md:order-1" : "";
 
   return (
+    <div className={`relative ${twoUp ? "" : "md:mx-auto md:w-fit md:max-w-full"}`}>
+    {/* Post switcher (user pick D, 2026-09-11): round arrows OUTSIDE the card, flanking it
+        at md+ (hidden on phone, where the track swipes), and a dash-for-active / dots-for-
+        the-rest row centered under the card. Nothing under the embed inside the card. */}
+    {n > 1 && (
+      <>
+        <button
+          type="button"
+          onClick={() => goToPost((idx - 1 + n) % n)}
+          className="absolute -left-11 top-1/2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-black/[0.1] bg-white text-gray-500 hover:bg-gray-50 md:flex"
+          aria-label="Previous post"
+        >
+          <CaretLeft size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={() => goToPost((idx + 1) % n)}
+          className="absolute -right-11 top-1/2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-black/[0.1] bg-white text-gray-500 hover:bg-gray-50 md:flex"
+          aria-label="Next post"
+        >
+          <CaretRight size={14} />
+        </button>
+      </>
+    )}
     <article
-      className={`w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-white ${
-        twoUp ? "" : "md:mx-auto md:w-fit md:max-w-full"
-      } ${cardLayoutClass}`}
+      className={`w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-white ${cardLayoutClass}`}
       style={cardStyle}
     >
       {/* Media -- flush against the card's own edges (no padding) so the card's rounded
@@ -359,42 +381,6 @@ function FeedCardC({
               ))}
             </div>
           </div>
-          {/* Post switcher -- the concept page's deck pager (user, 2026-09-11: "i prefer
-              what we did with galleria marchetti, the dots and lines and arrows"): round
-              arrow buttons either side, a pill indicator per post with the active one
-              stretched rose. Under the embed, never over it. `goToPost` wraps at the ends. */}
-          {n > 1 && (
-            <div role="group" aria-label="Choose a post" className="flex items-center justify-center gap-4 py-3">
-              <button
-                type="button"
-                onClick={() => goToPost(idx - 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
-                aria-label="Previous post"
-              >
-                <CaretLeft size={14} />
-              </button>
-              <div className="flex gap-1.5">
-                {embeddablePosts.map((p, i) => (
-                  <button
-                    key={p.url}
-                    type="button"
-                    onClick={() => goToPost(i)}
-                    aria-label={`View post ${i + 1} of ${n}`}
-                    aria-current={i === idx ? "true" : undefined}
-                    className={`h-1.5 rounded-full transition-all ${i === idx ? "w-5 bg-rose-400" : "w-1.5 bg-gray-200 hover:bg-gray-300"}`}
-                  />
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => goToPost(idx + 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-black/[0.1] text-gray-500 hover:bg-gray-50"
-                aria-label="Next post"
-              >
-                <CaretRight size={14} />
-              </button>
-            </div>
-          )}
         </div>
         {captioned && (
           <PostCaptionCard post={activePost} height={swapHeight ?? 480} />
@@ -498,6 +484,21 @@ function FeedCardC({
         )}
       </div>
     </article>
+    {n > 1 && (
+      <div role="group" aria-label="Choose a post" className="mt-3 flex items-center justify-center gap-1.5">
+        {embeddablePosts.map((p, i) => (
+          <button
+            key={p.url}
+            type="button"
+            onClick={() => goToPost(i)}
+            aria-label={`View post ${i + 1} of ${n}`}
+            aria-current={i === idx ? "true" : undefined}
+            className={`h-1.5 rounded-full transition-all ${i === idx ? "w-5 bg-rose-400" : "w-1.5 bg-gray-200 hover:bg-gray-300"}`}
+          />
+        ))}
+      </div>
+    )}
+    </div>
   );
 }
 
