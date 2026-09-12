@@ -9,7 +9,7 @@ import { SiteHeader } from "@/app/components/SiteHeader";
 import { Avatar } from "@/app/components/Avatar";
 import { AddToTeamCta } from "@/app/components/team/AddToTeamCta";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
-import { WeddingFeedCard } from "@/app/components/WeddingFeedCard";
+import { WeddingCard } from "@/app/components/feed/WeddingCard";
 import { siteContainerClass } from "@/lib/site-layout";
 import { displayHeadingClassName } from "@/lib/typography";
 import { DetailsContent } from "./DetailsContent";
@@ -78,8 +78,8 @@ export default async function GalleriaMarchettiV5Page() {
           No credited weddings in the graph yet.
         </p>
       )}
-      {stacks.map((s) => (
-        <WeddingFeedCard key={s.id} stack={s} />
+      {stacks.map((s, i) => (
+        <WeddingCard key={s.id} stack={s} pinnedUsername={p.username} eager={i < 2} />
       ))}
     </div>
   );

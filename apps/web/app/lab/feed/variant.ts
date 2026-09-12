@@ -33,10 +33,34 @@ export function isVariant(v: string | null | undefined): v is Variant {
  * passed down). Instagram's only hard rule is a 326px minimum embed width; 360 is the
  * smallest step above that (326 itself added 2026-09-11 on request), 470 the old default ceiling, 540 Meta's maximum (user, 2026-09-11:
  * "showing more of the image than the text" — the image should be the wider half).
+ *
+ * The literal unions themselves live in `app/components/feed/cardLayout.ts` (production's
+ * `WeddingCard.tsx` uses them too) and are just re-exported here so the lab doesn't need
+ * two copies.
  */
-export const EMBED_SIZES = [326, 360, 400, 470, 540] as const;
-export type EmbedSize = (typeof EMBED_SIZES)[number];
-export const DEFAULT_EMBED_SIZE: EmbedSize = 360;
+export {
+  EMBED_SIZES,
+  DEFAULT_EMBED_SIZE,
+  SPLITS,
+  DEFAULT_SPLIT,
+  TILE_COLS,
+  DEFAULT_TILE_COLS,
+  SIDES,
+  DEFAULT_SIDE,
+} from "@/app/components/feed/cardLayout";
+export type { EmbedSize, Split, TileCols, Side } from "@/app/components/feed/cardLayout";
+import {
+  EMBED_SIZES,
+  DEFAULT_EMBED_SIZE,
+  SPLITS,
+  DEFAULT_SPLIT,
+  DEFAULT_TILE_COLS,
+  DEFAULT_SIDE,
+  type EmbedSize,
+  type Split,
+  type TileCols,
+  type Side,
+} from "@/app/components/feed/cardLayout";
 
 export function parseEmbedSize(v: string | null | undefined): EmbedSize {
   const n = Number(v);
@@ -63,25 +87,16 @@ export function parseLimit(v: string | null | undefined): number {
  * 1 column 2 and like % e.g. 50% embed vs. 70% embed"). `split` = the embed's share of the
  * card width; the stack column is derived (embed * (100-split)/split) because the embed
  * itself can't exceed Meta's 540px. `tiles` = vendor tile columns in the stack panel. */
-export const SPLITS = [50, 55, 60, 65, 70] as const;
-export type Split = (typeof SPLITS)[number];
-export const DEFAULT_SPLIT: Split = 60;
 export function parseSplit(v: string | null | undefined): Split {
   const n = Number(v);
   return (SPLITS as readonly number[]).includes(n) ? (n as Split) : DEFAULT_SPLIT;
 }
-export const TILE_COLS = [1, 2] as const;
-export type TileCols = (typeof TILE_COLS)[number];
-export const DEFAULT_TILE_COLS: TileCols = 1;
 export function parseTileCols(v: string | null | undefined): TileCols {
   return v === "2" ? 2 : DEFAULT_TILE_COLS;
 }
 
 /** Which side the embed sits on in variant C (user, 2026-09-11: "curious if i flip the hosted
  * at the arbory part to the left side and the instagram post to the right"). */
-export const SIDES = ["left", "right"] as const;
-export type Side = (typeof SIDES)[number];
-export const DEFAULT_SIDE: Side = "left";
 export function parseSide(v: string | null | undefined): Side {
   return v === "right" ? "right" : DEFAULT_SIDE;
 }

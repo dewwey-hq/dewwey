@@ -4,6 +4,59 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D058 — 2026-09-11 — Feed card redesign: official Instagram embed + the team beside it, designed in a lab, promoted to production
+
+**Context.** The vendor-page Feed and `/weddings` rendered `WeddingFeedCard`: a hand-built
+iframe to `instagram.com/p/<sc>/embed/` with Instagram's 54px header cropped off, a fixed
+680px two-column box, no dead-post path, and raw handles for 46% of credits (23,773 of 51,275
+`wedding_vendors` rows had no display name; 45% no avatar). The user (2026-09-11): "redesign
+the UI/UX, test in lab first, then scale it". Meta's oEmbed docs (developers.facebook.com/docs/
+instagram-platform/oembed) and Platform Terms: the embed is a `<blockquote class="instagram-
+media">` + `embed.js`, `maxwidth` 326–540, never cropped/overlaid/altered; consuming, caching
+or re-serving media outside the embed is prohibited. That bounds the design: the frame keeps
+its header and footer (~35% of its height), so photo dominance comes from what surrounds it.
+
+**Process.** `/lab/feed` (noindex, `app/lab/feed`) over The Arbory's real hosted weddings,
+URL-backed knobs (size, split, tile columns, embed side, 1-up/2-up), a measurement strip, and
+`/lab/feed/swatch` for side-by-side micro-decisions. Fable directed and reviewed with headless
+Chromium screenshots (CDP, real-time waits — the `--virtual-time-budget` path trips the 8 s
+embed timeout); Sonnet built; the user judged on localhost. Nine variants were built and
+rejected in one day (A clean list, B grid, D recipe, E ledger, F roster, G scroll + sticky
+panel, H chip grid, I photo wall; and C's own earlier forms) — git history before `0a03d86`
+has them. Also rejected on the swatch page: three panel-top designs, three post switchers
+(dots / counter / posted-by chips), a stacked-card deck, a whole-card carousel, and three pager
+placements.
+
+**Decisions (the card, `app/components/feed/WeddingCard.tsx`).** (1) Side by side: the embed
+flush in the card's left column at 360px so the card's rounded corners round the frame's
+left edge; the stack column 240px (60% share); the card hugs the embed's real height (embed.js's
+12px iframe margin zeroed) and centers at ~600px wide. (2) The stack panel: building icon +
+venue name as the title, the month as the only subtitle, a hairline, then one column of vendor
+tiles (avatar or category icon, derived display name, specific role, extra roles as a suffix,
+no handles), the page's account pinned as the first tile (venue on `/weddings`); the panel is
+capped to the embed's height, folds to what fits with "Show more (N)" / "Show less", and if
+expanded scrolls with the scrollbar hidden. (3) One action: a fixed-size Caption/Photo pill,
+top-right of the panel, that flips the photo column to the post's caption at the same height
+(embed stays mounted); no "Open" (the embed links out itself). (4) Multi-post weddings: a
+full-width snap carousel (swipe on phone), round arrows outside the card at md+, a
+dash-for-active/dots row under the card; the stack never changes between posts; the panel's
+height cap keeps a floor during a switch so the team doesn't jump. (5) Data-side fixes that
+made every design look better: `displayName()` derives "Bea Quach Designs" from
+`bea.quach.designs`; `groupStackByCategory()` dedupes an account with two roles; missing
+avatars show the category's Phosphor icon. (6) Compliance: nothing drawn over the frame, no
+crop, no proxied CDN images; the caption flip shows caption text we already hold (same
+exposure as the old no-embed fallback and the labeling tools) — the one piece Meta could
+object to, accepted by the user knowingly. (7) Instagram's own sizing bugs (e.g. post
+`DYgCym0DVaH` reported at 446px) are left alone: correcting them would mean resizing the embed.
+
+**Not done / follow-ups.** Homepage `HeroStack` still uses the old primitive; run-together
+handles ("alliancebakeryweddingcakes") need a vocabulary word-splitter; real names/avatars
+need the profile scrape (Apify credits); the venue detail page around the card is the next
+lab round; the concept pages (`/concept/*`) still proxy CDN images and crop the embed and are
+sales mockups only.
+
+---
+
 ## D056 — 2026-09-10 — Vendor-stack nomenclature: two-level taxonomy, event context, participants out of the graph
 
 **Context.** The user (2026-09-10): "richer/more standardized nomenclature for vendor graphs…

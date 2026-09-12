@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMeasurement } from "../measurement-context";
-import { processInstagramEmbeds } from "../embed-script";
+import { useMeasurement } from "./measurement-context";
+import { processInstagramEmbeds } from "./embed-script";
 import { FallbackCard } from "./FallbackCard";
 import type { StackPostInfo } from "@/lib/server/graph";
 
@@ -169,8 +169,13 @@ export function InstagramPostEmbed({
       className={className}
       style={{ width: "100%", maxWidth: MAX_WIDTH, minWidth: MIN_WIDTH, margin: "0 auto" }}
     >
+      {/* Until embed.js swaps the blockquote for its iframe, the blockquote is a 56px link.
+          Without a held height every mounting card collapsed by ~400px, pulling the next card
+          into the lazy observer's range -- a cascade that mounted 12 of 20 cards on load
+          (found 2026-09-11 while promoting the card). Keep the placeholder's 4:5 footprint
+          until the iframe is in; `aspect-ratio` yields once real content is taller. */}
       {visible ? (
-        <div ref={mountRef}>
+        <div ref={mountRef} className={loaded ? undefined : "aspect-[4/5] animate-pulse rounded-xl bg-black/[0.04]"}>
           {/* `data-instgrm-captioned` only when the caller asks -- default uncaptioned
               (uniform tiles); our own strip supplies title/date/stack instead. Never the
               scraped caption text itself -- only Instagram's own rendering of it. */}

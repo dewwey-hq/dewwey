@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { pillClassName } from "@/lib/typography";
 import { siteContainerClass } from "@/lib/site-layout";
 import { coverPost } from "@/lib/feedDesign";
-import { MeasurementContext, type MeasurementApi } from "./measurement-context";
+import { MeasurementContext, type MeasurementApi } from "@/app/components/feed/measurement-context";
 import { Card } from "./variants/Card";
 import type { WeddingStack } from "@/lib/server/graph";
 import {

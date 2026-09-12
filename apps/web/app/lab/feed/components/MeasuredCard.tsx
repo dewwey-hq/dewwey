@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useMeasurement } from "../measurement-context";
+import { useMeasurement } from "@/app/components/feed/measurement-context";
 
 /** Wraps one wedding's card so the measurement strip's "median card height" is real,
  * not guessed — a `ResizeObserver` reports the rendered height keyed by wedding id. */

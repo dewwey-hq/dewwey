@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { Buildings, CaretLeft, CaretRight } from "@phosphor-icons/react";
-import { VendorAvatar } from "../components/VendorAvatar";
-import { InstagramPostEmbed } from "../components/InstagramPostEmbed";
+import { VendorAvatar } from "@/app/components/feed/VendorAvatar";
+import { InstagramPostEmbed } from "@/app/components/feed/InstagramPostEmbed";
 import { AddToTeamButton } from "@/app/components/team/AddToTeamButton";
 import { coverPost, displayName, groupStackByCategory, isDerivedName } from "@/lib/feedDesign";
 import { roleLabel, contextLabel } from "@/lib/roles";

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BRAND_NAME } from "@/lib/brand";
 import { listWeddingStacks } from "@/lib/server/graph";
 import { SiteHeader } from "@/app/components/SiteHeader";
-import { WeddingFeedCard } from "@/app/components/WeddingFeedCard";
+import { WeddingCard } from "@/app/components/feed/WeddingCard";
 import { siteContainerClass } from "@/lib/site-layout";
 import { displayHeadingClassName } from "@/lib/typography";
 
@@ -42,8 +42,8 @@ export default async function WeddingsPage({
           </p>
 
           <div className="mt-8 space-y-6">
-            {stacks.map((s) => (
-              <WeddingFeedCard key={s.id} stack={s} />
+            {stacks.map((s, i) => (
+              <WeddingCard key={s.id} stack={s} eager={i < 2} />
             ))}
           </div>
 
