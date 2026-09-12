@@ -8,7 +8,7 @@
 /** Instagram's oEmbed `maxwidth` floor is 326px; 540 is Meta's ceiling. */
 export const EMBED_SIZES = [326, 360, 400, 470, 540] as const;
 export type EmbedSize = (typeof EMBED_SIZES)[number];
-export const DEFAULT_EMBED_SIZE: EmbedSize = 400;
+export const DEFAULT_EMBED_SIZE: EmbedSize = 360;
 
 /** The embed's share of the card's width; the stack panel's width is derived from it
  * (`panelWidthFor` in `WeddingCard.tsx`). */
