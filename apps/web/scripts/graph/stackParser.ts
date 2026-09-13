@@ -481,7 +481,8 @@ const EMOJI_ROLE_GROUPS: Array<{ chars: string[]; role: string | null }> = [
   { chars: ["🎤", "🎶", "🎵"], role: "band" },
   { chars: ["🍽️", "🍴", "🥗", "🍸", "🍹"], role: "catering" },
   { chars: ["🍰", "🎂", "🧁"], role: "cake" },
-  { chars: ["👗", "👰", "🤵", "👔"], role: "attire" },
+  { chars: ["👗", "👰"], role: "wedding_dress" },
+  { chars: ["🤵", "👔"], role: "menswear" },
   { chars: ["💍"], role: "jewelry" },
   { chars: ["💌", "✉️"], role: "stationery" },
   { chars: ["🪑", "🎀", "🧺"], role: "rentals" },
@@ -492,7 +493,7 @@ const EMOJI_ROLE_GROUPS: Array<{ chars: string[]; role: string | null }> = [
   { chars: ["🥂", "🎉", "✨", "🥳"], role: null },
 ];
 
-function classifyEmojiRun(run: string): string | null {
+export function classifyEmojiRun(run: string): string | null {
   for (const group of EMOJI_ROLE_GROUPS) {
     if (group.chars.some((c) => run.includes(c))) return group.role;
   }

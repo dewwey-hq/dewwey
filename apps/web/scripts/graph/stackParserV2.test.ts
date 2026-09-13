@@ -246,10 +246,10 @@ describe("parseCaptionV2 -- Caption C (Brix on Fox, D056 stage-1 fixture)", () =
     expect(r.credits).toContainEqual(expect.objectContaining({ handle: "heritagecustomjewelers", role: "jewelry" }));
   });
 
-  it("birdygrey -> attire, lorenzostux -> attire", async () => {
+  it("birdygrey -> bridesmaid_attire, lorenzostux -> menswear", async () => {
     const r = await parse(CAPTION_C);
-    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "birdygrey", role: "attire" }));
-    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "lorenzostux", role: "attire" }));
+    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "birdygrey", role: "bridesmaid_attire" }));
+    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "lorenzostux", role: "menswear" }));
   });
 
   it("marriott.chicago.nw -> accommodations (Hotels)", async () => {
@@ -257,10 +257,10 @@ describe("parseCaptionV2 -- Caption C (Brix on Fox, D056 stage-1 fixture)", () =
     expect(r.credits).toContainEqual(expect.objectContaining({ handle: "marriott.chicago.nw", role: "accommodations" }));
   });
 
-  it("'Suit/Groomsmen:' does NOT split into two different roles -- both parts are attire, one role emitted", async () => {
+  it("'Suit/Groomsmen:' does NOT split into two different roles -- both parts are menswear, one role emitted", async () => {
     const r = await parse(CAPTION_C);
     const roles = r.credits.filter((c) => c.handle === "lorenzostux").map((c) => c.role);
-    expect(roles).toEqual(["attire"]);
+    expect(roles).toEqual(["menswear"]);
   });
 });
 
@@ -285,9 +285,9 @@ describe("parseCaptionV2 -- emoji-keyed lines (backlog #1, LaPapa post DBsBZcev0
     expect(byHandle.get("musicbydesign")).toBe("dj"); // \u{1f4bd}
   });
 
-  it("handles a skin-tone/ZWJ compound emoji lead ('\u{1f470}\u{1f3fb}‍♀️' bride icon -> attire, '\u{1f487}\u{1f3fb}‍♀️' haircut icon -> hair) without truncating", async () => {
+  it("handles a skin-tone/ZWJ compound emoji lead ('\u{1f470}\u{1f3fb}‍♀️' bride icon -> wedding_dress, '\u{1f487}\u{1f3fb}‍♀️' haircut icon -> hair) without truncating", async () => {
     const r = await parse(CAPTION_LAPAPA);
-    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "callablanchedress", role: "attire", source: "emoji_line" }));
+    expect(r.credits).toContainEqual(expect.objectContaining({ handle: "callablanchedress", role: "wedding_dress", source: "emoji_line" }));
     expect(r.credits).toContainEqual(expect.objectContaining({ handle: "artistryhairbridal", role: "hair", source: "emoji_line" }));
   });
 

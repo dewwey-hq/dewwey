@@ -51,10 +51,15 @@ export const ROLE_LABELS: Record<string, string> = {
   makeup: "Makeup",
   beauty_services: "Beauty",
   // attire
-  attire: "Attire",
-  accessories: "Accessories",
+  wedding_dress: "Wedding Dress",
+  menswear: "Menswear",
+  bridesmaid_attire: "Bridesmaid Attire",
+  veil_headpiece: "Veil & Headpiece",
+  shoes: "Shoes",
+  accessories: "Other Accessories",
   alterations: "Alterations",
   jewelry: "Jewelry",
+  attire: "Attire", // legacy — no longer a classification target, kept for pre-migration rows
   // paper
   stationery: "Stationery",
   calligraphy: "Calligraphy",
@@ -133,7 +138,21 @@ export const ROLE_CATEGORIES: RoleCategoryGroup[] = [
     roles: ["dj", "band", "live_music", "mc", "cultural_performers", "dancers_choreography", "entertainment_other"],
   },
   { slug: "beauty", label: "Beauty", roles: ["hair", "makeup", "beauty_services"] },
-  { slug: "attire", label: "Attire", roles: ["attire", "accessories", "alterations", "jewelry"] },
+  {
+    slug: "attire",
+    label: "Attire",
+    roles: [
+      "wedding_dress",
+      "menswear",
+      "bridesmaid_attire",
+      "veil_headpiece",
+      "shoes",
+      "accessories",
+      "alterations",
+      "jewelry",
+      "attire",
+    ],
+  },
   { slug: "paper", label: "Paper", roles: ["stationery", "calligraphy"] },
   {
     slug: "art_keepsakes",

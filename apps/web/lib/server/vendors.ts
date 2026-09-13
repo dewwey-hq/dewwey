@@ -58,10 +58,15 @@ export const VALID_CATEGORIES = new Set([
   "makeup",
   "beauty_services",
   // attire
-  "attire",
+  "wedding_dress",
+  "menswear",
+  "bridesmaid_attire",
+  "veil_headpiece",
+  "shoes",
   "accessories",
   "alterations",
   "jewelry",
+  "attire", // legacy
   // paper
   "stationery",
   "calligraphy",

@@ -67,7 +67,17 @@ export const SLOT_ROLES: Record<string, string[]> = {
   Planning: ["planner", "coordinator", "event_design"],
   Florals: ["florist", "lighting_production", "rentals", "tent", "signage", "decor_other"],
   Music: ["dj", "band", "live_music", "mc", "cultural_performers", "dancers_choreography", "entertainment_other"],
-  Attire: ["attire", "jewelry", "accessories", "alterations"],
+  Attire: [
+    "wedding_dress",
+    "menswear",
+    "bridesmaid_attire",
+    "veil_headpiece",
+    "shoes",
+    "accessories",
+    "alterations",
+    "jewelry",
+    "attire",
+  ],
   "Hair & Makeup": ["hair", "makeup", "beauty_services"],
   "Cake & Catering": ["cake", "catering", "bar_service", "desserts"],
   // Pulled straight from ROLE_CATEGORIES (lib/roles.ts) -- these three slots ARE their

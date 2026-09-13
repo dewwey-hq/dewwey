@@ -4,6 +4,84 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D059 — 2026-09-13 — Attire split: dress/suit/bridesmaid/veil/shoes broken out of generic "Attire"
+
+**Context.** Every dress shop, suit shop, bridesmaid-dress brand, veil seller, and shoe vendor
+rendered as a generic "Attire" chip — the user asked whether more detail (dress vs. suit vs.
+jeweler vs. alterations vs. shoes) was available to show. Investigation found jeweler/
+alterations/accessories were already split out under D056; only the single `attire` role (and
+part of `accessories`) still lumped dress/suit/bridesmaid/veil/shoes together, even though the
+raw credit-line text behind every one of those credits (`label_raw` in
+`stack_extraction_entries_v2`/`wedding_vendor_credits`) already distinguishes them — no new
+scraping needed, a reclassification of data already in Supabase.
+
+**Taxonomy.** Five new roles under the existing `attire` category (`vendorRoleRules.ts`):
+`wedding_dress`, `menswear`, `bridesmaid_attire`, `veil_headpiece`, `shoes`. `jewelry` and
+`alterations` are unchanged; `accessories` narrows to a real catch-all (gloves, misc — display
+renamed "Other Accessories"); `attire` itself is retired as a `classifyLabel()` target but kept
+in the enum/lists as a legacy dead-letter (same pattern as `hotel`) so any unmigrated row still
+renders sanely. Judgment calls: generic/ungendered labels ("Outfit", "Fashion", bare "Attire")
+default to `wedding_dress` rather than a 9th generic bucket; "wedding party attire" (covers both
+sides) emits both `bridesmaid_attire` and `menswear`; a label that still resolves to >1 role
+after the split keeps only the first and is logged, not fanned into two rows. Rehearsal-vs-
+wedding-dress-style finer splits were explicitly rejected as top-level buckets (too sparse per
+Chicago vendor) — that nuance stays in the raw label text, not a role.
+
+**Mechanism.** `classifyLabel()`'s `EXACT`/`HEAD_RULES` in `vendorRoleRules.ts` re-routed
+(specificity order: alterations → veil/shoes → accessories catch-all → jewelry → menswear/
+bridesmaid → wedding_dress catch-all); `stackParser.ts`'s `EMOJI_ROLE_GROUPS` split 👗👰→
+`wedding_dress` / 🤵👔→`menswear` (`classifyEmojiRun` exported so the reclassification script
+could reuse it). Three hand-synced copies (`lib/roles.ts`, `lib/server/vendors.ts`,
+`lib/team.ts`) updated to match — UI (`CategoryIcon`, vendor-page chips, `/vendors` filter,
+feed cards) needed zero code changes, all generic over `roleLabel()`/`SLOT_ROLES`.
+
+**New scripts:** `applyAttireSplitSchema.ts` (adds the 5 enum values, reseeds `vendor_roles`),
+`reclassifyAttireSplit.ts` (re-runs the updated classifier over already-stored
+`stack_extraction_entries_v2` rows currently `role IN ('attire','accessories')`, rewriting
+`role`/`rule_id` in place — cheaper than a full caption re-parse via
+`runStackParserV10.ts --refresh-matching`), and `cleanupAttireSplitDuplicates.ts` (see below). A
+dry-run of the reclassifier against live production data (7,516 rows) landed cleanly:
+`wedding_dress` 5,026, `menswear` 1,542, `bridesmaid_attire` 359, `shoes` 340, `veil_headpiece`
+131, `accessories` 113, plus 5 rows into unrelated roles (tent/planner/jewelry) from genuine
+multi-role compound credits ("Tent & Accessories", "Wedding Planner & Bridal Stylist") — zero
+rows fell to `other` (would have signaled a regression). That first dry-run surfaced a real bug
+before any write: emoji-sourced rows (raw emoji glyph as `label_raw`) were being run through
+`classifyLabel()`, which strips emoji and misfiled 246 rows as `noise` — fixed by branching
+emoji-line rows to `classifyEmojiRun()` instead (now exported from `stackParser.ts`), matching
+how the original parser roles them. It also surfaced two stray `EXACT` entries ("dress rentals",
+"bridal sari", "veil by") living outside the `// attire` block that the first edit pass missed.
+
+**Applied to production (2026-09-13, human-run, in order):** `applyAttireSplitSchema.ts --apply`
+→ `reclassifyAttireSplit.ts --apply` (7,404 rows updated, CSV audit written) →
+`migrateVendorRolesV2.ts --batch-id d059-attire-split-1 --apply` (5,206 `wedding_vendors`
+inserted, 923 deleted, hard-stop check CLEAR) → `refreshAccountRoleTagsFromWeddings.ts --apply`
+→ `refresh materialized view edges`.
+
+**Post-apply bug, caught during verification, fixed same day.** `migrateVendorRolesV2.ts`'s
+protection invariant (built for D056 to stop a parser correction from clobbering already-
+verified wedding data) inserts a new v10-derived role on a protected wedding but does not delete
+the account's prior role there — fine for D056's use case (a genuine correction competing with
+good data), but for a pure relabeling it left **2,850 `(wedding, account)` pairs carrying both
+the old generic row and the new specific one** (e.g. `mira_couture` had both `attire` and
+`wedding_dress` on the same wedding), which would have shown as duplicate "Credited as" chips
+and diluted several vendors' top-role vote to the point of flipping the wrong way (`suitsupply`:
+attire 79 vs. menswear 80 — a 1-vote margin). Fixed with a new script,
+`cleanupAttireSplitDuplicates.ts`: deletes the old row wherever a sibling new-role row exists for
+the exact same `(wedding_id, account_id)` (2,838 distinct pairs — a handful of accounts had 2
+new sibling roles, e.g. a shop that's both bridal and bridesmaid, so the row count differs
+slightly from the pair count above), logged to `vendor_role_migrations`
+(`batch_id=d059-attire-split-cleanup-1`) for the same revert path as every other batch here.
+Re-ran `refreshAccountRoleTagsFromWeddings.ts --apply` and the `edges` refresh afterward. Final
+state verified: 0 remaining duplicate pairs, `attire` down to 381 / `accessories` to 19 rows
+(genuine "no v10 coverage" residual, same caveat every role in this system carries), and spot
+checks all correct (`mira_couture`/`kleinfeldbridal`→wedding_dress, `suitsupply`→menswear,
+`jimmychoo`→shoes, `shoprevelry`→bridesmaid_attire).
+
+**Not done.** Dedicated icons for the new roles in `CategoryIcon.tsx` are optional polish, not
+done — everything falls back to the default icon, same as the old `attire`/`accessories` did.
+
+---
+
 ## D058 — 2026-09-11 — Feed card redesign: official Instagram embed + the team beside it, designed in a lab, promoted to production
 
 **Context.** The vendor-page Feed and `/weddings` rendered `WeddingFeedCard`: a hand-built

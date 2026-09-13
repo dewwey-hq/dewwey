@@ -30,8 +30,8 @@ describe("D056 taxonomy — the Post 433 stack (25 lines)", () => {
     ["CONTENT CREATOR", ["content_creator"], "wedding_day"],
     ["FLORAL DESIGN & PRODUCTION", ["florist"], "wedding_day"],
     ["INVITATIONS & STATIONERY", ["stationery"], "wedding_day"],
-    ["WEDDING DRESSER", ["attire"], "wedding_day"],
-    ["DRESS DESIGNER", ["attire"], "wedding_day"],
+    ["WEDDING DRESSER", ["wedding_dress"], "wedding_day"],
+    ["DRESS DESIGNER", ["wedding_dress"], "wedding_day"],
     ["CATERING", ["catering"], "wedding_day"],
     ["WEDDING BAND", ["band"], "wedding_day"],
     ["HAIR STYLIST", ["hair"], "wedding_day"],
@@ -85,8 +85,8 @@ describe("D056 taxonomy — the Brix on Fox stack", () => {
     expect(roles("Bar")).toEqual(["bar_service"]);
     expect(roles("Alcohol")).toEqual(["bar_service"]);
     expect(roles("Rings")).toEqual(["jewelry"]);
-    expect(roles("Bridesmaids")).toEqual(["attire"]);
-    expect(roles("Suit/Groomsmen")).toEqual(["attire"]);
+    expect(roles("Bridesmaids")).toEqual(["bridesmaid_attire"]);
+    expect(roles("Suit/Groomsmen")).toEqual(["menswear"]);
     expect(roles("Hotels")).toEqual(["accommodations"]);
   });
 });
@@ -102,8 +102,8 @@ describe("D056 taxonomy — v9 failure cases", () => {
   it("ceremony musicians keeps the role, sets the context", () => {
     expect(roles("Ceremony Musicians")).toEqual(["live_music"]); expect(ctx("Ceremony Musicians")).toBe("ceremony");
   });
-  it("reception dress is attire @ reception", () => {
-    expect(roles("Reception Dress")).toEqual(["attire"]); expect(ctx("Reception Dress")).toBe("reception");
+  it("reception dress is wedding_dress @ reception", () => {
+    expect(roles("Reception Dress")).toEqual(["wedding_dress"]); expect(ctx("Reception Dress")).toBe("reception");
   });
   it("after party dj", () => { expect(roles("After Party DJ")).toEqual(["dj"]); expect(ctx("After Party DJ")).toBe("after_party"); });
   it("getting ready hotel is accommodations", () => { expect(roles("Getting Ready Hotel")).toEqual(["accommodations"]); expect(ctx("Getting Ready Hotel")).toBe("getting_ready"); });
@@ -126,5 +126,30 @@ describe("D056 taxonomy — v9 failure cases", () => {
   it("unknown labels fall to other with the raw label kept", () => {
     const c = classifyLabel("Weather Concierge Deluxe");
     expect(c.roles).toEqual(["other"]); expect(c.label).toBe("Weather Concierge Deluxe");
+  });
+});
+
+describe("attire split — dress/suit/bridesmaid/veil/shoes no longer collapse to generic attire", () => {
+  it("dress-shop language is wedding_dress", () => {
+    expect(roles("Wedding Dress")).toEqual(["wedding_dress"]);
+    expect(roles("Bridal Boutique")).toEqual(["wedding_dress"]);
+  });
+  it("suit/tux language is menswear", () => {
+    expect(roles("Tuxedo")).toEqual(["menswear"]);
+    expect(roles("Groom's Suit")).toEqual(["menswear"]);
+  });
+  it("bridesmaid language is bridesmaid_attire", () => {
+    expect(roles("Bridesmaid Dresses")).toEqual(["bridesmaid_attire"]);
+  });
+  it("bare veil/shoes peel off the old generic accessories bucket", () => {
+    expect(roles("Veil")).toEqual(["veil_headpiece"]);
+    expect(roles("Heels")).toEqual(["shoes"]);
+  });
+  it("gloves stay in the narrowed accessories catch-all", () => {
+    expect(roles("Gloves")).toEqual(["accessories"]);
+  });
+  it("jewelry and alterations are unaffected by the split", () => {
+    expect(roles("Jeweler")).toEqual(["jewelry"]);
+    expect(roles("Tailor")).toEqual(["alterations"]);
   });
 });
