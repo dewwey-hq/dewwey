@@ -5,22 +5,47 @@ working session; history lives in `decisions.md`, preferences in Claude's memory
 detail nowhere else. If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-11 ~19:30 CT** (after promoting the D058 feed card). `origin/main` =
-`297ac5e` (pushed 2026-09-09). Everything since is LOCAL and NOT pushed — ~50 commits, the
-latest `80ae5aa` (D058 promotion). Run `git log --oneline -12` and `git status` to confirm
-before trusting this line. No DB writes this session; the numbers below are unchanged.
+Last rewritten: **2026-09-13 ~19:00 CT** (after shipping the D059 attire split). `origin/main` =
+`7577935` (pushed 2026-09-13). Run `git log --oneline -12` and `git status` to confirm before
+trusting this line.
 
-## Mission in flight — UI (D058, 2026-09-11)
+## Mission in flight — D059 attire split (2026-09-13, DONE — code shipped, data migrated, deployed)
 
-The feed card was redesigned in `/lab/feed` and **promoted to production today**: every vendor
-page Feed tab and `/weddings` now render `app/components/feed/WeddingCard.tsx` (official
-embed.js embed, no crop, stack panel beside it, carousel for multi-post weddings, Caption/Photo
-flip). Full write-up: `docs/decisions.md` D058. Verified with headless screenshots at 1280 and
-400 on `/vendors/bridgeportartcenter`, `/vendors/abefernandez.fotos`, `/weddings`.
-**Not yet deployed**: nothing is pushed; production (dewwey.com) still runs the old card.
-Next UI round (user's call): the venue detail page around the card (`/lab/venue`), then the
-homepage `HeroStack`. Data follow-ups that improve the card: word-splitter for run-together
-handles; real names/avatars via profile scrape (Apify credits).
+User asked whether vendor stacks could show "dress" vs. "suit" vs. "jeweler" instead of one
+generic "Attire" chip. Answer was yes — the raw credit-line text already distinguished them,
+just needed reclassifying (no new scraping). Full write-up: `docs/decisions.md` D059.
+
+**Shipped**: 5 new roles under the `attire` category — `wedding_dress`, `menswear`,
+`bridesmaid_attire`, `veil_headpiece`, `shoes` (jewelry/alterations unchanged, `accessories`
+narrowed to a real catch-all, `attire` retired as a classification target but kept as a legacy
+dead-letter, same pattern as `hotel`). `vendorRoleRules.ts` (EXACT/HEAD_RULES) and
+`stackParser.ts` (`EMOJI_ROLE_GROUPS`) reclassify; three hand-synced lists (`lib/roles.ts`,
+`lib/server/vendors.ts`, `lib/team.ts`) updated; zero UI code changes needed (all generic over
+`roleLabel()`/`SLOT_ROLES`). Pushed to `main` at `7577935` — Vercel deploys from `main`
+automatically.
+
+**Data migrated to production** (human-run `--apply`, in order): `applyAttireSplitSchema.ts`
+(enum + `vendor_roles` seed) → `reclassifyAttireSplit.ts` (7,404 `stack_extraction_entries_v2`
+rows reclassified) → `migrateVendorRolesV2.ts --batch-id d059-attire-split-1` (5,206
+`wedding_vendors` inserted, 923 deleted) → `refreshAccountRoleTagsFromWeddings.ts` →
+`refresh materialized view edges`. **Caught and fixed a real bug post-migration** (see
+Landmines): `cleanupAttireSplitDuplicates.ts --batch-id d059-attire-split-cleanup-1` removed
+2,838 stale duplicate rows the migration's protection invariant left behind. Verified: 0
+remaining duplicates, spot checks correct (`mira_couture`/`kleinfeldbridal`→wedding_dress,
+`suitsupply`→menswear, `jimmychoo`→shoes, `shoprevelry`→bridesmaid_attire).
+
+**Not done** (optional, not blocking): dedicated `CategoryIcon.tsx` glyphs for the 5 new roles
+(all currently fall back to the default icon, same as old `attire`/`accessories` did).
+
+## Previously shipped — D058 feed card (2026-09-11/12)
+
+Official Instagram embed + team panel beside it, replacing the old cropped-header card. Full
+write-up: `docs/decisions.md` D058. Deployed 2026-09-12, confirmed live via curl + screenshot.
+One unresolved, non-blocking landmine: `dewwey.com` served a stale cached 404 for one vendor
+page post-deploy shortly after — not re-checked since.
+Next UI round (user's call, still open): the venue detail page around the card (`/lab/venue`),
+then the homepage `HeroStack`. Data follow-ups that improve the card: word-splitter for
+run-together handles; real names/avatars via profile scrape (Apify credits).
 
 ## Data mission (paused while UI ran)
 
@@ -36,7 +61,8 @@ user spot-checks and says "create" for every batch.
 | | |
 |---|---|
 | `weddings` | **5,972** (3,541 at D055 start; 46 duplicates merged 2026-09-11) |
-| `wedding_posts` / `wedding_vendors` / `accounts` | 6,842 / 51,275 / 22,974 |
+| `wedding_posts` / `wedding_vendors` / `accounts` | 6,842 / **52,720** (re-verified 2026-09-13, post D059) / 22,974 |
+| `wedding_vendors` attire roles (2026-09-13, post D059) | `wedding_dress` 1,980 · `menswear` 701 · `jewelry` 366 · `bridesmaid_attire` 149 · `shoes` 148 · `alterations` 32 · `veil_headpiece` 30 · `accessories` 19 · `attire` 381 (residual, no v10 coverage) |
 | D056 tables | `wedding_vendor_credits` 43,500 · `wedding_participants` 74 · `ceremony_venue_id` on 63 · `vendor_roles` 54 · `wedding_merges` 46 · `accounts.venue_type` on 1,037 · `edges` 144,413 |
 | Batches (revertable by `batch_id`) | b1 13 · b2 60 · b3 651 · b4 371 · b5 641 · rescue 72 · b6 172 · a1-batch1 228 · **poolb-v2 202 · poolb-a1 67** |
 | Other provenance tables | `wedding_vendor_recredits` (venuelogic, 189), `account_alias_remaps` (548, alias remap applied) |
@@ -59,10 +85,9 @@ user spot-checks and says "create" for every batch.
 
 ## Next actions (Claude, when unblocked)
 
-0. UI: on the user's word, push a `d058-card` branch for a Vercel preview (real-phone check),
-   then `main`. Then `/lab/venue` for the venue detail page. Screenshot tooling: memory
-   `headless-chromium-screenshots` + the CDP script pattern (`shot.ts`, session scratchpad —
-   recreate from that memory if needed).
+0. UI (user's call, still open): `/lab/venue` for the venue detail page redesign, then the
+   homepage `HeroStack`. Screenshot tooling: memory `headless-chromium-screenshots` + the CDP
+   script pattern (`shot.ts`, session scratchpad — recreate from that memory if needed).
 1. Reader `extract-v1.3` with `credits[]` in the D056 vocabulary for the 1,536 documented
    weddings with no labeled stack (mention inference covered 362 posts) — ~$2, approval.
 2. 68 mention-inferred credits still without a `wedding_vendors` row (small; find why).
@@ -72,6 +97,14 @@ user spot-checks and says "create" for every batch.
 
 ## Landmines (things that bit us; check before repeating)
 
+- **`migrateVendorRolesV2.ts`'s protection invariant inserts a new v10-derived role on a
+  protected wedding but does NOT delete the account's prior role there** (built for D056 to
+  stop a parser correction clobbering good data — fine there, wrong for a pure role-relabeling
+  like D059's attire split, which left 2,850 `(wedding, account)` pairs carrying both the old
+  and new role). Any future taxonomy split/rename run through this script needs a same-day
+  follow-up cleanup pass (see `cleanupAttireSplitDuplicates.ts` as the template: delete the old
+  role wherever a sibling new-role row exists for the exact same `(wedding_id, account_id)`,
+  logged to `vendor_role_migrations` for revert) — don't assume the migration alone is complete.
 - Instagram embeds: never crop/overlay/resize the frame (Meta terms); embed.js sets a 12px
   bottom margin on its iframe and reports its own (sometimes wrong) height; an unprocessed
   blockquote is 56px tall — hold the placeholder height or lazy-mounting cascades down the
@@ -116,8 +149,15 @@ user spot-checks and says "create" for every batch.
   helpers `lib/feedDesign.ts` (+test, 51). Lab: `app/lab/feed` (Card wrapper with URL knobs,
   `/lab/feed/swatch` for micro-decisions). Old `WeddingFeedCard` deleted; `InstagramEmbed.tsx`
   (old primitive) remains for labeling tools + concept pages only.
-- Decision log: `docs/decisions.md` (D056 at the top with its stages 1-2 addendum; D055 closed with
-  the residue table).
+- Decision log: `docs/decisions.md` (D059 attire split at the top; D056 below it with its
+  stages 1-2 addendum; D055 closed with the residue table).
+- D059 attire split: `vendorRoleRules.ts` (taxonomy + EXACT/HEAD_RULES, source of truth),
+  `stackParser.ts` (`EMOJI_ROLE_GROUPS`, `classifyEmojiRun` exported), `lib/roles.ts` /
+  `lib/server/vendors.ts` / `lib/team.ts` (hand-synced copies), `applyAttireSplitSchema.ts`
+  (enum + `vendor_roles` seed), `reclassifyAttireSplit.ts` (re-buckets
+  `stack_extraction_entries_v2`), `cleanupAttireSplitDuplicates.ts` (post-migration duplicate
+  cleanup — see Landmines); provenance in `vendor_role_migrations` (batches
+  `d059-attire-split-1`, `d059-attire-split-cleanup-1`).
 - Coverage: `scripts/graph/reportVenueCoverage.ts` (standing metric; output in
   `tmp_analysis/venue_coverage_2026-09-10.md`), `refreshAccountRoleTagsFromWeddings.ts` (run
   after EVERY batch), `recreditManagementCompany.ts`, `remapWeddingsToCanonicalAccounts.ts`,
