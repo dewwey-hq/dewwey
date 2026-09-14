@@ -1,0 +1,496 @@
+/**
+ * BFS crawl of one venue website (D060 Phase 2 crawl-only checkpoint). Score-ordered
+ * (`crawl/urlScore.ts`), same-registrable-host except allowed off-site PDFs
+ * (`isOffsitePdfAllowed`), robots-respecting (`crawl/robots.ts`), politely rate-limited per
+ * host. Every fetched page/PDF is deduped by `sha256(text)` against `venue_source_snapshots`
+ * (insert-only) and always mirrored to the local cache (`crawl/cache.ts`) so extraction can run
+ * offline. `--dry-run` does the fetch + parse + local cache only -- no DB or R2 writes.
+ *
+ * Usage (from apps/web):
+ *   bun run scripts/venue-details/crawlVenue.ts --dry-run --account-ids 477 --website-override https://greenhouseloft.com/ --max-pages 12
+ *   bun run scripts/venue-details/crawlVenue.ts --from-websites --limit 10 --crawl-batch vd-crawl-1
+ *   bun run scripts/venue-details/crawlVenue.ts --account-ids 31,477,507 --crawl-batch vd-crawl-1
+ */
+import type { Pool } from "pg";
+import { getPool, closePool } from "../classify/db";
+import { extractHtml, type HtmlLink } from "./crawl/htmlText";
+import { extractPdfText } from "./crawl/pdfText";
+import { isAllowed, fetchRobots, VENUE_BOT_NAME, VENUE_BOT_USER_AGENT } from "./crawl/robots";
+import { isOffsitePdfAllowed, sameRegistrableHost, scoreUrl } from "./crawl/urlScore";
+import { putSnapshotText, snapshotKey } from "./crawl/r2";
+import { sha256, writeCacheEntry } from "./crawl/cache";
+
+const HTML_BYTE_CAP = 2 * 1024 * 1024; // 2 MB
+const PDF_BYTE_CAP = 15 * 1024 * 1024; // 15 MB
+const FETCH_TIMEOUT_MS = 15_000;
+
+// ---------------------------------------------------------------------------
+// Args
+// ---------------------------------------------------------------------------
+
+interface Args {
+  accountIds: number[] | null;
+  fromWebsites: boolean;
+  limit: number | null;
+  maxPages: number;
+  maxPdfs: number;
+  maxDepth: number;
+  delayMs: number;
+  concurrency: number;
+  refresh: boolean;
+  crawlBatch: string | null;
+  dryRun: boolean;
+  printManifest: boolean;
+  websiteOverride: string | null;
+}
+
+function parseArgs(): Args {
+  const a = process.argv.slice(2);
+  const get = (flag: string) => {
+    const i = a.indexOf(flag);
+    return i >= 0 ? a[i + 1] : undefined;
+  };
+  const accountIdsRaw = get("--account-ids");
+  const dryRun = a.includes("--dry-run");
+  const crawlBatch = get("--crawl-batch") ?? null;
+  if (!dryRun && !crawlBatch) {
+    console.error("[crawl-venue] --crawl-batch <id> is required unless --dry-run is passed.");
+    process.exit(1);
+  }
+  const websiteOverride = get("--website-override") ?? null;
+  const accountIds = accountIdsRaw ? accountIdsRaw.split(",").map((s) => Number(s.trim())) : null;
+  if (websiteOverride && (!accountIds || accountIds.length !== 1)) {
+    console.error("[crawl-venue] --website-override requires exactly one --account-ids value.");
+    process.exit(1);
+  }
+  return {
+    accountIds,
+    fromWebsites: a.includes("--from-websites"),
+    limit: get("--limit") ? Number(get("--limit")) : null,
+    maxPages: Number(get("--max-pages") ?? 30),
+    maxPdfs: Number(get("--max-pdfs") ?? 8),
+    maxDepth: Number(get("--max-depth") ?? 3),
+    delayMs: Number(get("--delay-ms") ?? 1500),
+    concurrency: Number(get("--concurrency") ?? 3),
+    refresh: a.includes("--refresh"),
+    crawlBatch,
+    dryRun,
+    printManifest: a.includes("--print-manifest"),
+    websiteOverride,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Fetch helpers
+// ---------------------------------------------------------------------------
+
+interface FetchOutcome {
+  ok: boolean;
+  status: number | null;
+  contentType: string | null;
+  finalUrl: string | null;
+  bytes: Uint8Array | null;
+  error: string | null;
+  tooLarge: boolean;
+}
+
+async function fetchOnce(url: string, capBytes: number): Promise<FetchOutcome> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": VENUE_BOT_USER_AGENT },
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    const contentType = res.headers.get("content-type");
+    const contentLength = res.headers.get("content-length");
+    if (contentLength && Number(contentLength) > capBytes) {
+      return { ok: false, status: res.status, contentType, finalUrl: res.url, bytes: null, error: "content-length exceeds cap", tooLarge: true };
+    }
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.byteLength > capBytes) {
+      return { ok: res.ok, status: res.status, contentType, finalUrl: res.url, bytes: buf.slice(0, capBytes), error: null, tooLarge: true };
+    }
+    return { ok: res.ok, status: res.status, contentType, finalUrl: res.url, bytes: buf, error: null, tooLarge: false };
+  } catch (e) {
+    return { ok: false, status: null, contentType: null, finalUrl: null, bytes: null, error: e instanceof Error ? e.message : String(e), tooLarge: false };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/** One retry on 5xx or network error (no retry on 4xx). */
+async function fetchWithRetry(url: string, capBytes: number): Promise<FetchOutcome> {
+  const first = await fetchOnce(url, capBytes);
+  const shouldRetry = first.error !== null || (first.status !== null && first.status >= 500);
+  if (!shouldRetry) return first;
+  return fetchOnce(url, capBytes);
+}
+
+// ---------------------------------------------------------------------------
+// Queue item
+// ---------------------------------------------------------------------------
+
+interface QueueItem {
+  url: string;
+  depth: number;
+  score: number;
+  isPdf: boolean;
+  anchorText: string;
+}
+
+/** Dedupe key ignoring scheme/www and a trailing slash -- `https://x.com/` and
+ * `http://www.x.com` (a common http->https / bare->www redirect pair) must count as the same
+ * page for `visited`, or a redirecting homepage burns the page budget on itself. */
+function normalizeUrlKey(url: string): string {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./i, "").toLowerCase();
+    const pathname = u.pathname.length > 1 ? u.pathname.replace(/\/+$/, "") : u.pathname;
+    return `${host}${pathname}${u.search}`.toLowerCase();
+  } catch {
+    return url;
+  }
+}
+
+function isPdfUrl(url: string): boolean {
+  try {
+    return /\.pdf(\?|#|$)/i.test(new URL(url).pathname + new URL(url).search);
+  } catch {
+    return /\.pdf(\?|#|$)/i.test(url);
+  }
+}
+
+interface CrawlSummary {
+  accountId: number;
+  homepage: string;
+  htmlFetched: number;
+  htmlUnchanged: number;
+  jsShellCount: number;
+  blockedCount: number;
+  pdfsWithTextLayer: number;
+  pdfsWithoutTextLayer: number;
+  offsitePdfsFollowed: number;
+  totalChars: number;
+  hostBlocked: boolean;
+  entries: {
+    url: string;
+    kind: "html" | "pdf";
+    depth: number;
+    score: number;
+    outcome: string;
+    chars: number;
+    hasTextLayer: boolean | null;
+    offsite: boolean;
+  }[];
+}
+
+async function crawlOneVenue(
+  pool: Pool | null,
+  accountId: number,
+  homepage: string,
+  args: Args
+): Promise<CrawlSummary> {
+  const summary: CrawlSummary = {
+    accountId,
+    homepage,
+    htmlFetched: 0,
+    htmlUnchanged: 0,
+    jsShellCount: 0,
+    blockedCount: 0,
+    pdfsWithTextLayer: 0,
+    pdfsWithoutTextLayer: 0,
+    offsitePdfsFollowed: 0,
+    totalChars: 0,
+    hostBlocked: false,
+    entries: [],
+  };
+
+  const visited = new Set<string>();
+  const queue: QueueItem[] = [{ url: homepage, depth: 0, score: Number.POSITIVE_INFINITY, isPdf: isPdfUrl(homepage), anchorText: "" }];
+  const lastFetchAtByHost = new Map<string, number>();
+  let hostBlocked = false;
+
+  const hostOf = (u: string) => {
+    try {
+      return new URL(u).hostname.toLowerCase();
+    } catch {
+      return u;
+    }
+  };
+
+  while (queue.length > 0 && !hostBlocked) {
+    if (summary.htmlFetched >= args.maxPages && summary.entries.filter((e) => e.kind === "pdf").length >= args.maxPdfs) break;
+
+    queue.sort((a, b) => (b.score !== a.score ? b.score - a.score : a.depth - b.depth));
+    const item = queue.shift()!;
+    if (visited.has(normalizeUrlKey(item.url))) continue;
+    if (item.depth > args.maxDepth) continue;
+
+    const isHome = item.depth === 0;
+    if (!isHome && !(item.score >= 0 || item.depth <= 1)) continue; // low priority, never fetched
+
+    if (item.isPdf) {
+      if (summary.entries.filter((e) => e.kind === "pdf").length >= args.maxPdfs) continue;
+    } else {
+      if (summary.htmlFetched >= args.maxPages) continue;
+    }
+
+    const offsite = !sameRegistrableHost(item.url, homepage);
+    if (offsite && (!item.isPdf || !isOffsitePdfAllowed(item.url, item.anchorText))) continue;
+
+    visited.add(normalizeUrlKey(item.url));
+
+    const robotsOk = await isAllowed(item.url).catch(() => true);
+    if (!robotsOk) {
+      summary.entries.push({ url: item.url, kind: item.isPdf ? "pdf" : "html", depth: item.depth, score: item.score, outcome: "skipped (robots)", chars: 0, hasTextLayer: null, offsite });
+      continue;
+    }
+
+    // Polite per-host delay: max(--delay-ms, robots Crawl-delay).
+    const host = hostOf(item.url);
+    const robots = await fetchRobots(item.url, VENUE_BOT_NAME, VENUE_BOT_USER_AGENT).catch(() => ({ rules: [], crawlDelayMs: 0 }));
+    const delay = Math.max(args.delayMs, robots.crawlDelayMs);
+    const lastAt = lastFetchAtByHost.get(host);
+    if (lastAt !== undefined) {
+      const wait = delay - (Date.now() - lastAt);
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    }
+    lastFetchAtByHost.set(host, Date.now());
+
+    const outcome = await fetchWithRetry(item.url, item.isPdf ? PDF_BYTE_CAP : HTML_BYTE_CAP);
+
+    if (outcome.status === 403 || outcome.status === 429 || outcome.status === 503) {
+      hostBlocked = true;
+      summary.hostBlocked = true;
+      summary.blockedCount++;
+      summary.entries.push({ url: item.url, kind: item.isPdf ? "pdf" : "html", depth: item.depth, score: item.score, outcome: `blocked (HTTP ${outcome.status})`, chars: 0, hasTextLayer: null, offsite });
+      if (!args.dryRun && pool) {
+        await pool.query(`update venue_websites set status = 'unreachable', note = $2, updated_at = now() where account_id = $1`, [
+          accountId,
+          `blocked during crawl: HTTP ${outcome.status} on ${item.url}`,
+        ]);
+      }
+      break;
+    }
+
+    if (!outcome.ok || !outcome.bytes) {
+      summary.entries.push({ url: item.url, kind: item.isPdf ? "pdf" : "html", depth: item.depth, score: item.score, outcome: `error (${outcome.error ?? outcome.status})`, chars: 0, hasTextLayer: null, offsite });
+      continue;
+    }
+
+    if (item.isPdf) {
+      if (offsite) summary.offsitePdfsFollowed++;
+      const { text, hasTextLayer } = await extractPdfText(outcome.bytes);
+      const hash = sha256(text);
+      summary.totalChars += text.length;
+      if (hasTextLayer) summary.pdfsWithTextLayer++;
+      else summary.pdfsWithoutTextLayer++;
+
+      await writeCacheEntry(
+        accountId,
+        { url: item.url, finalUrl: outcome.finalUrl, kind: "pdf", title: null, hasTextLayer, depth: item.depth, score: item.score },
+        text
+      );
+
+      if (!args.dryRun && pool) {
+        await recordSnapshotAndFetch(pool, accountId, item, outcome, "pdf", hash, text, null, hasTextLayer, args.crawlBatch!);
+      }
+
+      summary.entries.push({ url: item.url, kind: "pdf", depth: item.depth, score: item.score, outcome: "fetched", chars: text.length, hasTextLayer, offsite });
+      continue;
+    }
+
+    // HTML
+    const html = new TextDecoder().decode(outcome.bytes);
+    const { text, title, links, assetCandidates, isJsShell } = await extractHtml(html, outcome.finalUrl ?? item.url);
+    const hash = sha256(text);
+
+    await writeCacheEntry(
+      accountId,
+      { url: item.url, finalUrl: outcome.finalUrl, kind: "html", title, hasTextLayer: null, depth: item.depth, score: item.score },
+      text
+    );
+
+    let dbOutcome: "fetched" | "unchanged" | "js_shell" = "fetched";
+    if (!args.dryRun && pool) {
+      if (isJsShell) {
+        await recordJsShellFetch(pool, accountId, item, outcome, args.crawlBatch!);
+        dbOutcome = "js_shell";
+      } else {
+        dbOutcome = await recordSnapshotAndFetch(pool, accountId, item, outcome, "html", hash, text, title, null, args.crawlBatch!);
+      }
+    } else if (isJsShell) {
+      dbOutcome = "js_shell";
+    }
+
+    summary.htmlFetched++;
+    summary.totalChars += text.length;
+    if (dbOutcome === "unchanged") summary.htmlUnchanged++;
+    if (isJsShell) summary.jsShellCount++;
+
+    summary.entries.push({ url: item.url, kind: "html", depth: item.depth, score: item.score, outcome: dbOutcome, chars: text.length, hasTextLayer: null, offsite });
+
+    if (!isJsShell) {
+      const allLinks: (HtmlLink & { isPdfLink: boolean })[] = [
+        ...links.map((l) => ({ ...l, isPdfLink: false })),
+        ...assetCandidates.map((a) => ({ href: a.href, text: a.text, fromNav: false, isPdfLink: true })),
+      ];
+      for (const link of allLinks) {
+        if (visited.has(normalizeUrlKey(link.href))) continue;
+        const score = scoreUrl(link.href, { fromNav: link.fromNav, anchorText: link.text });
+        if (score === null) continue;
+        const linkIsPdf = link.isPdfLink || isPdfUrl(link.href);
+        const linkOffsite = !sameRegistrableHost(link.href, homepage);
+        if (linkOffsite && (!linkIsPdf || !isOffsitePdfAllowed(link.href, link.text))) continue;
+        queue.push({ url: link.href, depth: item.depth + 1, score, isPdf: linkIsPdf, anchorText: link.text });
+      }
+    }
+  }
+
+  return summary;
+}
+
+async function recordSnapshotAndFetch(
+  pool: Pool,
+  accountId: number,
+  item: QueueItem,
+  outcome: FetchOutcome,
+  kind: "html" | "pdf",
+  hash: string,
+  text: string,
+  title: string | null,
+  hasTextLayer: boolean | null,
+  crawlBatch: string
+): Promise<"fetched" | "unchanged"> {
+  const { rows: existing } = await pool.query<{ id: string }>(
+    `select id::text from venue_source_snapshots where account_id = $1 and url = $2 and sha256 = $3`,
+    [accountId, item.url, hash]
+  );
+
+  let snapshotId: number;
+  let dbOutcome: "fetched" | "unchanged";
+  if (existing[0]) {
+    snapshotId = Number(existing[0].id);
+    dbOutcome = "unchanged";
+  } else {
+    const key = snapshotKey(accountId, hash);
+    await putSnapshotText(key, text);
+    const { rows: inserted } = await pool.query<{ id: string }>(
+      `insert into venue_source_snapshots (account_id, url, final_url, kind, sha256, r2_key, chars, title, has_text_layer)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id::text`,
+      [accountId, item.url, outcome.finalUrl, kind, hash, key, text.length, title, hasTextLayer]
+    );
+    snapshotId = Number(inserted[0].id);
+    dbOutcome = "fetched";
+  }
+
+  await pool.query(
+    `insert into venue_source_fetches (account_id, url, http_status, content_type, outcome, snapshot_id, depth, score, crawl_batch)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [accountId, item.url, outcome.status, outcome.contentType, dbOutcome, snapshotId, item.depth, Math.trunc(Math.min(item.score, 1_000_000)), crawlBatch]
+  );
+
+  return dbOutcome;
+}
+
+/** js_shell pages get a fetch row only -- no snapshot (spec: "js_shell pages: fetch row only"). */
+async function recordJsShellFetch(pool: Pool, accountId: number, item: QueueItem, outcome: FetchOutcome, crawlBatch: string): Promise<void> {
+  await pool.query(
+    `insert into venue_source_fetches (account_id, url, http_status, content_type, outcome, snapshot_id, depth, score, crawl_batch)
+     values ($1, $2, $3, $4, 'js_shell', null, $5, $6, $7)`,
+    [accountId, item.url, outcome.status, outcome.contentType, item.depth, Math.trunc(Math.min(item.score, 1_000_000)), crawlBatch]
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Venue selection
+// ---------------------------------------------------------------------------
+
+interface VenueTarget {
+  accountId: number;
+  url: string;
+}
+
+async function selectVenues(pool: Pool, args: Args): Promise<VenueTarget[]> {
+  if (args.websiteOverride) {
+    return [{ accountId: args.accountIds![0], url: args.websiteOverride }];
+  }
+
+  if (args.accountIds) {
+    const { rows } = await pool.query<{ account_id: number; url: string }>(
+      `select account_id, url from venue_websites where account_id = any($1::bigint[]) and status in ('verified', 'candidate')`,
+      [args.accountIds]
+    );
+    return rows.map((r) => ({ accountId: Number(r.account_id), url: r.url }));
+  }
+
+  if (args.fromWebsites) {
+    const { rows } = await pool.query<{ account_id: number; url: string }>(
+      `select account_id, url from venue_websites where status in ('verified', 'candidate') order by account_id limit $1`,
+      [args.limit ?? 1000]
+    );
+    return rows.map((r) => ({ accountId: Number(r.account_id), url: r.url }));
+  }
+
+  console.error("[crawl-venue] pass --account-ids <ids> or --from-websites.");
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+function printSummary(summary: CrawlSummary, printManifest: boolean) {
+  console.log(`\n[crawl-venue] account ${summary.accountId} (${summary.homepage})`);
+  console.log(`  pages fetched:        ${summary.htmlFetched} (unchanged: ${summary.htmlUnchanged}, js_shell: ${summary.jsShellCount})`);
+  console.log(`  pdfs:                 with text layer ${summary.pdfsWithTextLayer}, without ${summary.pdfsWithoutTextLayer}`);
+  console.log(`  off-site pdfs followed: ${summary.offsitePdfsFollowed}`);
+  console.log(`  host blocked mid-crawl: ${summary.hostBlocked}`);
+  console.log(`  total chars:           ${summary.totalChars}`);
+  if (printManifest) {
+    console.log(`  manifest:`);
+    for (const e of summary.entries) {
+      console.log(
+        `    [${e.kind}] d${e.depth} score=${e.score} chars=${e.chars} textLayer=${e.hasTextLayer ?? "n/a"} offsite=${e.offsite} -- ${e.outcome} -- ${e.url}`
+      );
+    }
+  }
+}
+
+async function main() {
+  const args = parseArgs();
+  // --website-override skips the DB lookup entirely (used for a --dry-run smoke test against a
+  // single account with no venue_websites row yet). Otherwise a pool is always needed: either to
+  // select venues (--account-ids/--from-websites) or, when not a dry run, to write snapshots/
+  // fetches/status updates during the crawl itself.
+  const needsPool = !args.websiteOverride || !args.dryRun;
+  const pool = needsPool ? getPool() : null;
+
+  if (!pool && !args.websiteOverride) {
+    console.error("[crawl-venue] no venue selection given.");
+    process.exit(1);
+  }
+
+  const targets = args.websiteOverride
+    ? [{ accountId: args.accountIds![0], url: args.websiteOverride }]
+    : await selectVenues(pool!, args);
+
+  const limited = args.limit && !args.accountIds ? targets.slice(0, args.limit) : targets;
+
+  console.log(`[crawl-venue] mode: ${args.dryRun ? "DRY RUN (fetch + parse + local cache only, no DB/R2 writes)" : "LIVE"}`);
+  console.log(`[crawl-venue] venues to crawl: ${limited.length}`);
+
+  for (const target of limited) {
+    const summary = await crawlOneVenue(args.dryRun ? null : pool, target.accountId, target.url, args);
+    printSummary(summary, args.printManifest);
+  }
+
+  if (pool) await closePool();
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
