@@ -35,15 +35,17 @@ popover, `CostEstimate`, `PoliciesList`, `FaqList`, `ResourceMenuButton`, `forma
 goldens render at desktop and phone width; screenshots reviewed by Claude (user review still open).
 235 tests: `bunx vitest run lib/venueDetails app/components/venue scripts/venue-details`.
 
-**Phase 2 — in progress (non-LLM infrastructure building; nothing applied to the DB or R2 yet).**
-A builder is writing `apps/web/scripts/venue-details/`: `applyVenueDetailsSchema.ts` (DDL, also
-transcribed into `pipeline/schema.sql`), `universe.ts` (listed-venue predicate, alias-aware),
-`discoverWebsites.ts`, `crawl/*` (urlScore, htmlText via Bun HTMLRewriter, robots, pdfText via the new
-`unpdf` devDependency, r2 via `Bun.S3Client`, cache), `crawlVenue.ts` (snapshots to R2, insert-only,
-dedupe by sha256), `reportCrawlCoverage.ts`. Not yet written: `venueDetailsPrompt.ts`,
-`extractVenueDetails.ts`, `validateVenueDetails.ts`, `repairVenueDetails.ts`, `serveVenueDetails.ts`,
-`rollbackVenueDetails.ts`, `addCorrection.ts`, `scoreAgainstGolden.ts` (+ must-not assertion
-fixtures for the rubric's 15), `reportVenueDetailsFunnel.ts`.
+**Phase 2 — code complete and committed (`ef5f4ce`, `de1c8f9`, `4b1909e`); nothing applied to the DB
+or R2, zero OpenRouter calls.** `apps/web/scripts/venue-details/`: `applyVenueDetailsSchema.ts` (DDL,
+transcribed into `pipeline/schema.sql`), `universe.ts`, `discoverWebsites.ts`, `crawl/*` (Bun
+HTMLRewriter, robots, `unpdf`, `Bun.S3Client`, cache) + `crawlVenue.ts --seed-urls` +
+`seeds/golden-seeds.csv`, `reportCrawlCoverage.ts`, `contract.ts`, `venueDetailsPrompt.ts` (two tools,
+≈12k + 2.7k tokens), `extractVenueDetails.ts`, `validateVenueDetails.ts` + `validate/*`,
+`repairVenueDetails.ts`, `serveVenueDetails.ts`, `rollbackVenueDetails.ts`, `addCorrection.ts`,
+`score.ts` + `scoreAgainstGolden.ts`, `mustnot/*` (rubric's 15 as assertions; `account-map.csv`
+resolves them to accounts), `reportVenueDetailsFunnel.ts`. 445 tests (`bunx --bun vitest run
+lib/venueDetails app/components/venue scripts/venue-details`). Dry-runs done: discovery over the
+universe and the 16-venue calibration crawl (tables below).
 
 ## Numbers (live DB, unchanged by this mission so far)
 
@@ -52,17 +54,35 @@ numbers did not move today. New this mission: 0 rows in any `venue_*` v3 table (
 OpenRouter spend for D060 = $0; database size 747 MB (140 MB of it is legacy `venue_extraction_runs`
 page text — the reason v3 snapshots go to R2).
 
-## Blocked on the user
+| Discovery dry-run (2026-09-14, `discoverWebsites.ts --dry-run --probe`, log in `tmp_analysis/`) | |
+|---|---|
+| Listed venues (live `searchVendors` predicate) | **421** |
+| Have a website candidate | **166** (111 `vendors.website`, 55 IG bio link) |
+| Probed: verified / js_shell / unreachable | **146** / 7 / 13 |
+| No candidate at all (Phase 5 discovery) | 255 |
+
+| Calibration crawl dry-run (2026-09-14, local cache only; `tmp_analysis/venue_details_crawl_coverage_2026-09-14.md`) | |
+|---|---|
+| Venues crawled | 15 of 16 (Four Seasons blocks bots; Wrigley has no account) |
+| Venues with ≥ 5 usable pages | **15 / 15** |
+| Text-layer PDFs found | 42 (LondonHouse 8, River Roast 8, Greenhouse 6, Adler 5, Drake 4, Langham 4, …) |
+| Image-only PDFs | Diamond Garden 4 (its menus, expected), CAA 5, Langham 1 |
+| Seeded off-site docs reached | Marchetti brochure (text layer), Field Museum ×2 |
+
+## Blocked on the user (all Phase 2 code is committed; these are the three approvals it waits on)
 
 1. **Review `/lab/venue?golden=<slug>` for all six goldens** on localhost (desktop + phone). Lost facts
-   fail; lost flourishes go on the punch list in the plan. Nothing else in Phase 2 depends on this, but
-   Phase 4 (production promotion) does.
-2. **Apply the v3 schema** when the builder lands it: `bun run scripts/venue-details/
-   applyVenueDetailsSchema.ts` from `apps/web` (idempotent; `--print` shows the DDL). The classifier
-   usually blocks DDL from Claude; run it with `!` if so.
-3. **Say "go" for the first R2 + DB crawl writes** (golden six + the rubric's 15, `--crawl-batch
-   vd-golden-crawl-1`) once the dry-run manifests look right, and for the first OpenRouter spend
-   (`extractVenueDetails.ts --golden`, budget < $5).
+   fail; lost flourishes go on the punch list in the plan. Phase 4 (production promotion) depends on this.
+2. **Apply the v3 schema**: from `apps/web`, `bun run scripts/venue-details/applyVenueDetailsSchema.ts`
+   (idempotent; `--print` shows the DDL). Creates 6 empty tables + 1 view; no existing table is touched.
+   The classifier usually blocks DDL from Claude; run it with `!` if so.
+3. **Say "go" for the first real writes**, in this order, each a dry-run first:
+   - `discoverWebsites.ts --batch-id vd-discovery-1 --probe --apply` (writes the 166 candidate rows).
+   - `crawlVenue.ts --account-ids <golden 6 + must-not 10> --crawl-batch vd-cal-crawl-1 --seed-urls
+     seeds/golden-seeds.csv` (writes snapshots to R2 + fetch rows; the same pages already sit in the
+     local cache, so this re-fetch is cheap and polite).
+   - `extractVenueDetails.ts --golden --max-cost-usd 5` — the first OpenRouter spend, Haiku, ~$1-2.
+     Then validate → repair → `scoreAgainstGolden.ts --source runs --mustnot` and iterate the prompt.
 4. Carried over: Apify credits (coverage items), re-anchor human queue (17 weddings) — see D055/D056.
 
 ## Next actions (Claude, when unblocked)
