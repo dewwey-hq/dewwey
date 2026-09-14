@@ -69,8 +69,20 @@ export async function extractHtml(html: string, baseUrl: string): Promise<Extrac
   let currentHref: string | null = null;
   let currentLinkParts: string[] = [];
   let currentLinkFromNav = false;
+  // Per the HTML spec, a `<base href>` (only the first one counts) overrides the document URL
+  // as the base for every relative link on the page -- common on CMS sites (WordPress, this
+  // repo's LondonHouse fixture) whose nav uses bare relative paths meant to resolve from root
+  // regardless of how deep the current URL's own path is. Without this, following e.g.
+  // `href="amenities/"` from `.../weddings/` wrongly nests to `.../weddings/amenities/` (404)
+  // instead of the real `.../amenities/`.
+  let baseHref: string | null = null;
 
   const rewriter = new HTMLRewriter()
+    .on("base[href]", {
+      element(el) {
+        if (baseHref === null) baseHref = el.getAttribute("href");
+      },
+    })
     .on(SKIP_SELECTOR, {
       element(el) {
         skipDepth++;
@@ -125,7 +137,8 @@ export async function extractHtml(html: string, baseUrl: string): Promise<Extrac
           if (!href2 || href2.startsWith("#") || /^mailto:/i.test(href2) || /^tel:/i.test(href2) || /^javascript:/i.test(href2)) {
             return;
           }
-          const resolved = resolveHref(href2, baseUrl);
+          const effectiveBase = baseHref ? resolveHref(baseHref, baseUrl) : baseUrl;
+          const resolved = resolveHref(href2, effectiveBase);
           if (/\.pdf(\?|#|$)/i.test(resolved)) {
             assetCandidates.push({ href: resolved, text });
           } else {

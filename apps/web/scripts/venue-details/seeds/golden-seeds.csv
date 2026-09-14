@@ -1,0 +1,3 @@
+account_id,url,note
+31,https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf,"wedding brochure; link is client-rendered on galleriamarchetti.com, confirmed 2026-09-13"
+1131,https://www.datocms-assets.com/44232/1726173269-field-museum-wine-list-09122024.pdf,"wine list; anchor is an icon-only download link with no href/anchor-text keyword match (descriptive text ""Wine List"" lives in a sibling <h4>, not the <a>), so isOffsitePdfAllowed never sees it -- confirmed 2026-09-13 (the sibling PDF on the same page, field-museum-bar-packages-1.pdf, IS discovered organically because its heading is ""Beverage Packages"")"

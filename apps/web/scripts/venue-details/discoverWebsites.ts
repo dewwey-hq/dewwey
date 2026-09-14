@@ -19,6 +19,7 @@ import type { Pool } from "pg";
 import { getPool, closePool } from "../classify/db";
 import { accountAliasSet, listedVenueAccountIds } from "./universe";
 import { extractHtml } from "./crawl/htmlText";
+import { parseCsvLine } from "./csv";
 
 const VENUE_BOT_USER_AGENT = "DewweyVenueBot/1.0 (+https://dewwey.com/bot; venue facts for couples)";
 const PROBE_TIMEOUT_MS = 15_000;
@@ -99,34 +100,6 @@ function parseArgs(): Args {
 // ---------------------------------------------------------------------------
 // Manual map CSV (columns: account_id,url,note)
 // ---------------------------------------------------------------------------
-
-function parseCsvLine(line: string): string[] {
-  const fields: string[] = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (inQuotes) {
-      if (c === '"' && line[i + 1] === '"') {
-        cur += '"';
-        i++;
-      } else if (c === '"') {
-        inQuotes = false;
-      } else {
-        cur += c;
-      }
-    } else if (c === '"') {
-      inQuotes = true;
-    } else if (c === ",") {
-      fields.push(cur);
-      cur = "";
-    } else {
-      cur += c;
-    }
-  }
-  fields.push(cur);
-  return fields;
-}
 
 function loadManualMap(csvPath: string): Map<number, { url: string; note: string | null }> {
   const map = new Map<number, { url: string; note: string | null }>();

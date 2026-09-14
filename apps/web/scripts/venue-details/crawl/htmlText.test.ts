@@ -35,6 +35,26 @@ describe("extractHtml", () => {
     expect(assetCandidates).toEqual([{ href: "https://venue.com/docs/brochure.pdf", text: "Brochure" }]);
   });
 
+  test("a <base href> overrides the document URL for relative link resolution", async () => {
+    // LondonHouse-shaped fixture: fetched at /weddings/, but <base href> points at root, and
+    // nav links are bare relative paths meant to resolve from root, not from /weddings/.
+    const html = `<head><base href="https://londonhousechicago.com"></head><body><a href="amenities/">Amenities</a></body>`;
+    const { links } = await extractHtml(html, "https://londonhousechicago.com/weddings/");
+    expect(links).toEqual([{ href: "https://londonhousechicago.com/amenities/", text: "Amenities", fromNav: false }]);
+  });
+
+  test("without a <base> tag, relative links resolve against the document URL as before", async () => {
+    const html = `<a href="amenities/">Amenities</a>`;
+    const { links } = await extractHtml(html, "https://venue.com/weddings/");
+    expect(links).toEqual([{ href: "https://venue.com/weddings/amenities/", text: "Amenities", fromNav: false }]);
+  });
+
+  test("only the first <base> tag counts", async () => {
+    const html = `<base href="https://one.example/"><base href="https://two.example/"><a href="x">X</a>`;
+    const { links } = await extractHtml(html, "https://venue.com/");
+    expect(links).toEqual([{ href: "https://one.example/x", text: "X", fromNav: false }]);
+  });
+
   test("detects nav/header/footer ancestry", async () => {
     const html = `
       <nav><a href="/weddings">Weddings</a></nav>

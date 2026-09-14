@@ -10,7 +10,15 @@
  *   bun run scripts/venue-details/crawlVenue.ts --dry-run --account-ids 477 --website-override https://greenhouseloft.com/ --max-pages 12
  *   bun run scripts/venue-details/crawlVenue.ts --from-websites --limit 10 --crawl-batch vd-crawl-1
  *   bun run scripts/venue-details/crawlVenue.ts --account-ids 31,477,507 --crawl-batch vd-crawl-1
+ *   bun run scripts/venue-details/crawlVenue.ts --dry-run --account-ids 31 --website-override https://www.galleriamarchetti.com/ --seed-urls scripts/venue-details/seeds/golden-seeds.csv
+ *
+ * `--seed-urls <csv>` (columns account_id,url,note): known public documents a plain-fetch crawl
+ * can't discover on its own (a JS-rendered download link, e.g. Marchetti's brochure) get
+ * enqueued at depth 0 / score SEED_SCORE regardless of same-host/off-site-PDF rules, tagged
+ * `source: "manual_seed"` in the summary/cache manifest (never in the DB fetch row's
+ * `crawl_batch`, which stays whatever `--crawl-batch` says).
  */
+import { readFileSync } from "node:fs";
 import type { Pool } from "pg";
 import { getPool, closePool } from "../classify/db";
 import { extractHtml, type HtmlLink } from "./crawl/htmlText";
@@ -19,6 +27,63 @@ import { isAllowed, fetchRobots, VENUE_BOT_NAME, VENUE_BOT_USER_AGENT } from "./
 import { isOffsitePdfAllowed, sameRegistrableHost, scoreUrl } from "./crawl/urlScore";
 import { putSnapshotText, snapshotKey } from "./crawl/r2";
 import { sha256, writeCacheEntry } from "./crawl/cache";
+import { parseCsvRows } from "./csv";
+
+// ---------------------------------------------------------------------------
+// Manual seeds (--seed-urls <csv>, columns account_id,url,note)
+// ---------------------------------------------------------------------------
+
+export const SEED_SCORE = 10;
+
+export interface Seed {
+  accountId: number;
+  url: string;
+  note: string;
+}
+
+/** Pure parse of a seed CSV's text (columns account_id,url,note) into rows. Exported for unit
+ * testing; `loadSeedsFile` below does the actual file read. */
+export function parseSeedsCsv(text: string): Seed[] {
+  const { header, rows } = parseCsvRows(text, ["account_id", "url"]);
+  const accountIdIdx = header.indexOf("account_id");
+  const urlIdx = header.indexOf("url");
+  const noteIdx = header.indexOf("note");
+  const seeds: Seed[] = [];
+  for (const fields of rows) {
+    const accountId = Number(fields[accountIdIdx]);
+    const url = fields[urlIdx]?.trim();
+    if (!Number.isFinite(accountId) || !url) continue;
+    seeds.push({ accountId, url, note: (noteIdx >= 0 ? fields[noteIdx]?.trim() : "") || "" });
+  }
+  return seeds;
+}
+
+/** Groups a seed CSV's rows by account_id, for `crawlOneVenue` to pull its own seeds out of a
+ * shared file (one CSV can seed many venues). */
+export function loadSeedsFile(csvPath: string): Map<number, Seed[]> {
+  const text = readFileSync(csvPath, "utf8");
+  const byAccount = new Map<number, Seed[]>();
+  for (const seed of parseSeedsCsv(text)) {
+    const list = byAccount.get(seed.accountId) ?? [];
+    list.push(seed);
+    byAccount.set(seed.accountId, list);
+  }
+  return byAccount;
+}
+
+/** Builds the depth-0, score-`SEED_SCORE` queue items for a venue's manual seeds. Pure --
+ * exported so enqueue-ordering can be unit tested without a network call. */
+export function buildSeedQueueItems(seeds: Seed[]): QueueItem[] {
+  return seeds.map((seed) => ({
+    url: seed.url,
+    depth: 0,
+    score: SEED_SCORE,
+    isPdf: isPdfUrl(seed.url),
+    anchorText: "",
+    isSeed: true,
+    seedNote: seed.note,
+  }));
+}
 
 const HTML_BYTE_CAP = 2 * 1024 * 1024; // 2 MB
 const PDF_BYTE_CAP = 15 * 1024 * 1024; // 15 MB
@@ -42,6 +107,7 @@ interface Args {
   dryRun: boolean;
   printManifest: boolean;
   websiteOverride: string | null;
+  seedUrls: string | null;
 }
 
 function parseArgs(): Args {
@@ -77,6 +143,7 @@ function parseArgs(): Args {
     dryRun,
     printManifest: a.includes("--print-manifest"),
     websiteOverride,
+    seedUrls: get("--seed-urls") ?? null,
   };
 }
 
@@ -138,6 +205,12 @@ interface QueueItem {
   score: number;
   isPdf: boolean;
   anchorText: string;
+  /** From `--seed-urls` (coordinator follow-up, 2026-09-13): a manually seeded URL, enqueued at
+   * depth 0 / score SEED_SCORE, exempt from the same-registrable-host / off-site-PDF rule (a
+   * known public document a JS-rendered site never links to server-side, e.g. Marchetti's
+   * framerusercontent.com brochure). */
+  isSeed?: boolean;
+  seedNote?: string;
 }
 
 /** Dedupe key ignoring scheme/www and a trailing slash -- `https://x.com/` and
@@ -183,6 +256,8 @@ interface CrawlSummary {
     chars: number;
     hasTextLayer: boolean | null;
     offsite: boolean;
+    source: "crawl" | "manual_seed";
+    seedNote?: string;
   }[];
 }
 
@@ -190,7 +265,8 @@ async function crawlOneVenue(
   pool: Pool | null,
   accountId: number,
   homepage: string,
-  args: Args
+  args: Args,
+  seeds: Seed[] = []
 ): Promise<CrawlSummary> {
   const summary: CrawlSummary = {
     accountId,
@@ -208,7 +284,10 @@ async function crawlOneVenue(
   };
 
   const visited = new Set<string>();
-  const queue: QueueItem[] = [{ url: homepage, depth: 0, score: Number.POSITIVE_INFINITY, isPdf: isPdfUrl(homepage), anchorText: "" }];
+  const queue: QueueItem[] = [
+    { url: homepage, depth: 0, score: Number.POSITIVE_INFINITY, isPdf: isPdfUrl(homepage), anchorText: "" },
+    ...buildSeedQueueItems(seeds),
+  ];
   const lastFetchAtByHost = new Map<string, number>();
   let hostBlocked = false;
 
@@ -238,13 +317,16 @@ async function crawlOneVenue(
     }
 
     const offsite = !sameRegistrableHost(item.url, homepage);
-    if (offsite && (!item.isPdf || !isOffsitePdfAllowed(item.url, item.anchorText))) continue;
+    // A manual seed (--seed-urls) is exempt from the same-host/off-site-PDF rule -- it is a
+    // known public document by construction, not something discovered mid-crawl.
+    if (!item.isSeed && offsite && (!item.isPdf || !isOffsitePdfAllowed(item.url, item.anchorText))) continue;
 
     visited.add(normalizeUrlKey(item.url));
+    const source: "crawl" | "manual_seed" = item.isSeed ? "manual_seed" : "crawl";
 
     const robotsOk = await isAllowed(item.url).catch(() => true);
     if (!robotsOk) {
-      summary.entries.push({ url: item.url, kind: item.isPdf ? "pdf" : "html", depth: item.depth, score: item.score, outcome: "skipped (robots)", chars: 0, hasTextLayer: null, offsite });
+      summary.entries.push({ url: item.url, kind: item.isPdf ? "pdf" : "html", depth: item.depth, score: item.score, outcome: "skipped (robots)", chars: 0, hasTextLayer: null, offsite, source, seedNote: item.seedNote });
       continue;
     }
 
@@ -265,7 +347,7 @@ async function crawlOneVenue(
       hostBlocked = true;
       summary.hostBlocked = true;
       summary.blockedCount++;
-      summary.entries.push({ url: item.url, kind: item.isPdf ? "pdf" : "html", depth: item.depth, score: item.score, outcome: `blocked (HTTP ${outcome.status})`, chars: 0, hasTextLayer: null, offsite });
+      summary.entries.push({ url: item.url, kind: item.isPdf ? "pdf" : "html", depth: item.depth, score: item.score, outcome: `blocked (HTTP ${outcome.status})`, chars: 0, hasTextLayer: null, offsite, source, seedNote: item.seedNote });
       if (!args.dryRun && pool) {
         await pool.query(`update venue_websites set status = 'unreachable', note = $2, updated_at = now() where account_id = $1`, [
           accountId,
@@ -276,7 +358,7 @@ async function crawlOneVenue(
     }
 
     if (!outcome.ok || !outcome.bytes) {
-      summary.entries.push({ url: item.url, kind: item.isPdf ? "pdf" : "html", depth: item.depth, score: item.score, outcome: `error (${outcome.error ?? outcome.status})`, chars: 0, hasTextLayer: null, offsite });
+      summary.entries.push({ url: item.url, kind: item.isPdf ? "pdf" : "html", depth: item.depth, score: item.score, outcome: `error (${outcome.error ?? outcome.status})`, chars: 0, hasTextLayer: null, offsite, source, seedNote: item.seedNote });
       continue;
     }
 
@@ -290,15 +372,17 @@ async function crawlOneVenue(
 
       await writeCacheEntry(
         accountId,
-        { url: item.url, finalUrl: outcome.finalUrl, kind: "pdf", title: null, hasTextLayer, depth: item.depth, score: item.score },
+        { url: item.url, finalUrl: outcome.finalUrl, kind: "pdf", title: null, hasTextLayer, depth: item.depth, score: item.score, source, seedNote: item.seedNote ?? null },
         text
       );
 
+      // The fetch row's crawl_batch is unchanged by seeding -- it stays whatever --crawl-batch
+      // says regardless of source; "manual_seed" is a summary/cache-manifest concept only.
       if (!args.dryRun && pool) {
         await recordSnapshotAndFetch(pool, accountId, item, outcome, "pdf", hash, text, null, hasTextLayer, args.crawlBatch!);
       }
 
-      summary.entries.push({ url: item.url, kind: "pdf", depth: item.depth, score: item.score, outcome: "fetched", chars: text.length, hasTextLayer, offsite });
+      summary.entries.push({ url: item.url, kind: "pdf", depth: item.depth, score: item.score, outcome: "fetched", chars: text.length, hasTextLayer, offsite, source, seedNote: item.seedNote });
       continue;
     }
 
@@ -309,7 +393,7 @@ async function crawlOneVenue(
 
     await writeCacheEntry(
       accountId,
-      { url: item.url, finalUrl: outcome.finalUrl, kind: "html", title, hasTextLayer: null, depth: item.depth, score: item.score },
+      { url: item.url, finalUrl: outcome.finalUrl, kind: "html", title, hasTextLayer: null, depth: item.depth, score: item.score, source, seedNote: item.seedNote ?? null },
       text
     );
 
@@ -330,7 +414,7 @@ async function crawlOneVenue(
     if (dbOutcome === "unchanged") summary.htmlUnchanged++;
     if (isJsShell) summary.jsShellCount++;
 
-    summary.entries.push({ url: item.url, kind: "html", depth: item.depth, score: item.score, outcome: dbOutcome, chars: text.length, hasTextLayer: null, offsite });
+    summary.entries.push({ url: item.url, kind: "html", depth: item.depth, score: item.score, outcome: dbOutcome, chars: text.length, hasTextLayer: null, offsite, source, seedNote: item.seedNote });
 
     if (!isJsShell) {
       const allLinks: (HtmlLink & { isPdfLink: boolean })[] = [
@@ -443,17 +527,20 @@ async function selectVenues(pool: Pool, args: Args): Promise<VenueTarget[]> {
 // ---------------------------------------------------------------------------
 
 function printSummary(summary: CrawlSummary, printManifest: boolean) {
+  const seedCount = summary.entries.filter((e) => e.source === "manual_seed").length;
   console.log(`\n[crawl-venue] account ${summary.accountId} (${summary.homepage})`);
   console.log(`  pages fetched:        ${summary.htmlFetched} (unchanged: ${summary.htmlUnchanged}, js_shell: ${summary.jsShellCount})`);
   console.log(`  pdfs:                 with text layer ${summary.pdfsWithTextLayer}, without ${summary.pdfsWithoutTextLayer}`);
   console.log(`  off-site pdfs followed: ${summary.offsitePdfsFollowed}`);
+  console.log(`  manual seeds fetched:  ${seedCount}`);
   console.log(`  host blocked mid-crawl: ${summary.hostBlocked}`);
   console.log(`  total chars:           ${summary.totalChars}`);
   if (printManifest) {
     console.log(`  manifest:`);
     for (const e of summary.entries) {
+      const seedTag = e.source === "manual_seed" ? ` [manual_seed: ${e.seedNote ?? ""}]` : "";
       console.log(
-        `    [${e.kind}] d${e.depth} score=${e.score} chars=${e.chars} textLayer=${e.hasTextLayer ?? "n/a"} offsite=${e.offsite} -- ${e.outcome} -- ${e.url}`
+        `    [${e.kind}] d${e.depth} score=${e.score} chars=${e.chars} textLayer=${e.hasTextLayer ?? "n/a"} offsite=${e.offsite} -- ${e.outcome}${seedTag} -- ${e.url}`
       );
     }
   }
@@ -479,18 +566,29 @@ async function main() {
 
   const limited = args.limit && !args.accountIds ? targets.slice(0, args.limit) : targets;
 
+  const seedsByAccount = args.seedUrls ? loadSeedsFile(args.seedUrls) : new Map<number, Seed[]>();
+  if (args.seedUrls) {
+    const total = [...seedsByAccount.values()].reduce((n, s) => n + s.length, 0);
+    console.log(`[crawl-venue] loaded ${total} seed(s) for ${seedsByAccount.size} account(s) from ${args.seedUrls}`);
+  }
+
   console.log(`[crawl-venue] mode: ${args.dryRun ? "DRY RUN (fetch + parse + local cache only, no DB/R2 writes)" : "LIVE"}`);
   console.log(`[crawl-venue] venues to crawl: ${limited.length}`);
 
   for (const target of limited) {
-    const summary = await crawlOneVenue(args.dryRun ? null : pool, target.accountId, target.url, args);
+    const seeds = seedsByAccount.get(target.accountId) ?? [];
+    const summary = await crawlOneVenue(args.dryRun ? null : pool, target.accountId, target.url, args, seeds);
     printSummary(summary, args.printManifest);
   }
 
   if (pool) await closePool();
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Guarded so importing the pure helpers above (parseSeedsCsv, buildSeedQueueItems, etc.) for
+// unit tests never triggers CLI arg parsing / process.exit as an import side effect.
+if (import.meta.main) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

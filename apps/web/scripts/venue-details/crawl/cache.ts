@@ -27,6 +27,10 @@ export interface CacheManifestEntry {
   depth: number;
   score: number | null;
   fetchedAt: string;
+  /** "manual_seed" for a `crawlVenue.ts --seed-urls` row (coordinator follow-up, 2026-09-13);
+   * omitted/undefined for ordinary crawl-discovered entries written before this field existed. */
+  source?: "crawl" | "manual_seed";
+  seedNote?: string | null;
 }
 
 export interface CacheManifest {
