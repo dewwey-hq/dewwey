@@ -1,13 +1,18 @@
 import type { VenueDetailsV3 } from "./types";
 
+import galleriaMarchettiJson from "../../scripts/venue-details/golden/galleria-marchetti.json";
+import greenhouseLoftJson from "../../scripts/venue-details/golden/greenhouse-loft.json";
+import diamondGardenBanquetHallJson from "../../scripts/venue-details/golden/diamond-garden-banquet-hall.json";
+import londonhouseChicagoJson from "../../scripts/venue-details/golden/londonhouse-chicago.json";
+import fieldMuseumJson from "../../scripts/venue-details/golden/field-museum.json";
+import geraghtyJson from "../../scripts/venue-details/golden/geraghty.json";
+
 /**
  * Golden-set registry (D060 Phase 1a). The six hand-built concept venues converted into
  * VenueDetailsV3 fixtures by `scripts/venue-details/importGoldenSet.ts`, committed as JSON under
  * `scripts/venue-details/golden/<slug>.json`, and statically imported here so `/lab/venue?golden=`
  * works in any environment. They are (a) the eval truth for `scoreAgainstGolden.ts` and (b) the
  * proof that the generic renderer loses no fact vs the hand pages.
- *
- * STUB: the importer replaces `REGISTRY` with static JSON imports once the fixtures exist.
  */
 export const GOLDEN_SLUGS = [
   "galleria-marchetti",
@@ -30,7 +35,14 @@ export const GOLDEN_ACCOUNT_IDS: Record<GoldenSlug, number> = {
   geraghty: 507,
 };
 
-const REGISTRY: Partial<Record<GoldenSlug, VenueDetailsV3>> = {};
+const REGISTRY: Record<GoldenSlug, VenueDetailsV3> = {
+  "galleria-marchetti": galleriaMarchettiJson as unknown as VenueDetailsV3,
+  "greenhouse-loft": greenhouseLoftJson as unknown as VenueDetailsV3,
+  "diamond-garden-banquet-hall": diamondGardenBanquetHallJson as unknown as VenueDetailsV3,
+  "londonhouse-chicago": londonhouseChicagoJson as unknown as VenueDetailsV3,
+  "field-museum": fieldMuseumJson as unknown as VenueDetailsV3,
+  geraghty: geraghtyJson as unknown as VenueDetailsV3,
+};
 
 export function isGoldenSlug(s: string): s is GoldenSlug {
   return (GOLDEN_SLUGS as readonly string[]).includes(s);

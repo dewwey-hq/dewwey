@@ -1,0 +1,1053 @@
+{
+  "schema_version": 3,
+  "account_id": 477,
+  "name": "Greenhouse Loft",
+  "website_url": "https://www.greenhouseloft.com/",
+  "spine": {
+    "venue_kind": {
+      "status": "stated",
+      "value": "loft",
+      "quote": "Event Loft",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    "setting": {
+      "status": "stated",
+      "value": "both",
+      "quote": "The main glasshouse loft is indoor, and it opens onto an outdoor Skygarden. Both are included in every rental, since only one event is ever booked here at a time.",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    "one_event_per_day": {
+      "status": "stated",
+      "value": true,
+      "quote": "How many events per day do you hold? One. Yours.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "space_count_bookable": {
+      "status": "stated",
+      "value": 1,
+      "quote": "Use of our entire loft space + adjacent outdoor garden + art gallery space",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    "capacity_min_guests": {
+      "status": "stated",
+      "value": 25,
+      "quote": "The venue's own FAQ: \"We can create an intimate gathering for groups as small as 25, or design a sit-down meal for 175. At our maximum capacity, we can host events such as a cocktail party reception for up to 200 people.\"",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "ceremony_on_site": {
+      "status": "stated",
+      "value": true,
+      "quote": "We have a large private space available right outside of the garden ceremony area.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "ceremony_fee": {
+      "status": "not_stated"
+    },
+    "rental_hours_included": {
+      "status": "stated",
+      "value": 7,
+      "quote": "You can host an event up to seven hours on Saturdays and Sundays",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "weekday_events": {
+      "status": "stated",
+      "value": false,
+      "quote": "Weekday rentals are on a case-by-case basis.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "catering": {
+      "status": "stated",
+      "value": "open",
+      "quote": "Any licensed & insured caterer, following the catering guidelines (PDF above).",
+      "source_url": "https://www.greenhouseloft.com/s/Greenhouse-Loft-Catering-and-Composting-Guidelines.pdf",
+      "snapshot_id": null
+    },
+    "bar": {
+      "status": "stated",
+      "value": "byob",
+      "quote": "Greenhouse Loft provides the bar itself, not alcohol or bartending.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "rental_charge_type": {
+      "status": "stated",
+      "value": "flat_fee",
+      "quote": "Flat fee per event (varies by season & day)",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    "fb_minimum": {
+      "status": "stated",
+      "value": {
+        "applies": false,
+        "amount_usd": null,
+        "detail": null
+      },
+      "quote": "None",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "service_charge_pct": {
+      "status": "stated",
+      "value": 0,
+      "quote": "Taxes are included in the rental rate; no hidden fees.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "parking": {
+      "status": "stated",
+      "value": "included",
+      "quote": "After 6pm weekdays, and all weekend. 75 more spaces are available indoors for $500.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "day_of_coordinator": {
+      "status": "stated",
+      "value": "included",
+      "quote": "Two Greenhouse Loft Liaisons (venue staff, not an independent planner) work every event, opener to closer.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "payment_schedule": {
+      "status": "stated",
+      "value": {
+        "deposit": "50% deposit (non-refundable)",
+        "balance_due": "Homepage: 10 days before the event. FAQ separately says about a month out — worth confirming."
+      },
+      "quote": "Balance due 10 days before the event per the homepage, though the FAQ separately says about a month out, so it's worth confirming. Credit card payments carry a 3.5% fee.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "cancellation": {
+      "status": "stated",
+      "value": {
+        "summary": "25% / 50% / 100% by notice given",
+        "deposit_refundable": false
+      },
+      "quote": "180+ days out: 25% of the fee. 61–179 days: 50%. 60 or fewer: 100%. Deposits already paid are credited toward whatever's owed.",
+      "source_url": "https://static1.squarespace.com/static/5489bdc5e4b0563d578c5190/t/600f1b64a4f4466e7d415241/1611602788773/GHL+SERVICE+AGREEMENT+January+2021.pdf",
+      "snapshot_id": null
+    },
+    "event_insurance": {
+      "status": "stated",
+      "value": "required",
+      "quote": "About $175 through a third-party provider like WedSure or WedSafe. The real contract requires $1M/$2M general liability and $1M dram shop coverage.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "security": {
+      "status": "stated",
+      "value": "included",
+      "quote": "Included",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    "vendor_access": {
+      "status": "stated",
+      "value": {
+        "summary": "Noon to midnight",
+        "setup_hours_before": null,
+        "teardown_hours_after": null
+      },
+      "quote": "Caterers load in through the west-side freight entrance.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "noise_curfew": {
+      "status": "stated",
+      "value": "Midnight",
+      "quote": "Staying past your end time is billed at the same hourly rate as extra time. Music can't be audible outside the building.",
+      "source_url": "https://static1.squarespace.com/static/5489bdc5e4b0563d578c5190/t/600f1b64a4f4466e7d415241/1611602788773/GHL+SERVICE+AGREEMENT+January+2021.pdf",
+      "snapshot_id": null
+    },
+    "sales_tax_pct": {
+      "status": "not_stated"
+    },
+    "cc_fee_pct": {
+      "status": "stated",
+      "value": 3.5,
+      "quote": "Credit card payments carry a 3.5% fee.",
+      "source_url": "Balance due 10 days before the event per the homepage, though the FAQ separately says about a month out, so it's worth confirming. Credit card payments carry a 3.5% fee.",
+      "snapshot_id": null
+    },
+    "taxes_included_in_rental": {
+      "status": "stated",
+      "value": true,
+      "quote": "Taxes are included in the rental rate; no hidden fees.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "vendor_list_policy": {
+      "status": "stated",
+      "value": "open",
+      "quote": "Do you take commissions from other vendors? Absolutely not.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "pets_allowed": {
+      "status": "stated",
+      "value": true,
+      "quote": "Yes, we are pet friendly. You may bring your dog to the ceremony.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "hvac": {
+      "status": "stated",
+      "value": true,
+      "quote": "High tech! It cools quickly in the summer and is nice and toasty in the winter.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "ada_accessible": {
+      "status": "stated",
+      "value": true,
+      "quote": "Absolutely. The building is ADA accessible, with an elevator just off the main entrance.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "bridal_suite": {
+      "status": "stated",
+      "value": true,
+      "quote": "A private bridal suite / green room",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "tables_chairs_included": {
+      "status": "not_stated"
+    },
+    "linens_included": {
+      "status": "not_stated"
+    },
+    "dance_floor_included": {
+      "status": "not_stated"
+    },
+    "coat_check": {
+      "status": "stated",
+      "value": "included",
+      "quote": "Yes, there are multiple coat racks in our welcome area.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "pricing_archetype": {
+      "status": "stated",
+      "value": "raw_space_byo",
+      "quote": "One flat-fee rental covers the entire space; catering and bar are both bring-your-own.",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    "price_from_usd": {
+      "status": "stated",
+      "value": 5000,
+      "quote": "Off-season Sunday: $5,000",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    "per_guest_from_usd": {
+      "status": "not_stated"
+    },
+    "per_guest_to_usd": {
+      "status": "not_stated"
+    }
+  },
+  "about": {
+    "text": "Chicago's most sustainable event venue, a fully customizable loft on the second floor of the Green Exchange building in Logan Square. Built in 1913 as a knitting mill and later a lamp factory, the building was redeveloped into today's LEED Platinum home for green commerce. One flat-fee rental covers the entire space, so you're not choosing between rooms or piecing together a package.",
+    "evidence": {
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    }
+  },
+  "differentiator": {
+    "title": "Sustainability",
+    "tagline": "Chicago's most sustainable event venue",
+    "groups": [
+      {
+        "heading": "Highlights",
+        "bullets": [
+          "LEED Platinum certified, the top rating from the U.S. Green Building Council",
+          "8,000 sq ft sky garden with native prairie plants",
+          "Indoor air quality sensors & filtration",
+          "Low-VOC paints & eco-friendly materials",
+          "A green escalator (30% less energy)"
+        ]
+      },
+      {
+        "heading": "Reduce",
+        "bullets": [
+          "Locally sourced catering encouraged",
+          "Bulk serving, not single-use plastics",
+          "Water-efficient fixtures & non-toxic cleaning",
+          "Energy-efficient windows & HVAC (22% more efficient)"
+        ]
+      },
+      {
+        "heading": "Reuse",
+        "bullets": [
+          "A restored former manufacturing facility",
+          "Hardwood floors from reclaimed 120-year-old wood",
+          "Restored mid-century furniture"
+        ]
+      },
+      {
+        "heading": "Recycle",
+        "bullets": [
+          "Recycling & composting divert 90% of event waste"
+        ]
+      }
+    ],
+    "evidence": {
+      "source_url": "https://www.greenhouseloft.com/sustainability-1",
+      "snapshot_id": null
+    }
+  },
+  "spaces": [
+    {
+      "id": "loft",
+      "name": "Greenhouse Loft",
+      "structure_label": null,
+      "sq_ft": 3600,
+      "sq_ft_outdoor": 3500,
+      "ceiling_ft": 16,
+      "setting": "both",
+      "bookable_separately": true,
+      "description": {
+        "value": "A glasshouse loft with 16' ceilings and floor-to-ceiling windows along the east wall, opening onto the outdoor Skygarden. A separate Art Gallery space serves as the cocktail-hour room. Only one event is ever booked here at a time, and every rental includes all three areas.",
+        "quote": "A glasshouse loft with 16' ceilings and floor-to-ceiling windows along the east wall, opening onto the outdoor Skygarden. A separate Art Gallery space serves as the cocktail-hour room. Only one event is ever booked here at a time, and every rental includes all three areas.",
+        "source_url": "https://www.greenhouseloft.com/",
+        "snapshot_id": null
+      },
+      "includes_summary": "the Loft (the main glasshouse room), the outdoor Skygarden, the Art Gallery (used for cocktail hour)",
+      "evidence": {
+        "source_url": "https://www.greenhouseloft.com/",
+        "snapshot_id": null
+      }
+    }
+  ],
+  "capacities": [
+    {
+      "space_id": "loft",
+      "layout": "seated_with_dance",
+      "min": null,
+      "max": 175,
+      "as_stated_label": "Seated (w/ DJ)",
+      "tile": "seated",
+      "condition": "DJ",
+      "quote": "The venue's own FAQ: \"We can create an intimate gathering for groups as small as 25, or design a sit-down meal for 175. At our maximum capacity, we can host events such as a cocktail party reception for up to 200 people.\"",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "loft",
+      "layout": "seated_with_dance",
+      "min": null,
+      "max": 150,
+      "as_stated_label": "Seated (w/ band)",
+      "tile": "seated_dance",
+      "condition": "live band",
+      "quote": "The recommended max guest count with a band is 125... [tile capacity per the venue's own stat: 150]",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "loft",
+      "layout": "cocktail_standing",
+      "min": null,
+      "max": 200,
+      "as_stated_label": "Cocktail (standing)",
+      "tile": "cocktail",
+      "condition": null,
+      "quote": "The venue's own FAQ: \"We can create an intimate gathering for groups as small as 25, or design a sit-down meal for 175. At our maximum capacity, we can host events such as a cocktail party reception for up to 200 people.\"",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    }
+  ],
+  "pricing": {
+    "archetype": "raw_space_byo",
+    "paths": [
+      {
+        "id": "default",
+        "name": "Default",
+        "description": "Flat per-event rental; the venue's only real pricing path.",
+        "applies_to_spaces": "all",
+        "fixed_fees": [
+          {
+            "applies_to": "whole_venue",
+            "space_id": null,
+            "day": "fri",
+            "season": "off",
+            "amount": 6000,
+            "unit": "flat",
+            "label": "Venue rental (off season, fri)",
+            "includes": [],
+            "key": "off-fri",
+            "quote": "$6,000",
+            "source_url": "https://www.greenhouseloft.com/",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "whole_venue",
+            "space_id": null,
+            "day": "sat",
+            "season": "off",
+            "amount": 8000,
+            "unit": "flat",
+            "label": "Venue rental (off season, sat)",
+            "includes": [],
+            "key": "off-sat",
+            "quote": "$8,000",
+            "source_url": "https://www.greenhouseloft.com/",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "whole_venue",
+            "space_id": null,
+            "day": "sun",
+            "season": "off",
+            "amount": 5000,
+            "unit": "flat",
+            "label": "Venue rental (off season, sun)",
+            "includes": [],
+            "key": "off-sun",
+            "quote": "$5,000",
+            "source_url": "https://www.greenhouseloft.com/",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "whole_venue",
+            "space_id": null,
+            "day": "fri",
+            "season": "peak",
+            "amount": 9000,
+            "unit": "flat",
+            "label": "Venue rental (peak season, fri)",
+            "includes": [],
+            "key": "peak-fri",
+            "quote": "$9,000",
+            "source_url": "https://www.greenhouseloft.com/",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "whole_venue",
+            "space_id": null,
+            "day": "sat",
+            "season": "peak",
+            "amount": 12000,
+            "unit": "flat",
+            "label": "Venue rental (peak season, sat)",
+            "includes": [],
+            "key": "peak-sat",
+            "quote": "$12,000",
+            "source_url": "https://www.greenhouseloft.com/",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "whole_venue",
+            "space_id": null,
+            "day": "sun",
+            "season": "peak",
+            "amount": 7000,
+            "unit": "flat",
+            "label": "Venue rental (peak season, sun)",
+            "includes": [],
+            "key": "peak-sun",
+            "quote": "$7,000",
+            "source_url": "https://www.greenhouseloft.com/",
+            "snapshot_id": null
+          }
+        ],
+        "per_guest_tiers": [],
+        "minimums": [],
+        "required_staffing": null,
+        "rental_hours": 7,
+        "year_surcharges": [],
+        "promotions": [],
+        "quote": "",
+        "source_url": "https://www.greenhouseloft.com/",
+        "snapshot_id": null
+      }
+    ],
+    "rates": {
+      "service_charge_pct": 0,
+      "service_charge_base": null,
+      "sales_tax_pct": null,
+      "sales_tax_base": "included",
+      "sales_tax_source": "included",
+      "cc_fee_pct": 3.5,
+      "quote": "All applicable state and federal taxes are built in to the rental rate and there are no additional or hidden fees.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    "add_ons": [
+      {
+        "id": "extra-parking",
+        "name": "Additional Parking",
+        "category": "Parking",
+        "variant": null,
+        "group": "rental",
+        "price": 500,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$500 flat",
+        "note": "75 more spaces available indoors, beyond the included 30-space lot.",
+        "quote": "$500 flat",
+        "source_url": "https://www.greenhouseloft.com/",
+        "snapshot_id": null
+      },
+      {
+        "id": "rehearsal",
+        "name": "Rehearsal",
+        "category": "Rehearsal",
+        "variant": null,
+        "group": "rental",
+        "price": 250,
+        "price_max": null,
+        "unit": "per_hour",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$250/hr",
+        "note": "Bookable 6 weeks before your event, if the space isn't already rented the night before.",
+        "quote": "$250/hr",
+        "source_url": "https://www.greenhouseloft.com/",
+        "snapshot_id": null
+      },
+      {
+        "id": "cleaning-fee",
+        "name": "Cleaning Fee",
+        "category": "Cleaning",
+        "variant": null,
+        "group": "service",
+        "price": 500,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": "if_not_broom_clean",
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "If not left broom-clean",
+        "note": "The greater of $500 or the venue's actual cleaning cost.",
+        "quote": "The greater of $500 or the venue's actual cleaning cost.",
+        "source_url": "https://static1.squarespace.com/static/5489bdc5e4b0563d578c5190/t/600f1b64a4f4466e7d415241/1611602788773/GHL+SERVICE+AGREEMENT+January+2021.pdf",
+        "snapshot_id": null
+      }
+    ],
+    "required_third_party": [
+      {
+        "name": "Event insurance",
+        "estimate_usd": 175,
+        "required": true,
+        "quote": "It is required that you purchase insurance, which should only be about $175 from sites like www.wedsure.com and www.wedsafe.com.",
+        "source_url": "https://www.greenhouseloft.com/faq",
+        "snapshot_id": null
+      }
+    ],
+    "notes": [],
+    "default_axes": {
+      "path_id": "default",
+      "day": "sat",
+      "season": "peak",
+      "ceremonyOnSite": false
+    }
+  },
+  "food_beverage": {
+    "food_pills": [
+      {
+        "value": "byo",
+        "quote": "The venue's own FAQ: \"We have an open catering list because we think you'll appreciate having a choice. Select any licensed and insured caterer you'd like.\" Caterers must follow Greenhouse Loft's own composting/sustainability guidelines (see Policies).",
+        "source_url": "https://www.greenhouseloft.com/faq",
+        "snapshot_id": null
+      }
+    ],
+    "bar_pills": [
+      {
+        "value": "byo",
+        "quote": "The venue's own FAQ: \"Bar packages are insane at other venues. Do you have one? Absolutely not. We're BYO.\" Greenhouse Loft provides the physical bar and mobile bars, not alcohol or bartending service.",
+        "source_url": "https://www.greenhouseloft.com/faq",
+        "snapshot_id": null
+      }
+    ],
+    "caption": null,
+    "menus": [],
+    "bar_ladders": [],
+    "bar_min_guests": null,
+    "notes": [
+      {
+        "value": "LEED Platinum certified building: mandatory recycling + composting at every event, no plastic disposables, and caterer load-in/out via a west-side freight entrance.",
+        "quote": "Our building is Certified Platinum LEED... mandatory recycling/composting at every event, no plastic disposables.",
+        "source_url": "https://www.greenhouseloft.com/s/Greenhouse-Loft-Catering-and-Composting-Guidelines.pdf",
+        "snapshot_id": null
+      }
+    ]
+  },
+  "inclusions": [
+    {
+      "label": "Exclusively yours",
+      "label_raw": "Exclusively yours",
+      "detail": "When you book, you're the only wedding that day. The loft, outdoor Skygarden, and art gallery are exclusively yours.",
+      "category": "Space",
+      "quote": "When you book, you're the only wedding that day. The loft, outdoor Skygarden, and art gallery are exclusively yours.",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Bridal suite",
+      "label_raw": "Bridal suite",
+      "detail": "A private bridal suite / green room",
+      "category": "Space",
+      "quote": "A private bridal suite / green room",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Bar space",
+      "label_raw": "Bar space",
+      "detail": "A 25' permanent bar, plus mobile bars for the outdoor space and art gallery",
+      "category": "Space",
+      "quote": "A 25' permanent bar, plus mobile bars for the outdoor space and art gallery",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Parking",
+      "label_raw": "Parking",
+      "detail": "A 30-car lot, included",
+      "category": "Space",
+      "quote": "A 30-car lot, included",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Coat check",
+      "label_raw": "Coat check",
+      "detail": "Multiple coat racks in the welcome area",
+      "category": "Space",
+      "quote": "Multiple coat racks in the welcome area",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Accessibility",
+      "label_raw": "Accessibility",
+      "detail": "ADA accessible, with an elevator just off the main entrance to the second-floor loft",
+      "category": "Space",
+      "quote": "ADA accessible, with an elevator just off the main entrance to the second-floor loft",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Heating & A/C",
+      "label_raw": "Heating & A/C",
+      "detail": "The space is fully climate-controlled with central heating and air conditioning, year-round",
+      "category": "Space",
+      "quote": "The space is fully climate-controlled with central heating and air conditioning, year-round",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Tables",
+      "label_raw": "Tables",
+      "detail": "25 farm tables (8'×30\") and 10 cocktail tables (28\")",
+      "category": "Furniture",
+      "quote": "25 farm tables (8'×30\") and 10 cocktail tables (28\")",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Chairs",
+      "label_raw": "Chairs",
+      "detail": "200 white Tolix chairs indoors and 200 natural wood folding chairs outdoors",
+      "category": "Furniture",
+      "quote": "200 white Tolix chairs indoors and 200 natural wood folding chairs outdoors",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "DJ",
+      "label_raw": "DJ",
+      "detail": "DJ services from Style Matters DJs, with a DJ hand-picked for your event",
+      "category": "Entertainment",
+      "quote": "DJ services from Style Matters DJs, with a DJ hand-picked for your event",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Sound & AV",
+      "label_raw": "Sound & AV",
+      "detail": "A custom DJ booth with in-house VOID sound system indoors and out, plus a videowall/projector with in-house graphic design services",
+      "category": "Entertainment",
+      "quote": "A custom DJ booth with in-house VOID sound system indoors and out, plus a videowall/projector with in-house graphic design services",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Photobooth",
+      "label_raw": "Photobooth",
+      "detail": "A custom vintage photobooth with 2\"×6\" photostrips, digital copies delivered within a week",
+      "category": "Entertainment",
+      "quote": "A custom vintage photobooth with 2\"×6\" photostrips, digital copies delivered within a week",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Videography",
+      "label_raw": "Videography",
+      "detail": "Greenhouse Loft reserves the right to film your event with its own videographer, at no cost to you; you'll get a free copy of the final edited video, and footage may also be used for the venue's own marketing",
+      "category": "Entertainment",
+      "quote": "Greenhouse Loft reserves the right to film your event with its own videographer, at no cost to you; you'll get a free copy of the final edited video, and footage may also be used for the venue's own marketing",
+      "source_url": "https://static1.squarespace.com/static/5489bdc5e4b0563d578c5190/t/600f1b64a4f4466e7d415241/1611602788773/GHL+SERVICE+AGREEMENT+January+2021.pdf",
+      "snapshot_id": null
+    },
+    {
+      "label": "Coordinator",
+      "label_raw": "Coordinator",
+      "detail": "A dedicated Greenhouse Loft Liaison who works with you and your vendors leading up to and on the day of your event",
+      "category": "Services",
+      "quote": "A dedicated Greenhouse Loft Liaison who works with you and your vendors leading up to and on the day of your event",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Security",
+      "label_raw": "Security",
+      "detail": "Security personnel",
+      "category": "Services",
+      "quote": "Security personnel",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Candle treatment",
+      "label_raw": "Candle treatment",
+      "detail": "Votives and hurricane glasses placed throughout the space",
+      "category": "Ambiance",
+      "quote": "Votives and hurricane glasses placed throughout the space",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Décor",
+      "label_raw": "Décor",
+      "detail": "A track & drape system",
+      "category": "Ambiance",
+      "quote": "A track & drape system",
+      "source_url": "https://www.greenhouseloft.com/",
+      "snapshot_id": null
+    }
+  ],
+  "faqs": [
+    {
+      "question": "What is your maximum capacity?",
+      "answer": "We can create an intimate gathering for groups as small as 25, or design a sit-down meal for 175. At our maximum capacity, we can host events such as a cocktail party reception for up to 200 people.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you have a preferred or exclusive catering list?",
+      "answer": "Neither. We have an open catering list because we think you'll appreciate having a choice. Select any licensed and insured caterer you'd like and we will work hand-in-hand with them to achieve the highest standard of responsible and sustainable catering.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Your rental fee includes a lot. When can we come in for a tour?",
+      "answer": "You tell us! We show the space seven days a week.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "What does your hold and booking process look like?",
+      "answer": "You can put a 14 day courtesy hold on any one available date you'd like. This must be done in writing via email. The hold starts the day you see Greenhouse Loft in person. Once two weeks has passed, if there's another party interested in the same date, you will have 48 hours to make your decision. After two weeks, we will honor your hold until another party challenges. If you decide to move forward, our agreement is in the Forms section of the website. Fill that out, shoot it back, and put your 50% deposit in the mail. Easy peasy.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "What is your rental period?",
+      "answer": "For Fri/Sat/Sun events, you have access at 12:00pm. You can host an event up to seven hours on Saturdays and Sundays and events on Fridays must begin at 6pm or after. Events can not go past 12:00am. Weekday rentals are on a case-by-case basis.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Is parking available to my guests?",
+      "answer": "Parking is included in all rentals after 6pm weekdays and between 6:00pm Friday and 6:00am Monday. It's a 30 car lot just east of our building at Maplewood & Diversey. 75 more spaces are available underground for a $500 fee.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Where is Greenhouse Loft located?",
+      "answer": "2545 W. Diversey Avenue, Chicago, IL 60647. Greenhouse Loft is located on the second floor of the Green Exchange building, in the Logan Square neighborhood.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "What is the square footage of your space?",
+      "answer": "5000 sq ft skygarden, 3600 sq ft loft, 2000 sq ft art gallery.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Bar packages are insane at other venues. Do you have one?",
+      "answer": "Absolutely not. We're BYO. Give Prestige a jingle and create a drink package that reflects your personalities. They'll reimburse you for anything that wasn't consumed. Your licensed and insured caterer will happily serve your guests. Cheers to that.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you have a private green room and/or wedding party suite?",
+      "answer": "Yes. We have a large private space available right outside of the garden ceremony area.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "We understand that a DJ from Style Matters is included in the rental rate. How does that work?",
+      "answer": "About four to six weeks before your event, we will start determining who the best fit for your party might be. Style Matters is a large collective and you're going to have a lot of options.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "How's the HVAC system?",
+      "answer": "High tech! It cools quickly in the summer and is nice and toasty in the winter.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you offer coat check?",
+      "answer": "Yes, there are multiple coat racks in our welcome area.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "How many tables, chairs, and highboys do you have?",
+      "answer": "25 8' tables, 2 4' tables, 6 28\" highboys, 4 28\" cabaret tables.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "We have a handful of guests in wheelchairs. Are you wheelchair accessible?",
+      "answer": "Absolutely. The building is ADA accessible, with an elevator just off the main entrance.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "We need Wifi throughout the course of our event.",
+      "answer": "No problem, there's robust Wifi in the entire building.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "What's the bathroom situation?",
+      "answer": "7 stalls in the women's, 7 in the men's, with a private family bathroom.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you have someone onsite during our event?",
+      "answer": "Yes, there will be two different Event Liaisons at your event. The opener will be there from 12-7pmish, and the closer from 5pm-very late.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Can we bring our dog to our event?",
+      "answer": "Yes, we are pet friendly. You may bring your dog to the ceremony.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "How many events per day do you hold?",
+      "answer": "One. Yours.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "We'd really like to have a band perform at our party. Is that allowed?",
+      "answer": "Yes. The recommended max guest count with a band is 125. Please refer to our floorplans.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Your rates are posted on the website but what additional fees might we incur?",
+      "answer": "All applicable state and federal taxes are built in to the rental rate and there are no additional or hidden fees. It is required that you purchase insurance, which should only be about $175 from sites like www.wedsure.com and www.wedsafe.com. We take 50% down and the remaining balance about a month out.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you take commissions from other vendors?",
+      "answer": "Absolutely not.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Can we bring in additional decor? Who will be responsible for setting it up and when would that happen?",
+      "answer": "Yes, you can bring your own decor. You will be responsible for setting it up and tearing it down.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Can we hold a short rehearsal the day before the event?",
+      "answer": "Yes, provided nobody else has rented the space the night before your event. You can book your rehearsal six weeks before your event for a $250/hr fee.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
+    {
+      "question": "Your amenities list includes \"candle treatment\". What does that mean?",
+      "answer": "We will provide small candles in small votives and place them along ledges in the glasshouse and on the bar and center island. We will also provide mercury and hurricane glasses on the highboys, coffee tables, and end tables. You are responsible for bringing in your own decor for the dining tables.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    }
+  ],
+  "resources": [
+    {
+      "id": "res-2",
+      "kind": "catering_guidelines",
+      "label": "Catering & Composting Guidelines",
+      "url": "https://www.greenhouseloft.com/s/Greenhouse-Loft-Catering-and-Composting-Guidelines.pdf",
+      "scope": "venue",
+      "embeddable": null,
+      "has_text_layer": false,
+      "checked_at": null,
+      "source_url": "https://www.greenhouseloft.com/s/Greenhouse-Loft-Catering-and-Composting-Guidelines.pdf",
+      "snapshot_id": null
+    },
+    {
+      "id": "res-3",
+      "kind": "contract",
+      "label": "GHL Service Agreement (2021 template)",
+      "url": "https://static1.squarespace.com/static/5489bdc5e4b0563d578c5190/t/600f1b64a4f4466e7d415241/1611602788773/GHL+SERVICE+AGREEMENT+January+2021.pdf",
+      "scope": "venue",
+      "embeddable": null,
+      "has_text_layer": false,
+      "checked_at": null,
+      "source_url": "https://static1.squarespace.com/static/5489bdc5e4b0563d578c5190/t/600f1b64a4f4466e7d415241/1611602788773/GHL+SERVICE+AGREEMENT+January+2021.pdf",
+      "snapshot_id": null
+    },
+    {
+      "id": "res-4",
+      "kind": "virtual_tour",
+      "label": "Virtual tour",
+      "url": "https://www.greenhouseloft.com/tour",
+      "scope": "venue",
+      "embeddable": true,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.greenhouseloft.com/tour",
+      "snapshot_id": null
+    },
+    {
+      "id": "res-5",
+      "kind": "gallery",
+      "label": "Event gallery",
+      "url": "https://www.greenhouseloft.com/event-gallery",
+      "scope": "venue",
+      "embeddable": true,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.greenhouseloft.com/event-gallery",
+      "snapshot_id": null
+    },
+    {
+      "id": "floorplan-1",
+      "kind": "floor_plan",
+      "label": "Floor plans",
+      "url": "https://www.greenhouseloft.com/s/WEDDING-FLOORPLANS.pdf",
+      "scope": "venue",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.greenhouseloft.com/s/WEDDING-FLOORPLANS.pdf",
+      "snapshot_id": null
+    },
+    {
+      "id": "floorplan-2",
+      "kind": "floor_plan",
+      "label": "Floor plans <50 guests",
+      "url": "https://www.greenhouseloft.com/s/GHL-50_Or_Less_Floor_Plans.pdf",
+      "scope": "venue",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.greenhouseloft.com/s/GHL-50_Or_Less_Floor_Plans.pdf",
+      "snapshot_id": null
+    }
+  ],
+  "vendor_lists": [],
+  "press_features": [],
+  "sources": {
+    "snapshot_ids": [],
+    "pages": [
+      "https://www.greenhouseloft.com/",
+      "https://www.greenhouseloft.com/faq",
+      "https://www.greenhouseloft.com/amenities-1",
+      "https://www.greenhouseloft.com/sustainability-1",
+      "https://www.greenhouseloft.com/contact-1",
+      "https://www.greenhouseloft.com/s/Greenhouse-Loft-Catering-and-Composting-Guidelines.pdf",
+      "https://static1.squarespace.com/static/5489bdc5e4b0563d578c5190/t/600f1b64a4f4466e7d415241/1611602788773/GHL+SERVICE+AGREEMENT+January+2021.pdf"
+    ],
+    "crawled_at": "2026-08-26"
+  },
+  "extraction": null,
+  "provenance": null,
+  "eval": {
+    "/spine/venue_kind": "extractor",
+    "/spine/setting": "extractor",
+    "/spine/one_event_per_day": "extractor",
+    "/spine/space_count_bookable": "extractor",
+    "/spine/capacity_min_guests": "extractor",
+    "/spine/ceremony_on_site": "extractor",
+    "/spine/rental_hours_included": "extractor",
+    "/spine/weekday_events": "extractor",
+    "/spine/catering": "extractor",
+    "/spine/bar": "extractor",
+    "/spine/rental_charge_type": "extractor",
+    "/spine/fb_minimum": "extractor",
+    "/spine/service_charge_pct": "extractor",
+    "/spine/parking": "extractor",
+    "/spine/day_of_coordinator": "extractor",
+    "/spine/payment_schedule": "extractor",
+    "/spine/cancellation": "human_only",
+    "/spine/event_insurance": "extractor",
+    "/spine/security": "extractor",
+    "/spine/vendor_access": "extractor",
+    "/spine/noise_curfew": "human_only",
+    "/spine/cc_fee_pct": "extractor",
+    "/spine/taxes_included_in_rental": "extractor",
+    "/spine/vendor_list_policy": "extractor",
+    "/spine/pets_allowed": "extractor",
+    "/spine/hvac": "extractor",
+    "/spine/ada_accessible": "extractor",
+    "/spine/bridal_suite": "extractor",
+    "/spine/coat_check": "extractor",
+    "/spine/pricing_archetype": "extractor",
+    "/spine/price_from_usd": "extractor",
+    "/capacities/loft:seated_with_dance": "extractor",
+    "/capacities/loft:cocktail_standing": "extractor",
+    "/pricing/paths/default/fixed_fees/off-fri": "extractor",
+    "/pricing/paths/default/fixed_fees/off-sat": "extractor",
+    "/pricing/paths/default/fixed_fees/off-sun": "extractor",
+    "/pricing/paths/default/fixed_fees/peak-fri": "extractor",
+    "/pricing/paths/default/fixed_fees/peak-sat": "extractor",
+    "/pricing/paths/default/fixed_fees/peak-sun": "extractor",
+    "/pricing/add_ons/extra-parking": "extractor",
+    "/pricing/add_ons/rehearsal": "extractor",
+    "/pricing/add_ons/cleaning-fee": "human_only",
+    "/pricing/rates": "extractor",
+    "/food_beverage": "human_only"
+  }
+}

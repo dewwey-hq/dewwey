@@ -79,7 +79,12 @@ export function diffVersions(prev: VenueDetailsV3 | null, next: VenueDetailsV3):
     const a = prev.spine[key];
     const b = next.spine[key];
     if (stableStringify(a) !== stableStringify(b)) {
-      changes.push({ field_path: `/spine/${key}`, kind: "changed", from: triValue(a), to: triValue(b) });
+      changes.push({
+        field_path: `/spine/${key}`,
+        kind: "changed",
+        from: triValue(a as unknown as Tri<unknown>),
+        to: triValue(b as unknown as Tri<unknown>),
+      });
     }
   }
 

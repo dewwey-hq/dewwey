@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addOnAxes,
+  calculatorAxes,
   deriveStandardFaqs,
   estimateCost,
   fbPills,
@@ -591,5 +592,182 @@ describe("estimateCost — no pricing paths at all (Field Museum: inquire-only, 
     expect(est.total).toBe(0);
     expect(est.warnings).toEqual(["no_path"]);
     expect(est.groups).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rules added 2026-09-13 after the first golden renders (Fable review)
+// ---------------------------------------------------------------------------
+
+function pathWith(overrides: Partial<PricingPath>): PricingPath {
+  return {
+    id: "default",
+    name: "Default",
+    description: null,
+    applies_to_spaces: "all",
+    fixed_fees: [],
+    per_guest_tiers: [],
+    minimums: [],
+    required_staffing: null,
+    rental_hours: null,
+    year_surcharges: [],
+    promotions: [],
+    quote: "",
+    source_url: src,
+    snapshot_id: 1,
+    ...overrides,
+  };
+}
+
+const feeBase = { unit: "flat" as const, includes: [] as string[], quote: "$", source_url: src, snapshot_id: 1 };
+
+describe("estimateCost — whole-venue fees are an alternative to a space fee, never an addition", () => {
+  const twoRooms = makeVenue({
+    spaces: [space({ id: "pavilion" }), space({ id: "la-pergola" })],
+    capacities: [tuple({ space_id: "pavilion", max: 425 }), tuple({ space_id: "la-pergola", max: 180 })],
+    pricing: {
+      archetype: "rental_plus_per_guest_packages",
+      paths: [
+        pathWith({
+          fixed_fees: [
+            { ...feeBase, applies_to: "space", space_id: "pavilion", day: "sat", season: null, amount: 6000, label: "Pavilion Saturday", key: "pav-sat" },
+            { ...feeBase, applies_to: "space", space_id: "la-pergola", day: "sat", season: null, amount: 3000, label: "La Pergola Saturday", key: "lp-sat" },
+            { ...feeBase, applies_to: "whole_venue", space_id: null, day: "sat", season: null, amount: 9000, label: "Both spaces Saturday", key: "both-sat" },
+          ],
+        }),
+      ],
+      rates: emptyRates(),
+      add_ons: [],
+      required_third_party: [],
+      notes: [],
+    },
+  });
+  const input: EstimateInput = { guests: 100, day: "sat", season: "any", space_id: "pavilion", ceremonyOnSite: false, extras: [] };
+
+  it("charges only the chosen space's fee when that space has its own fee on the path (6,000, not 15,000)", () => {
+    expect(estimateCost(twoRooms, input).total).toBe(6000);
+  });
+
+  it("charges the whole-venue fee when the couple books the whole venue", () => {
+    expect(estimateCost(twoRooms, { ...input, space_id: "whole_venue" }).total).toBe(9000);
+  });
+
+  it("single-space venues with only whole-venue fees still charge them (Greenhouse shape)", () => {
+    const oneRoom = makeVenue({
+      spaces: [space({ id: "loft" })],
+      capacities: [tuple({ space_id: "loft", max: 175 })],
+      pricing: {
+        archetype: "raw_space_byo",
+        paths: [pathWith({ fixed_fees: [{ ...feeBase, applies_to: "whole_venue", space_id: null, day: "sat", season: "peak", amount: 12000, label: "Peak Saturday", key: "peak-sat" }] })],
+        rates: emptyRates({ sales_tax_source: "included" }),
+        add_ons: [],
+        required_third_party: [],
+        notes: [],
+      },
+    });
+    expect(estimateCost(oneRoom, { guests: 100, day: "sat", season: "peak", ceremonyOnSite: false, extras: [] }).total).toBe(12000);
+  });
+});
+
+describe("estimateCost — day matching", () => {
+  const venue = makeVenue({
+    spaces: [space({ id: "hall" })],
+    capacities: [tuple({ space_id: "hall", max: 268 })],
+    pricing: {
+      archetype: "raw_space_byo",
+      paths: [
+        pathWith({
+          fixed_fees: [
+            { ...feeBase, applies_to: "whole_venue", space_id: null, day: "weekday", season: "peak", amount: 2400, label: "Weekday", key: "wk" },
+            { ...feeBase, applies_to: "whole_venue", space_id: null, day: "fri", season: "peak", amount: 4595, label: "Friday", key: "fri" },
+            { ...feeBase, applies_to: "whole_venue", space_id: null, day: "sun", season: "peak", amount: 4595, label: "Sunday", key: "sun" },
+          ],
+        }),
+      ],
+      rates: emptyRates(),
+      add_ons: [],
+      required_third_party: [],
+      notes: [],
+    },
+  });
+  const base: EstimateInput = { guests: 100, day: "fri", season: "peak", ceremonyOnSite: false, extras: [] };
+
+  it("'weekday' means Mon-Thu, so a Friday fee never stacks on a weekday fee", () => {
+    expect(estimateCost(venue, base).total).toBe(4595);
+    expect(estimateCost(venue, { ...base, day: "tue" }).total).toBe(2400);
+    expect(estimateCost(venue, { ...base, day: "sun" }).total).toBe(4595);
+  });
+});
+
+describe("estimateCost — F&B minimums and the tax base", () => {
+  const tier = { id: "t", name: "Package", per_guest: 100, day: null, season: null, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "$100", source_url: src, snapshot_id: 1 };
+
+  it("warns under_fb_minimum when a published F&B minimum exceeds the F&B subtotal", () => {
+    const venue = makeVenue({
+      pricing: {
+        archetype: "rental_plus_fb_minimum",
+        paths: [pathWith({ per_guest_tiers: [tier], minimums: [{ kind: "fb_minimum", day: "sat", season: "peak", amount: 15000, quote: "$15,000 minimum", source_url: src, snapshot_id: 1 }] })],
+        rates: emptyRates(),
+        add_ons: [],
+        required_third_party: [],
+        notes: [],
+      },
+    });
+    const est = estimateCost(venue, { guests: 100, day: "sat", season: "peak", ceremonyOnSite: false, extras: [] });
+    expect(est.warnings).toContain("under_fb_minimum");
+    expect(estimateCost(venue, { guests: 200, day: "sat", season: "peak", ceremonyOnSite: false, extras: [] }).warnings).not.toContain("under_fb_minimum");
+  });
+
+  it("lists an unpublished F&B minimum under not_included (LondonHouse shape)", () => {
+    const venue = makeVenue({
+      spine: spineWith({ fb_minimum: fact({ applies: true, amount_usd: null, detail: "Varies by date" }) }),
+      pricing: { archetype: "hotel_package", paths: [pathWith({ per_guest_tiers: [tier] })], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+    });
+    const est = estimateCost(venue, { guests: 100, day: "sat", season: "peak", ceremonyOnSite: false, extras: [] });
+    expect(est.not_included).toContain("Food & beverage minimum (amount not published)");
+  });
+
+  it("sales_tax_base 'all' taxes the flat venue rental too; the default base does not", () => {
+    const build = (base: Rates["sales_tax_base"]) =>
+      makeVenue({
+        spaces: [space({ id: "hall" })],
+        capacities: [tuple({ space_id: "hall", max: 200 })],
+        pricing: {
+          archetype: "rental_plus_per_guest_packages",
+          paths: [pathWith({ fixed_fees: [{ ...feeBase, applies_to: "whole_venue", space_id: null, day: null, season: null, amount: 1000, label: "Rental", key: "r" }], per_guest_tiers: [tier] })],
+          rates: emptyRates({ sales_tax_pct: 10, sales_tax_base: base, sales_tax_source: "stated" }),
+          add_ons: [],
+          required_third_party: [],
+          notes: [],
+        },
+      });
+    const input: EstimateInput = { guests: 10, day: "sat", season: "peak", ceremonyOnSite: false, extras: [] };
+    expect(estimateCost(build("fb_and_rentals"), input).total).toBe(1000 + 1000 + 100);
+    expect(estimateCost(build("all"), input).total).toBe(1000 + 1000 + 200);
+  });
+});
+
+describe("calculatorAxes — space axis only when pricing varies by space", () => {
+  const tier = { id: "t", name: "Package", per_guest: 100, day: null, season: null, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "$100", source_url: src, snapshot_id: 1 };
+  const twoSpaces = [space({ id: "a" }), space({ id: "b" })];
+
+  it("omits 'space' for a two-room venue with one space-agnostic package price (LondonHouse)", () => {
+    const venue = makeVenue({ spaces: twoSpaces, pricing: { archetype: "hotel_package", paths: [pathWith({ per_guest_tiers: [tier] })], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+    expect(calculatorAxes(venue)).not.toContain("space");
+  });
+
+  it("includes 'space' when a fee is space-scoped (Marchetti)", () => {
+    const venue = makeVenue({
+      spaces: twoSpaces,
+      pricing: {
+        archetype: "rental_plus_per_guest_packages",
+        paths: [pathWith({ fixed_fees: [{ ...feeBase, applies_to: "space", space_id: "a", day: "sat", season: null, amount: 6000, label: "A Saturday", key: "a-sat" }] })],
+        rates: emptyRates(),
+        add_ons: [],
+        required_third_party: [],
+        notes: [],
+      },
+    });
+    expect(calculatorAxes(venue)).toContain("space");
   });
 });

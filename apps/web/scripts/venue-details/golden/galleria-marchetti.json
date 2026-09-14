@@ -1,0 +1,1198 @@
+{
+  "schema_version": 3,
+  "account_id": 31,
+  "name": "Galleria Marchetti",
+  "website_url": "https://www.galleriamarchetti.com/",
+  "spine": {
+    "venue_kind": {
+      "status": "stated",
+      "value": "event_space",
+      "quote": "Event Space",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "setting": {
+      "status": "stated",
+      "value": "both",
+      "quote": "Both spaces combine a tented/glass-enclosed room with an open-air courtyard or retractable roof.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "one_event_per_day": {
+      "status": "not_stated"
+    },
+    "space_count_bookable": {
+      "status": "stated",
+      "value": 2,
+      "quote": "With two distinct event spaces",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "capacity_min_guests": {
+      "status": "not_stated"
+    },
+    "ceremony_on_site": {
+      "status": "stated",
+      "value": true,
+      "quote": "On top of the venue rental fee, only if your ceremony is held on-site. Includes white garden chairs and a dedicated ceremony arbor; The Pavilion's fee also covers a matching indoor arbor for weather backup.",
+      "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+      "snapshot_id": null
+    },
+    "ceremony_fee": {
+      "status": "stated",
+      "value": "extra_fee",
+      "quote": "On top of the venue rental fee, only if your ceremony is held on-site. Includes white garden chairs and a dedicated ceremony arbor; The Pavilion's fee also covers a matching indoor arbor for weather backup.",
+      "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+      "snapshot_id": null
+    },
+    "rental_hours_included": {
+      "status": "not_stated"
+    },
+    "weekday_events": {
+      "status": "stated",
+      "value": true,
+      "quote": "Yes. Galleria Marchetti welcomes weekday events and often offers seasonal incentives or special pricing for weekday bookings.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "catering": {
+      "status": "stated",
+      "value": "exclusive_in_house",
+      "quote": "In-house only",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "bar": {
+      "status": "stated",
+      "value": "in_house",
+      "quote": "In-house only",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "rental_charge_type": {
+      "status": "stated",
+      "value": "flat_fee",
+      "quote": "See Spaces for each room's day-by-day rates. Event times are set in your contract; running past your scheduled end time is subject to availability and approval, and may cost extra.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "fb_minimum": {
+      "status": "stated",
+      "value": {
+        "applies": true,
+        "amount_usd": null,
+        "detail": "A minimum applies to every event; any shortfall is added to the final balance. Dollar figures aren't published."
+      },
+      "quote": "A minimum applies to every event; any shortfall is added to the final balance. Dollar figures aren't published.",
+      "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+      "snapshot_id": null
+    },
+    "service_charge_pct": {
+      "status": "stated",
+      "value": 25,
+      "quote": "Called a \"production fee\" on Marchetti's own site. Taxable, not a gratuity.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "parking": {
+      "status": "stated",
+      "value": "valet_paid",
+      "quote": "Arranged for an additional fee; inquire with the venue for current rates.",
+      "source_url": "https://www.galleriamarchetti.com/legal/terms-conditions",
+      "snapshot_id": null
+    },
+    "day_of_coordinator": {
+      "status": "stated",
+      "value": "included",
+      "quote": "The venue's own team coordinates every Wedding Experience package. It isn't framed as one dedicated named role, so confirm exactly what's covered.",
+      "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+      "snapshot_id": null
+    },
+    "payment_schedule": {
+      "status": "conflicting",
+      "candidates": [
+        {
+          "value": {
+            "deposit": "Non-refundable retainer at booking, then an installment 180 days before the event",
+            "balance_due": "Remaining balance due 10 business days before the event"
+          },
+          "quote": "A non-refundable retainer is due at booking, then an installment 180 days before the event... the terms page says 10 business days.",
+          "source_url": "https://www.galleriamarchetti.com/legal/terms-conditions",
+          "snapshot_id": null
+        },
+        {
+          "value": {
+            "deposit": "Non-refundable retainer at booking, then an installment 180 days before the event",
+            "balance_due": "Remaining balance due 15 business days before the event (matches the final guest-count deadline)"
+          },
+          "quote": "The brochure says 15 business days before the event, matching its final guest-count guarantee deadline.",
+          "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+          "snapshot_id": null
+        }
+      ]
+    },
+    "cancellation": {
+      "status": "not_stated"
+    },
+    "event_insurance": {
+      "status": "not_stated"
+    },
+    "security": {
+      "status": "not_stated"
+    },
+    "vendor_access": {
+      "status": "stated",
+      "value": {
+        "setup_hours_before": null,
+        "teardown_hours_after": null
+      },
+      "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+      "snapshot_id": null
+    },
+    "noise_curfew": {
+      "status": "not_stated"
+    },
+    "sales_tax_pct": {
+      "status": "not_stated"
+    },
+    "cc_fee_pct": {
+      "status": "not_stated"
+    },
+    "taxes_included_in_rental": {
+      "status": "stated",
+      "value": false,
+      "quote": "sales tax will be added to all taxable charges",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "vendor_list_policy": {
+      "status": "stated",
+      "value": "preferred_list",
+      "quote": "To ensure a high level of quality and a seamless event experience, Galleria Marchetti works with a curated list of trusted vendors. Our team is happy to share approved options and guide you through selections that align with your vision while ensuring smooth execution on event day.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "pets_allowed": {
+      "status": "not_stated"
+    },
+    "hvac": {
+      "status": "stated",
+      "value": true,
+      "quote": "Both The Pavilion and La Pergola are climate-controlled year-round.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "ada_accessible": {
+      "status": "not_stated"
+    },
+    "bridal_suite": {
+      "status": "stated",
+      "value": true,
+      "quote": "Both The Pavilion and La Pergola have their own Private Wedding Salon for getting ready and pre-ceremony moments.",
+      "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+      "snapshot_id": null
+    },
+    "tables_chairs_included": {
+      "status": "not_stated"
+    },
+    "linens_included": {
+      "status": "stated",
+      "value": true,
+      "quote": "Floor-length linens included in every package. Oro and Platino each build on top of Argento, which includes them.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "dance_floor_included": {
+      "status": "not_stated"
+    },
+    "coat_check": {
+      "status": "stated",
+      "value": "available_fee",
+      "quote": "Available (fee varies)",
+      "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+      "snapshot_id": null
+    },
+    "pricing_archetype": {
+      "status": "stated",
+      "value": "rental_plus_per_guest_packages",
+      "quote": "Venue rental fee (see Spaces) plus per-guest Wedding Experience packages (Argento/Oro/Platino)",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "price_from_usd": {
+      "status": "stated",
+      "value": 1000,
+      "quote": "La Pergola, Sunday: $1,000",
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    "per_guest_from_usd": {
+      "status": "stated",
+      "value": 190,
+      "quote": "$190/guest (Argento)",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "per_guest_to_usd": {
+      "status": "stated",
+      "value": 280,
+      "quote": "$280/guest (Platino)",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    }
+  },
+  "about": {
+    "text": "Galleria Marchetti is a garden oasis in the heart of Chicago, offering a timeless setting for weddings of every size. With two distinct event spaces, this enchanting urban oasis features elegant indoor spaces and romantic courtyards that adapt seamlessly to your vision. The Marchetti family's Chicago roots go back to 1924 with Giuseppe Marchetti's original Como Inn. Galleria Marchetti itself opened in 1978 and remains family-owned and operated today.",
+    "evidence": {
+      "source_url": "https://www.galleriamarchetti.com/about-us",
+      "snapshot_id": null
+    }
+  },
+  "differentiator": null,
+  "spaces": [
+    {
+      "id": "the-pavilion",
+      "name": "The Pavilion",
+      "structure_label": "Tented ballroom",
+      "sq_ft": 6000,
+      "sq_ft_outdoor": null,
+      "ceiling_ft": null,
+      "setting": "both",
+      "bookable_separately": true,
+      "description": {
+        "value": "The larger of our two venues, is our three-space option featuring a lush courtyard, a beautiful old-world anteroom, and a state-of-the-art 6,000 sq ft tented ballroom with lighting, heating, and air conditioning.",
+        "quote": "The larger of our two venues, is our three-space option featuring a lush courtyard, a beautiful old-world anteroom, and a state-of-the-art 6,000 sq ft tented ballroom with lighting, heating, and air conditioning.",
+        "source_url": "https://www.galleriamarchetti.com/thepavilion",
+        "snapshot_id": null
+      },
+      "includes_summary": "Il Cortile (courtyard), the tented ballroom, and the Montecatini Room (3,000 sq ft).",
+      "evidence": {
+        "source_url": "https://www.galleriamarchetti.com/thepavilion",
+        "snapshot_id": null
+      }
+    },
+    {
+      "id": "la-pergola",
+      "name": "La Pergola",
+      "structure_label": "Glass-enclosed, retractable roof",
+      "sq_ft": 3000,
+      "sq_ft_outdoor": null,
+      "ceiling_ft": null,
+      "setting": "both",
+      "bookable_separately": true,
+      "description": {
+        "value": "Our intimate venue features a 3,000 sq ft glass-enclosed ballroom with Moroccan brass sconces, travertine flooring, heating, air conditioning, and a motorized retractable roof, creating a warm and elegant setting for unforgettable events.",
+        "quote": "Our intimate venue features a 3,000 sq ft glass-enclosed ballroom with Moroccan brass sconces, travertine flooring, heating, air conditioning, and a motorized retractable roof, creating a warm and elegant setting for unforgettable events.",
+        "source_url": "https://www.galleriamarchetti.com/thepavilion",
+        "snapshot_id": null
+      },
+      "includes_summary": "The Lucca Room (1,500 sq ft) and its own Wedding Salon, an intimate, ornate getting-ready retreat with soft lighting for preparation before the celebration begins.",
+      "evidence": {
+        "source_url": "https://www.galleriamarchetti.com/thepavilion",
+        "snapshot_id": null
+      }
+    }
+  ],
+  "capacities": [
+    {
+      "space_id": "the-pavilion",
+      "layout": "seated_dinner",
+      "min": null,
+      "max": 425,
+      "as_stated_label": "Seated",
+      "tile": "seated",
+      "condition": null,
+      "quote": "Seated Reception: up to 425 (The Pavilion)",
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "the-pavilion",
+      "layout": "seated_with_dance",
+      "min": null,
+      "max": 375,
+      "as_stated_label": "Seated (w/ dance floor)",
+      "tile": "seated_dance",
+      "condition": null,
+      "quote": "Seated Reception + Dance Floor: up to 375 (The Pavilion)",
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "the-pavilion",
+      "layout": "cocktail_standing",
+      "min": null,
+      "max": 900,
+      "as_stated_label": "Cocktail (standing)",
+      "tile": "cocktail",
+      "condition": null,
+      "quote": "The Pavilion cocktail capacity: 900",
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "la-pergola",
+      "layout": "seated_dinner",
+      "min": null,
+      "max": 180,
+      "as_stated_label": "Seated",
+      "tile": "seated",
+      "condition": null,
+      "quote": "La Pergola seated: 180",
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "la-pergola",
+      "layout": "seated_with_dance",
+      "min": null,
+      "max": 150,
+      "as_stated_label": "Seated (w/ dance floor)",
+      "tile": "seated_dance",
+      "condition": null,
+      "quote": "La Pergola seated w/ dance floor: 150",
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "la-pergola",
+      "layout": "cocktail_standing",
+      "min": null,
+      "max": 250,
+      "as_stated_label": "Cocktail (standing)",
+      "tile": "cocktail",
+      "condition": null,
+      "quote": "La Pergola cocktail: 250",
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    }
+  ],
+  "pricing": {
+    "archetype": "rental_plus_per_guest_packages",
+    "paths": [
+      {
+        "id": "default",
+        "name": "Wedding Experience Packages",
+        "description": "Rent The Pavilion or La Pergola individually, or the entire venue together.",
+        "applies_to_spaces": "all",
+        "fixed_fees": [
+          {
+            "applies_to": "space",
+            "space_id": "the-pavilion",
+            "day": "fri",
+            "season": null,
+            "amount": 4000,
+            "unit": "flat",
+            "label": "Venue rental: The Pavilion, Friday",
+            "includes": [],
+            "key": "the-pavilion-fri",
+            "quote": "$4,000",
+            "source_url": "https://www.galleriamarchetti.com/thepavilion",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "space",
+            "space_id": "the-pavilion",
+            "day": "sat",
+            "season": null,
+            "amount": 6000,
+            "unit": "flat",
+            "label": "Venue rental: The Pavilion, Saturday",
+            "includes": [],
+            "key": "the-pavilion-sat",
+            "quote": "$6,000",
+            "source_url": "https://www.galleriamarchetti.com/thepavilion",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "space",
+            "space_id": "the-pavilion",
+            "day": "sun",
+            "season": null,
+            "amount": 2000,
+            "unit": "flat",
+            "label": "Venue rental: The Pavilion, Sunday",
+            "includes": [],
+            "key": "the-pavilion-sun",
+            "quote": "$2,000",
+            "source_url": "https://www.galleriamarchetti.com/thepavilion",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "space",
+            "space_id": "la-pergola",
+            "day": "fri",
+            "season": null,
+            "amount": 2000,
+            "unit": "flat",
+            "label": "Venue rental: La Pergola, Friday",
+            "includes": [],
+            "key": "la-pergola-fri",
+            "quote": "$2,000",
+            "source_url": "https://www.galleriamarchetti.com/thepavilion",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "space",
+            "space_id": "la-pergola",
+            "day": "sat",
+            "season": null,
+            "amount": 3000,
+            "unit": "flat",
+            "label": "Venue rental: La Pergola, Saturday",
+            "includes": [],
+            "key": "la-pergola-sat",
+            "quote": "$3,000",
+            "source_url": "https://www.galleriamarchetti.com/thepavilion",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "space",
+            "space_id": "la-pergola",
+            "day": "sun",
+            "season": null,
+            "amount": 1000,
+            "unit": "flat",
+            "label": "Venue rental: La Pergola, Sunday",
+            "includes": [],
+            "key": "la-pergola-sun",
+            "quote": "$1,000",
+            "source_url": "https://www.galleriamarchetti.com/thepavilion",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "whole_venue",
+            "space_id": null,
+            "day": "fri",
+            "season": null,
+            "amount": 6000,
+            "unit": "flat",
+            "label": "Venue rental: entire venue, fri",
+            "includes": [],
+            "key": "whole-venue-fri",
+            "quote": "$6,000",
+            "source_url": "https://www.galleriamarchetti.com/thepavilion",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "whole_venue",
+            "space_id": null,
+            "day": "sat",
+            "season": null,
+            "amount": 9000,
+            "unit": "flat",
+            "label": "Venue rental: entire venue, sat",
+            "includes": [],
+            "key": "whole-venue-sat",
+            "quote": "$9,000",
+            "source_url": "https://www.galleriamarchetti.com/thepavilion",
+            "snapshot_id": null
+          },
+          {
+            "applies_to": "whole_venue",
+            "space_id": null,
+            "day": "sun",
+            "season": null,
+            "amount": 3000,
+            "unit": "flat",
+            "label": "Venue rental: entire venue, sun",
+            "includes": [],
+            "key": "whole-venue-sun",
+            "quote": "$3,000",
+            "source_url": "https://www.galleriamarchetti.com/thepavilion",
+            "snapshot_id": null
+          }
+        ],
+        "per_guest_tiers": [
+          {
+            "id": "argento",
+            "name": "Argento",
+            "per_guest": 190,
+            "day": null,
+            "season": null,
+            "inherits_from": null,
+            "inclusions": [
+              "Four passed hors d'oeuvres",
+              "Passed white wine & sparkling wine",
+              "Tableside wine service & sparkling toast",
+              "Three-course dinner",
+              "Floor-length linens"
+            ],
+            "bar_tier": {
+              "name": "Villa Bar",
+              "hours": 5,
+              "examples": [
+                "Tito's",
+                "Tanqueray",
+                "Maker's Mark"
+              ]
+            },
+            "min_guests": null,
+            "quote": "$190/guest",
+            "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+            "snapshot_id": null
+          },
+          {
+            "id": "oro",
+            "name": "Oro",
+            "per_guest": 235,
+            "day": null,
+            "season": null,
+            "inherits_from": "Argento",
+            "inclusions": [
+              "One signature cocktail",
+              "One signature moment",
+              "One chef experience",
+              "Stage & Chiavari chairs"
+            ],
+            "bar_tier": {
+              "name": "Tenuta Bar",
+              "hours": 5,
+              "examples": [
+                "Ketel One",
+                "Hendrick's",
+                "Woodford Reserve"
+              ]
+            },
+            "min_guests": null,
+            "quote": "$235/guest",
+            "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+            "snapshot_id": null
+          },
+          {
+            "id": "platino",
+            "name": "Platino",
+            "per_guest": 280,
+            "day": null,
+            "season": null,
+            "inherits_from": "Oro",
+            "inclusions": [
+              "Two signature cocktails",
+              "Two signature moments",
+              "Two chef experiences",
+              "Late-night Neapolitan pizza station",
+              "Dance floor"
+            ],
+            "bar_tier": {
+              "name": "Riserva Bar",
+              "hours": 5,
+              "examples": [
+                "Grey Goose",
+                "Macallan 12",
+                "Patron Reposado"
+              ]
+            },
+            "min_guests": null,
+            "quote": "$280/guest",
+            "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+            "snapshot_id": null
+          }
+        ],
+        "minimums": [],
+        "required_staffing": null,
+        "rental_hours": null,
+        "year_surcharges": [],
+        "promotions": [],
+        "quote": "",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      }
+    ],
+    "rates": {
+      "service_charge_pct": 25,
+      "service_charge_base": "fb",
+      "sales_tax_pct": 11.75,
+      "sales_tax_base": "fb_and_rentals",
+      "sales_tax_source": "chicago_default",
+      "cc_fee_pct": null,
+      "quote": "This is Chicago's standard restaurant/prepared-food tax rate, used here so users always see a full, tax-inclusive number; flagged as inferred, not confirmed for this venue.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "add_ons": [
+      {
+        "id": "ceremony-onsite",
+        "name": "On-site ceremony",
+        "category": "Ceremony fee",
+        "variant": null,
+        "group": "ceremony",
+        "price": null,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": {
+          "the-pavilion": 2000,
+          "la-pergola": 1000
+        },
+        "applies_to": [
+          "the-pavilion",
+          "la-pergola"
+        ],
+        "path_ids": null,
+        "condition": "ceremony_on_site",
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$1,000 (La Pergola) / $2,000 (The Pavilion)",
+        "note": "On top of the venue rental fee, only if your ceremony is held on-site. Includes white garden chairs and a dedicated ceremony arbor; The Pavilion's fee also covers a matching indoor arbor for weather backup.",
+        "quote": "$1,000 (La Pergola) / $2,000 (The Pavilion)",
+        "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+        "snapshot_id": null
+      },
+      {
+        "id": "dance-floor-white",
+        "name": "Dance floor: White",
+        "category": "Dance floor",
+        "variant": "White",
+        "group": "rental",
+        "price": null,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": {
+          "the-pavilion": 1725,
+          "la-pergola": 625
+        },
+        "applies_to": [
+          "the-pavilion",
+          "la-pergola"
+        ],
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$625 (La Pergola) / $1725 (The Pavilion)",
+        "note": "Pavilion 13-swag-style upgrade not modeled; see the enhancements table.",
+        "quote": "$625",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      },
+      {
+        "id": "dance-floor-bw",
+        "name": "Dance floor: Black & white",
+        "category": "Dance floor",
+        "variant": "Black & white",
+        "group": "rental",
+        "price": null,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": {
+          "the-pavilion": 2500,
+          "la-pergola": 1000
+        },
+        "applies_to": [
+          "the-pavilion",
+          "la-pergola"
+        ],
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$1000 (La Pergola) / $2500 (The Pavilion)",
+        "note": null,
+        "quote": "$1000",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      },
+      {
+        "id": "bistro-lights-standard",
+        "name": "Bistro lights: Standard",
+        "category": "Bistro lights",
+        "variant": "Standard",
+        "group": "rental",
+        "price": null,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": {
+          "the-pavilion": 1400,
+          "la-pergola": 1250
+        },
+        "applies_to": [
+          "the-pavilion",
+          "la-pergola"
+        ],
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$1250 (La Pergola) / $1400 (The Pavilion)",
+        "note": "Pavilion price shown is the 7-swag option; 13 swags is $2,200 (not modeled as a separate variant).",
+        "quote": "$1250",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      },
+      {
+        "id": "bistro-lights-greenery",
+        "name": "Bistro lights: With faux greenery",
+        "category": "Bistro lights",
+        "variant": "With faux greenery",
+        "group": "rental",
+        "price": null,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": {
+          "the-pavilion": 2500,
+          "la-pergola": 2250
+        },
+        "applies_to": [
+          "the-pavilion",
+          "la-pergola"
+        ],
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$2250 (La Pergola) / $2500 (The Pavilion)",
+        "note": "Pavilion price shown is the 7-swag option; 13 swags is $4,400 (not modeled as a separate variant).",
+        "quote": "$2250",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      },
+      {
+        "id": "chiavari-chairs",
+        "name": "Chiavari chairs",
+        "category": "Chiavari chairs",
+        "variant": null,
+        "group": "rental",
+        "price": 10,
+        "price_max": null,
+        "unit": "per_unit",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$10 each",
+        "note": null,
+        "quote": "$10 each",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      },
+      {
+        "id": "stage",
+        "name": "Stage",
+        "category": "Stage",
+        "variant": null,
+        "group": "rental",
+        "price": 175,
+        "price_max": null,
+        "unit": "per_unit",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$175 / 4×8 section",
+        "note": "Includes black skirting and stairs.",
+        "quote": "$175 / 4×8 section",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      },
+      {
+        "id": "coat-check",
+        "name": "Coat check",
+        "category": "Coat check",
+        "variant": null,
+        "group": "service",
+        "price": null,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": false,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "Available (fee varies)",
+        "note": "Coat check service may be arranged in advance. Additional charges apply based on staffing requirements.",
+        "quote": "Coat check service may be arranged in advance. Additional charges apply based on staffing requirements.",
+        "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+        "snapshot_id": null
+      },
+      {
+        "id": "aperitivo-hour",
+        "name": "Garden Aperitivo Hour",
+        "category": "Garden Aperitivo Hour",
+        "variant": null,
+        "group": "fb",
+        "price": 12,
+        "price_max": 20,
+        "unit": "per_guest",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$12–20/guest",
+        "note": "Signature Moments ($12/guest): Aperol Spritz Bar, Limoncello Spritz Bar. Signature Experiences ($20/guest): Antipasti Station, Live Fire Skewer Station.",
+        "quote": "$12–20/guest",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      },
+      {
+        "id": "chef-experiences",
+        "name": "Chef Experiences",
+        "category": "Chef Experiences",
+        "variant": null,
+        "group": "fb",
+        "price": 40,
+        "price_max": null,
+        "unit": "per_guest",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$40/guest",
+        "note": "Coastal Crudo & Sushi Experience, Wood-Fired Beef Tagliata Station.",
+        "quote": "$40/guest",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      },
+      {
+        "id": "late-night",
+        "name": "Late Night Experiences",
+        "category": "Late Night Experiences",
+        "variant": null,
+        "group": "fb",
+        "price": 12,
+        "price_max": 20,
+        "unit": "per_guest",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$12–20/guest",
+        "note": "Signature Moments ($12/guest): Italian Gelato Cart, S'mores Station. Signature Experiences ($20/guest): Neapolitan Pizza Station, Chicago Station.",
+        "quote": "$12–20/guest",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      }
+    ],
+    "required_third_party": [],
+    "notes": [
+      {
+        "value": "Villa, Tenuta, and Riserva Bar Collections build on each other. Each package's bar offers a more elevated wine, spirit, and cocktail selection than the one before it.",
+        "quote": "Villa, Tenuta, and Riserva Bar Collections build on each other. Each package's bar offers a more elevated wine, spirit, and cocktail selection than the one before it.",
+        "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+        "snapshot_id": null
+      }
+    ],
+    "default_axes": {
+      "path_id": "default",
+      "space_id": "the-pavilion",
+      "day": "sat",
+      "season": "peak",
+      "tier_id": "oro",
+      "ceremonyOnSite": false
+    }
+  },
+  "food_beverage": {
+    "food_pills": [
+      {
+        "value": "all_inclusive",
+        "quote": "No outside caterer option. Food comes from the venue's own kitchen.",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      }
+    ],
+    "bar_pills": [
+      {
+        "value": "all_inclusive",
+        "quote": "Bar in-house",
+        "source_url": "https://www.galleriamarchetti.com/",
+        "snapshot_id": null
+      }
+    ],
+    "caption": null,
+    "menus": [],
+    "bar_ladders": [],
+    "bar_min_guests": null,
+    "notes": [
+      {
+        "value": "Villa, Tenuta, and Riserva Bar Collections build on each other. Each package's bar offers a more elevated wine, spirit, and cocktail selection than the one before it.",
+        "quote": "Villa, Tenuta, and Riserva Bar Collections build on each other. Each package's bar offers a more elevated wine, spirit, and cocktail selection than the one before it.",
+        "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+        "snapshot_id": null
+      }
+    ]
+  },
+  "inclusions": [
+    {
+      "label": "Heating & A/C",
+      "label_raw": "Heating & A/C",
+      "detail": "Both The Pavilion and La Pergola are climate-controlled year-round.",
+      "category": "Space",
+      "quote": "Both The Pavilion and La Pergola are climate-controlled year-round.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Linens",
+      "label_raw": "Linens",
+      "detail": "Floor-length linens included in every package. Oro and Platino each build on top of Argento, which includes them.",
+      "category": "Furniture",
+      "quote": "Floor-length linens included in every package. Oro and Platino each build on top of Argento, which includes them.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Bridal suite",
+      "label_raw": "Bridal suite",
+      "detail": "Both The Pavilion and La Pergola have their own Private Wedding Salon for getting ready and pre-ceremony moments.",
+      "category": "Space",
+      "quote": "Both The Pavilion and La Pergola have their own Private Wedding Salon for getting ready and pre-ceremony moments.",
+      "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+      "snapshot_id": null
+    }
+  ],
+  "faqs": [
+    {
+      "question": "What size events can Galleria Marchetti accommodate?",
+      "answer": "Our venues are designed to host a wide range of events, from intimate gatherings to large-scale celebrations. Flexible indoor and outdoor spaces allow us to adapt layouts based on your guest count and event style.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Can we host both the ceremony and reception on-site?",
+      "answer": "Yes. Each space's own outdoor ceremony setting is designed to transition naturally into cocktail hour and the reception that follows, so your guests stay together in one setting for the whole celebration instead of traveling between locations.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "question": "What happens if the weather doesn't cooperate?",
+      "answer": "The Pavilion has a beautifully appointed indoor ceremony location, with a matching arbor to the outdoor one, so a rained-out ceremony still moves forward smoothly rather than getting improvised at the last minute.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you host weekday or evening events?",
+      "answer": "Yes. Galleria Marchetti welcomes weekday events and often offers seasonal incentives or special pricing for weekday bookings.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you provide event planning or coordination support?",
+      "answer": "Our experienced team works closely with clients throughout the planning process, offering guidance on space selection, layout options, and event logistics to ensure a smooth experience.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Can we work with our own vendors?",
+      "answer": "To ensure a high level of quality and a seamless event experience, Galleria Marchetti works with a curated list of trusted vendors. Our team is happy to share approved options and guide you through selections that align with your vision while ensuring smooth execution on event day.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Can we do a menu tasting before we book our final selections?",
+      "answer": "Yes. A complimentary tasting for up to four guests is available once your event is booked, limited to plated dinner selections, and must be scheduled in advance.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Does Galleria Marchetti provide audio/visual equipment, like a sound system?",
+      "answer": "No, AV services are arranged through outside providers. The venue's team can help with recommendations and coordination, but the equipment, setup, and technical support are the AV provider's responsibility, so give them advance notice.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you offer a children's menu, or accommodate vendor meals?",
+      "answer": "Yes to both. Special menu options and pricing are available for children ages 3 through 11, and for your event's vendors, though Galleria Marchetti doesn't serve alcoholic beverages to vendors while they're working your event.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    {
+      "question": "How do we get started?",
+      "answer": "The best first step is to reach out and tell us about your event. Our team will provide availability, capacity details, and next steps to help bring your vision to life.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    }
+  ],
+  "resources": [
+    {
+      "id": "res-1",
+      "kind": "brochure",
+      "label": "Wedding Brochure",
+      "url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+      "scope": "venue",
+      "embeddable": false,
+      "has_text_layer": true,
+      "checked_at": null,
+      "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
+      "snapshot_id": null
+    },
+    {
+      "id": "floorplan-pavilion-1",
+      "kind": "floor_plan",
+      "label": "East Courtyard: Ceremony & Cocktail Hour",
+      "url": "https://framerusercontent.com/images/IaDlK3og22dGjetrJJ2mYXMl7zA.jpg?width=792&height=612",
+      "scope": "space:the-pavilion",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "id": "floorplan-pavilion-2",
+      "kind": "floor_plan",
+      "label": "Dance Floor with Stage",
+      "url": "https://framerusercontent.com/images/NLtiiAwoPXzUn41RZttyAmSSLe0.jpg?width=792&height=612",
+      "scope": "space:the-pavilion",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "id": "floorplan-pavilion-3",
+      "kind": "floor_plan",
+      "label": "Banquet, With Stage",
+      "url": "https://framerusercontent.com/images/2pDBev1QBf1fmdQo2FJkvtkVeM.jpg?width=792&height=612",
+      "scope": "space:the-pavilion",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "id": "floorplan-la-pergola-1",
+      "kind": "floor_plan",
+      "label": "Banquet Setup",
+      "url": "https://framerusercontent.com/images/EG7ddnTJ3taJz3T2B6s8KJE3Ws.jpg?width=792&height=612",
+      "scope": "space:la-pergola",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "id": "floorplan-la-pergola-2",
+      "kind": "floor_plan",
+      "label": "Cocktail Setup",
+      "url": "https://framerusercontent.com/images/yNcIWBw9Ef6t6w56lPqRmqwRa9E.jpg?width=792&height=612",
+      "scope": "space:la-pergola",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "id": "floorplan-la-pergola-3",
+      "kind": "floor_plan",
+      "label": "Reception with Dance Floor",
+      "url": "https://framerusercontent.com/images/inbGCvAhjXJgHr4HIdFLUCivSws.jpg?width=792&height=612",
+      "scope": "space:la-pergola",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    },
+    {
+      "id": "floorplan-la-pergola-4",
+      "kind": "floor_plan",
+      "label": "Ceremony",
+      "url": "https://framerusercontent.com/images/dXRjrbrzVeZlH3vmo56egUhlvtQ.jpg?width=792&height=612",
+      "scope": "space:la-pergola",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.galleriamarchetti.com/thepavilion",
+      "snapshot_id": null
+    }
+  ],
+  "vendor_lists": [],
+  "press_features": [],
+  "sources": {
+    "snapshot_ids": [],
+    "pages": [
+      "https://www.galleriamarchetti.com/",
+      "https://www.galleriamarchetti.com/weddings",
+      "https://www.galleriamarchetti.com/contact",
+      "https://www.galleriamarchetti.com/thepavilion",
+      "https://www.galleriamarchetti.com/lapergola",
+      "https://www.galleriamarchetti.com/legal/terms-conditions",
+      "https://www.galleriamarchetti.com/about-us",
+      "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf"
+    ],
+    "crawled_at": "2026-08-26"
+  },
+  "extraction": null,
+  "provenance": null,
+  "eval": {
+    "/spine/venue_kind": "extractor",
+    "/spine/setting": "extractor",
+    "/spine/space_count_bookable": "extractor",
+    "/spine/ceremony_on_site": "extractor",
+    "/spine/ceremony_fee": "extractor",
+    "/spine/weekday_events": "extractor",
+    "/spine/catering": "extractor",
+    "/spine/bar": "extractor",
+    "/spine/rental_charge_type": "extractor",
+    "/spine/fb_minimum": "extractor",
+    "/spine/service_charge_pct": "extractor",
+    "/spine/parking": "extractor",
+    "/spine/day_of_coordinator": "extractor",
+    "/spine/payment_schedule": "extractor",
+    "/spine/vendor_access": "extractor",
+    "/spine/taxes_included_in_rental": "extractor",
+    "/spine/vendor_list_policy": "extractor",
+    "/spine/hvac": "extractor",
+    "/spine/bridal_suite": "extractor",
+    "/spine/linens_included": "extractor",
+    "/spine/coat_check": "extractor",
+    "/spine/pricing_archetype": "extractor",
+    "/spine/price_from_usd": "extractor",
+    "/spine/per_guest_from_usd": "extractor",
+    "/spine/per_guest_to_usd": "extractor",
+    "/capacities/the-pavilion:seated_dinner": "extractor",
+    "/capacities/the-pavilion:seated_with_dance": "extractor",
+    "/capacities/the-pavilion:cocktail_standing": "extractor",
+    "/capacities/la-pergola:seated_dinner": "extractor",
+    "/capacities/la-pergola:seated_with_dance": "extractor",
+    "/capacities/la-pergola:cocktail_standing": "extractor",
+    "/pricing/paths/default/fixed_fees/the-pavilion-fri": "extractor",
+    "/pricing/paths/default/fixed_fees/the-pavilion-sat": "extractor",
+    "/pricing/paths/default/fixed_fees/the-pavilion-sun": "extractor",
+    "/pricing/paths/default/fixed_fees/la-pergola-fri": "extractor",
+    "/pricing/paths/default/fixed_fees/la-pergola-sat": "extractor",
+    "/pricing/paths/default/fixed_fees/la-pergola-sun": "extractor",
+    "/pricing/paths/default/fixed_fees/whole-venue-fri": "extractor",
+    "/pricing/paths/default/fixed_fees/whole-venue-sat": "extractor",
+    "/pricing/paths/default/fixed_fees/whole-venue-sun": "extractor",
+    "/pricing/paths/default/per_guest_tiers/argento": "extractor",
+    "/pricing/paths/default/per_guest_tiers/oro": "extractor",
+    "/pricing/paths/default/per_guest_tiers/platino": "extractor",
+    "/pricing/add_ons/ceremony-onsite": "extractor",
+    "/pricing/add_ons/dance-floor-white": "extractor",
+    "/pricing/add_ons/dance-floor-bw": "extractor",
+    "/pricing/add_ons/bistro-lights-standard": "extractor",
+    "/pricing/add_ons/bistro-lights-greenery": "extractor",
+    "/pricing/add_ons/chiavari-chairs": "extractor",
+    "/pricing/add_ons/stage": "extractor",
+    "/pricing/add_ons/coat-check": "extractor",
+    "/pricing/add_ons/aperitivo-hour": "extractor",
+    "/pricing/add_ons/chef-experiences": "extractor",
+    "/pricing/add_ons/late-night": "extractor",
+    "/pricing/rates": "extractor"
+  }
+}

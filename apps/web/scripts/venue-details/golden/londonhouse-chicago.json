@@ -1,0 +1,775 @@
+{
+  "schema_version": 3,
+  "account_id": 2785,
+  "name": "LondonHouse Chicago",
+  "website_url": "https://londonhousechicago.com/weddings",
+  "spine": {
+    "venue_kind": {
+      "status": "stated",
+      "value": "hotel",
+      "quote": "Hotel Venue",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "setting": {
+      "status": "stated",
+      "value": "indoor",
+      "quote": "Indoor",
+      "source_url": "https://londonhousechicago.com/amenities",
+      "snapshot_id": null
+    },
+    "one_event_per_day": {
+      "status": "not_stated"
+    },
+    "space_count_bookable": {
+      "status": "stated",
+      "value": 2,
+      "quote": "Juliette Grand Ballroom and Étoile",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "capacity_min_guests": {
+      "status": "not_stated"
+    },
+    "ceremony_on_site": {
+      "status": "stated",
+      "value": true,
+      "quote": "Only if the ceremony is held at the hotel. Includes use of the rehearsal space, not just the ceremony itself.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "ceremony_fee": {
+      "status": "stated",
+      "value": "extra_fee",
+      "quote": "Only if the ceremony is held at the hotel. Includes use of the rehearsal space, not just the ceremony itself.",
+      "source_url": "https://londonhousechicago.com/assets/uploads/general/Wedding_Menu_2026_LondonHouse.pdf",
+      "snapshot_id": null
+    },
+    "rental_hours_included": {
+      "status": "not_stated"
+    },
+    "weekday_events": {
+      "status": "not_stated"
+    },
+    "catering": {
+      "status": "stated",
+      "value": "exclusive_in_house",
+      "quote": "In-house only",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "bar": {
+      "status": "stated",
+      "value": "byo_with_corkage",
+      "quote": "LondonHouse's own bar service is included in every package. Beyond that, you can bring your own wine or liquor for a $50/bottle corkage fee.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "rental_charge_type": {
+      "status": "stated",
+      "value": "per_guest_bundled",
+      "quote": "Included in the per-guest package price, same rate regardless of which space you book.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "fb_minimum": {
+      "status": "stated",
+      "value": {
+        "applies": true,
+        "amount_usd": null,
+        "detail": "Amount varies by guest count and date. Ask directly for a number."
+      },
+      "quote": "Amount determined by guest count and date.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "service_charge_pct": {
+      "status": "stated",
+      "value": 25,
+      "quote": "On all food & beverage.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "parking": {
+      "status": "stated",
+      "value": "valet_paid",
+      "quote": "Valet only, at the standard hotel rate ($80/night). No wedding-day rate published.",
+      "source_url": "https://londonhousechicago.com/amenities",
+      "snapshot_id": null
+    },
+    "day_of_coordinator": {
+      "status": "stated",
+      "value": "included",
+      "quote": "LondonHouse provides a wedding coordinator plus a Banquet Captain on the day.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "payment_schedule": {
+      "status": "not_stated"
+    },
+    "cancellation": {
+      "status": "not_stated"
+    },
+    "event_insurance": {
+      "status": "not_stated"
+    },
+    "security": {
+      "status": "not_stated"
+    },
+    "vendor_access": {
+      "status": "not_stated"
+    },
+    "noise_curfew": {
+      "status": "not_stated"
+    },
+    "sales_tax_pct": {
+      "status": "stated",
+      "value": 11.75,
+      "quote": "Wedding packages range from $220 to $300 per person, plus tax and service charge.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "cc_fee_pct": {
+      "status": "not_stated"
+    },
+    "taxes_included_in_rental": {
+      "status": "stated",
+      "value": false,
+      "quote": "Wedding packages range from $220 to $300 per person, plus tax and service charge.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "vendor_list_policy": {
+      "status": "stated",
+      "value": "preferred_list",
+      "quote": "Preferred, not required, per the venue's own wording. You're free to bring your own vendors for these categories.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "pets_allowed": {
+      "status": "not_stated"
+    },
+    "hvac": {
+      "status": "not_stated"
+    },
+    "ada_accessible": {
+      "status": "not_stated"
+    },
+    "bridal_suite": {
+      "status": "not_stated"
+    },
+    "tables_chairs_included": {
+      "status": "stated",
+      "value": true,
+      "quote": "Tables: Included for your reception; Chairs: Hotel chairs, included",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "linens_included": {
+      "status": "stated",
+      "value": true,
+      "quote": "BBJ linen, your choice of 30 colors",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "dance_floor_included": {
+      "status": "stated",
+      "value": true,
+      "quote": "Dance floor: Included",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "coat_check": {
+      "status": "not_stated"
+    },
+    "pricing_archetype": {
+      "status": "stated",
+      "value": "hotel_package",
+      "quote": "Wedding packages range from $220 to $300 per person, plus tax and service charge.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "price_from_usd": {
+      "status": "not_stated"
+    },
+    "per_guest_from_usd": {
+      "status": "stated",
+      "value": 220,
+      "quote": "$220 to $300 per person",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "per_guest_to_usd": {
+      "status": "stated",
+      "value": 300,
+      "quote": "$220 to $300 per person",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    }
+  },
+  "about": {
+    "text": "LondonHouse Chicago is a luxury hotel wedding venue that blends historic charm with modern luxury in the heart of Downtown Chicago. Its riverfront and skyline views set the scene, and an experienced in-house wedding planning team supports you from the first conversation through the big day.",
+    "evidence": {
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    }
+  },
+  "differentiator": null,
+  "spaces": [
+    {
+      "id": "juliette",
+      "name": "Juliette Grand Ballroom",
+      "structure_label": "Level 3",
+      "sq_ft": 3737,
+      "sq_ft_outdoor": null,
+      "ceiling_ft": null,
+      "setting": "indoor",
+      "bookable_separately": true,
+      "description": {
+        "value": "With floor-to-ceiling windows, this column-free event space offers stunning views of the riverfront and city skyline.",
+        "quote": "With floor-to-ceiling windows, this column-free event space offers stunning views of the riverfront and city skyline.",
+        "source_url": "https://londonhousechicago.com/weddings",
+        "snapshot_id": null
+      },
+      "includes_summary": "Adjoins the 900 sq ft Grand Pre-Function space, typically used for cocktail hour.",
+      "evidence": {
+        "source_url": "https://londonhousechicago.com/weddings",
+        "snapshot_id": null
+      }
+    },
+    {
+      "id": "etoile",
+      "name": "Étoile",
+      "structure_label": "Level 21",
+      "sq_ft": 1346,
+      "sq_ft_outdoor": null,
+      "ceiling_ft": null,
+      "setting": "indoor",
+      "bookable_separately": true,
+      "description": {
+        "value": "Étoile offers an unparalleled setting for small weddings, rehearsal dinners, and brunches. This space features a private terrace with breathtaking views of the Chicago skyline.",
+        "quote": "Étoile offers an unparalleled setting for small weddings, rehearsal dinners, and brunches. This space features a private terrace with breathtaking views of the Chicago skyline.",
+        "source_url": "https://londonhousechicago.com/weddings",
+        "snapshot_id": null
+      },
+      "includes_summary": "A private terrace (Étoile Terrace, 3,536 sq ft) for cocktail hour or photos.",
+      "evidence": {
+        "source_url": "https://londonhousechicago.com/weddings",
+        "snapshot_id": null
+      }
+    }
+  ],
+  "capacities": [
+    {
+      "space_id": "juliette",
+      "layout": "seated_dinner",
+      "min": null,
+      "max": 190,
+      "as_stated_label": "Seated",
+      "tile": "seated",
+      "condition": null,
+      "quote": "Seated: from the wedding page. Cocktail: from the venue's own capacity chart (\"Reception\" column), which also lists a higher seated figure (275) without a dance floor.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "juliette",
+      "layout": "cocktail_standing",
+      "min": null,
+      "max": 350,
+      "as_stated_label": "Cocktail (standing)",
+      "tile": "cocktail",
+      "condition": null,
+      "quote": "Seated: from the wedding page. Cocktail: from the venue's own capacity chart (\"Reception\" column), which also lists a higher seated figure (275) without a dance floor.",
+      "source_url": "http://londonhousechicago.com/assets/uploads/documents/LH_Capacity_Chart.pdf",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "etoile",
+      "layout": "seated_dinner",
+      "min": null,
+      "max": 60,
+      "as_stated_label": "Seated",
+      "tile": "seated",
+      "condition": null,
+      "quote": "Seated: from the wedding page. Cocktail: from the capacity chart, which also lists a higher seated figure (90) without a dance floor.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "etoile",
+      "layout": "cocktail_standing",
+      "min": null,
+      "max": 100,
+      "as_stated_label": "Cocktail (standing)",
+      "tile": "cocktail",
+      "condition": null,
+      "quote": "Seated: from the wedding page. Cocktail: from the capacity chart, which also lists a higher seated figure (90) without a dance floor.",
+      "source_url": "http://londonhousechicago.com/assets/uploads/documents/LH_Capacity_Chart.pdf",
+      "snapshot_id": null
+    }
+  ],
+  "pricing": {
+    "archetype": "hotel_package",
+    "paths": [
+      {
+        "id": "default",
+        "name": "Default",
+        "description": "No separate venue-rental fee; everything is bundled into the per-guest package.",
+        "applies_to_spaces": "all",
+        "fixed_fees": [],
+        "per_guest_tiers": [
+          {
+            "id": "elegance",
+            "name": "Elegance",
+            "per_guest": 220,
+            "day": null,
+            "season": null,
+            "inherits_from": null,
+            "inclusions": [
+              "Four passed hors d'oeuvres",
+              "Three-course plated dinner (soup or salad, choice of three entrées: poultry, fish, vegetarian)",
+              "Wedding cake, champagne toast, wine service with dinner"
+            ],
+            "bar_tier": {
+              "name": "Four-hour deluxe bar",
+              "hours": 4,
+              "examples": []
+            },
+            "min_guests": null,
+            "quote": "$220/guest",
+            "source_url": "https://londonhousechicago.com/weddings",
+            "snapshot_id": null
+          },
+          {
+            "id": "luxury",
+            "name": "Luxury",
+            "per_guest": 260,
+            "day": null,
+            "season": null,
+            "inherits_from": "Elegance",
+            "inclusions": [
+              "Five passed hors d'oeuvres",
+              "Four-course plated dinner (soup and salad, choice of three entrées, now including beef)"
+            ],
+            "bar_tier": {
+              "name": "Five-hour premium bar",
+              "hours": 5,
+              "examples": []
+            },
+            "min_guests": null,
+            "quote": "$260/guest",
+            "source_url": "https://londonhousechicago.com/weddings",
+            "snapshot_id": null
+          },
+          {
+            "id": "opulence",
+            "name": "Opulence",
+            "per_guest": 300,
+            "day": null,
+            "season": null,
+            "inherits_from": "Luxury",
+            "inclusions": [
+              "One stationed item",
+              "Tableside entrée service"
+            ],
+            "bar_tier": {
+              "name": "Five-hour premium bar + one specialty cocktail",
+              "hours": 5,
+              "examples": []
+            },
+            "min_guests": null,
+            "quote": "$300/guest",
+            "source_url": "https://londonhousechicago.com/weddings",
+            "snapshot_id": null
+          }
+        ],
+        "minimums": [],
+        "required_staffing": null,
+        "rental_hours": null,
+        "year_surcharges": [],
+        "promotions": [],
+        "quote": "",
+        "source_url": "https://londonhousechicago.com/weddings",
+        "snapshot_id": null
+      }
+    ],
+    "rates": {
+      "service_charge_pct": 25,
+      "service_charge_base": "fb",
+      "sales_tax_pct": 11.75,
+      "sales_tax_base": "fb_and_rentals",
+      "sales_tax_source": "stated",
+      "cc_fee_pct": null,
+      "quote": "Wedding packages range from $220 to $300 per person, plus tax and service charge.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "add_ons": [
+      {
+        "id": "pre-reception-snacks",
+        "name": "Pre-reception snacks",
+        "category": "Food & beverage",
+        "variant": null,
+        "group": "fb",
+        "price": null,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": false,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "No published rate",
+        "note": "Available per LondonHouse's own FAQ page; no pricing published.",
+        "quote": "Available per LondonHouse's own FAQ page; no pricing published.",
+        "source_url": "https://londonhousechicago.com/weddings",
+        "snapshot_id": null
+      },
+      {
+        "id": "late-night-snacks",
+        "name": "Late-night snacks",
+        "category": "Food & beverage",
+        "variant": null,
+        "group": "fb",
+        "price": null,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": false,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "No published rate",
+        "note": "Available per LondonHouse's own FAQ page; no pricing published.",
+        "quote": "Available per LondonHouse's own FAQ page; no pricing published.",
+        "source_url": "https://londonhousechicago.com/weddings",
+        "snapshot_id": null
+      },
+      {
+        "id": "corkage",
+        "name": "Corkage fee",
+        "category": "Bar",
+        "variant": null,
+        "group": "fb",
+        "price": 50,
+        "price_max": null,
+        "unit": "per_unit",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": 11.75,
+        "min_guests": null,
+        "as_stated_price": "$50/bottle",
+        "note": "For wine or liquor you bring yourself, beyond the bar already included in your package.",
+        "quote": "For wine or liquor you bring yourself, beyond the bar already included in your package.",
+        "source_url": "https://londonhousechicago.com/weddings",
+        "snapshot_id": null
+      },
+      {
+        "id": "ceremony",
+        "name": "On-site ceremony fee",
+        "category": "Ceremony",
+        "variant": null,
+        "group": "ceremony",
+        "price": 750,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": "ceremony_on_site",
+        "priceable": true,
+        "tax_pct_override": 15.75,
+        "min_guests": null,
+        "as_stated_price": "$750",
+        "note": "Only if the ceremony is held at the hotel. Includes use of the rehearsal space, not just the ceremony itself.",
+        "quote": "Only if the ceremony is held at the hotel. Includes use of the rehearsal space, not just the ceremony itself.",
+        "source_url": "https://londonhousechicago.com/assets/uploads/general/Wedding_Menu_2026_LondonHouse.pdf",
+        "snapshot_id": null
+      }
+    ],
+    "required_third_party": [],
+    "notes": [],
+    "default_axes": {
+      "path_id": "default",
+      "tier_id": "luxury",
+      "ceremonyOnSite": false
+    }
+  },
+  "food_beverage": {
+    "food_pills": [
+      {
+        "value": "all_inclusive",
+        "quote": "In-house only. LondonHouse's own catering team handles all food & beverage.",
+        "source_url": "https://londonhousechicago.com/weddings",
+        "snapshot_id": null
+      }
+    ],
+    "bar_pills": [
+      {
+        "value": "all_inclusive",
+        "quote": "LondonHouse's own bar service is included in every package.",
+        "source_url": "https://londonhousechicago.com/weddings",
+        "snapshot_id": null
+      }
+    ],
+    "caption": {
+      "value": "LondonHouse's own bar service is included in every package. Beyond that, you can bring your own wine or liquor for a $50/bottle corkage fee.",
+      "quote": "LondonHouse's own bar service is included in every package. Beyond that, you can bring your own wine or liquor for a $50/bottle corkage fee.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "menus": [],
+    "bar_ladders": [],
+    "bar_min_guests": null,
+    "notes": [
+      {
+        "value": "Hors d'oeuvres selection spans both cold and warm options. Full list is in the wedding menu.",
+        "quote": "Hors d'oeuvres selection spans both cold and warm options. Full list is in the wedding menu.",
+        "source_url": "https://londonhousechicago.com/assets/uploads/general/Wedding_Menu_2026_LondonHouse.pdf",
+        "snapshot_id": null
+      }
+    ]
+  },
+  "inclusions": [
+    {
+      "label": "Tables",
+      "label_raw": "Tables",
+      "detail": "Included for your reception",
+      "category": "Furniture",
+      "quote": "Included for your reception",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "label": "Chairs",
+      "label_raw": "Chairs",
+      "detail": "Hotel chairs, included",
+      "category": "Furniture",
+      "quote": "Hotel chairs, included",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "label": "Dance floor",
+      "label_raw": "Dance floor",
+      "detail": "Included",
+      "category": "Furniture",
+      "quote": "Included",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "label": "Stage",
+      "label_raw": "Stage",
+      "detail": "A stage for a live band",
+      "category": "Furniture",
+      "quote": "A stage for a live band",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "label": "Linens",
+      "label_raw": "Linens",
+      "detail": "BBJ linen, your choice of 30 colors",
+      "category": "Furniture",
+      "quote": "BBJ linen, your choice of 30 colors",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "label": "Wedding cake",
+      "label_raw": "Wedding cake",
+      "detail": "A custom cake from Bittersweet Bakery, Chicago",
+      "category": "Catering",
+      "quote": "A custom cake from Bittersweet Bakery, Chicago",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "label": "Coordinator",
+      "label_raw": "Coordinator",
+      "detail": "A wedding coordinator supports you from first contact through the event",
+      "category": "Services",
+      "quote": "A wedding coordinator supports you from first contact through the event",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "label": "Banquet Captain",
+      "label_raw": "Banquet Captain",
+      "detail": "Manages food & beverage service on the wedding day",
+      "category": "Services",
+      "quote": "Manages food & beverage service on the wedding day",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "label": "Complimentary suite",
+      "label_raw": "Complimentary suite",
+      "detail": "2 nights for the couple, on weddings over 60 guests",
+      "category": "Lodging",
+      "quote": "2 nights for the couple, on weddings over 60 guests",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "label": "Parent upgrades",
+      "label_raw": "Parent upgrades",
+      "detail": "Room upgrades for parents, on top of the couple's complimentary suite",
+      "category": "Lodging",
+      "quote": "Room upgrades for parents, on top of the couple's complimentary suite",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "label": "Room block",
+      "label_raw": "Room block",
+      "detail": "Discounted rates for your guests",
+      "category": "Lodging",
+      "quote": "Discounted rates for your guests",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    }
+  ],
+  "faqs": [
+    {
+      "question": "What's the price range for a wedding and what fees should we expect?",
+      "answer": "Wedding packages range from $220 to $300 per person, plus tax and service charge. Common add-ons are pre-reception and late-night snacks. If the ceremony is held at the hotel, there is a $500 ceremony fee.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "question": "What's included in the wedding packages?",
+      "answer": "We include tables, hotel chairs, a dance floor, a stage for a band, as well as BBJ linen with a choice of 30 colors, and a custom-designed wedding cake from Bittersweet, located in Chicago.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "question": "How many guests can your spaces comfortably host?",
+      "answer": "We have 25,000 square feet of catering, social, and event space. Whether you want an intimate celebration or a grand reception, you can choose the ideal layout for your needs. Our event spaces host as few as 15 guests to upwards of 300, depending on your chosen seating arrangement.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "question": "Is there a food and beverage minimum?",
+      "answer": "Yes. This will be determined based on the number of guests you are anticipating and the date you select.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you provide a Coordinator or a Banquet Captain?",
+      "answer": "Yes, we provide both. From the moment you contact us, through planning the details and on your wedding day, our Director of Weddings will be with you each step of the way. Our Banquet Captain will also assist on the day of the wedding.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    }
+  ],
+  "resources": [
+    {
+      "id": "res-9",
+      "kind": "brochure",
+      "label": "Wedding Brochure",
+      "url": "https://londonhousechicago.com/assets/uploads/documents/LHC_weddings_brochure.pdf",
+      "scope": "venue",
+      "embeddable": true,
+      "has_text_layer": true,
+      "checked_at": null,
+      "source_url": "https://londonhousechicago.com/assets/uploads/documents/LHC_weddings_brochure.pdf",
+      "snapshot_id": null
+    },
+    {
+      "id": "res-10",
+      "kind": "menu",
+      "label": "Wedding Menu",
+      "url": "https://londonhousechicago.com/assets/uploads/general/Wedding_Menu_2026_LondonHouse.pdf",
+      "scope": "venue",
+      "embeddable": true,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://londonhousechicago.com/assets/uploads/general/Wedding_Menu_2026_LondonHouse.pdf",
+      "snapshot_id": null
+    },
+    {
+      "id": "res-11",
+      "kind": "capacity_sheet",
+      "label": "Capacity Chart",
+      "url": "http://londonhousechicago.com/assets/uploads/documents/LH_Capacity_Chart.pdf",
+      "scope": "venue",
+      "embeddable": true,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "http://londonhousechicago.com/assets/uploads/documents/LH_Capacity_Chart.pdf",
+      "snapshot_id": null
+    },
+    {
+      "id": "res-12",
+      "kind": "video",
+      "label": "LondonHouse Wedding",
+      "url": "https://www.youtube.com/watch?v=tAQ1JfyvG24",
+      "scope": "venue",
+      "embeddable": true,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.youtube.com/watch?v=tAQ1JfyvG24",
+      "snapshot_id": null
+    }
+  ],
+  "vendor_lists": [],
+  "press_features": [],
+  "sources": {
+    "snapshot_ids": [],
+    "pages": [
+      "https://londonhousechicago.com/weddings",
+      "https://londonhousechicago.com/catering",
+      "https://londonhousechicago.com/amenities",
+      "https://londonhousechicago.com/assets/uploads/general/Wedding_Menu_2026_LondonHouse.pdf",
+      "http://londonhousechicago.com/assets/uploads/documents/LH_Capacity_Chart.pdf"
+    ],
+    "crawled_at": "2026-08-26"
+  },
+  "extraction": null,
+  "provenance": null,
+  "eval": {
+    "/spine/venue_kind": "extractor",
+    "/spine/setting": "extractor",
+    "/spine/space_count_bookable": "extractor",
+    "/spine/ceremony_on_site": "extractor",
+    "/spine/ceremony_fee": "human_only",
+    "/spine/catering": "extractor",
+    "/spine/bar": "extractor",
+    "/spine/rental_charge_type": "extractor",
+    "/spine/fb_minimum": "extractor",
+    "/spine/service_charge_pct": "extractor",
+    "/spine/parking": "extractor",
+    "/spine/day_of_coordinator": "extractor",
+    "/spine/sales_tax_pct": "extractor",
+    "/spine/taxes_included_in_rental": "extractor",
+    "/spine/vendor_list_policy": "extractor",
+    "/spine/tables_chairs_included": "extractor",
+    "/spine/linens_included": "extractor",
+    "/spine/dance_floor_included": "extractor",
+    "/spine/pricing_archetype": "extractor",
+    "/spine/per_guest_from_usd": "extractor",
+    "/spine/per_guest_to_usd": "extractor",
+    "/capacities/juliette:seated_dinner": "extractor",
+    "/capacities/juliette:cocktail_standing": "extractor",
+    "/capacities/etoile:seated_dinner": "extractor",
+    "/capacities/etoile:cocktail_standing": "extractor",
+    "/pricing/paths/default/per_guest_tiers/elegance": "extractor",
+    "/pricing/paths/default/per_guest_tiers/luxury": "extractor",
+    "/pricing/paths/default/per_guest_tiers/opulence": "extractor",
+    "/pricing/add_ons/pre-reception-snacks": "extractor",
+    "/pricing/add_ons/late-night-snacks": "extractor",
+    "/pricing/add_ons/corkage": "extractor",
+    "/pricing/add_ons/ceremony": "human_only",
+    "/pricing/rates": "extractor",
+    "/food_beverage/notes/0": "human_only"
+  }
+}

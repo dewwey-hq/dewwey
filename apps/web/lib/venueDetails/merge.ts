@@ -37,9 +37,9 @@ function applyOne(d: VenueDetailsV3, c: Correction): boolean {
     const key = id as keyof VenueSpine;
     if (!(key in d.spine)) return false;
     if (isClearing(c.action)) {
-      (d.spine as Record<string, unknown>)[key] = NOT_STATED;
+      (d.spine as unknown as Record<string, unknown>)[key] = NOT_STATED;
     } else {
-      (d.spine as Record<string, unknown>)[key] = { status: "stated", value: c.value, quote: "Corrected value", source_url: "correction", snapshot_id: null };
+      (d.spine as unknown as Record<string, unknown>)[key] = { status: "stated", value: c.value, quote: "Corrected value", source_url: "correction", snapshot_id: null };
     }
     return true;
   }

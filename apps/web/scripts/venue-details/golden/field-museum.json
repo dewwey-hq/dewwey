@@ -1,0 +1,748 @@
+{
+  "schema_version": 3,
+  "account_id": 1131,
+  "name": "Field Museum",
+  "website_url": "https://www.fieldmuseum.org/page/weddings",
+  "spine": {
+    "venue_kind": {
+      "status": "stated",
+      "value": "museum",
+      "quote": "Museum Venue",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    "setting": {
+      "status": "stated",
+      "value": "both",
+      "quote": "Galleries and atria indoors; terraces and a garden outdoors.",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    "one_event_per_day": {
+      "status": "not_stated"
+    },
+    "space_count_bookable": {
+      "status": "stated",
+      "value": 4,
+      "quote": "Stanley Field Hall & Balcony, Outdoor Terraces, East Atrium & Pavilion, Rice Gallery",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    "capacity_min_guests": {
+      "status": "conflicting",
+      "candidates": [
+        {
+          "value": 10,
+          "quote": "as few as 10 and up to more than 1,000",
+          "source_url": "https://www.fieldmuseum.org/page/weddings",
+          "snapshot_id": null
+        },
+        {
+          "value": 20,
+          "quote": "from intimate gatherings of 20 to galas of more than 1,000",
+          "source_url": "https://www.fieldmuseum.org/landing/venue-rentals",
+          "snapshot_id": null
+        }
+      ]
+    },
+    "ceremony_on_site": {
+      "status": "stated",
+      "value": true,
+      "quote": "We welcome you to host your ceremony and/or cocktail reception outside on our picturesque terrace space.",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    "ceremony_fee": {
+      "status": "not_stated"
+    },
+    "rental_hours_included": {
+      "status": "not_stated"
+    },
+    "weekday_events": {
+      "status": "not_stated"
+    },
+    "catering": {
+      "status": "stated",
+      "value": "approved_list_only",
+      "quote": "From the venue's own FAQ: \"Choose from our approved vendors for catering, floral, decor, lighting, media, and parking.\" No source mentions an outside-caterer option.",
+      "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+      "snapshot_id": null
+    },
+    "bar": {
+      "status": "stated",
+      "value": "in_house",
+      "quote": "\"The Field Museum provides all alcoholic beverages used in conjunction with any event held at the Museum... Consumption bars and donated liquor are not allowed.\"",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    "rental_charge_type": {
+      "status": "stated",
+      "value": "inquire_only",
+      "quote": "Reach out for proposal",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    "fb_minimum": {
+      "status": "not_stated"
+    },
+    "service_charge_pct": {
+      "status": "not_stated"
+    },
+    "parking": {
+      "status": "stated",
+      "value": "paid",
+      "quote": "Not provided; approved vendors listed",
+      "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+      "snapshot_id": null
+    },
+    "day_of_coordinator": {
+      "status": "stated",
+      "value": "included",
+      "quote": "The Field Museum does not provide a planner or act as a planner for your wedding. An Account Manager will be onsite to manage museum logistics from setup to the end of your celebration. We are happy to recommend local wedding planners who have worked with past clients if you wish to hire one on your own. We highly recommend hiring a wedding planner to assist with logistics, but it is not required.",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    "payment_schedule": {
+      "status": "not_stated"
+    },
+    "cancellation": {
+      "status": "not_stated"
+    },
+    "event_insurance": {
+      "status": "not_stated"
+    },
+    "security": {
+      "status": "not_stated"
+    },
+    "vendor_access": {
+      "status": "not_stated"
+    },
+    "noise_curfew": {
+      "status": "not_stated"
+    },
+    "sales_tax_pct": {
+      "status": "not_stated"
+    },
+    "cc_fee_pct": {
+      "status": "not_stated"
+    },
+    "taxes_included_in_rental": {
+      "status": "not_stated"
+    },
+    "vendor_list_policy": {
+      "status": "stated",
+      "value": "required_list",
+      "quote": "From the venue's own approved-vendors page: \"We've partnered with premiere Chicago businesses to support you in creating unforgettable events. Choose from our approved vendors for catering, floral, decor, lighting, media, and parking. Vendors featured here are knowledgeable about the Field Museum space, receive special training on our policies and procedures, and are fully licensed by the city and state.\"",
+      "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+      "snapshot_id": null
+    },
+    "pets_allowed": {
+      "status": "not_stated"
+    },
+    "hvac": {
+      "status": "not_stated"
+    },
+    "ada_accessible": {
+      "status": "not_stated"
+    },
+    "bridal_suite": {
+      "status": "not_stated"
+    },
+    "tables_chairs_included": {
+      "status": "not_stated"
+    },
+    "linens_included": {
+      "status": "not_stated"
+    },
+    "dance_floor_included": {
+      "status": "not_stated"
+    },
+    "coat_check": {
+      "status": "not_stated"
+    },
+    "pricing_archetype": {
+      "status": "stated",
+      "value": "inquire_only",
+      "quote": "\"Request a Proposal\" is the only path -- the venue publishes zero pricing anywhere.",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    "price_from_usd": {
+      "status": "not_stated"
+    },
+    "per_guest_from_usd": {
+      "status": "not_stated"
+    },
+    "per_guest_to_usd": {
+      "status": "not_stated"
+    }
+  },
+  "about": {
+    "text": "Host your wedding in one of Chicago's most iconic and breathtaking venues, surrounded by world-renowned collections, stunning architecture, and panoramic views of the Chicago skyline and Lake Michigan.",
+    "evidence": {
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    }
+  },
+  "differentiator": null,
+  "spaces": [
+    {
+      "id": "stanley-field-hall-balcony",
+      "name": "Stanley Field Hall & Balcony",
+      "structure_label": null,
+      "sq_ft": null,
+      "sq_ft_outdoor": null,
+      "ceiling_ft": 76,
+      "setting": "indoor",
+      "bookable_separately": true,
+      "description": {
+        "value": "Gleaming white marble, vaulted ceilings, and gracious columns, under Máximo the Titanosaur, fossil-filled marble floors, and flying pterosaurs. Seats up to 1,500 (1,400 with a stage).",
+        "quote": "Gleaming white marble, vaulted ceilings, and gracious columns, under Máximo the Titanosaur, fossil-filled marble floors, and flying pterosaurs. Seats up to 1,500 (1,400 with a stage).",
+        "source_url": "https://www.fieldmuseum.org/stanley-field-hall-balcony",
+        "snapshot_id": null
+      },
+      "includes_summary": null,
+      "evidence": {
+        "source_url": "https://www.fieldmuseum.org/stanley-field-hall-balcony",
+        "snapshot_id": null
+      }
+    },
+    {
+      "id": "outdoor-terraces",
+      "name": "Outdoor Terraces",
+      "structure_label": null,
+      "sq_ft": null,
+      "sq_ft_outdoor": null,
+      "ceiling_ft": null,
+      "setting": "outdoor",
+      "bookable_separately": true,
+      "description": {
+        "value": "Chicago skyline and Lake Michigan views from the museum's own steps overlooking the water. Tenting available on request for warmer-month events.",
+        "quote": "Chicago skyline and Lake Michigan views from the museum's own steps overlooking the water. Tenting available on request for warmer-month events.",
+        "source_url": "https://www.fieldmuseum.org/outdoor-terraces",
+        "snapshot_id": null
+      },
+      "includes_summary": null,
+      "evidence": {
+        "source_url": "https://www.fieldmuseum.org/outdoor-terraces",
+        "snapshot_id": null
+      }
+    },
+    {
+      "id": "east-atrium-pavilion",
+      "name": "East Atrium & Pavilion",
+      "structure_label": null,
+      "sq_ft": 10000,
+      "sq_ft_outdoor": null,
+      "ceiling_ft": null,
+      "setting": "indoor",
+      "bookable_separately": true,
+      "description": {
+        "value": "A flexible, fully accessible space under a glass atrium ceiling: reception-style cocktails, seated dinners, or a lit dance floor, with complimentary access to the Inside Ancient Egypt exhibition during events. 200 seated (600 reception) in the atrium alone; 350 seated (600 reception) including the pavilion.",
+        "quote": "A flexible, fully accessible space under a glass atrium ceiling: reception-style cocktails, seated dinners, or a lit dance floor, with complimentary access to the Inside Ancient Egypt exhibition during events. 200 seated (600 reception) in the atrium alone; 350 seated (600 reception) including the pavilion.",
+        "source_url": "https://www.fieldmuseum.org/east-atrium-pavilion",
+        "snapshot_id": null
+      },
+      "includes_summary": null,
+      "evidence": {
+        "source_url": "https://www.fieldmuseum.org/east-atrium-pavilion",
+        "snapshot_id": null
+      }
+    },
+    {
+      "id": "rice-gallery",
+      "name": "Rice Gallery",
+      "structure_label": null,
+      "sq_ft": 5093,
+      "sq_ft_outdoor": null,
+      "ceiling_ft": null,
+      "setting": "indoor",
+      "bookable_separately": true,
+      "description": {
+        "value": "An intimate space among African wildlife dioramas, including the Tsavo Lions against Serengeti plains scenery, with access to the Mammals of Asia exhibition.",
+        "quote": "An intimate space among African wildlife dioramas, including the Tsavo Lions against Serengeti plains scenery, with access to the Mammals of Asia exhibition.",
+        "source_url": "https://www.fieldmuseum.org/rice-gallery",
+        "snapshot_id": null
+      },
+      "includes_summary": null,
+      "evidence": {
+        "source_url": "https://www.fieldmuseum.org/rice-gallery",
+        "snapshot_id": null
+      }
+    }
+  ],
+  "capacities": [
+    {
+      "space_id": "stanley-field-hall-balcony",
+      "layout": "seated_dinner",
+      "min": null,
+      "max": 1500,
+      "as_stated_label": "Seated",
+      "tile": "seated",
+      "condition": null,
+      "quote": "Gleaming white marble, vaulted ceilings, and gracious columns, under Máximo the Titanosaur, fossil-filled marble floors, and flying pterosaurs. Seats up to 1,500 (1,400 with a stage).",
+      "source_url": "https://www.fieldmuseum.org/stanley-field-hall-balcony",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "stanley-field-hall-balcony",
+      "layout": "cocktail_standing",
+      "min": null,
+      "max": 4500,
+      "as_stated_label": "Reception (standing)",
+      "tile": "cocktail",
+      "condition": null,
+      "quote": "Gleaming white marble, vaulted ceilings, and gracious columns, under Máximo the Titanosaur, fossil-filled marble floors, and flying pterosaurs. Seats up to 1,500 (1,400 with a stage).",
+      "source_url": "https://www.fieldmuseum.org/stanley-field-hall-balcony",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "outdoor-terraces",
+      "layout": "seated_dinner",
+      "min": null,
+      "max": 600,
+      "as_stated_label": "Seated",
+      "tile": "seated",
+      "condition": null,
+      "quote": "Chicago skyline and Lake Michigan views from the museum's own steps overlooking the water. Tenting available on request for warmer-month events.",
+      "source_url": "https://www.fieldmuseum.org/outdoor-terraces",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "outdoor-terraces",
+      "layout": "cocktail_standing",
+      "min": null,
+      "max": 1600,
+      "as_stated_label": "Reception (standing)",
+      "tile": "cocktail",
+      "condition": null,
+      "quote": "Chicago skyline and Lake Michigan views from the museum's own steps overlooking the water. Tenting available on request for warmer-month events.",
+      "source_url": "https://www.fieldmuseum.org/outdoor-terraces",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "east-atrium-pavilion",
+      "layout": "seated_dinner",
+      "min": null,
+      "max": 350,
+      "as_stated_label": "Seated",
+      "tile": "seated",
+      "condition": null,
+      "quote": "A flexible, fully accessible space under a glass atrium ceiling: reception-style cocktails, seated dinners, or a lit dance floor, with complimentary access to the Inside Ancient Egypt exhibition during events. 200 seated (600 reception) in the atrium alone; 350 seated (600 reception) including the pavilion.",
+      "source_url": "https://www.fieldmuseum.org/east-atrium-pavilion",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "east-atrium-pavilion",
+      "layout": "cocktail_standing",
+      "min": null,
+      "max": 600,
+      "as_stated_label": "Reception (standing)",
+      "tile": "cocktail",
+      "condition": null,
+      "quote": "A flexible, fully accessible space under a glass atrium ceiling: reception-style cocktails, seated dinners, or a lit dance floor, with complimentary access to the Inside Ancient Egypt exhibition during events. 200 seated (600 reception) in the atrium alone; 350 seated (600 reception) including the pavilion.",
+      "source_url": "https://www.fieldmuseum.org/east-atrium-pavilion",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "rice-gallery",
+      "layout": "seated_dinner",
+      "min": null,
+      "max": 140,
+      "as_stated_label": "Seated",
+      "tile": "seated",
+      "condition": null,
+      "quote": "An intimate space among African wildlife dioramas, including the Tsavo Lions against Serengeti plains scenery, with access to the Mammals of Asia exhibition.",
+      "source_url": "https://www.fieldmuseum.org/rice-gallery",
+      "snapshot_id": null
+    },
+    {
+      "space_id": "rice-gallery",
+      "layout": "cocktail_standing",
+      "min": null,
+      "max": 300,
+      "as_stated_label": "Reception (standing)",
+      "tile": "cocktail",
+      "condition": null,
+      "quote": "An intimate space among African wildlife dioramas, including the Tsavo Lions against Serengeti plains scenery, with access to the Mammals of Asia exhibition.",
+      "source_url": "https://www.fieldmuseum.org/rice-gallery",
+      "snapshot_id": null
+    }
+  ],
+  "pricing": {
+    "archetype": "inquire_only",
+    "paths": [],
+    "rates": {
+      "service_charge_pct": null,
+      "service_charge_base": null,
+      "sales_tax_pct": null,
+      "sales_tax_base": null,
+      "sales_tax_source": "unknown",
+      "cc_fee_pct": null,
+      "quote": null,
+      "source_url": null,
+      "snapshot_id": null
+    },
+    "add_ons": [
+      {
+        "id": "photo-session-daytime",
+        "name": "In-museum photography session (daytime)",
+        "category": "Photography",
+        "variant": "Daytime",
+        "group": "other",
+        "price": 900,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$900 daytime",
+        "note": "Create memories that will last a lifetime with a stop at the Field Museum for your wedding, engagement, or celebration photography. Two hours to enjoy stunning settings for up to 20 participants.",
+        "quote": "$900 daytime / $1,200 evening",
+        "source_url": "https://www.fieldmuseum.org/page/weddings",
+        "snapshot_id": null
+      },
+      {
+        "id": "photo-session-evening",
+        "name": "In-museum photography session (evening)",
+        "category": "Photography",
+        "variant": "Evening",
+        "group": "other",
+        "price": 1200,
+        "price_max": null,
+        "unit": "flat",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": null,
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$1,200 evening",
+        "note": "Create memories that will last a lifetime with a stop at the Field Museum for your wedding, engagement, or celebration photography. Two hours to enjoy stunning settings for up to 20 participants.",
+        "quote": "$900 daytime / $1,200 evening",
+        "source_url": "https://www.fieldmuseum.org/page/weddings",
+        "snapshot_id": null
+      }
+    ],
+    "required_third_party": [],
+    "notes": []
+  },
+  "food_beverage": {
+    "food_pills": [
+      {
+        "value": "a_la_carte",
+        "quote": "Catering comes from one of the museum's four approved caterers: Blue Plate, Levy Catering, Food for Thought, or Nicole Jordan Catering (see Vendors below).",
+        "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+        "snapshot_id": null
+      }
+    ],
+    "bar_pills": [
+      {
+        "value": "all_inclusive",
+        "quote": "The museum provides all alcohol for events here. You can't bring your own alcohol, and consumption bars aren't allowed.",
+        "source_url": "https://www.fieldmuseum.org/page/weddings",
+        "snapshot_id": null
+      }
+    ],
+    "caption": null,
+    "menus": [],
+    "bar_ladders": [],
+    "bar_min_guests": null,
+    "notes": []
+  },
+  "inclusions": [],
+  "faqs": [
+    {
+      "question": "Does the Field Museum provide a wedding planner?",
+      "answer": "The Field Museum does not provide a planner or act as a planner for your wedding. An Account Manager will be onsite to manage museum logistics from setup to the end of your celebration. We are happy to recommend local wedding planners who have worked with past clients if you wish to hire one on your own. We highly recommend hiring a wedding planner to assist with logistics, but it is not required.",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    {
+      "question": "Can I host my celebration outside? What if it rains?",
+      "answer": "We welcome you to host your ceremony and/or cocktail reception outside on our picturesque terrace space. For every wedding, we will have a weather backup plan in place and the decision will be made up until the morning of the celebration whether to host the ceremony indoors or outdoors.",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    {
+      "question": "Is a deposit required? Is my deposit refundable?",
+      "answer": "To confirm your event, a deposit is required along with a signed contract. Deposits are non-refundable.",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    {
+      "question": "Does the Field Museum have an approved or preferred vendor list?",
+      "answer": "Yes, the Field Museum works with a variety of approved and preferred vendors to provide event services from catering to dramatic event lighting. We've partnered with premier Chicago businesses to support you in creating unforgettable events. Choose from our approved vendors for catering, floral, decor, lighting, media, and parking. These vendors are knowledgeable about the Field Museum space, receive special training on our policies and procedures, and are fully licensed by the city and state.",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    }
+  ],
+  "resources": [
+    {
+      "id": "bev-1",
+      "kind": "bar_menu",
+      "label": "Beverage Packages (PDF)",
+      "url": "https://www.datocms-assets.com/44232/1763993374-field-museum-bar-packages-1.pdf",
+      "scope": "venue",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.datocms-assets.com/44232/1763993374-field-museum-bar-packages-1.pdf",
+      "snapshot_id": null
+    },
+    {
+      "id": "bev-2",
+      "kind": "bar_menu",
+      "label": "Wine List (PDF)",
+      "url": "https://www.datocms-assets.com/44232/1726173269-field-museum-wine-list-09122024.pdf",
+      "scope": "venue",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.datocms-assets.com/44232/1726173269-field-museum-wine-list-09122024.pdf",
+      "snapshot_id": null
+    },
+    {
+      "id": "video-stanley-field-hall-balcony",
+      "kind": "video",
+      "label": "Stanley Field Hall & Balcony Video Tour",
+      "url": "https://vimeo.com/528972601?fl=pl&fe=ti",
+      "scope": "space:stanley-field-hall-balcony",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.fieldmuseum.org/stanley-field-hall-balcony",
+      "snapshot_id": null
+    },
+    {
+      "id": "video-outdoor-terraces",
+      "kind": "video",
+      "label": "Outdoor Terraces Video Tour",
+      "url": "https://vimeo.com/529077728?fl=pl&fe=ti",
+      "scope": "space:outdoor-terraces",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.fieldmuseum.org/outdoor-terraces",
+      "snapshot_id": null
+    },
+    {
+      "id": "video-east-atrium-pavilion",
+      "kind": "video",
+      "label": "East Atrium & Pavilion Video Tour",
+      "url": "https://vimeo.com/527346081?fl=pl&fe=ti",
+      "scope": "space:east-atrium-pavilion",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.fieldmuseum.org/east-atrium-pavilion",
+      "snapshot_id": null
+    },
+    {
+      "id": "video-rice-gallery",
+      "kind": "video",
+      "label": "Rice Gallery Video Tour",
+      "url": "https://vimeo.com/528911613?fl=pl&fe=ti",
+      "scope": "space:rice-gallery",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://www.fieldmuseum.org/rice-gallery",
+      "snapshot_id": null
+    }
+  ],
+  "vendor_lists": [
+    {
+      "label": "Catering",
+      "category": "Catering",
+      "relationship": "approved_required",
+      "entries": [
+        {
+          "name": "Blue Plate",
+          "url": "https://www.blueplatechicago.com/",
+          "instagram": null
+        },
+        {
+          "name": "Levy Catering",
+          "url": "https://www.cateringbylevy.com/",
+          "instagram": null
+        },
+        {
+          "name": "Food for Thought",
+          "url": "https://www.foodforthoughtchicago.com/",
+          "instagram": null
+        },
+        {
+          "name": "Nicole Jordan Catering",
+          "url": "https://www.njcaters.com/",
+          "instagram": null
+        }
+      ],
+      "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+      "snapshot_id": null
+    },
+    {
+      "label": "Floral & Decor",
+      "category": "Floral & Decor",
+      "relationship": "approved_required",
+      "entries": [
+        {
+          "name": "HMR Designs",
+          "url": "https://www.hmrdesigns.com/",
+          "instagram": null
+        },
+        {
+          "name": "Kehoe Designs",
+          "url": "https://www.kehoedesigns.com/",
+          "instagram": null
+        },
+        {
+          "name": "The Flower Firm",
+          "url": "https://www.flowerfirm.com/",
+          "instagram": null
+        },
+        {
+          "name": "Yanni Design Studio",
+          "url": "https://www.yannidesignstudio.com/",
+          "instagram": null
+        },
+        {
+          "name": "Southside Blooms",
+          "url": "https://www.southsideblooms.com/",
+          "instagram": null
+        }
+      ],
+      "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+      "snapshot_id": null
+    },
+    {
+      "label": "Lighting & AV",
+      "category": "Lighting & AV",
+      "relationship": "approved_required",
+      "entries": [
+        {
+          "name": "Frost Chicago",
+          "url": "https://www.frostchicago.com/",
+          "instagram": null
+        }
+      ],
+      "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+      "snapshot_id": null
+    },
+    {
+      "label": "Equipment Rentals",
+      "category": "Equipment Rentals",
+      "relationship": "approved_required",
+      "entries": [
+        {
+          "name": "Hall's Rental",
+          "url": "https://www.hallsrental.com/",
+          "instagram": null
+        }
+      ],
+      "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+      "snapshot_id": null
+    },
+    {
+      "label": "Parking",
+      "category": "Parking",
+      "relationship": "approved_required",
+      "entries": [
+        {
+          "name": "Soldier Field Parking",
+          "url": "https://www.soldierfieldparking.com/",
+          "instagram": null
+        },
+        {
+          "name": "VIP Valet",
+          "url": "https://www.vipvaletservices.com/",
+          "instagram": null
+        }
+      ],
+      "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+      "snapshot_id": null
+    }
+  ],
+  "press_features": [
+    {
+      "title": "Classic Elegant Chicago Field Museum Wedding",
+      "attribution": "Strictly Weddings",
+      "url": "http://strictlyweddings.com/blog/2018/05/classic-elegant-chicago-field-museum-wedding/",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    {
+      "title": "Lauren and Norm at the Field Museum",
+      "attribution": "Victoria Sprung Photography",
+      "url": "https://www.victoriasprungphotography.com/lauren-and-norm-at-the-field-museum-chicago-illinois/",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    {
+      "title": "A Magical Night at the Museum",
+      "attribution": "Birch Design Studio",
+      "url": "https://demo-birch.squarespace.com/portfolio/2018/10/1/a-magical-night-at-the-museum",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    {
+      "title": "Stunning Fall Wedding in Stanley Field Hall",
+      "attribution": "Amor in Motion Films",
+      "url": "https://vimeo.com/321867867/885696a3fe",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
+    {
+      "title": "Flowers and Fossils: A Gorgeous Ceremony & Reception",
+      "attribution": "Smiling Toad Productions",
+      "url": "https://lovestoriestv.com/mary-eric-wedding-video-september-2018/",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    }
+  ],
+  "sources": {
+    "snapshot_ids": [],
+    "pages": [
+      "https://www.fieldmuseum.org/page/weddings",
+      "https://www.fieldmuseum.org/landing/venue-rentals",
+      "https://www.fieldmuseum.org/plan-your-special-event/weddings",
+      "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+      "https://www.fieldmuseum.org/stanley-field-hall-balcony",
+      "https://www.fieldmuseum.org/outdoor-terraces",
+      "https://www.fieldmuseum.org/east-atrium-pavilion",
+      "https://www.fieldmuseum.org/rice-gallery"
+    ],
+    "crawled_at": "2026-08-15"
+  },
+  "extraction": null,
+  "provenance": null,
+  "eval": {
+    "/spine/venue_kind": "extractor",
+    "/spine/setting": "extractor",
+    "/spine/space_count_bookable": "extractor",
+    "/spine/capacity_min_guests": "extractor",
+    "/spine/ceremony_on_site": "extractor",
+    "/spine/catering": "extractor",
+    "/spine/bar": "extractor",
+    "/spine/rental_charge_type": "extractor",
+    "/spine/parking": "extractor",
+    "/spine/day_of_coordinator": "extractor",
+    "/spine/vendor_list_policy": "extractor",
+    "/spine/pricing_archetype": "extractor",
+    "/capacities/stanley-field-hall-balcony:seated_dinner": "extractor",
+    "/capacities/stanley-field-hall-balcony:cocktail_standing": "extractor",
+    "/capacities/outdoor-terraces:seated_dinner": "extractor",
+    "/capacities/outdoor-terraces:cocktail_standing": "extractor",
+    "/capacities/east-atrium-pavilion:seated_dinner": "extractor",
+    "/capacities/east-atrium-pavilion:cocktail_standing": "extractor",
+    "/capacities/rice-gallery:seated_dinner": "extractor",
+    "/capacities/rice-gallery:cocktail_standing": "extractor",
+    "/pricing/add_ons/photo-session-daytime": "extractor",
+    "/pricing/add_ons/photo-session-evening": "extractor"
+  }
+}

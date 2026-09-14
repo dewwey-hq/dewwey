@@ -1,0 +1,668 @@
+{
+  "schema_version": 3,
+  "account_id": 507,
+  "name": "The Geraghty",
+  "website_url": "https://thegeraghty.com/",
+  "spine": {
+    "venue_kind": {
+      "status": "stated",
+      "value": "event_space",
+      "quote": "Event Venue",
+      "source_url": "https://thegeraghty.com/",
+      "snapshot_id": null
+    },
+    "setting": {
+      "status": "stated",
+      "value": "indoor",
+      "quote": "One 25,000 sq ft indoor room. The private parking lot \"can be transformed into an outdoor event space\" per the venue's own FAQ, but that's a repurposed lot, not a built outdoor space.",
+      "source_url": "https://thegeraghty.com/",
+      "snapshot_id": null
+    },
+    "one_event_per_day": {
+      "status": "not_stated"
+    },
+    "space_count_bookable": {
+      "status": "stated",
+      "value": 1,
+      "quote": "One open, 25,000 sq ft room... fully reconfigurable for ceremony, reception, and afterparty in the same space.",
+      "source_url": "https://thegeraghty.com/floor-plans/",
+      "snapshot_id": null
+    },
+    "capacity_min_guests": {
+      "status": "not_stated"
+    },
+    "ceremony_on_site": {
+      "status": "stated",
+      "value": true,
+      "quote": "One open, 25,000 sq ft room with 22 ft ceilings, fully reconfigurable for ceremony, reception, and afterparty in the same space. Includes a private, gated 150-space parking lot and a VIP Green Room with its own bar and restroom.",
+      "source_url": "https://thegeraghty.com/floor-plans/",
+      "snapshot_id": null
+    },
+    "ceremony_fee": {
+      "status": "not_stated"
+    },
+    "rental_hours_included": {
+      "status": "not_stated"
+    },
+    "weekday_events": {
+      "status": "not_stated"
+    },
+    "catering": {
+      "status": "stated",
+      "value": "preferred_list",
+      "quote": "The venue's own FAQ: \"Do you have a list of approved caterers? Yes\" (with a link). Neither the FAQ nor the caterers page ever says outside caterers are required or disallowed. Genuinely unclear, shown honestly rather than guessed either way.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    "bar": {
+      "status": "stated",
+      "value": "in_house",
+      "quote": "\"The Geraghty is not a BYOB venue. The Geraghty maintains a liquor license, and the spirits, wine, and beer for your event are purchased from The Geraghty.\" One narrow carve-out: 501(c)(3)/(4) nonprofits may donate alcohol ($10/person corkage).",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    "rental_charge_type": {
+      "status": "stated",
+      "value": "inquire_only",
+      "quote": "Quoted upon request",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    "fb_minimum": {
+      "status": "not_stated"
+    },
+    "service_charge_pct": {
+      "status": "not_stated"
+    },
+    "parking": {
+      "status": "stated",
+      "value": "included",
+      "quote": "Private gated lot; valet available on request.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    "day_of_coordinator": {
+      "status": "stated",
+      "value": "required_hire",
+      "quote": "At minimum, for weddings.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    "payment_schedule": {
+      "status": "stated",
+      "value": {
+        "deposit": "50% deposit of the estimated event total, non-refundable, due with a signed contract to secure the date",
+        "balance_due": null
+      },
+      "quote": "A deposit of 50% of the estimated event total and a signed contract are required to secure the event space and date. The deposit is non-refundable.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    "cancellation": {
+      "status": "not_stated"
+    },
+    "event_insurance": {
+      "status": "stated",
+      "value": "required",
+      "quote": "From all clients and vendors, due 2 weeks before the event.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    "security": {
+      "status": "not_stated"
+    },
+    "vendor_access": {
+      "status": "not_stated"
+    },
+    "noise_curfew": {
+      "status": "stated",
+      "value": "2:00 am",
+      "quote": "2:00 am.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    "sales_tax_pct": {
+      "status": "not_stated"
+    },
+    "cc_fee_pct": {
+      "status": "not_stated"
+    },
+    "taxes_included_in_rental": {
+      "status": "not_stated"
+    },
+    "vendor_list_policy": {
+      "status": "stated",
+      "value": "preferred_list",
+      "quote": "Kehoe Designs and BlackOak are exclusive event/production partners; catering is a preferred (not required) list; every other category is fully open.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    "pets_allowed": {
+      "status": "not_stated"
+    },
+    "hvac": {
+      "status": "not_stated"
+    },
+    "ada_accessible": {
+      "status": "not_stated"
+    },
+    "bridal_suite": {
+      "status": "not_stated"
+    },
+    "tables_chairs_included": {
+      "status": "stated",
+      "value": true,
+      "quote": "(45) 72\" round dining tables (linen not included) and (400) lucite chairs",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    "linens_included": {
+      "status": "stated",
+      "value": false,
+      "quote": "(linen not included)",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    "dance_floor_included": {
+      "status": "not_stated"
+    },
+    "coat_check": {
+      "status": "stated",
+      "value": "included",
+      "quote": "Coat check included",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    "pricing_archetype": {
+      "status": "stated",
+      "value": "inquire_only",
+      "quote": "Rental prices are quoted upon request.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    "price_from_usd": {
+      "status": "not_stated"
+    },
+    "per_guest_from_usd": {
+      "status": "not_stated"
+    },
+    "per_guest_to_usd": {
+      "status": "not_stated"
+    }
+  },
+  "about": {
+    "text": "A former paper mill transformed into a 25,000-square-foot event space in Chicago's Pilsen neighborhood, named for Mickey Geraghty Kehoe by her son, event designer Tom Kehoe. Uncompromising in its luxury and infinite details, the venue is completely customizable — one open floor with 22-foot ceilings, reconfigured for every event.",
+    "evidence": {
+      "source_url": "https://thegeraghty.com/about/",
+      "snapshot_id": null
+    }
+  },
+  "differentiator": null,
+  "spaces": [
+    {
+      "id": "the-geraghty",
+      "name": "The Geraghty",
+      "structure_label": null,
+      "sq_ft": 25000,
+      "sq_ft_outdoor": null,
+      "ceiling_ft": 22,
+      "setting": "indoor",
+      "bookable_separately": true,
+      "description": {
+        "value": "One open, 25,000 sq ft room with 22 ft ceilings, fully reconfigurable for ceremony, reception, and afterparty in the same space. Includes a private, gated 150-space parking lot and a VIP Green Room with its own bar and restroom.",
+        "quote": "One open, 25,000 sq ft room with 22 ft ceilings, fully reconfigurable for ceremony, reception, and afterparty in the same space. Includes a private, gated 150-space parking lot and a VIP Green Room with its own bar and restroom.",
+        "source_url": "https://thegeraghty.com/floor-plans/",
+        "snapshot_id": null
+      },
+      "includes_summary": null,
+      "evidence": {
+        "source_url": "https://thegeraghty.com/floor-plans/",
+        "snapshot_id": null
+      }
+    }
+  ],
+  "capacities": [
+    {
+      "space_id": "the-geraghty",
+      "layout": "seated_with_dance",
+      "min": null,
+      "max": 300,
+      "as_stated_label": "Reception + afterparty",
+      "tile": "seated_dance",
+      "condition": null,
+      "quote": "From the venue's own 2 wedding-labeled floor plans (Ceremony, Reception & Afterparty; Ceremony & Reception), both capped at 300 guests. The venue's overall maximum across all event types is higher (1,000 seated, per its gala floor plan), but that's not a real wedding configuration.",
+      "source_url": "https://thegeraghty.com/floor-plans/",
+      "snapshot_id": null
+    }
+  ],
+  "pricing": {
+    "archetype": "inquire_only",
+    "paths": [],
+    "rates": {
+      "service_charge_pct": null,
+      "service_charge_base": null,
+      "sales_tax_pct": null,
+      "sales_tax_base": null,
+      "sales_tax_source": "unknown",
+      "cc_fee_pct": null,
+      "quote": null,
+      "source_url": null,
+      "snapshot_id": null
+    },
+    "add_ons": [
+      {
+        "id": "nonprofit-alcohol-donation",
+        "name": "Nonprofit alcohol donation fee",
+        "category": "Bar",
+        "variant": null,
+        "group": "fb",
+        "price": 10,
+        "price_max": null,
+        "unit": "per_guest",
+        "per_space_prices": null,
+        "applies_to": "all",
+        "path_ids": null,
+        "condition": "nonprofit_501c3_donated_alcohol",
+        "priceable": true,
+        "tax_pct_override": null,
+        "min_guests": null,
+        "as_stated_price": "$10/person (or beverage minimum, whichever is greater)",
+        "note": "501(c)(3)/(4) nonprofits only, donating alcohol for their own event.",
+        "quote": "The corkage fee is $10 per person or beverage minimum (whichever is greater).",
+        "source_url": "https://thegeraghty.com/faq/",
+        "snapshot_id": null
+      }
+    ],
+    "required_third_party": [],
+    "notes": []
+  },
+  "food_beverage": {
+    "food_pills": [
+      {
+        "value": "a_la_carte",
+        "quote": "Catering comes from the venue's own preferred caterer list (see Vendors below) — the venue's FAQ confirms a list exists but never states whether outside caterers are allowed, so this is shown as \"preferred,\" not \"required.\"",
+        "source_url": "https://thegeraghty.com/caterers-partners/",
+        "snapshot_id": null
+      }
+    ],
+    "bar_pills": [
+      {
+        "value": "all_inclusive",
+        "quote": "The Geraghty holds the liquor license and sells all spirits, wine, and beer for your event — not a BYOB venue. One narrow exception: 501(c)(3)/(4) nonprofits may donate alcohol for their own event, with a $10/person (or beverage-minimum, whichever is greater) corkage fee.",
+        "source_url": "https://thegeraghty.com/faq/",
+        "snapshot_id": null
+      }
+    ],
+    "caption": null,
+    "menus": [],
+    "bar_ladders": [],
+    "bar_min_guests": null,
+    "notes": []
+  },
+  "inclusions": [
+    {
+      "label": "Coat check",
+      "label_raw": "Coat check",
+      "detail": "Coat check included",
+      "category": "Space",
+      "quote": "Coat check included",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Parking",
+      "label_raw": "Parking",
+      "detail": "150-space private, gated parking lot",
+      "category": "Space",
+      "quote": "150-space private, gated parking lot",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Restrooms",
+      "label_raw": "Restrooms",
+      "detail": "4 restrooms (32 private stalls)",
+      "category": "Space",
+      "quote": "4 restrooms (32 private stalls)",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Green Room",
+      "label_raw": "Green Room",
+      "detail": "A VIP Green Room with its own private bar & restroom",
+      "category": "Space",
+      "quote": "A VIP Green Room with its own private bar & restroom",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Tables",
+      "label_raw": "Tables",
+      "detail": "(45) 72\" round dining tables (linen not included)",
+      "category": "Furniture",
+      "quote": "(45) 72\" round dining tables (linen not included)",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Chairs",
+      "label_raw": "Chairs",
+      "detail": "(400) lucite chairs",
+      "category": "Furniture",
+      "quote": "(400) lucite chairs",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Bars",
+      "label_raw": "Bars",
+      "detail": "(2) 8' decorative bars",
+      "category": "Furniture",
+      "quote": "(2) 8' decorative bars",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Lounge",
+      "label_raw": "Lounge",
+      "detail": "(2) lounge groupings",
+      "category": "Furniture",
+      "quote": "(2) lounge groupings",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Lighting",
+      "label_raw": "Lighting",
+      "detail": "An overhead, wall-to-wall LED lighting rig",
+      "category": "Entertainment",
+      "quote": "An overhead, wall-to-wall LED lighting rig",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Sound & AV",
+      "label_raw": "Sound",
+      "detail": "A distributed audio delay system",
+      "category": "Entertainment",
+      "quote": "A distributed audio delay system",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Stage",
+      "label_raw": "Staging",
+      "detail": "(25) 4'×8' stage decks",
+      "category": "Entertainment",
+      "quote": "(25) 4'×8' stage decks",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Sales Manager",
+      "label_raw": "Sales Manager",
+      "detail": "A dedicated Sales Manager works with you and your vendors leading up to the event",
+      "category": "Services",
+      "quote": "A dedicated Sales Manager works with you and your vendors leading up to the event",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Décor",
+      "label_raw": "Décor",
+      "detail": "Custom chandeliers and olive trees",
+      "category": "Ambiance",
+      "quote": "Custom chandeliers and olive trees",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Drape",
+      "label_raw": "Drape",
+      "detail": "200 ft of floor-to-ceiling drape",
+      "category": "Ambiance",
+      "quote": "200 ft of floor-to-ceiling drape",
+      "source_url": "https://thegeraghty.com/features-amenities/",
+      "snapshot_id": null
+    }
+  ],
+  "faqs": [
+    {
+      "question": "Do you offer onsite parking?",
+      "answer": "Yes! Our private, gated parking lot provides 150 parking spaces. Overflow and vendor parking is also available along S. Hoyne. Valet parking is available upon request.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Does the venue come with tables and chairs?",
+      "answer": "Yes! We include (45) 72\" round dining tables (linen not included) and (400) lucite chairs.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "What is the meaning behind the name \"The Geraghty\"?",
+      "answer": "Noted event designer Tom Kehoe pays tribute to a lifetime of inspiration from his beloved mother, Mickey Geraghty Kehoe, by naming The Geraghty in her honor.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Where are you located?",
+      "answer": "The Geraghty is located at 2520 S. Hoyne Avenue, Chicago, Illinois, 60608.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "What is the rental fee for the space?",
+      "answer": "Rental prices are quoted upon request.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you have a list of approved caterers?",
+      "answer": "Yes, with a link to approved caterers provided on our website.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you have exclusive event, production partners?",
+      "answer": "The Geraghty is owned and operated by Kehoe Designs for décor/design, and works with BlackOak Technical Productions for A/V services.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "What is the required deposit, and is it refundable?",
+      "answer": "A deposit of 50% of the estimated event total and a signed contract are required to secure the event space and date. The deposit is non-refundable.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Who will I work with from The Geraghty?",
+      "answer": "A dedicated Sales Manager will work directly with you and your vendors leading up to the event. For weddings, a day-of planner is required, at minimum.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Can I bring in my own alcohol?",
+      "answer": "The Geraghty is not a BYOB venue. The Geraghty maintains a liquor license, and the spirits, wine, and beer for your event are purchased from The Geraghty.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "My organization is 501C3, and alcohol is donated for our event. Is that okay?",
+      "answer": "The Geraghty allows for charitable donations of alcohol for nonprofit organizations with a current 501c3 or 501c4 only. The corkage fee is $10 per person or beverage minimum (whichever is greater).",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you have any outdoor space?",
+      "answer": "With views of the Chicago skyline, our parking lot can be transformed into an outdoor event space.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do you allow candles with real flame?",
+      "answer": "Yes! We love the romantic and moody atmosphere that candlelight can create! The flame will need to be enclosed in a vessel (vase, votive, etc.).",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "Do I need to provide insurance?",
+      "answer": "Event insurance is required by all clients and vendors and must be submitted two weeks before the event date.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "question": "What is the latest time the event can go until?",
+      "answer": "2:00 am.",
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    }
+  ],
+  "resources": [
+    {
+      "id": "floorplan-1",
+      "kind": "floor_plan",
+      "label": "Ceremony, Reception & Afterparty (300 guests)",
+      "url": "https://thegeraghty.com/wp-content/uploads/2025/06/Wedding-2-Web-1-2048x1583.png",
+      "scope": "venue",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://thegeraghty.com/floor-plans/",
+      "snapshot_id": null
+    },
+    {
+      "id": "floorplan-2",
+      "kind": "floor_plan",
+      "label": "Ceremony & Reception (300 guests)",
+      "url": "https://thegeraghty.com/wp-content/uploads/2025/06/Wedding-1-Web-2-2048x1583.png",
+      "scope": "venue",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://thegeraghty.com/floor-plans/",
+      "snapshot_id": null
+    },
+    {
+      "id": "res-13",
+      "kind": "virtual_tour",
+      "label": "Virtual tour",
+      "url": "https://thegeraghty.com/virtual-tour",
+      "scope": "venue",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://thegeraghty.com/virtual-tour",
+      "snapshot_id": null
+    }
+  ],
+  "vendor_lists": [
+    {
+      "label": "Built-in Partners",
+      "category": "Décor & Production",
+      "relationship": "in_house_partner",
+      "entries": [
+        {
+          "name": "Kehoe Designs",
+          "url": "https://kehoedesigns.com/",
+          "instagram": null
+        },
+        {
+          "name": "BlackOak Technical Productions",
+          "url": "https://blackoak.tech/",
+          "instagram": null
+        }
+      ],
+      "source_url": "https://thegeraghty.com/faq/",
+      "snapshot_id": null
+    },
+    {
+      "label": "Preferred Caterers",
+      "category": "Catering",
+      "relationship": "preferred",
+      "entries": [
+        {
+          "name": "Blue Plate",
+          "url": "https://blueplatechicago.com/",
+          "instagram": null
+        },
+        {
+          "name": "J&L Catering",
+          "url": "https://www.jandlcatering.com/",
+          "instagram": null
+        },
+        {
+          "name": "Boka Catering",
+          "url": "https://www.bokacatering.com/",
+          "instagram": null
+        },
+        {
+          "name": "Catering by Michaels",
+          "url": "https://www.cateringbymichaels.com/",
+          "instagram": null
+        },
+        {
+          "name": "Food for Thought",
+          "url": "https://www.foodforthoughtchicago.com/",
+          "instagram": null
+        },
+        {
+          "name": "Lettuce Entertain You",
+          "url": "https://www.lettuce.com/",
+          "instagram": null
+        },
+        {
+          "name": "Limelight Catering",
+          "url": "https://www.limelightcatering.com/",
+          "instagram": null
+        },
+        {
+          "name": "Paramount Events",
+          "url": "https://paramounteventschicago.com/",
+          "instagram": null
+        }
+      ],
+      "source_url": "https://thegeraghty.com/caterers-partners/",
+      "snapshot_id": null
+    }
+  ],
+  "press_features": [],
+  "sources": {
+    "snapshot_ids": [],
+    "pages": [
+      "https://thegeraghty.com/",
+      "https://thegeraghty.com/about/",
+      "https://thegeraghty.com/features-amenities/",
+      "https://thegeraghty.com/floor-plans/",
+      "https://thegeraghty.com/faq/",
+      "https://thegeraghty.com/caterers-partners/",
+      "https://thegeraghty.com/virtual-tour",
+      "https://thegeraghty.com/contact/"
+    ],
+    "crawled_at": "2026-08-24"
+  },
+  "extraction": null,
+  "provenance": null,
+  "eval": {
+    "/spine/venue_kind": "extractor",
+    "/spine/setting": "extractor",
+    "/spine/space_count_bookable": "extractor",
+    "/spine/ceremony_on_site": "extractor",
+    "/spine/catering": "extractor",
+    "/spine/bar": "extractor",
+    "/spine/rental_charge_type": "extractor",
+    "/spine/parking": "extractor",
+    "/spine/day_of_coordinator": "extractor",
+    "/spine/payment_schedule": "extractor",
+    "/spine/event_insurance": "extractor",
+    "/spine/noise_curfew": "extractor",
+    "/spine/vendor_list_policy": "extractor",
+    "/spine/tables_chairs_included": "extractor",
+    "/spine/linens_included": "extractor",
+    "/spine/coat_check": "extractor",
+    "/spine/pricing_archetype": "extractor",
+    "/capacities/the-geraghty:seated_with_dance": "extractor",
+    "/pricing/add_ons/nonprofit-alcohol-donation": "extractor"
+  }
+}

@@ -264,7 +264,12 @@ export interface EstimateGroup {
   subtotal: number;
 }
 
-export type EstimateWarning = "over_capacity" | "under_minimum" | "unpriceable_extra_ignored" | "no_path";
+export type EstimateWarning =
+  | "over_capacity"
+  | "under_minimum"
+  | "under_fb_minimum"
+  | "unpriceable_extra_ignored"
+  | "no_path";
 
 export interface CostEstimate {
   groups: EstimateGroup[];
@@ -277,7 +282,9 @@ export interface CostEstimate {
 function dayMatches(tierDay: Day | null, inputDay: Day): boolean {
   if (tierDay == null || tierDay === "any") return true;
   if (tierDay === inputDay) return true;
-  if (tierDay === "weekday") return !["sat", "sun"].includes(inputDay);
+  // "weekday" means Mon-Thu (plan: a Fri/Sun shared price is two explicit rows), so a separate
+  // Friday fee never double-counts against a weekday one.
+  if (tierDay === "weekday") return ["mon", "tue", "wed", "thu"].includes(inputDay);
   return false;
 }
 
@@ -356,8 +363,16 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
 
   // --- venue group (fixed fees + required staffing + year surcharges) ------
   const venueLines: EstimateLine[] = [];
+  // A whole-venue fee (Marchetti's "book both spaces") is an alternative to a space-scoped fee,
+  // not an addition: once the chosen space has its own fee on this path, whole-venue fees are
+  // skipped. Single-space venues (all fees whole_venue) are unaffected.
+  const chosenSpaceHasOwnFee =
+    chosenSpaceId != null &&
+    chosenSpaceId !== "whole_venue" &&
+    path.fixed_fees.some((f) => f.applies_to === "space" && f.space_id === chosenSpaceId);
   for (const fee of path.fixed_fees) {
     if (fee.applies_to !== "space" && fee.applies_to !== "whole_venue") continue;
+    if (fee.applies_to === "whole_venue" && chosenSpaceHasOwnFee) continue;
     if (fee.day && !dayMatches(fee.day, input.day)) continue;
     if (fee.season && !seasonMatches(fee.season, input.season)) continue;
     if (fee.space_id && fee.space_id !== chosenSpaceId) continue;
@@ -394,9 +409,15 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
     }
   }
 
-  // --- under_minimum ---------------------------------------------------------
+  // --- under_minimum / F&B minimum -------------------------------------------
   const guestMin = selectMinimum(path, "guest_minimum", input.day, input.season);
   if (guestMin && guests < guestMin.amount) warnings.push("under_minimum");
+  const fbMin = selectMinimum(path, "fb_minimum", input.day, input.season);
+  if (fbMin && groupTotal(fbLines) < fbMin.amount) warnings.push("under_fb_minimum");
+  const spineFbMin = d.spine.fb_minimum;
+  if (!fbMin && isStated(spineFbMin) && spineFbMin.value.applies && spineFbMin.value.amount_usd == null) {
+    not_included.push("Food & beverage minimum (amount not published)");
+  }
 
   // --- ceremony group (auto-applied add-ons gated by ceremonyOnSite) --------
   const ceremonyLines: EstimateLine[] = [];
@@ -467,7 +488,9 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
 
   let generalTax = 0;
   if (rates.sales_tax_pct != null && rates.sales_tax_source !== "included" && rates.sales_tax_source !== "unknown") {
-    const generalBase = fbSubtotalWithService + generalTaxableExtra;
+    // Default base (fb_and_rentals) excludes the flat venue rental; a venue that states tax on
+    // everything (`sales_tax_base: "all"`) taxes the rental too.
+    const generalBase = fbSubtotalWithService + generalTaxableExtra + (rates.sales_tax_base === "all" ? venueBase : 0);
     generalTax = Math.round(generalBase * (rates.sales_tax_pct / 100));
     if (generalBase > 0) taxLines.push({ label: `Sales tax (${rates.sales_tax_pct}%)`, amount: generalTax });
   }
@@ -492,13 +515,14 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
     taxLines.push({ label: `Credit card processing (${rates.cc_fee_pct}%)`, amount: ccFee });
   }
 
-  const groups: EstimateGroup[] = [
+  const allGroups: EstimateGroup[] = [
     { group: "venue", lines: venueLines, subtotal: venueBase },
     { group: "fb", lines: fbLines, subtotal: fbBase },
     { group: "ceremony", lines: ceremonyLines, subtotal: ceremonyBase },
     { group: "add_ons", lines: addOnLines, subtotal: addOnsBase },
     { group: "taxes", lines: taxLines, subtotal: groupTotal(taxLines) },
-  ].filter((g) => g.lines.length > 0);
+  ];
+  const groups = allGroups.filter((g) => g.lines.length > 0);
 
   const total = rawChargesTotal + taxesSoFar + ccFee;
 
@@ -710,8 +734,13 @@ export function calculatorAxes(d: VenueDetailsV3): CalculatorAxis[] {
 
   if (d.pricing.paths.length > 1) axes.push("path");
 
+  // The space axis only appears when something actually prices by space (LondonHouse has two
+  // rooms but one space-agnostic package price, so no axis; Marchetti's rooms have their own fees).
   const bookableSpaces = d.spaces.filter((s) => s.bookable_separately !== false);
-  if (bookableSpaces.length > 1) axes.push("space");
+  const pricesBySpace =
+    d.pricing.paths.some((p) => p.fixed_fees.some((f) => f.applies_to === "space")) ||
+    d.pricing.add_ons.some((a) => a.per_space_prices != null && Object.keys(a.per_space_prices).length > 1);
+  if (bookableSpaces.length > 1 && pricesBySpace) axes.push("space");
 
   const days = new Set<string>();
   const seasons = new Set<string>();
