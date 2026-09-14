@@ -1,4 +1,7 @@
 #!/usr/bin/env bun
+/* eslint-disable @typescript-eslint/no-explicit-any -- one-off importer over six hand-typed
+   concept objects (`typeof marchetti` etc.) whose loose literal shapes are the input, not a
+   contract; the OUTPUT is validated against VenueDetailsV3 by golden.test.ts. */
 /**
  * Converts the six hand-built `/concept` golden venues into `VenueDetailsV3` JSON fixtures
  * (plan `hello-alright-want-to-quizzical-sparrow.md`, "Golden fixtures" / Phase 1a). Bespoke
@@ -30,16 +33,12 @@ import {
   type CapacityTuple,
   type Fact,
   type FixedFee,
-  type Minimum,
   type PerGuestTier,
   type Pricing,
   type PricingPath,
-  type Rates,
   type Resource,
-  type Space,
   type VenueDetailsV3,
   type VenueSpine,
-  type YearSurcharge,
 } from "../../lib/venueDetails/types";
 import { GOLDEN_ACCOUNT_IDS, type GoldenSlug } from "../../lib/venueDetails/golden";
 
@@ -1503,7 +1502,7 @@ function buildFieldMuseum(): VenueDetailsV3 {
     catering: f("approved_list_only", fm.quickFacts[2].note!, vendorsUrl),
     bar: f("in_house", fm.quickFacts[3].note!, site),
     rental_charge_type: f("inquire_only", fm.policies[2].value, site),
-    parking: f("paid", fm.policies[5].detail ?? fm.policies[5].value, vendorsUrl),
+    parking: f("paid", fm.policies[5].value, vendorsUrl),
     // "Not required; on-site Account Manager provided" -- closest of the 3 real enum values:
     // a form of built-in support is provided, just not a traditional wedding coordinator.
     day_of_coordinator: f("included", fm.faqs[0].answer, site),

@@ -1,0 +1,124 @@
+{
+  "accountId": 999001,
+  "name": "Mini Venue (fixture)",
+  "websiteUrl": "https://example.com",
+  "promptVersion": "venue-details-v3.0",
+  "model": "anthropic/claude-haiku-4.5",
+  "extractedAt": "2026-09-13T00:00:00.000Z",
+  "assetCandidateUrls": [],
+  "pages": [
+    {
+      "url": "https://example.com/weddings",
+      "snapshot_id": 1,
+      "text": "The Grand Ballroom is an indoor space. Our Grand Ballroom seats up to 200 guests for a seated dinner. Catering is open, any caterer welcome. Bar service is in-house only."
+    },
+    {
+      "url": "https://example.com/pricing",
+      "snapshot_id": 2,
+      "text": "Saturday rental is $6,000 for the Grand Ballroom. Sales tax is 11.75 percent."
+    },
+    {
+      "url": "https://example.com/faq",
+      "snapshot_id": 3,
+      "text": "There is no food and beverage minimum required for weekday events."
+    }
+  ],
+  "spineRaw": {
+    "spine": {
+      "venue_kind": { "status": "stated", "value": "banquet_hall", "quote": "Grand Ballroom seats up to 200 guests", "source_url": "https://example.com/weddings" },
+      "setting": { "status": "stated", "value": "indoor", "quote": "Grand Ballroom is an indoor space", "source_url": "https://example.com/weddings" },
+      "catering": { "status": "stated", "value": "open", "quote": "Catering is open, any caterer welcome", "source_url": "https://example.com/weddings" },
+      "bar": { "status": "stated", "value": "in_house", "quote": "Bar service is in-house only", "source_url": "https://example.com/weddings" },
+      "pricing_archetype": { "status": "stated", "value": "rental_plus_fb_minimum", "quote": "Saturday rental is $6,000 for the Grand Ballroom", "source_url": "https://example.com/pricing" },
+      "fb_minimum": {
+        "status": "stated",
+        "value": { "applies": true, "amount_usd": 9900, "detail": null },
+        "quote": "a minimum of nine thousand nine hundred applies",
+        "source_url": "https://example.com/faq"
+      }
+    },
+    "about": null,
+    "differentiator": null,
+    "spaces": [
+      {
+        "id": "ballroom",
+        "name": "Grand Ballroom",
+        "structure_label": null,
+        "sq_ft": null,
+        "sq_ft_outdoor": null,
+        "ceiling_ft": null,
+        "setting": "indoor",
+        "bookable_separately": true,
+        "description": null,
+        "includes_summary": null,
+        "source_url": "https://example.com/weddings"
+      }
+    ],
+    "capacities": [
+      {
+        "space_id": "ballroom",
+        "layout": "seated_dinner",
+        "min": null,
+        "max": 200,
+        "as_stated_label": "Seated dinner",
+        "condition": null,
+        "quote": "Grand Ballroom seats up to 200 guests for a seated dinner",
+        "source_url": "https://example.com/weddings"
+      }
+    ],
+    "inclusions": [],
+    "resources": [],
+    "vendor_lists": [],
+    "press_features": [],
+    "notes": null
+  },
+  "pricingRaw": {
+    "archetype": "rental_plus_fb_minimum",
+    "paths": [
+      {
+        "id": "standard",
+        "name": "Standard",
+        "description": null,
+        "applies_to_spaces": "all",
+        "fixed_fees": [
+          {
+            "applies_to": "whole_venue",
+            "space_id": null,
+            "day": "sat",
+            "season": "peak",
+            "amount": 6000,
+            "unit": "flat",
+            "label": "Rental",
+            "includes": [],
+            "key": "rental",
+            "quote": "Saturday rental is $6,000 for the Grand Ballroom",
+            "source_url": "https://example.com/pricing"
+          }
+        ],
+        "per_guest_tiers": [],
+        "minimums": [],
+        "required_staffing": null,
+        "rental_hours": null,
+        "year_surcharges": [],
+        "promotions": [],
+        "quote": "Saturday rental is $6,000 for the Grand Ballroom",
+        "source_url": "https://example.com/pricing"
+      }
+    ],
+    "rates": {
+      "service_charge_pct": null,
+      "service_charge_base": null,
+      "sales_tax_pct": 11.75,
+      "sales_tax_base": "fb_and_rentals",
+      "taxes_included_in_rental": null,
+      "cc_fee_pct": null,
+      "quote": "Sales tax is 11.75 percent",
+      "source_url": "https://example.com/pricing"
+    },
+    "add_ons": [],
+    "food_beverage": { "food_pills": [], "bar_pills": [], "caption": null, "menus": [], "bar_ladders": [], "bar_min_guests": null, "notes": [] },
+    "required_third_party": [],
+    "faqs": [],
+    "notes": null
+  }
+}
