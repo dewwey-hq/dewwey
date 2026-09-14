@@ -17,9 +17,13 @@ at the repo root with a "Now" section.
 - [jeremy-ddl.sql](jeremy-ddl.sql) — schema-only dump of his beta RDS tables
 - [pipeline-plan.md](pipeline-plan.md) — crawler/parser plan (TS port pending)
 - [strategy/business-model.md](strategy/business-model.md)
+- [product/venue-details.md](product/venue-details.md) — **VenueDetails v3** (D060, 2026-09-13):
+  the comparison spine + detail schema, generic Details renderer, and the provenance-first fill loop
+  replacing the retired enrichment pipeline and the hand-built concept pages
 - [product/](product/) — feature docs (venue enrichment, lightbox, embeds)
 - [engineering/venue-enrichment/](engineering/venue-enrichment/) — the
-  venue-website extraction data plane (adopted wholesale in the merged schema)
+  venue-website extraction data plane (adopted wholesale in the merged schema); the golden-set
+  template (locked page format), quality rubric, and `industry-research-2026-09-13.md`
 - [engineering/post-classification/](engineering/post-classification/) — the
   AI-native pipeline deciding which of the ~45k staged Instagram posts are
   credible real Chicago weddings (D009)

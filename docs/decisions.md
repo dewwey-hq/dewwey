@@ -4,6 +4,131 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D060 — 2026-09-13 — VenueDetails v3: the venue Details tab becomes one typed schema (comparison spine + detail layer) filled by a provenance-first loop
+
+**Context.** The Details tab is the product's core: couples compare Venue A (all-inclusive, odd
+policies) with Venue B (à la carte, required vendors) and the terms don't line up. What existed:
+six hand-built golden concept pages (`apps/web/app/concept/`, 2026-08-16 → 08-27) and a locked
+template (`docs/engineering/venue-enrichment/golden-set-template.md`) whose §7 names "the scale
+fork": (a) formalize the template as a schema the pipeline fills for every venue, or (b) hand-craft
+a featured subset. Also: `galleria-marchetti-v5` (09-11) prototyping the v4 body inside the real
+vendor page's Details tab, and the retired automated pipeline (`venue_enrichment`, 163 venues,
+Gemini, quote provenance, rubric v2, 14/15 slate pass) whose code was deleted in `13dd9b6` but whose
+data and the 6-row production Details tab (`app/vendors/[username]/page.tsx`) still live. Coverage
+today: of ~475 listed venues, 109 have a website on record (exactly the enriched ones), ~60 more an
+IG bio link, ~300 nothing. Industry research the same day
+(`docs/engineering/venue-enrichment/industry-research-2026-09-13.md`): only Here Comes The Guide
+and Zola encode catering/alcohol policy as controlled fields; Wedding Spot alone computes a
+guest-count-driven estimate; nobody normalizes the pricing archetype.
+
+**Decision: fork (a).** One typed schema `VenueDetailsV3` (`apps/web/lib/venueDetails/types.ts`),
+one generic renderer, one fill loop, keyed on **`accounts.id`** (the listing key; `venue_enrichment`
+is keyed on Places `vendors.id`, which ~199 listed venues lack, and stays read-only legacy). Plan of
+record `~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md`; product doc
+`docs/product/venue-details.md`. Approved after three review rounds (user; ChatGPT; Cursor's Grok
+twice) — what each changed is recorded in the plan's Context.
+
+**Product invariants (formal).** Unknown beats wrong (a served page may have gaps, never an
+incorrect critical fact; a wrong critical fact pulls the venue to `needs_review`). Specific beats
+generic. Evidence beats inference (every stated value carries a verbatim quote from an immutable
+snapshot; inference only as a labeled assumption, e.g. Chicago sales tax 11.75%). Comparable beats
+bespoke (anything compare/filter/budget reads lives in the spine or the normalized cost/capacity models).
+
+**Schema shape.** Two layers: a **comparison spine** (37 closed-enum/scalar fields, identical keys on
+every venue, each tri-state `stated{value,quote,source_url,snapshot_id}` / `not_stated` /
+`conflicting{candidates[]}`; the template's 13 Policies rows are 13 of them) and a **detail layer**
+(spaces; **capacity tuples** `{space, layout, min, max, as_stated_label}` with the headline = largest
+single bookable space seated-dinner, fallbacks seated-with-dance then cocktail flagged, **never
+summed across rooms**; a **normalized cost model** `pricing{archetype, paths[fixed_fees × day ×
+season, per_guest_tiers, minimums, required_staffing, year_surcharges], rates, add_ons, required_third_party}`
+so one generic calculator answers "what would 150 guests on a Saturday cost here"; a
+`food_beverage` display object (additive BYO / à la carte / all-inclusive pills, packages, bar
+ladders, menus, caption) separate from both the policy enums and the cost model; inclusions with
+canonical cross-venue labels; **verbatim venue FAQs**; one `resources[]`; vendor lists;
+`press_features`). The 5 standard FAQs are derived from spine fields at render time, not stored.
+Authored prose is limited to `about`, optional per-space description, optional differentiator.
+Kept verbatim from the template: section order, 13 rows always shown with "Not stated (please
+confirm)", 3 capacity tiles in the venue's vocabulary, quick-fact pills (4 from the spine; a 5th only
+from `differentiator.tagline` or a human correction), card-vs-table by pricing axes, Cost Estimate ≠
+Pricing, taxes last, grounding footer, voice rules.
+
+**Tiers and the two bars.** Spine fields are tiered. *Critical* (a failure blocks compare-ready):
+catering, bar, rental_charge_type, fb_minimum, service_charge_pct, pricing_archetype, price/per-guest
+anchors, ceremony_on_site, ceremony_fee, vendor_list_policy, setting, venue_kind, the headline
+capacity tuple(s), and the numbers feeding the calculator's default path — 100% grounded or
+`not_stated`; a stripped critical field ⇒ `needs_review`. *Important* (a failure drops the item,
+never the venue): insurance, coordinator, security, parking, curfew, payment, cancellation, tax,
+non-headline tuples, add-on prices, vendor entries. *Secondary*: coat check, HVAC, ADA, furniture
+inclusions, pets. **`compare_ready`** = headline seated capacity + catering + bar + pricing_archetype
+stated (`inquire_only` counts — "they don't publish a number" is a comparable fact, and it is 63% of
+the corpus) + zero critical grounding failures + not `needs_review`. **`excellent`** = compare_ready
++ (human-verified or a filled cost path). Reports always show both beside the crawl ceiling. Gates:
+critical accuracy ≥ 95% on golden extractor-scored fields, critical numeric grounding 100%, important
+≥ 85%, secondary ≥ 70% informational; corpus grounding mismatch ≤ 5%; repeatability of the four
+closed enums ≥ 90% (rubric).
+
+**Calibration slate.** Golden 6 (ceiling; fields tagged `eval: extractor | human_only` so live runs
+are scored only on facts the crawl can reach — Marchetti's brochure is a text-layer PDF and therefore
+a crawl test, Diamond Garden's image-PDF menus are `human_only`) plus the rubric's 15 must-not venues
+(floor; assertion fixtures, not V3 goldens: no generic-label spaces, no duplicate rooms, no summed
+rooms, no ADR as price, no hotel-guest FAQ majority, no junk vendors, no gala floor plan over a
+wedding one, no amalgam ranges, no one-area-as-two-spaces). "Right page, wrong room" (Adler) stays a
+budgeted human spot-check.
+
+**Loop.** discover website → crawl → immutable snapshots → extract (Haiku 4.5, two forced-tool
+calls) → deterministic validation (grounding = token coverage ≥ 0.80 of the quote in the snapshot
+text plus every numeric token present; enum/capacity/space/ADR/price-range/cross-ref gates; emits
+machine-readable `repairs[]`) → targeted repair (only the listed field paths, page-slice excerpts,
+field-path-isolated merge, may return `not_stated`/`conflicting`, one round; Sonnet only for a second
+repair of a critical field) → validate → serve as a new version or review. A crawl-only coverage
+report (shells, image-only PDFs, off-site PDFs followed) is published before any model spend on a
+new population; the crawl ceiling is a product number. Cost: ≈ $0.10-0.30/venue; the 109 budgeted at
+$15-40 (`--max-cost-usd 40`).
+
+**Provenance model (the architecture, not a column).** Layers: source (`venue_source_snapshots`:
+cleaned text in R2 at `venue-sources/<account_id>/<sha256>.txt`, metadata in DB, **insert-only**;
+`venue_source_fetches` is the only clock — the old pipeline stored page text inline, 140 MB of a
+747 MB database, not repeated) → derived (`venue_details_runs`, keyed by an **order-independent
+`input_hash`** = sha256 of schema + prompt version + model + lexicographically sorted snapshot
+hashes; partial unique index on extract rows) → human (`venue_details_corrections`, **genuinely
+append-only**: `action set|unset|retire`, latest row per stable-id `field_path` wins, bound to the
+`evidence_snapshot_id` the human saw; no status mutation) → history (`venue_details_versions`,
+linear, immutable, full document + field-level `changes[]` matched by stable ids) → serving
+(`venue_details`, a pointer + denormalized spine columns, the only mutable row). The seven cases:
+origin of a fact (quote + link + captured date on every stated fact, now); source changed (dedupe
+by hash, re-extract only changed input, new version with diff — snapshots/versions now, the recrawl
+script later); prompt changed (new run under gates, now); sources conflict now (`conflicting`,
+rendered honestly, now); human fix (append-only correction, now; stale-fix detection at serve time
+later); rollback (a new version copying an old one, single-venue now, batch later); evolution
+(`changes[]` + three footer dates last checked / last changed / human verified, now; history UI
+later). Field lifetime is derived from versions by query; a materialized claims table is deferred
+until a query needs it. Evidence rules: quote required on spine fields, tuples, fees, tiers,
+minimums, add-ons, inclusions, F&B pills; `about`/differentiator/spaces/FAQs/resources/vendor lists
+are `Sourced` (page must be crawled) with numeric hygiene for prose. Aliases resolve to the canonical
+account (`account_aliases`) before crawl/serve/lookup.
+
+**Conscious exceptions.** Verbatim venue FAQs are republished on the page (user's call; data-plane.md
+says "never republish prose" — the hotel-guest-FAQ contamination gate still applies). One new
+script-only devDependency, `unpdf`, for text-layer PDFs (image-only PDFs stay links; a vision read is
+a later option if the coverage table shows it matters). R2 writes reuse the existing `R2_*` env vars;
+no new env var.
+
+**Phases.** 0 decisions/docs (this entry) → 1a schema proof on the golden 6 as fixtures (no
+Postgres, no screenshots; the four calculator totals pinned: Marchetti 55,240, Greenhouse 12,420,
+LondonHouse 44,451, Diamond Garden 12,742.50) → 1b generic renderer in the locked formats at
+`/lab/venue` (lost facts fail; lost flourishes go on the punch list below) → 2 pipeline calibration
+on the golden 6 as live venues + the must-not 15 → 3 the 109 with websites (≥ 50 compare-ready, the
+`excellent` count and crawl ceiling reported beside it) → 4 production Details tab (`compare_ready ||
+human_verified`, else today's 6 rows) → 5 long tail (free discovery: IG bio, Haiku+WebSearch batches,
+manual map; Places API only with approval), refresh loop, deferred provenance infrastructure.
+
+**Extension punch list (grows; none blocks a phase).** Bar-collection footnotes and per-tier example
+spirits beyond `bar_tier.examples`; cuisine tables beyond `menus[]`; the real-wedding decks on concept
+pages (production uses `WeddingCard`); the resource lightbox (a locked template rule; new-tab links
+until `checkResourceEmbeddability.ts` lands); `?history=`/"What changed"/`?version=` UI; review-queue
+UI; claims table; batch rollback; stale-correction detection; snapshot pruning; `get_venue_facts`
+agent tool; compare page and browse filters (own missions).
+
 ## D059 — 2026-09-13 — Attire split: dress/suit/bridesmaid/veil/shoes broken out of generic "Attire"
 
 **Context.** Every dress shop, suit shop, bridesmaid-dress brand, veil seller, and shoe vendor
