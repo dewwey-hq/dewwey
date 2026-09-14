@@ -11,6 +11,7 @@ import { coverPost, coverOrFirstPost, groupStackByCategory, displayName } from "
 import { roleLabel, contextLabel } from "@/lib/roles";
 import {
   DEFAULT_EMBED_SIZE,
+  DEFAULT_EMBED_SIZE_XL,
   DEFAULT_SIDE,
   DEFAULT_SPLIT,
   DEFAULT_TILE_COLS,
@@ -144,8 +145,8 @@ export function WeddingCard({
   stack,
   pinnedUsername,
   eager = false,
-  embedWidth = DEFAULT_EMBED_SIZE,
-  split = DEFAULT_SPLIT,
+  embedWidth,
+  split,
   tileCols = DEFAULT_TILE_COLS,
   mediaSide = DEFAULT_SIDE,
   twoUp = DEFAULT_TWO_UP,
@@ -287,12 +288,20 @@ export function WeddingCard({
 
   const monthYear = monthYearLabel(stack.event_date_est);
 
-  // `embedWidth` (326/360/400/470/540) drives the media column's max width; `twoUp`
-  // stacks media above the panel instead of beside it so two cards fit side by side.
-  // Below 400px-equivalent-or-narrower, or in 2-up (where each card is already
+  // No explicit `embedWidth`/`split` -> the embed is responsive: 360px up to Tailwind's
+  // `xl` breakpoint (roughly laptop screens), 400px at `xl`+ (large desktop monitors). An
+  // explicit override (the lab only, which always passes both) pins one size at every
+  // width instead, exactly like before.
+  const responsiveEmbed = embedWidth === undefined && split === undefined && !twoUp;
+  const resolvedEmbedWidth = embedWidth ?? DEFAULT_EMBED_SIZE;
+  const resolvedSplit = split ?? DEFAULT_SPLIT;
+
+  // `resolvedEmbedWidth` (326/360/400/470/540) drives the media column's max width;
+  // `twoUp` stacks media above the panel instead of beside it so two cards fit side by
+  // side. Below 400px-equivalent-or-narrower, or in 2-up (where each card is already
   // half-width), the stack panel switches to a single-column tile grid so vendor names
   // don't truncate.
-  const compact = embedWidth <= 400 || twoUp;
+  const compact = resolvedEmbedWidth <= 400 || twoUp;
 
   const venueKey = stack.venue_username?.toLowerCase();
   const venueVendor = venueKey ? stack.vendors.find((v) => v.username.toLowerCase() === venueKey) : undefined;
@@ -328,11 +337,26 @@ export function WeddingCard({
   // 2-up: the embed column is `split`% of the card but never wider than the embed itself
   // can be (540px) -- below xl the 2-up grid collapses to one column, and without the cap
   // the column outgrew the embed and left a blank strip before "Hosted at".
-  const embedCol = twoUp ? `minmax(326px, min(${embedWidth}px, ${split}%))` : `${embedWidth}px`;
-  const panelCol = twoUp ? "minmax(0, 1fr)" : `${panelWidthFor(embedWidth, split)}px`;
-  const cardLayoutClass = `${SIDE_BY_SIDE_CLASS} md:items-start`;
+  function colsFor(width: number, splitPct: number): string {
+    const embedCol = twoUp ? `minmax(326px, min(${width}px, ${splitPct}%))` : `${width}px`;
+    const panelCol = twoUp ? "minmax(0, 1fr)" : `${panelWidthFor(width, splitPct)}px`;
+    return flipped ? `${panelCol} ${embedCol}` : `${embedCol} ${panelCol}`;
+  }
+  // Responsive default: two fully-literal Tailwind classes (one per breakpoint) instead
+  // of the inline `--card-cols` style below, because Tailwind statically scans source
+  // text for arbitrary-property classes -- it can't resolve one built from an
+  // interpolated runtime variable. These literals mirror `DEFAULT_EMBED_SIZE` (360) /
+  // `DEFAULT_EMBED_SIZE_XL` (400) / `DEFAULT_SPLIT` (55%) run through `panelWidthFor`
+  // (295px, 327px) -- update them together if any of those constants change.
+  const cardLayoutClass = `${SIDE_BY_SIDE_CLASS} md:items-start ${
+    responsiveEmbed
+      ? flipped
+        ? "md:[--card-cols:295px_360px] xl:[--card-cols:327px_400px]"
+        : "md:[--card-cols:360px_295px] xl:[--card-cols:400px_327px]"
+      : ""
+  }`;
   const cardStyle = {
-    "--card-cols": flipped ? `${panelCol} ${embedCol}` : `${embedCol} ${panelCol}`,
+    ...(responsiveEmbed ? {} : { "--card-cols": colsFor(resolvedEmbedWidth, resolvedSplit) }),
     // Unset (rather than a guessed default) until the ResizeObserver's first callback --
     // `var()` referencing an unset custom property makes `max-height` invalid, so the
     // panel simply isn't capped yet, which is the right behavior for that one frame.
@@ -396,7 +420,10 @@ export function WeddingCard({
             >
               {embeddablePosts.map((p, i) => (
                 <div key={p.url} className="w-full shrink-0 snap-center">
-                  <div className="w-full [&_iframe]:mb-0!" style={{ maxWidth: embedWidth }}>
+                  <div
+                    className={`w-full [&_iframe]:mb-0! ${responsiveEmbed ? "max-w-[360px] xl:max-w-[400px]" : ""}`}
+                    style={responsiveEmbed ? undefined : { maxWidth: resolvedEmbedWidth }}
+                  >
                     <InstagramPostEmbed post={p} eager={i === initialIdx && eager} />
                   </div>
                 </div>

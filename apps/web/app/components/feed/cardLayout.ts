@@ -1,20 +1,26 @@
 /**
  * Layout knobs for the production wedding feed card (`WeddingCard.tsx`), locked to the
- * D058 design (360px embed / 60% split / 1 tile column / embed left / 1-up). Declared
- * here — not in the lab's `app/lab/feed/variant.ts` — so production never depends on lab
- * code; the lab re-exports these instead of duplicating them.
+ * D058 design (55% split / 1 tile column / embed left / 1-up), with a responsive embed
+ * size (360px below Tailwind's `xl` breakpoint, 400px at `xl`+ — laptop vs. large desktop
+ * monitors). Declared here — not in the lab's `app/lab/feed/variant.ts` — so production
+ * never depends on lab code; the lab re-exports these instead of duplicating them.
  */
 
 /** Instagram's oEmbed `maxwidth` floor is 326px; 540 is Meta's ceiling. */
 export const EMBED_SIZES = [326, 360, 400, 470, 540] as const;
 export type EmbedSize = (typeof EMBED_SIZES)[number];
 export const DEFAULT_EMBED_SIZE: EmbedSize = 360;
+/** Above Tailwind's `xl` breakpoint (1280px — large desktop monitors, not laptop screens)
+ * the default card grows to this size instead. Only takes effect when a caller doesn't
+ * pass an explicit `embedWidth`/`split` — i.e. production; the lab always pins concrete
+ * values to preview one size. */
+export const DEFAULT_EMBED_SIZE_XL: EmbedSize = 400;
 
 /** The embed's share of the card's width; the stack panel's width is derived from it
  * (`panelWidthFor` in `WeddingCard.tsx`). */
 export const SPLITS = [50, 55, 60, 65, 70] as const;
 export type Split = (typeof SPLITS)[number];
-export const DEFAULT_SPLIT: Split = 60;
+export const DEFAULT_SPLIT: Split = 55;
 
 /** Vendor tile columns in the stack panel. */
 export const TILE_COLS = [1, 2] as const;
