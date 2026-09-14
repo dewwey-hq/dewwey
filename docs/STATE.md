@@ -5,10 +5,28 @@ session; history lives in `decisions.md`, preferences in Claude's memory, in-fli
 If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-13 ~23:30 CT** (mid-session checkpoint during the D060 build). Local `main`
-= `6161c13`, **three commits ahead of `origin/main` (`dd5bd44`), not pushed**: `07bcd4e` (D060 docs),
-`1dd161a` (Phase 1a libs), `6161c13` (fixtures + renderer). Run `git log --oneline -6` and `git status`
-to confirm before trusting this line.
+Last rewritten: **2026-09-14 ~01:00 CT** (end of the session that built D060 Phases 0-2). Local
+`main` is **eight commits ahead of `origin/main` (`dd5bd44`), not pushed** (the user has not asked
+for a push): `07bcd4e` D060 docs · `1dd161a` Phase 1a libs · `6161c13` fixtures + renderer ·
+`ef5f4ce` Phase 2 infra · `de1c8f9` crawler seeds + `<base href>` · `4b1909e` LLM half · `6f649a0`
+dry-run checkpoint · then this docs commit. Run `git log --oneline -10` and `git status` to confirm.
+
+## How to resume tomorrow (5 minutes)
+
+1. `git log --oneline -10` and `git status` from the repo root. **If `git status` shows uncommitted
+   files under `apps/web/scripts/venue-details/` (e.g. `crawl/weddingPage.ts`, edits to
+   `discoverWebsites.ts`, `crawlVenue.ts`, `reportCrawlCoverage.ts`, `applyVenueDetailsSchema.ts`,
+   `pipeline/schema.sql`), that is the wedding-page finder a builder was writing when the session
+   ended.** Check it: `cd apps/web && bunx --bun vitest run scripts/venue-details` and the strict
+   tsc line in the D060 addendum; if green, read the diff and commit it as "wedding-page discovery";
+   if broken or half-written, `git stash` it and re-run the builder from the plan's description
+   (D060 addendum, "wedding-page finder" bullet). Its spec: `venue_websites.wedding_url` +
+   `wedding_url_source` (legacy enrichment pages → homepage nav link → common-path probe → manual),
+   crawl seeds from it, coverage report gains a "wedding page" column.
+2. Re-check one live number: `bun run scripts/venue-details/discoverWebsites.ts --batch-id x
+   --dry-run --limit 20` from `apps/web` should still print `listed: 421`.
+3. Then work the "Blocked on the user" list below, top to bottom. Nothing in the pipeline has
+   written to the database, R2, or OpenRouter yet, so there is nothing to undo.
 
 ## Mission in flight — D060 VenueDetails v3 (2026-09-13 →)
 

@@ -11,10 +11,15 @@ anything below: `docs/decisions.md` (D001–D055 so far).
 lists the threads that aren't part of the active mission. Protocol for working across
 sessions: `docs/engineering/working-across-sessions.md`.
 
-- **Active mission: D055 "squeeze the 47k"** (2026-09-08 →). Phase 0 done, Phase 1 (human
-  review at `/label/candidates` + batched creation) running — weddings 3,541 → 4,265 across
-  three batches as of 2026-09-09. Phase 2 blocked on OpenRouter credit and Apify credits
-  (2026-09-11). Full picture: `docs/STATE.md`; narrative: `docs/decisions.md` D055.
+- **Active mission: D060 VenueDetails v3** (2026-09-13 →): the venue Details tab as one typed
+  schema (comparison spine + detail layer) filled by a provenance-first loop, rendered generically.
+  Phases 0-2 built; waiting on the user's three approvals (golden render review, schema apply, first
+  crawl/extraction writes). Full picture: `docs/STATE.md`; narrative: `docs/decisions.md` D060; plan of
+  record `~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md`.
+- **Paused: D055 "squeeze the 47k"** (2026-09-08 →). Phase 0 done, Phase 1 (human
+  review at `/label/candidates` + batched creation) ran — weddings 3,541 → 5,972 across
+  batches through 2026-09-11. Phase 2 blocked on OpenRouter credit and Apify credits
+  (2026-09-11). Narrative: `docs/decisions.md` D055.
 - Ben ↔ Jeremy merge conversation (`docs/merge-eval.md` is the case). Data
   import already done on Ben's authorization (2026-08-22); the conversation
   is now about the merge itself and rotating his RDS/API credentials.

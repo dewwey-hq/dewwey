@@ -129,6 +129,56 @@ until `checkResourceEmbeddability.ts` lands); `?history=`/"What changed"/`?versi
 UI; claims table; batch rollback; stale-correction detection; snapshot pruning; `get_venue_facts`
 agent tool; compare page and browse filters (own missions).
 
+**Addendum 2026-09-13/14 — Phases 0-2 built in one session (Sonnet built, Fable reviewed; ~9
+builder runs).** Commits `07bcd4e` → `6f649a0` on `main` (unpushed at the time of writing).
+- *Phase 1a/1b shipped as specified.* `lib/venueDetails/` (types, derive, diff, merge, inputHash,
+  tiers), six golden fixtures (`scripts/venue-details/golden/*.json`, each field tagged `extractor |
+  human_only`), the generic renderer (`app/components/venue/*`) and `/lab/venue`. All four hand
+  calculators reproduce to the dollar. Calculator rules that only surfaced when a generic renderer met
+  five bespoke venues, now tested: a whole-venue fee is an alternative to a room fee, never stacked;
+  `weekday` = Mon-Thu with Fri/Sun as explicit rows; F&B minimums surface as `under_fb_minimum` or a
+  "not published" line; `sales_tax_base: all` taxes the rental; the space selector appears only when
+  pricing varies by room. LondonHouse's corkage keeps its own tax row (`tax_pct_override`, even at the
+  general rate) because the venue's own page breaks it out that way.
+- *Fixture facts V3 could not hold (punch list, per venue):* Marchetti's 13-swag bistro variant and
+  real-wedding decks; Greenhouse's composting caveat as a field (it lives in `food_beverage.notes`,
+  `human_only`); LondonHouse's Cupola (non-bookable notable spot) and its $500-vs-$750 ceremony-fee
+  cross-reference note; Field Museum's 1,400-with-stage alternate tuple and its image-only brochure;
+  Geraghty's `seenAtRealWeddings` corroboration flag on preferred caterers. Two goldens carry
+  `accounts.venue_type = park_outdoor` (a D056 keyword misfire to fix in round 2).
+- *Golden identity:* the concept files' `vendorId`s point at unrelated re-keyed `vendors` rows; the
+  fixtures use a hard account map (31, 477, 27389, 2785, 1131 with alias 5172, 507).
+- *Phase 2 code complete, nothing applied.* Schema script (`applyVenueDetailsSchema.ts`, mirrored in
+  `pipeline/schema.sql`), discovery, crawler (Bun `HTMLRewriter`, robots, `unpdf`, `Bun.S3Client`;
+  insert-only snapshots, fetch log as the clock), `--seed-urls` for known off-site documents, the
+  two-tool prompt module (spine ≈ 12k tokens, pricing ≈ 2.7k), extract with `input_hash` resumability
+  and `--max-cost-usd`, validation with token-coverage grounding and tier consequences emitting
+  `repairs[]`, field-path-isolated repair, serve/rollback/corrections on versions + a pointer, the
+  tier-weighted golden scorer, the rubric's 15 as must-not assertions, and the funnel report. 445
+  tests. Spend so far: $0 OpenRouter, $0 Apify, 0 DB/R2 writes.
+- *Crawl findings that change the design:* Marchetti's brochure and Field Museum's wine list are
+  client-rendered/icon-only links no plain-fetch crawler sees (manual seeds, honest `manual_seed`
+  provenance); LondonHouse sets `<base href>` and the crawler had resolved links against the page URL
+  (fixed; likely affected other sites); Four Seasons blocks bots outright; Diamond Garden's menus are
+  image-only PDFs (stay links). Calibration crawl: 15/16 venues with ≥ 5 usable pages, 42 text-layer
+  PDFs.
+- *Discovery dry-run over the live listing:* 421 venues → 166 with a website candidate (111 Places, 55
+  IG bio; Jeremy's `staging.vendors` has the same 300 websites as ours and his `vendor_social_links`
+  are social-only, so nothing extra there) → 146 verified, 7 JS shells, 13 unreachable. Phase 3's
+  population is 146, not 109. Only 21 of ~300 candidate URLs are wedding-specific pages, which
+  prompted the *wedding-page finder* (user, 2026-09-14: "we want the wedding site variant … Field
+  Museum for weddings"): `venue_websites.wedding_url` + `wedding_url_source` (legacy enrichment pages
+  → homepage nav link → common-path probe → manual), the crawl seeds from it, and "no wedding page
+  found" is reported as a product signal. In flight at the time of writing.
+- *Tooling landmines:* `bunx --bun vitest` for Bun-API tests; clear `tsconfig.tsbuildinfo` before
+  trusting an incremental typecheck; Lucide component references cannot cross the Next server→client
+  boundary (pass rendered nodes); dev-server errors live in the process stdout, not the browser.
+- *Deviations from the plan text, accepted:* space-row `sq_ft`/`structure_label` are `Sourced`, not
+  quote-grounded (the spine tool carries one `source_url` per space row); the scorer's accuracy
+  denominator counts every in-scope golden field; `verified_by` and rollback `--note` have no columns
+  (carried in the document's `provenance` and `created_by` respectively). Three devDependencies added,
+  not one: `unpdf`, `@types/bun`, `pdf-lib` (test fixtures only).
+
 ## D059 — 2026-09-13 — Attire split: dress/suit/bridesmaid/veil/shoes broken out of generic "Attire"
 
 **Context.** Every dress shop, suit shop, bridesmaid-dress brand, veil seller, and shoe vendor
