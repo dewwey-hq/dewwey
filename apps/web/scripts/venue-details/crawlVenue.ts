@@ -17,6 +17,15 @@
  * enqueued at depth 0 / score SEED_SCORE regardless of same-host/off-site-PDF rules, tagged
  * `source: "manual_seed"` in the summary/cache manifest (never in the DB fetch row's
  * `crawl_batch`, which stays whatever `--crawl-batch` says).
+ *
+ * 2026-09-14 follow-up ("the wedding site variant, not just the homepage"): when the account's
+ * `venue_websites` row has a `wedding_url` (found by `scripts/venue-details/crawl/weddingPage.ts`
+ * via `discoverWebsites.ts --probe`), or `--wedding-url-override <url>` is passed (paired with a
+ * single `--account-ids`, same shape as `--website-override`), it is enqueued at depth 0 with a
+ * score high enough to be fetched right after the homepage -- tagged `source: "wedding_page"` in
+ * the summary/cache manifest -- so its own sub-links get crawled at depth 1 too. Unlike a manual
+ * seed it is still subject to the normal same-host/off-site-PDF rule (it's expected to already
+ * live on the venue's own host); a wedding_url identical to the homepage is not double-enqueued.
  */
 import { readFileSync } from "node:fs";
 import type { Pool } from "pg";
@@ -34,6 +43,13 @@ import { parseCsvRows } from "./csv";
 // ---------------------------------------------------------------------------
 
 export const SEED_SCORE = 10;
+
+/** Score for a venue's own wedding_url item (2026-09-14 follow-up), chosen relative to
+ * SEED_SCORE so it comfortably outranks a manual seed and any normally-discovered link (whose
+ * realistic ceiling from `urlScore.ts`'s additive bonuses is well below this in practice) while
+ * staying below the homepage's own Number.POSITIVE_INFINITY -- i.e. it is fetched right after
+ * the homepage, exactly as the spec asks. */
+export const WEDDING_PAGE_SCORE = SEED_SCORE + 8;
 
 export interface Seed {
   accountId: number;
@@ -108,6 +124,7 @@ interface Args {
   printManifest: boolean;
   websiteOverride: string | null;
   seedUrls: string | null;
+  weddingUrlOverride: string | null;
 }
 
 function parseArgs(): Args {
@@ -124,9 +141,14 @@ function parseArgs(): Args {
     process.exit(1);
   }
   const websiteOverride = get("--website-override") ?? null;
+  const weddingUrlOverride = get("--wedding-url-override") ?? null;
   const accountIds = accountIdsRaw ? accountIdsRaw.split(",").map((s) => Number(s.trim())) : null;
   if (websiteOverride && (!accountIds || accountIds.length !== 1)) {
     console.error("[crawl-venue] --website-override requires exactly one --account-ids value.");
+    process.exit(1);
+  }
+  if (weddingUrlOverride && (!accountIds || accountIds.length !== 1)) {
+    console.error("[crawl-venue] --wedding-url-override requires exactly one --account-ids value.");
     process.exit(1);
   }
   return {
@@ -144,6 +166,7 @@ function parseArgs(): Args {
     printManifest: a.includes("--print-manifest"),
     websiteOverride,
     seedUrls: get("--seed-urls") ?? null,
+    weddingUrlOverride,
   };
 }
 
@@ -211,6 +234,10 @@ interface QueueItem {
    * framerusercontent.com brochure). */
   isSeed?: boolean;
   seedNote?: string;
+  /** From `venue_websites.wedding_url` or `--wedding-url-override` (2026-09-14 follow-up): the
+   * venue's own dedicated wedding page, enqueued at depth 0 / score WEDDING_PAGE_SCORE. Unlike
+   * a manual seed this is still subject to the normal same-host/off-site-PDF rule. */
+  isWeddingPage?: boolean;
 }
 
 /** Dedupe key ignoring scheme/www and a trailing slash -- `https://x.com/` and
@@ -235,6 +262,17 @@ function isPdfUrl(url: string): boolean {
   }
 }
 
+/** Builds the depth-0, score-WEDDING_PAGE_SCORE queue item for a venue's own wedding page
+ * (`venue_websites.wedding_url` or `--wedding-url-override`), or null when there's no
+ * wedding_url or it's the same page as the homepage -- enqueuing a duplicate would just be
+ * silently dropped by the visited-set check on dequeue, losing its "wedding_page" tag in the
+ * summary/cache manifest for no benefit. Pure -- exported for unit testing. */
+export function buildWeddingPageQueueItem(weddingUrl: string | null, homepage: string): QueueItem | null {
+  if (!weddingUrl) return null;
+  if (normalizeUrlKey(weddingUrl) === normalizeUrlKey(homepage)) return null;
+  return { url: weddingUrl, depth: 0, score: WEDDING_PAGE_SCORE, isPdf: isPdfUrl(weddingUrl), anchorText: "", isWeddingPage: true };
+}
+
 interface CrawlSummary {
   accountId: number;
   homepage: string;
@@ -256,7 +294,7 @@ interface CrawlSummary {
     chars: number;
     hasTextLayer: boolean | null;
     offsite: boolean;
-    source: "crawl" | "manual_seed";
+    source: "crawl" | "manual_seed" | "wedding_page";
     seedNote?: string;
   }[];
 }
@@ -266,7 +304,8 @@ async function crawlOneVenue(
   accountId: number,
   homepage: string,
   args: Args,
-  seeds: Seed[] = []
+  seeds: Seed[] = [],
+  weddingUrl: string | null = null
 ): Promise<CrawlSummary> {
   const summary: CrawlSummary = {
     accountId,
@@ -283,9 +322,14 @@ async function crawlOneVenue(
     entries: [],
   };
 
+  const weddingPageItem = buildWeddingPageQueueItem(weddingUrl, homepage);
+
   const visited = new Set<string>();
   const queue: QueueItem[] = [
     { url: homepage, depth: 0, score: Number.POSITIVE_INFINITY, isPdf: isPdfUrl(homepage), anchorText: "" },
+    // Right after the homepage (WEDDING_PAGE_SCORE outranks SEED_SCORE and any realistic
+    // urlScore.ts total) and before any manual seeds, per spec.
+    ...(weddingPageItem ? [weddingPageItem] : []),
     ...buildSeedQueueItems(seeds),
   ];
   const lastFetchAtByHost = new Map<string, number>();
@@ -322,7 +366,7 @@ async function crawlOneVenue(
     if (!item.isSeed && offsite && (!item.isPdf || !isOffsitePdfAllowed(item.url, item.anchorText))) continue;
 
     visited.add(normalizeUrlKey(item.url));
-    const source: "crawl" | "manual_seed" = item.isSeed ? "manual_seed" : "crawl";
+    const source: "crawl" | "manual_seed" | "wedding_page" = item.isSeed ? "manual_seed" : item.isWeddingPage ? "wedding_page" : "crawl";
 
     const robotsOk = await isAllowed(item.url).catch(() => true);
     if (!robotsOk) {
@@ -495,27 +539,29 @@ async function recordJsShellFetch(pool: Pool, accountId: number, item: QueueItem
 interface VenueTarget {
   accountId: number;
   url: string;
+  /** venue_websites.wedding_url (2026-09-14 follow-up), or --wedding-url-override. */
+  weddingUrl?: string | null;
 }
 
 async function selectVenues(pool: Pool, args: Args): Promise<VenueTarget[]> {
   if (args.websiteOverride) {
-    return [{ accountId: args.accountIds![0], url: args.websiteOverride }];
+    return [{ accountId: args.accountIds![0], url: args.websiteOverride, weddingUrl: args.weddingUrlOverride }];
   }
 
   if (args.accountIds) {
-    const { rows } = await pool.query<{ account_id: number; url: string }>(
-      `select account_id, url from venue_websites where account_id = any($1::bigint[]) and status in ('verified', 'candidate')`,
+    const { rows } = await pool.query<{ account_id: number; url: string; wedding_url: string | null }>(
+      `select account_id, url, wedding_url from venue_websites where account_id = any($1::bigint[]) and status in ('verified', 'candidate')`,
       [args.accountIds]
     );
-    return rows.map((r) => ({ accountId: Number(r.account_id), url: r.url }));
+    return rows.map((r) => ({ accountId: Number(r.account_id), url: r.url, weddingUrl: args.weddingUrlOverride ?? r.wedding_url }));
   }
 
   if (args.fromWebsites) {
-    const { rows } = await pool.query<{ account_id: number; url: string }>(
-      `select account_id, url from venue_websites where status in ('verified', 'candidate') order by account_id limit $1`,
+    const { rows } = await pool.query<{ account_id: number; url: string; wedding_url: string | null }>(
+      `select account_id, url, wedding_url from venue_websites where status in ('verified', 'candidate') order by account_id limit $1`,
       [args.limit ?? 1000]
     );
-    return rows.map((r) => ({ accountId: Number(r.account_id), url: r.url }));
+    return rows.map((r) => ({ accountId: Number(r.account_id), url: r.url, weddingUrl: r.wedding_url }));
   }
 
   console.error("[crawl-venue] pass --account-ids <ids> or --from-websites.");
@@ -528,17 +574,19 @@ async function selectVenues(pool: Pool, args: Args): Promise<VenueTarget[]> {
 
 function printSummary(summary: CrawlSummary, printManifest: boolean) {
   const seedCount = summary.entries.filter((e) => e.source === "manual_seed").length;
+  const weddingPageFetched = summary.entries.some((e) => e.source === "wedding_page" && e.outcome !== "skipped (robots)" && !e.outcome.startsWith("error") && !e.outcome.startsWith("blocked"));
   console.log(`\n[crawl-venue] account ${summary.accountId} (${summary.homepage})`);
   console.log(`  pages fetched:        ${summary.htmlFetched} (unchanged: ${summary.htmlUnchanged}, js_shell: ${summary.jsShellCount})`);
   console.log(`  pdfs:                 with text layer ${summary.pdfsWithTextLayer}, without ${summary.pdfsWithoutTextLayer}`);
   console.log(`  off-site pdfs followed: ${summary.offsitePdfsFollowed}`);
   console.log(`  manual seeds fetched:  ${seedCount}`);
+  console.log(`  wedding page fetched:  ${weddingPageFetched}`);
   console.log(`  host blocked mid-crawl: ${summary.hostBlocked}`);
   console.log(`  total chars:           ${summary.totalChars}`);
   if (printManifest) {
     console.log(`  manifest:`);
     for (const e of summary.entries) {
-      const seedTag = e.source === "manual_seed" ? ` [manual_seed: ${e.seedNote ?? ""}]` : "";
+      const seedTag = e.source === "manual_seed" ? ` [manual_seed: ${e.seedNote ?? ""}]` : e.source === "wedding_page" ? ` [wedding_page]` : "";
       console.log(
         `    [${e.kind}] d${e.depth} score=${e.score} chars=${e.chars} textLayer=${e.hasTextLayer ?? "n/a"} offsite=${e.offsite} -- ${e.outcome}${seedTag} -- ${e.url}`
       );
@@ -561,7 +609,7 @@ async function main() {
   }
 
   const targets = args.websiteOverride
-    ? [{ accountId: args.accountIds![0], url: args.websiteOverride }]
+    ? [{ accountId: args.accountIds![0], url: args.websiteOverride, weddingUrl: args.weddingUrlOverride }]
     : await selectVenues(pool!, args);
 
   const limited = args.limit && !args.accountIds ? targets.slice(0, args.limit) : targets;
@@ -577,7 +625,7 @@ async function main() {
 
   for (const target of limited) {
     const seeds = seedsByAccount.get(target.accountId) ?? [];
-    const summary = await crawlOneVenue(args.dryRun ? null : pool, target.accountId, target.url, args, seeds);
+    const summary = await crawlOneVenue(args.dryRun ? null : pool, target.accountId, target.url, args, seeds, target.weddingUrl ?? null);
     printSummary(summary, args.printManifest);
   }
 

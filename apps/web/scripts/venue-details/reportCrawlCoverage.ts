@@ -29,6 +29,10 @@ interface VenueCoverage {
   imageOnlyPdfs: number;
   offsitePdfsFollowed: number;
   totalChars: number;
+  /** venue_websites.wedding_url/wedding_url_source (2026-09-14 follow-up) -- null in
+   * --from-cache mode, which has no DB access and so no way to know it. */
+  weddingUrl: string | null;
+  weddingUrlSource: string | null;
 }
 
 function parseArgs() {
@@ -48,10 +52,16 @@ function parseArgs() {
 
 async function coverageFromDb(accountIds: number[] | null): Promise<VenueCoverage[]> {
   const pool = getPool();
-  const { rows: websites } = await pool.query<{ account_id: number; url: string; status: string }>(
+  const { rows: websites } = await pool.query<{
+    account_id: number;
+    url: string;
+    status: string;
+    wedding_url: string | null;
+    wedding_url_source: string | null;
+  }>(
     accountIds
-      ? `select account_id, url, status from venue_websites where account_id = any($1::bigint[]) order by account_id`
-      : `select account_id, url, status from venue_websites order by account_id`,
+      ? `select account_id, url, status, wedding_url, wedding_url_source from venue_websites where account_id = any($1::bigint[]) order by account_id`
+      : `select account_id, url, status, wedding_url, wedding_url_source from venue_websites order by account_id`,
     accountIds ? [accountIds] : []
   );
 
@@ -107,6 +117,8 @@ async function coverageFromDb(accountIds: number[] | null): Promise<VenueCoverag
       pdfsWithTextLayer,
       imageOnlyPdfs,
       offsitePdfsFollowed,
+      weddingUrl: site.wedding_url,
+      weddingUrlSource: site.wedding_url_source,
       totalChars,
     });
   }
@@ -163,6 +175,10 @@ async function coverageFromCache(accountIds: number[] | null): Promise<VenueCove
       pdfsWithTextLayer,
       imageOnlyPdfs,
       offsitePdfsFollowed,
+      // --from-cache reads local crawl-cache manifests, which don't know discoverWebsites.ts's
+      // wedding_url discovery result -- that lives only in the DB (venue_websites).
+      weddingUrl: null,
+      weddingUrlSource: null,
       totalChars,
     });
   }
@@ -177,19 +193,19 @@ function safeHost(url: string): string | null {
   }
 }
 
-function buildMarkdown(rows: VenueCoverage[]): string {
+function buildMarkdown(rows: VenueCoverage[], fromCache: boolean): string {
   const lines: string[] = [];
   lines.push(`# Venue details crawl coverage`);
   lines.push("");
   lines.push(`Generated ${new Date().toISOString()}. ${rows.length} venues.`);
   lines.push("");
   lines.push(
-    `| account_id | website status | usable pages (>=${USABLE_PAGE_CHARS} chars) | js_shell pages | pdfs w/ text layer | image-only pdfs | off-site pdfs followed | total chars |`
+    `| account_id | website status | usable pages (>=${USABLE_PAGE_CHARS} chars) | js_shell pages | pdfs w/ text layer | image-only pdfs | off-site pdfs followed | total chars | wedding page | wedding page source |`
   );
-  lines.push(`|---|---|---|---|---|---|---|---|`);
+  lines.push(`|---|---|---|---|---|---|---|---|---|---|`);
   for (const r of rows) {
     lines.push(
-      `| ${r.accountId} | ${r.websiteStatus ?? "n/a"} (${r.websiteUrl ?? "-"}) | ${r.usablePages} | ${r.jsShellPages} | ${r.pdfsWithTextLayer} | ${r.imageOnlyPdfs} | ${r.offsitePdfsFollowed} | ${r.totalChars} |`
+      `| ${r.accountId} | ${r.websiteStatus ?? "n/a"} (${r.websiteUrl ?? "-"}) | ${r.usablePages} | ${r.jsShellPages} | ${r.pdfsWithTextLayer} | ${r.imageOnlyPdfs} | ${r.offsitePdfsFollowed} | ${r.totalChars} | ${r.weddingUrl ?? "none"} | ${r.weddingUrlSource ?? "n/a"} |`
     );
   }
   lines.push("");
@@ -197,6 +213,7 @@ function buildMarkdown(rows: VenueCoverage[]): string {
   const withUsable5 = rows.filter((r) => r.usablePages >= 5);
   const shells = rows.filter((r) => r.usablePages === 0 && r.jsShellPages > 0 && r.pdfsWithTextLayer === 0);
   const imagePdfOnly = rows.filter((r) => r.usablePages === 0 && r.imageOnlyPdfs > 0 && r.pdfsWithTextLayer === 0);
+  const noWeddingPage = rows.filter((r) => r.weddingUrl === null);
 
   lines.push(`## Ceiling summary`);
   lines.push("");
@@ -205,6 +222,13 @@ function buildMarkdown(rows: VenueCoverage[]): string {
   lines.push(
     `- Venues whose only pricing-looking source is an image-only PDF (zero usable pages, >=1 image-only PDF, no text-layer PDF): **${imagePdfOnly.length}** / ${rows.length}`
   );
+  if (fromCache) {
+    lines.push(
+      `- Venues with no wedding page found: n/a (--from-cache has no DB access, so no wedding_url data)`
+    );
+  } else {
+    lines.push(`- Venues with no wedding page found: **${noWeddingPage.length}** / ${rows.length}`);
+  }
   lines.push("");
 
   return lines.join("\n");
@@ -214,7 +238,7 @@ async function main() {
   const args = parseArgs();
   const rows = args.fromCache ? await coverageFromCache(args.accountIds) : await coverageFromDb(args.accountIds);
 
-  const markdown = buildMarkdown(rows);
+  const markdown = buildMarkdown(rows, args.fromCache);
   console.log(markdown);
 
   const defaultOut = `scripts/graph/tmp_analysis/venue_details_crawl_coverage_${new Date().toISOString().slice(0, 10)}.md`;

@@ -28,8 +28,10 @@ export interface CacheManifestEntry {
   score: number | null;
   fetchedAt: string;
   /** "manual_seed" for a `crawlVenue.ts --seed-urls` row (coordinator follow-up, 2026-09-13);
-   * omitted/undefined for ordinary crawl-discovered entries written before this field existed. */
-  source?: "crawl" | "manual_seed";
+   * "wedding_page" for the venue's `venue_websites.wedding_url` / `--wedding-url-override`
+   * (2026-09-14 follow-up); omitted/undefined for ordinary crawl-discovered entries written
+   * before this field existed. */
+  source?: "crawl" | "manual_seed" | "wedding_page";
   seedNote?: string | null;
 }
 

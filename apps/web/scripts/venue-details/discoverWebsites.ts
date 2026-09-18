@@ -7,19 +7,31 @@
  * verified/unreachable/js_shell. Same dry-run-by-default, `--batch-id`-required,
  * printed-revert-SQL shape as `scripts/graph/seedVenueTypes.ts`.
  *
+ * 2026-09-14 follow-up ("the wedding site variant, not just the homepage"): with `--probe`,
+ * after a candidate's root URL is verified, `crawl/weddingPage.ts`'s `findWeddingPage` also
+ * looks for the venue's dedicated wedding/private-events page (legacy_enrichment_pages ->
+ * homepage_link -> common_path) and writes it to `wedding_url`/`wedding_url_source`/
+ * `wedding_url_checked_at` on `--apply` (a `manual` wedding_url is never overwritten).
+ * `--wedding-only` re-runs just that step against existing `venue_websites` rows without
+ * re-resolving/re-probing the root candidate. `--manual-wedding-map <csv>` (columns
+ * `account_id,wedding_url,note`) seeds/overrides wedding_url as source `manual`.
+ *
  * Usage (from apps/web):
  *   bun run scripts/venue-details/discoverWebsites.ts --batch-id vd-discover-1 --dry-run --limit 20
  *   bun run scripts/venue-details/discoverWebsites.ts --batch-id vd-discover-1 --probe --limit 20
  *   bun run scripts/venue-details/discoverWebsites.ts --batch-id vd-discover-1 --apply
  *   bun run scripts/venue-details/discoverWebsites.ts --batch-id vd-discover-1 --apply --force --account-ids 31,477
  *   bun run scripts/venue-details/discoverWebsites.ts --batch-id vd-discover-1 --apply --manual-map scripts/graph/tmp_analysis/manual-websites.csv
+ *   bun run scripts/venue-details/discoverWebsites.ts --batch-id vd-wedding-1 --wedding-only --probe --limit 20
+ *   bun run scripts/venue-details/discoverWebsites.ts --batch-id vd-wedding-1 --apply --manual-wedding-map scripts/graph/tmp_analysis/manual-wedding-urls.csv
  */
 import { readFileSync } from "node:fs";
 import type { Pool } from "pg";
 import { getPool, closePool } from "../classify/db";
 import { accountAliasSet, listedVenueAccountIds } from "./universe";
-import { extractHtml } from "./crawl/htmlText";
-import { parseCsvLine } from "./csv";
+import { extractHtml, type HtmlLink } from "./crawl/htmlText";
+import { findWeddingPage, urlIsWeddingPage, type WeddingPageResult, type WeddingUrlSource } from "./crawl/weddingPage";
+import { parseCsvLine, parseCsvRows } from "./csv";
 
 const VENUE_BOT_USER_AGENT = "DewweyVenueBot/1.0 (+https://dewwey.com/bot; venue facts for couples)";
 const PROBE_TIMEOUT_MS = 15_000;
@@ -39,6 +51,9 @@ interface ProbeResult {
   httpStatus: number | null;
   finalUrl: string | null;
   note: string | null;
+  /** Links extracted from the root fetch (null when unreachable/js_shell/non-html), reused by
+   * the wedding-page homepage_link step so it never re-fetches the same URL a second time. */
+  links: HtmlLink[] | null;
 }
 
 interface ExistingRow {
@@ -52,6 +67,21 @@ interface ExistingRow {
   checked_at: string | null;
   note: string | null;
   batch_id: string | null;
+  wedding_url: string | null;
+  wedding_url_source: WeddingUrlSource | null;
+  wedding_url_checked_at: string | null;
+}
+
+/** Candidate.source -> the closest venue_websites.wedding_url_source when the candidate's own
+ * root URL already turns out to be a wedding page (discoverWebsites' "if the venue's candidate
+ * URL is already a wedding page" case). `manual` maps to itself; the legacy-enrichment source
+ * maps to `legacy_enrichment_pages`; everything else (vendors_website/accounts_external_url --
+ * both "this is the venue's own homepage" candidates) maps to `homepage_link` since the root
+ * page is, in that case, standing in for its own wedding-page link. */
+function mapCandidateSourceToWeddingSource(source: Source): WeddingUrlSource {
+  if (source === "manual") return "manual";
+  if (source === "legacy_venue_enrichment") return "legacy_enrichment_pages";
+  return "homepage_link";
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +97,8 @@ interface Args {
   concurrency: number;
   force: boolean;
   manualMapPath: string | null;
+  weddingOnly: boolean;
+  manualWeddingMapPath: string | null;
 }
 
 function parseArgs(): Args {
@@ -79,7 +111,7 @@ function parseArgs(): Args {
   if (!batchId || batchId.startsWith("--")) {
     console.error(
       "[discover-websites] --batch-id <id> is required.\n" +
-        "Usage: bun run scripts/venue-details/discoverWebsites.ts --batch-id <id> [--apply] [--probe] [--limit N] [--account-ids 1,2] [--force] [--manual-map <csv>]\n" +
+        "Usage: bun run scripts/venue-details/discoverWebsites.ts --batch-id <id> [--apply] [--probe] [--limit N] [--account-ids 1,2] [--force] [--manual-map <csv>] [--wedding-only] [--manual-wedding-map <csv>]\n" +
         "Default (no --apply) is a dry run."
     );
     process.exit(1);
@@ -94,6 +126,8 @@ function parseArgs(): Args {
     concurrency: Number(get("--concurrency") ?? 4),
     force: a.includes("--force"),
     manualMapPath: get("--manual-map") ?? null,
+    weddingOnly: a.includes("--wedding-only"),
+    manualWeddingMapPath: get("--manual-wedding-map") ?? null,
   };
 }
 
@@ -115,6 +149,26 @@ function loadManualMap(csvPath: string): Map<number, { url: string; note: string
   }
   for (const line of lines.slice(1)) {
     const fields = parseCsvLine(line);
+    const accountId = Number(fields[accountIdIdx]);
+    const url = fields[urlIdx]?.trim();
+    if (!Number.isFinite(accountId) || !url) continue;
+    map.set(accountId, { url, note: noteIdx >= 0 ? fields[noteIdx]?.trim() || null : null });
+  }
+  return map;
+}
+
+// ---------------------------------------------------------------------------
+// Manual wedding map CSV (columns: account_id,wedding_url,note) -- `--manual-wedding-map`
+// ---------------------------------------------------------------------------
+
+function loadManualWeddingMap(csvPath: string): Map<number, { url: string; note: string | null }> {
+  const map = new Map<number, { url: string; note: string | null }>();
+  const raw = readFileSync(csvPath, "utf8");
+  const { header, rows } = parseCsvRows(raw, ["account_id", "wedding_url"]);
+  const accountIdIdx = header.indexOf("account_id");
+  const urlIdx = header.indexOf("wedding_url");
+  const noteIdx = header.indexOf("note");
+  for (const fields of rows) {
     const accountId = Number(fields[accountIdIdx]);
     const url = fields[urlIdx]?.trim();
     if (!Number.isFinite(accountId) || !url) continue;
@@ -270,22 +324,26 @@ async function probeCandidate(candidate: Candidate): Promise<ProbeResult> {
 
       const contentType = res.headers.get("content-type") ?? "";
       if (!/text\/html/i.test(contentType) && contentType !== "") {
-        return { status: "verified", httpStatus: res.status, finalUrl: res.url, note: `non-html content-type: ${contentType}` };
+        return { status: "verified", httpStatus: res.status, finalUrl: res.url, note: `non-html content-type: ${contentType}`, links: null };
       }
 
       const html = await res.text();
-      const { isJsShell } = await extractHtml(html, res.url);
+      const { isJsShell, links } = await extractHtml(html, res.url);
       return {
         status: isJsShell ? "js_shell" : "verified",
         httpStatus: res.status,
         finalUrl: res.url,
         note: isJsShell ? "text.length < 400 after HTML parse" : null,
+        // Reused by the wedding-page homepage_link step so it never re-fetches the root a
+        // second time; a js_shell page's "links" are whatever the (near-empty) shell contains,
+        // which is fine -- findWeddingPage will just fail to find anything there either way.
+        links,
       };
     } catch (e) {
       lastError = e instanceof Error ? e.message : String(e);
     }
   }
-  return { status: "unreachable", httpStatus: null, finalUrl: null, note: lastError };
+  return { status: "unreachable", httpStatus: null, finalUrl: null, note: lastError, links: null };
 }
 
 async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -303,6 +361,150 @@ async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (it
 }
 
 // ---------------------------------------------------------------------------
+// Wedding-page step (shared by the normal flow and --wedding-only)
+// ---------------------------------------------------------------------------
+
+async function computeWeddingForRoot(
+  pool: Pool,
+  accountId: number,
+  rootUrl: string,
+  candidateSource: Source,
+  homepageLinks: HtmlLink[] | null | undefined
+): Promise<WeddingPageResult | null> {
+  if (urlIsWeddingPage(rootUrl)) {
+    return {
+      url: rootUrl,
+      source: mapCandidateSourceToWeddingSource(candidateSource),
+      evidence: "candidate url already matches the strict wedding regex",
+    };
+  }
+  return findWeddingPage(rootUrl, { pool, accountId, homepageLinks, fetchImpl: fetch, timeoutMs: PROBE_TIMEOUT_MS });
+}
+
+interface WeddingWrite {
+  url: string | null;
+  source: WeddingUrlSource | null;
+  checkedAt: string | null;
+}
+
+/** Decides what to write to the three wedding_url* columns for one account, honoring the
+ * "never overwrite a manual wedding_url" rule and leaving the columns untouched when this run
+ * never attempted wedding-page discovery for the row at all (no --probe in the normal flow). */
+function resolveWeddingWrite(
+  accountId: number,
+  existing: Pick<ExistingRow, "wedding_url" | "wedding_url_source" | "wedding_url_checked_at"> | undefined,
+  discovered: WeddingPageResult | null,
+  manualWeddingMap: Map<number, { url: string; note: string | null }>,
+  attempted: boolean
+): WeddingWrite {
+  const manual = manualWeddingMap.get(accountId);
+  if (manual) {
+    return { url: manual.url, source: "manual", checkedAt: new Date().toISOString() };
+  }
+  if (existing?.wedding_url_source === "manual") {
+    // Locked: an earlier run recorded a manual wedding_url and this run has no override for it.
+    return { url: existing.wedding_url, source: existing.wedding_url_source, checkedAt: existing.wedding_url_checked_at };
+  }
+  if (!attempted) {
+    return {
+      url: existing?.wedding_url ?? null,
+      source: existing?.wedding_url_source ?? null,
+      checkedAt: existing?.wedding_url_checked_at ?? null,
+    };
+  }
+  return { url: discovered?.url ?? null, source: discovered?.source ?? null, checkedAt: new Date().toISOString() };
+}
+
+function weddingFunnelCounts(weddingResults: Map<number, WeddingPageResult | null>): { legacy: number; homepage: number; common: number; none: number } {
+  let legacy = 0;
+  let homepage = 0;
+  let common = 0;
+  let none = 0;
+  for (const result of weddingResults.values()) {
+    if (!result) {
+      none++;
+    } else if (result.source === "legacy_enrichment_pages") {
+      legacy++;
+    } else if (result.source === "homepage_link") {
+      homepage++;
+    } else if (result.source === "common_path") {
+      common++;
+    }
+  }
+  return { legacy, homepage, common, none };
+}
+
+function printWeddingFunnelLine(weddingResults: Map<number, WeddingPageResult | null>): void {
+  const { legacy, homepage, common, none } = weddingFunnelCounts(weddingResults);
+  const found = legacy + homepage + common;
+  console.log(`  wedding page found: ${found} (legacy ${legacy} / homepage_link ${homepage} / common_path ${common}) · none: ${none}`);
+}
+
+// ---------------------------------------------------------------------------
+// --wedding-only: re-run just the wedding-page step against existing venue_websites rows
+// ---------------------------------------------------------------------------
+
+async function runWeddingOnly(pool: Pool, args: Args, manualWeddingMap: Map<number, { url: string; note: string | null }>): Promise<void> {
+  console.log(`[discover-websites] --wedding-only: re-running the wedding-page step against existing venue_websites rows`);
+
+  let query = `select * from venue_websites`;
+  const params: unknown[] = [];
+  if (args.accountIds) {
+    query += ` where account_id = any($1::bigint[])`;
+    params.push(args.accountIds);
+  }
+  query += ` order by account_id`;
+  const { rows: allRows } = await pool.query<ExistingRow>(query, params);
+  const rows = args.limit ? allRows.slice(0, args.limit) : allRows;
+
+  console.log(`[discover-websites] venue_websites rows selected: ${rows.length}`);
+
+  const outcomes = await mapWithConcurrency(rows, args.concurrency, async (row) => {
+    const overridden = manualWeddingMap.has(row.account_id);
+    if (row.wedding_url_source === "manual" && !overridden) {
+      return { accountId: row.account_id, result: null, locked: true };
+    }
+    const result = await computeWeddingForRoot(pool, row.account_id, row.url, row.source, undefined);
+    return { accountId: row.account_id, result, locked: false };
+  });
+
+  const lockedCount = outcomes.filter((o) => o.locked).length;
+  const weddingResults = new Map(outcomes.filter((o) => !o.locked).map((o) => [o.accountId, o.result]));
+
+  console.log(`\n[discover-websites] funnel:`);
+  console.log(`  rows selected:          ${rows.length}`);
+  console.log(`  manual-locked (no override, skipped): ${lockedCount}`);
+  printWeddingFunnelLine(weddingResults);
+
+  if (!args.apply) {
+    console.log(`\n[discover-websites] DRY RUN -- no writes. Re-run with --apply to write wedding_url.`);
+    return;
+  }
+
+  let written = 0;
+  const revertLines: string[] = [];
+  for (const row of rows) {
+    if (row.wedding_url_source === "manual" && !manualWeddingMap.has(row.account_id)) continue;
+    const wedding = resolveWeddingWrite(row.account_id, row, weddingResults.get(row.account_id) ?? null, manualWeddingMap, true);
+    await pool.query(
+      `update venue_websites set wedding_url = $2, wedding_url_source = $3, wedding_url_checked_at = $4, batch_id = $5, updated_at = now() where account_id = $1`,
+      [row.account_id, wedding.url, wedding.source, wedding.checkedAt, args.batchId]
+    );
+    written++;
+    revertLines.push(
+      `  update venue_websites set wedding_url = ${sqlStr(row.wedding_url)}, wedding_url_source = ${sqlStr(row.wedding_url_source)}, ` +
+        `wedding_url_checked_at = ${sqlStr(row.wedding_url_checked_at)}, batch_id = ${sqlStr(row.batch_id)}, updated_at = now() where account_id = ${row.account_id};`
+    );
+  }
+
+  console.log(`\n[discover-websites] wrote ${written} rows`);
+  console.log(`\n[discover-websites] to revert this batch by hand:`);
+  console.log(`  begin;`);
+  for (const line of revertLines) console.log(line);
+  console.log(`  commit;`);
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -312,6 +514,15 @@ async function main() {
 
   console.log(`[discover-websites] mode: ${args.apply ? "APPLY (real write)" : "DRY RUN"}`);
   console.log(`[discover-websites] batch_id: ${args.batchId}`);
+
+  const manualWeddingMap = args.manualWeddingMapPath ? loadManualWeddingMap(args.manualWeddingMapPath) : new Map<number, { url: string; note: string | null }>();
+  if (args.manualWeddingMapPath) console.log(`[discover-websites] loaded ${manualWeddingMap.size} manual-wedding-map rows from ${args.manualWeddingMapPath}`);
+
+  if (args.weddingOnly) {
+    await runWeddingOnly(pool, args, manualWeddingMap);
+    await closePool();
+    return;
+  }
 
   const manualMap = args.manualMapPath ? loadManualMap(args.manualMapPath) : new Map();
   if (args.manualMapPath) console.log(`[discover-websites] loaded ${manualMap.size} manual-map rows from ${args.manualMapPath}`);
@@ -345,6 +556,22 @@ async function main() {
   const unreachableCount = [...probeResults.values()].filter((r) => r.status === "unreachable").length;
   const jsShellCount = [...probeResults.values()].filter((r) => r.status === "js_shell").length;
 
+  // Wedding-page discovery runs alongside --probe: it needs a verified/js_shell root to try the
+  // homepage_link/common_path tiers (an unreachable root gets skipped -- no live host to probe).
+  let weddingResults = new Map<number, WeddingPageResult | null>();
+  if (args.probe) {
+    console.log(`[discover-websites] finding wedding pages for ${withCandidate.length} candidates (concurrency ${args.concurrency})...`);
+    const results = await mapWithConcurrency(withCandidate, args.concurrency, async (c) => {
+      const probe = probeResults.get(c.accountId);
+      if (!probe || probe.status === "unreachable") return { accountId: c.accountId, result: null as WeddingPageResult | null };
+      const effectiveUrl = probe.finalUrl ?? c.url;
+      const result = await computeWeddingForRoot(pool, c.accountId, effectiveUrl, c.source, probe.links);
+      if (process.env.WEDDING_DEBUG) console.log(`  [debug] ${c.accountId} root=${effectiveUrl} -> ${result ? `${result.source}: ${result.url}` : "none"}`);
+      return { accountId: c.accountId, result };
+    });
+    weddingResults = new Map(results.map((r) => [r.accountId, r.result]));
+  }
+
   console.log(`\n[discover-websites] funnel:`);
   console.log(`  listed:          ${universe.length}`);
   console.log(`  has candidate:   ${withCandidate.length}`);
@@ -356,6 +583,7 @@ async function main() {
     console.log(`    verified:      ${verifiedCount}`);
     console.log(`    js_shell:      ${jsShellCount}`);
     console.log(`    unreachable:   ${unreachableCount}`);
+    printWeddingFunnelLine(weddingResults);
   }
 
   if (!args.apply) {
@@ -389,13 +617,16 @@ async function main() {
     }
 
     const status: Status = probe?.status ?? "candidate";
+    const wedding = resolveWeddingWrite(candidate.accountId, existing, weddingResults.get(candidate.accountId) ?? null, manualWeddingMap, args.probe);
     await pool.query(
-      `insert into venue_websites (account_id, url, source, confidence, status, http_status, final_url, checked_at, note, batch_id, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+      `insert into venue_websites (account_id, url, source, confidence, status, http_status, final_url, checked_at, note, batch_id, wedding_url, wedding_url_source, wedding_url_checked_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
        on conflict (account_id) do update set
          url = excluded.url, source = excluded.source, confidence = excluded.confidence,
          status = excluded.status, http_status = excluded.http_status, final_url = excluded.final_url,
-         checked_at = excluded.checked_at, note = excluded.note, batch_id = excluded.batch_id, updated_at = now()`,
+         checked_at = excluded.checked_at, note = excluded.note, batch_id = excluded.batch_id,
+         wedding_url = excluded.wedding_url, wedding_url_source = excluded.wedding_url_source,
+         wedding_url_checked_at = excluded.wedding_url_checked_at, updated_at = now()`,
       [
         candidate.accountId,
         probe?.finalUrl ?? candidate.url,
@@ -407,6 +638,9 @@ async function main() {
         probe ? new Date().toISOString() : null,
         probe?.note ?? null,
         args.batchId,
+        wedding.url,
+        wedding.source,
+        wedding.checkedAt,
       ]
     );
     written++;
@@ -420,9 +654,9 @@ async function main() {
   console.log(`  delete from venue_websites where batch_id = '${args.batchId}';`);
   for (const row of restoreRows) {
     console.log(
-      `  insert into venue_websites (account_id, url, source, confidence, status, http_status, final_url, checked_at, note, batch_id, created_at, updated_at) values (` +
+      `  insert into venue_websites (account_id, url, source, confidence, status, http_status, final_url, checked_at, note, batch_id, wedding_url, wedding_url_source, wedding_url_checked_at, created_at, updated_at) values (` +
         `${row.account_id}, ${sqlStr(row.url)}, ${sqlStr(row.source)}, ${row.confidence}, ${sqlStr(row.status)}, ${row.http_status ?? "null"}, ` +
-        `${sqlStr(row.final_url)}, ${sqlStr(row.checked_at)}, ${sqlStr(row.note)}, ${sqlStr(row.batch_id)}, now(), now());`
+        `${sqlStr(row.final_url)}, ${sqlStr(row.checked_at)}, ${sqlStr(row.note)}, ${sqlStr(row.batch_id)}, ${sqlStr(row.wedding_url)}, ${sqlStr(row.wedding_url_source)}, ${sqlStr(row.wedding_url_checked_at)}, now(), now());`
     );
   }
   console.log(`  commit;`);

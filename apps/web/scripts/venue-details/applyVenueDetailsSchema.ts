@@ -21,22 +21,25 @@ export const STATEMENTS: string[] = [
   // batch_id/note; no history table yet (LATER: venue_websites_history).
   // ------------------------------------------------------------------
   `create table if not exists venue_websites (
-     account_id   bigint primary key references accounts(id),
-     url          text not null,
-     source       text not null check (source in ('vendors_website','accounts_external_url','legacy_venue_enrichment','manual','search')),
-     confidence   real not null default 1,
-     status       text not null default 'candidate' check (status in ('candidate','verified','rejected','unreachable','js_shell')),
-     http_status  int,
-     final_url    text,
-     checked_at   timestamptz,
-     note         text,
-     batch_id     text,
-     created_at   timestamptz not null default now(),
-     updated_at   timestamptz not null default now()
+     account_id             bigint primary key references accounts(id),
+     url                    text not null,
+     source                 text not null check (source in ('vendors_website','accounts_external_url','legacy_venue_enrichment','manual','search')),
+     confidence             real not null default 1,
+     status                 text not null default 'candidate' check (status in ('candidate','verified','rejected','unreachable','js_shell')),
+     http_status            int,
+     final_url              text,
+     checked_at             timestamptz,
+     note                   text,
+     batch_id               text,
+     wedding_url            text,
+     wedding_url_source     text check (wedding_url_source in ('legacy_enrichment_pages','homepage_link','common_path','manual')),
+     wedding_url_checked_at timestamptz,
+     created_at             timestamptz not null default now(),
+     updated_at             timestamptz not null default now()
    );`,
   `create index if not exists idx_venue_websites_status on venue_websites(status);`,
   `create index if not exists idx_venue_websites_batch on venue_websites(batch_id);`,
-  `comment on table venue_websites is 'D060 VenueDetails v3: pointer, one row per account -- discoverWebsites.ts writes/updates it. Provenance is batch_id + note (no history table yet, see docs/engineering/venue-enrichment/ plan LATER section).';`,
+  `comment on table venue_websites is 'D060 VenueDetails v3: pointer, one row per account -- discoverWebsites.ts writes/updates it. Provenance is batch_id + note (no history table yet, see docs/engineering/venue-enrichment/ plan LATER section). wedding_url/wedding_url_source/wedding_url_checked_at (2026-09-14 follow-up, "the wedding site variant, not just the homepage") are a second pointer found by scripts/venue-details/crawl/weddingPage.ts''s findWeddingPage in priority legacy_enrichment_pages -> homepage_link -> common_path -> manual; a manual wedding_url is never overwritten by a later discovery run, same lock discipline as the base url/source pair.';`,
 
   // ------------------------------------------------------------------
   // Source layer: insert-only snapshots (cleaned text in R2 by sha256) + the

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildSeedQueueItems, parseSeedsCsv, SEED_SCORE, type Seed } from "./crawlVenue";
+import { buildSeedQueueItems, buildWeddingPageQueueItem, parseSeedsCsv, SEED_SCORE, WEDDING_PAGE_SCORE, type Seed } from "./crawlVenue";
 
 describe("parseSeedsCsv", () => {
   test("parses account_id,url,note rows", () => {
@@ -83,6 +83,69 @@ describe("buildSeedQueueItems", () => {
       "https://venue.com/some-page", // SEED_SCORE 10
       "https://venue.com/faq", // 6
       "https://venue.com/blog/post", // -10
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2026-09-14 follow-up: the venue's own wedding_url is enqueued right after the homepage.
+// ---------------------------------------------------------------------------
+
+describe("buildWeddingPageQueueItem", () => {
+  const homepage = "https://venue.com/";
+
+  test("returns null when there is no wedding_url", () => {
+    expect(buildWeddingPageQueueItem(null, homepage)).toBeNull();
+  });
+
+  test("builds a depth-0, WEDDING_PAGE_SCORE item tagged isWeddingPage", () => {
+    const item = buildWeddingPageQueueItem("https://venue.com/weddings", homepage);
+    expect(item).toEqual({
+      url: "https://venue.com/weddings",
+      depth: 0,
+      score: WEDDING_PAGE_SCORE,
+      isPdf: false,
+      anchorText: "",
+      isWeddingPage: true,
+    });
+  });
+
+  test("WEDDING_PAGE_SCORE outranks a manual seed's SEED_SCORE", () => {
+    expect(WEDDING_PAGE_SCORE).toBeGreaterThan(SEED_SCORE);
+  });
+
+  test("returns null when the wedding_url is the same page as the homepage (ignoring "
+    + "scheme/www/trailing-slash), so it isn't silently dropped as a visited-set duplicate "
+    + "while still losing its wedding_page tag", () => {
+    expect(buildWeddingPageQueueItem("http://www.venue.com", homepage)).toBeNull();
+    expect(buildWeddingPageQueueItem("https://venue.com/", homepage)).toBeNull();
+  });
+
+  test("a distinct path on the same host is still enqueued", () => {
+    expect(buildWeddingPageQueueItem("https://venue.com/private-events/weddings", homepage)?.url).toBe(
+      "https://venue.com/private-events/weddings"
+    );
+  });
+
+  test("classifies a pdf wedding_url correctly", () => {
+    expect(buildWeddingPageQueueItem("https://venue.com/weddings.pdf", homepage)?.isPdf).toBe(true);
+  });
+
+  test("enqueue ordering: the wedding page (WEDDING_PAGE_SCORE) sorts ahead of a manual seed "
+    + "and any normal discovered page, but behind the homepage itself", () => {
+    const weddingItem = buildWeddingPageQueueItem("https://venue.com/weddings", homepage)!;
+    const queue = [
+      { url: "https://venue.com/", depth: 0, score: Number.POSITIVE_INFINITY, isPdf: false, anchorText: "" },
+      { url: "https://venue.com/faq", depth: 1, score: 6, isPdf: false, anchorText: "" },
+      weddingItem,
+      ...buildSeedQueueItems([{ accountId: 1, url: "https://venue.com/brochure.pdf", note: "seed" }]),
+    ];
+    queue.sort((a, b) => (b.score !== a.score ? b.score - a.score : a.depth - b.depth));
+    expect(queue.map((i) => i.url)).toEqual([
+      "https://venue.com/",
+      "https://venue.com/weddings",
+      "https://venue.com/brochure.pdf",
+      "https://venue.com/faq",
     ]);
   });
 });
