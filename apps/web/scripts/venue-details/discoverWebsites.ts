@@ -30,7 +30,7 @@ import type { Pool } from "pg";
 import { getPool, closePool } from "../classify/db";
 import { accountAliasSet, listedVenueAccountIds } from "./universe";
 import { extractHtml, type HtmlLink } from "./crawl/htmlText";
-import { findWeddingPage, urlIsWeddingPage, type WeddingPageResult, type WeddingUrlSource } from "./crawl/weddingPage";
+import { findWeddingPage, isRootUsableWeddingPage, urlIsWeddingPage, type WeddingPageResult, type WeddingUrlSource } from "./crawl/weddingPage";
 import { parseCsvLine, parseCsvRows } from "./csv";
 
 const VENUE_BOT_USER_AGENT = "DewweyVenueBot/1.0 (+https://dewwey.com/bot; venue facts for couples)";
@@ -364,6 +364,19 @@ async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (it
 // Wedding-page step (shared by the normal flow and --wedding-only)
 // ---------------------------------------------------------------------------
 
+/**
+ * Priority: (1) the root URL itself, if it's already a strict (non-secondary) wedding page --
+ * immediate best answer, no search needed. (2) Otherwise run the full legacy/homepage/
+ * common_path chain. (3) If that produced nothing, or only a secondary (gallery/form/contact/
+ * etc.) page, and the root itself is at least a usable (broad-match, non-secondary)
+ * wedding/private-events page, prefer the root over the secondary result. (4) Otherwise, use
+ * whatever the chain found (including a secondary result) or null.
+ *
+ * (3) is the 2026-09-14 calibration follow-up: account 687 (Adler Planetarium)'s root
+ * `/venue-rentals/` is itself the venue's real private-events info page, but without this the
+ * chain would surface `/venue-rentals/private-event-inquiry-form/` (a form) instead, since nav
+ * form links commonly outrank a page having no matching outbound link to itself.
+ */
 async function computeWeddingForRoot(
   pool: Pool,
   accountId: number,
@@ -376,9 +389,24 @@ async function computeWeddingForRoot(
       url: rootUrl,
       source: mapCandidateSourceToWeddingSource(candidateSource),
       evidence: "candidate url already matches the strict wedding regex",
+      isSecondary: false,
     };
   }
-  return findWeddingPage(rootUrl, { pool, accountId, homepageLinks, fetchImpl: fetch, timeoutMs: PROBE_TIMEOUT_MS });
+
+  const discovered = await findWeddingPage(rootUrl, { pool, accountId, homepageLinks, fetchImpl: fetch, timeoutMs: PROBE_TIMEOUT_MS });
+
+  if ((!discovered || discovered.isSecondary) && isRootUsableWeddingPage(rootUrl)) {
+    return {
+      url: rootUrl,
+      source: mapCandidateSourceToWeddingSource(candidateSource),
+      evidence: discovered
+        ? `root url is itself a usable wedding/private-events page, preferred over the secondary "${discovered.evidence}"`
+        : "root url is itself a usable wedding/private-events page; nothing better found",
+      isSecondary: false,
+    };
+  }
+
+  return discovered;
 }
 
 interface WeddingWrite {

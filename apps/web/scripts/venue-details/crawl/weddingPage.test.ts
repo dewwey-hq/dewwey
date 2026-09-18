@@ -2,10 +2,12 @@ import { describe, expect, test } from "vitest";
 import type { HtmlLink } from "./htmlText";
 import {
   COMMON_WEDDING_PATHS,
+  isRootUsableWeddingPage,
   isWeddingUrlCandidate,
   pickHomepageLinkWeddingPage,
   pickLegacyWeddingPage,
   probeCommonWeddingPaths,
+  SECONDARY_PAGE_RE,
   urlIsWeddingPage,
   WEDDING_PAGE_RE,
   WEDDING_STRICT_RE,
@@ -37,16 +39,53 @@ describe("WEDDING_STRICT_RE / WEDDING_PAGE_RE", () => {
   });
 });
 
+describe("SECONDARY_PAGE_RE / isRootUsableWeddingPage", () => {
+  test("matches gallery/photo/inquiry/form/contact/blog/faq/rsvp/registry/guest pages", () => {
+    expect(SECONDARY_PAGE_RE.test("/gallery/wedding")).toBe(true);
+    expect(SECONDARY_PAGE_RE.test("/photos")).toBe(true);
+    expect(SECONDARY_PAGE_RE.test("/private-event-inquiry-form")).toBe(true);
+    expect(SECONDARY_PAGE_RE.test("/contact")).toBe(true);
+    expect(SECONDARY_PAGE_RE.test("/blog/wedding-trends")).toBe(true);
+    expect(SECONDARY_PAGE_RE.test("/faq")).toBe(true);
+    expect(SECONDARY_PAGE_RE.test("/rsvp")).toBe(true);
+    expect(SECONDARY_PAGE_RE.test("/registry")).toBe(true);
+    expect(SECONDARY_PAGE_RE.test("/wedding-guest-info")).toBe(true);
+  });
+
+  test("does not match a real info page", () => {
+    expect(SECONDARY_PAGE_RE.test("/portfolio/wedding-venue")).toBe(false);
+    expect(SECONDARY_PAGE_RE.test("/weddings")).toBe(false);
+    expect(SECONDARY_PAGE_RE.test("/venue-rentals/event-spaces")).toBe(false);
+  });
+
+  test('regression (account 687 Adler Planetarium, account 1329 Chicago Botanic Garden): a '
+    + "root that is a broad (not strict) match and not secondary is a usable fallback", () => {
+    expect(isRootUsableWeddingPage("https://www.adlerplanetarium.org/venue-rentals/")).toBe(true);
+    expect(isRootUsableWeddingPage("https://www.chicagobotanic.org/private-events")).toBe(true);
+  });
+
+  test("a root that only matches via a secondary term is not a usable fallback", () => {
+    expect(isRootUsableWeddingPage("https://venue.com/venue-rentals/private-event-inquiry-form")).toBe(false);
+  });
+
+  test("a root with no wedding/event relevance at all is not a usable fallback", () => {
+    expect(isRootUsableWeddingPage("https://venue.com/about")).toBe(false);
+  });
+});
+
 describe("isWeddingUrlCandidate / urlIsWeddingPage", () => {
   test("/weddings is a strict match with no urlScore veto", () => {
     expect(isWeddingUrlCandidate("https://venue.com/weddings", WEDDING_STRICT_RE)).toBe(true);
     expect(urlIsWeddingPage("https://venue.com/weddings")).toBe(true);
   });
 
-  test("decision: /wedding-guest-info (a hotel logistics page) counts as a strict match -- "
-    + "nothing in urlScore penalizes it, so the regex alone decides; this is an accepted "
-    + "false-positive risk of a fast heuristic, not something this finder tries to disambiguate", () => {
-    expect(urlIsWeddingPage("https://hotel.com/wedding-guest-info")).toBe(true);
+  test("decision: /wedding-guest-info (a hotel logistics page) is a raw isWeddingUrlCandidate "
+    + "match -- nothing in urlScore penalizes it, so the regex alone would otherwise decide -- "
+    + "but urlIsWeddingPage additionally excludes it as a secondary (\"guest\") page, since it's "
+    + "a logistics page for someone else's wedding rather than the venue's own wedding-info "
+    + "page (SECONDARY_PAGE_RE, added after the 2026-09-14 calibration re-check)", () => {
+    expect(isWeddingUrlCandidate("https://hotel.com/wedding-guest-info", WEDDING_STRICT_RE)).toBe(true);
+    expect(urlIsWeddingPage("https://hotel.com/wedding-guest-info")).toBe(false);
   });
 
   test("decision: /blog/wedding-trends does NOT count -- /blog drags urlScore negative, "
@@ -111,6 +150,7 @@ describe("pickLegacyWeddingPage", () => {
       url: "https://www.diamondgardenhall.com/wedding",
       source: "legacy_enrichment_pages",
       evidence: "https://www.diamondgardenhall.com/wedding",
+      isSecondary: false,
     });
   });
 
@@ -124,6 +164,7 @@ describe("pickLegacyWeddingPage", () => {
       url: "https://venue.com/weddings",
       source: "legacy_enrichment_pages",
       evidence: "https://venue.com/weddings",
+      isSecondary: false,
     });
   });
 
@@ -172,6 +213,30 @@ describe("pickLegacyWeddingPage", () => {
     ];
     expect(pickLegacyWeddingPage(pages)?.url).toBe("https://ownbrandsite.com/weddings");
   });
+
+  test('regression (2026-09-14 calibration re-check, account 507 The Geraghty): a primary '
+    + '"/portfolio/wedding-venue" info page is preferred over a shorter but secondary '
+    + '"/gallery/wedding" photo gallery, even though the gallery path is shorter', () => {
+    const pages: LegacyPage[] = [
+      { url: "https://thegeraghty.com/", depth: 0, context: "neutral" },
+      { url: "https://thegeraghty.com/portfolio/wedding-venue", depth: 3, context: "wedding" },
+      { url: "https://thegeraghty.com/gallery/wedding", depth: 3, context: "wedding" },
+    ];
+    const result = pickLegacyWeddingPage(pages);
+    expect(result?.url).toBe("https://thegeraghty.com/portfolio/wedding-venue");
+    expect(result?.isSecondary).toBe(false);
+  });
+
+  test("falls back to the secondary gallery page when it's the only strict match at all", () => {
+    const pages: LegacyPage[] = [
+      { url: "https://thegeraghty.com/", depth: 0, context: "neutral" },
+      { url: "https://thegeraghty.com/gallery/wedding", depth: 3, context: "wedding" },
+    ];
+    const result = pickLegacyWeddingPage(pages);
+    expect(result?.url).toBe("https://thegeraghty.com/gallery/wedding");
+    expect(result?.isSecondary).toBe(true);
+    expect(result?.evidence).toContain("secondary page");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -189,16 +254,23 @@ describe("pickHomepageLinkWeddingPage", () => {
   test("strict match on href wins outright", () => {
     const links = [link("https://venue.com/about", "About"), link("https://venue.com/weddings", "Get married here")];
     const result = pickHomepageLinkWeddingPage(links, root);
-    expect(result).toEqual({ url: "https://venue.com/weddings", source: "homepage_link", evidence: "https://venue.com/weddings" });
+    expect(result).toEqual({
+      url: "https://venue.com/weddings",
+      source: "homepage_link",
+      evidence: "https://venue.com/weddings",
+      isSecondary: false,
+    });
   });
 
-  test("strict match via anchor text alone (href itself doesn't match)", () => {
+  test("strict match via anchor text alone (href itself doesn't match) -- but the href is a "
+    + "secondary (\"inquire\") page, so it's used only as a fallback since it's the sole candidate", () => {
     const links = [link("https://venue.com/events/inquire", "Weddings & Celebrations")];
     const result = pickHomepageLinkWeddingPage(links, root);
     expect(result).toEqual({
       url: "https://venue.com/events/inquire",
       source: "homepage_link",
-      evidence: "Weddings & Celebrations",
+      evidence: "Weddings & Celebrations (secondary page -- no primary wedding page found in homepage links)",
+      isSecondary: true,
     });
   });
 
@@ -217,7 +289,32 @@ describe("pickHomepageLinkWeddingPage", () => {
   test("broad fallback matches an href like /private-events when nothing strict exists", () => {
     const links = [link("https://venue.com/private-events", "Learn more")];
     const result = pickHomepageLinkWeddingPage(links, root);
-    expect(result).toEqual({ url: "https://venue.com/private-events", source: "homepage_link", evidence: "https://venue.com/private-events" });
+    expect(result).toEqual({
+      url: "https://venue.com/private-events",
+      source: "homepage_link",
+      evidence: "https://venue.com/private-events",
+      isSecondary: false,
+    });
+  });
+
+  test('regression (2026-09-14 calibration re-check, account 687 Adler Planetarium): when the '
+    + "only broad-tier match is a secondary inquiry form, it's still returned (this picker has "
+    + "nothing better), flagged isSecondary so the caller can prefer the root URL instead", () => {
+    const links = [link("https://venue.com/venue-rentals/private-event-inquiry-form", "Inquire Now")];
+    const result = pickHomepageLinkWeddingPage(links, root);
+    expect(result?.url).toBe("https://venue.com/venue-rentals/private-event-inquiry-form");
+    expect(result?.isSecondary).toBe(true);
+    expect(result?.evidence).toContain("secondary page");
+  });
+
+  test("a primary broad-tier candidate is preferred over a secondary one in the same tier", () => {
+    const links = [
+      link("https://venue.com/venue-rentals/private-event-inquiry-form", "Inquire Now"),
+      link("https://venue.com/venue-rentals/event-spaces", "Event Spaces"),
+    ];
+    const result = pickHomepageLinkWeddingPage(links, root);
+    expect(result?.url).toBe("https://venue.com/venue-rentals/event-spaces");
+    expect(result?.isSecondary).toBe(false);
   });
 
   test("nav links are preferred over non-nav links within the same tier", () => {
@@ -258,14 +355,24 @@ describe("pickHomepageLinkWeddingPage", () => {
   });
 
   test("a urlScore-vetoed href (e.g. /blog/wedding-trends) does not count as a strict href match, "
-    + "but the strict tier still catches it via anchor text if the text itself says 'wedding'", () => {
+    + "but the strict tier still catches it via anchor text if the text itself says 'wedding' -- "
+    + "though as a secondary (\"/blog\") page it's used only because it's the sole candidate", () => {
     const links = [link("https://venue.com/blog/wedding-trends", "Our Favorite Weddings")];
     const result = pickHomepageLinkWeddingPage(links, root);
     expect(result).toEqual({
       url: "https://venue.com/blog/wedding-trends",
       source: "homepage_link",
-      evidence: "Our Favorite Weddings",
+      evidence: "Our Favorite Weddings (secondary page -- no primary wedding page found in homepage links)",
+      isSecondary: true,
     });
+  });
+
+  test("a primary candidate in the same tier is preferred over a secondary one, "
+    + "regardless of path length or nav preference", () => {
+    const links = [link("https://venue.com/weddings/gallery", "Wedding Gallery", true), link("https://venue.com/weddings-info", "Weddings")];
+    const result = pickHomepageLinkWeddingPage(links, root);
+    expect(result?.url).toBe("https://venue.com/weddings-info");
+    expect(result?.isSecondary).toBe(false);
   });
 });
 
@@ -273,12 +380,20 @@ describe("pickHomepageLinkWeddingPage", () => {
 // (c) common_path
 // ---------------------------------------------------------------------------
 
+/** `fetch`'s first parameter is `RequestInfo | URL` = `string | Request | URL` -- `Request` has
+ * `.url`, `URL` has `.href` instead, so a plain `input.url` doesn't typecheck once `input` isn't
+ * `any`. */
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  return input instanceof URL ? input.href : input.url;
+}
+
 describe("probeCommonWeddingPaths", () => {
   function fakeFetch(
     responses: Record<string, { status: number; contentType?: string; body?: string; redirectedTo?: string }>
   ): typeof fetch {
     return (async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : input.url;
+      const url = requestUrl(input);
       const canonical = new URL(url).pathname;
       const spec = responses[canonical];
       if (!spec) {
@@ -306,7 +421,7 @@ describe("probeCommonWeddingPaths", () => {
   test("accepts the first common path that is a real, sufficiently long, wedding-matching page", async () => {
     const fetchImpl = fakeFetch({ "/weddings": { status: 200, contentType: "text/html", body: wordyWeddingBody } });
     const result = await probeCommonWeddingPaths("https://venue.com/", fetchImpl);
-    expect(result).toEqual({ url: "https://venue.com/weddings", source: "common_path", evidence: "/weddings" });
+    expect(result).toEqual({ url: "https://venue.com/weddings", source: "common_path", evidence: "/weddings", isSecondary: false });
   });
 
   test("respects COMMON_WEDDING_PATHS priority order (first listed path wins if multiple qualify)", async () => {
@@ -346,7 +461,7 @@ describe("probeCommonWeddingPaths", () => {
 
   test("a fetch error on one path falls through to try the next", async () => {
     const fetchImpl = (async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : input.url;
+      const url = requestUrl(input);
       if (new URL(url).pathname === "/weddings") throw new Error("network error");
       if (new URL(url).pathname === "/wedding") {
         return new Response(wordyWeddingBody, { status: 200, headers: { "content-type": "text/html" } });

@@ -42,6 +42,24 @@ export const WEDDING_PAGE_RE =
 export const WEDDING_STRICT_RE = /wedding|bridal|nuptial/i;
 
 /**
+ * A page whose path matches this is a real wedding-adjacent page but the *wrong kind* to hand a
+ * couple as "the wedding page" -- a photo gallery, an inquiry/contact form, a blog post, an FAQ,
+ * or an RSVP/registry/guest page for someone else's wedding, rather than the venue's own
+ * wedding-info landing page. `pickLegacyWeddingPage` and `pickHomepageLinkWeddingPage` prefer
+ * any matching candidate that ISN'T secondary and only fall back to a secondary one when no
+ * primary candidate exists at all. Follow-up (2026-09-14 calibration re-check): account 507
+ * (The Geraghty) picked `/gallery/wedding` over the real `/portfolio/wedding-venue` info page;
+ * account 687 (Adler Planetarium) picked `/venue-rentals/private-event-inquiry-form/` over its
+ * own root `/venue-rentals/` info page -- both purely on "shortest path"/tier-order, with no
+ * notion that a gallery or a form is a worse answer than an actual info page.
+ */
+export const SECONDARY_PAGE_RE = /gallery|photos?|inquir|form|contact|blog|faq|rsvp|registry|guest/i;
+
+function isSecondaryPage(url: string): boolean {
+  return SECONDARY_PAGE_RE.test(pathOf(url));
+}
+
+/**
  * Term priority within the broad regex, most wedding-specific first -- "wedding" beats
  * "private events" per spec: when two links both qualify (e.g. one says "Weddings", the other
  * "Private Events"), the more specific wedding term wins the tie-break ahead of path length.
@@ -107,9 +125,19 @@ export function isWeddingUrlCandidate(url: string, re: RegExp): boolean {
   return true;
 }
 
-/** Convenience for discoverWebsites.ts's "candidate URL is already a wedding page" check. */
+/** Convenience for discoverWebsites.ts's "candidate URL is already a wedding page" check
+ * (strict: contains wedding/bridal/nuptial) -- and not itself a secondary page, so a root that
+ * happens to be a gallery/form page doesn't short-circuit the search. */
 export function urlIsWeddingPage(url: string): boolean {
-  return isWeddingUrlCandidate(url, WEDDING_STRICT_RE);
+  return isWeddingUrlCandidate(url, WEDDING_STRICT_RE) && !isSecondaryPage(url);
+}
+
+/** Broader than `urlIsWeddingPage`: true when the root is a decent wedding/private-events page
+ * even without the literal word "wedding" (e.g. Adler Planetarium's `/venue-rentals/`, Chicago
+ * Botanic Garden's `/private-events`) -- used only as a last-resort fallback, when nothing
+ * better (non-secondary) was found anywhere else. */
+export function isRootUsableWeddingPage(url: string): boolean {
+  return isWeddingUrlCandidate(url, WEDDING_PAGE_RE) && !isSecondaryPage(url);
 }
 
 export type WeddingUrlSource = "legacy_enrichment_pages" | "homepage_link" | "common_path" | "manual";
@@ -117,8 +145,14 @@ export type WeddingUrlSource = "legacy_enrichment_pages" | "homepage_link" | "co
 export interface WeddingPageResult {
   url: string;
   source: WeddingUrlSource;
-  /** The matched href/anchor text (homepage_link, legacy) or probed path (common_path). */
+  /** The matched href/anchor text (homepage_link, legacy) or probed path (common_path); a
+   * secondary-page fallback appends a note explaining why (see `isSecondary`). */
   evidence: string;
+  /** True when no primary (non-`SECONDARY_PAGE_RE`) candidate existed and this is a fallback --
+   * a gallery/form/contact/etc. page. `findWeddingPage`'s caller (`computeWeddingForRoot` in
+   * discoverWebsites.ts) prefers the root URL itself over accepting a secondary result when the
+   * root is itself a usable (broad-match, non-secondary) wedding/private-events page. */
+  isSecondary: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +213,14 @@ export function pickLegacyWeddingPage(pages: LegacyPage[]): WeddingPageResult | 
     byHost.set(host, list);
   }
 
-  let best: string | null = null;
+  // Two pools, scored independently: a primary (non-secondary) match always wins over a
+  // secondary (gallery/form/contact/etc.) one, regardless of path length -- only when NO
+  // primary candidate exists anywhere (across every in-scope host) do we fall back to the
+  // shortest-path secondary match. See SECONDARY_PAGE_RE's docstring (account 507, The
+  // Geraghty: "/gallery/wedding" was picked over the real "/portfolio/wedding-venue").
+  let bestPrimary: string | null = null;
+  let bestSecondary: string | null = null;
+
   for (const hostPages of byHost.values()) {
     const anchor = hostPages.reduce((a, b) => ((b.depth ?? Infinity) < (a.depth ?? Infinity) ? b : a));
     const requiredPrefix = pathSegments(anchor.url).slice(0, -1);
@@ -192,11 +233,26 @@ export function pickLegacyWeddingPage(pages: LegacyPage[]): WeddingPageResult | 
       const candidateSegments = pathSegments(page.url);
       const inScope = requiredPrefix.every((seg, i) => candidateSegments[i] === seg);
       if (!inScope) continue;
-      if (best === null || pathLength(page.url) < pathLength(best)) best = page.url;
+      if (isSecondaryPage(page.url)) {
+        if (bestSecondary === null || pathLength(page.url) < pathLength(bestSecondary)) bestSecondary = page.url;
+      } else {
+        if (bestPrimary === null || pathLength(page.url) < pathLength(bestPrimary)) bestPrimary = page.url;
+      }
     }
   }
-  if (best === null) return null;
-  return { url: best, source: "legacy_enrichment_pages", evidence: best };
+
+  if (bestPrimary !== null) {
+    return { url: bestPrimary, source: "legacy_enrichment_pages", evidence: bestPrimary, isSecondary: false };
+  }
+  if (bestSecondary !== null) {
+    return {
+      url: bestSecondary,
+      source: "legacy_enrichment_pages",
+      evidence: `${bestSecondary} (secondary page -- no primary wedding page found in legacy_enrichment_pages)`,
+      isSecondary: true,
+    };
+  }
+  return null;
 }
 
 /** Impure: reads `venue_enrichment.facts->'pages_crawled'` for every alias in `aliasSet`
@@ -234,8 +290,18 @@ function linkMatch(link: HtmlLink, re: RegExp, allowText: boolean): LinkMatchVia
   return null;
 }
 
+/** Ranks one candidate pool (already all same tier -- strict or broad) by nav preference, term
+ * specificity, then path length -- but a primary (non-secondary) candidate always outranks a
+ * secondary one, regardless of those three, and secondary is used at all only when the whole
+ * pool is secondary (account 687, Adler Planetarium: the only broad-tier match on its homepage
+ * was `/venue-rentals/private-event-inquiry-form/`, a secondary inquiry form -- see
+ * discoverWebsites.ts's root-URL fallback for how that case is actually resolved). */
 function bestLinkCandidate(candidates: { link: HtmlLink; via: LinkMatchVia }[]): WeddingPageResult {
-  const scored = candidates.map((c) => ({
+  const primary = candidates.filter((c) => !isSecondaryPage(c.link.href));
+  const usingSecondary = primary.length === 0;
+  const pool = usingSecondary ? candidates : primary;
+
+  const scored = pool.map((c) => ({
     ...c,
     navRank: c.link.fromNav ? 0 : 1,
     termPriority: Math.min(weddingTermPriority(c.link.href) ?? Infinity, weddingTermPriority(c.link.text) ?? Infinity),
@@ -243,10 +309,12 @@ function bestLinkCandidate(candidates: { link: HtmlLink; via: LinkMatchVia }[]):
   }));
   scored.sort((a, b) => a.navRank - b.navRank || a.termPriority - b.termPriority || a.pathLen - b.pathLen);
   const best = scored[0];
+  const evidenceBase = best.via === "href" ? best.link.href : best.link.text;
   return {
     url: best.link.href,
     source: "homepage_link",
-    evidence: best.via === "href" ? best.link.href : best.link.text,
+    evidence: usingSecondary ? `${evidenceBase} (secondary page -- no primary wedding page found in homepage links)` : evidenceBase,
+    isSecondary: usingSecondary,
   };
 }
 
@@ -254,8 +322,9 @@ function bestLinkCandidate(candidates: { link: HtmlLink; via: LinkMatchVia }[]):
  * Pure: given a homepage's extracted links, picks the best same-host wedding page link.
  * Priority: strict match (href OR anchor text) beats a broad match (href only, per spec --
  * anchor text alone is too noisy at the broad tier, e.g. a nav item just called "Celebrate").
- * Within a tier: nav links first, then the more wedding-specific term ("wedding" beats
- * "private events"), then the shortest path.
+ * Within a tier: a primary (non-secondary) candidate always wins; among those, nav links
+ * first, then the more wedding-specific term ("wedding" beats "private events"), then the
+ * shortest path.
  */
 export function pickHomepageLinkWeddingPage(links: HtmlLink[], rootUrl: string): WeddingPageResult | null {
   const sameHost = links.filter((l) => sameRegistrableHost(l.href, rootUrl));
@@ -355,7 +424,7 @@ export async function probeCommonWeddingPaths(
       continue;
     }
     const finalUrl = await probeOneCommonPath(url, fetchImpl, timeoutMs);
-    if (finalUrl) return { url: finalUrl, source: "common_path", evidence: path };
+    if (finalUrl) return { url: finalUrl, source: "common_path", evidence: path, isSecondary: false };
   }
   return null;
 }
