@@ -68,6 +68,11 @@ export interface VenueDetailsViewProps {
   photos?: ReactNode;
   /** No address lives on VenueDetailsV3; Location is skipped when this isn't passed in. */
   address?: string;
+  /** A `venue_details_versions` row's own `created_at` for the current `provenance.version_no` —
+   * no such timestamp lives on `VenueDetailsV3` itself (see the footer's own comment), so the
+   * caller threads it in once that table exists. Rendered only when both this and
+   * `venue.provenance` are present; the lab page passes nothing for fixtures. */
+  lastChangedAt?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -178,7 +183,7 @@ function resourceActions(resources: Resource[], kinds: ResourceKind[]): ReactNod
 // Main component
 // ---------------------------------------------------------------------------
 
-export function VenueDetailsView({ venue, feed, photos, address }: VenueDetailsViewProps) {
+export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }: VenueDetailsViewProps) {
   const defaultPath: PricingPath | undefined = venue.pricing.paths[0];
   const brochure = venue.resources.find((r) => r.kind === "brochure");
   const wholeVenueFees = fmt.pathWholeVenueFixedFees(defaultPath);
@@ -258,8 +263,8 @@ export function VenueDetailsView({ venue, feed, photos, address }: VenueDetailsV
                     Prefer the whole venue? Book both together:{" "}
                     {groups.map((g, gi) => (
                       <span key={g.season}>
-                        {gi > 0 ? "; " : ""}
-                        {groups.length > 1 ? `${fmt.seasonLabel(g.season)}: ` : ""}
+                        {gi > 0 ? " / " : ""}
+                        {groups.length > 1 ? `${fmt.SEASON_PREFIX_LABEL[g.season]}: ` : ""}
                         {g.parts.map((p, pi) => (
                           <span key={p.label}>
                             {pi > 0 ? " · " : ""}
@@ -445,11 +450,12 @@ export function VenueDetailsView({ venue, feed, photos, address }: VenueDetailsV
         </>
       )}
 
-      {/* Grounding footer — three dates when available: last checked (sources.crawled_at), human
-          verified (provenance.human_verified_at). PUNCH LIST: "last changed" has no timestamp
-          field on VenueDetailsV3.provenance to read (only version_id/version_no/correction_ids/
-          human_verified_at/verified_by) — omitted rather than invented; a `venue_details_versions`
-          row's own `created_at` would need to be threaded in separately once that table exists. */}
+      {/* Grounding footer — three dates when available: last checked (sources.crawled_at), last
+          changed (the `lastChangedAt` prop, shown only alongside a real `provenance` — no such
+          timestamp lives on VenueDetailsV3.provenance itself, only version_id/version_no/
+          correction_ids/human_verified_at/verified_by; the caller threads in a
+          `venue_details_versions` row's own `created_at` once that table's read path exists), and
+          human verified (provenance.human_verified_at). */}
       <Divider />
       <section className="rounded-2xl bg-gray-50 p-5 text-sm text-gray-500">
         <div className="inline-flex flex-wrap items-center gap-1.5">
@@ -465,6 +471,7 @@ export function VenueDetailsView({ venue, feed, photos, address }: VenueDetailsV
             </>
           )}
           {venue.sources.crawled_at && <> · last checked {venue.sources.crawled_at}</>}
+          {venue.provenance && lastChangedAt && <> · last changed {lastChangedAt}</>}
           {venue.provenance?.human_verified_at && <> · human verified {venue.provenance.human_verified_at}</>}
           .
         </div>
@@ -627,7 +634,19 @@ function SpaceCard({
 function FoodBeverageSection({ venue, defaultPath }: { venue: VenueDetailsV3; defaultPath: PricingPath | undefined }) {
   const { food, bar } = fbPills(venue);
   const caption = venue.food_beverage.caption;
-  const shared = fmt.fbSharedRow(food, bar, caption != null);
+  const layout = fmt.fbLayout(venue);
+  const shared = layout === "shared";
+
+  // Split layout's "one short prose line" per side (golden-set-template.md §3): any
+  // food_beverage.notes attributed to that side by keyword (fmt.fbNoteSide), rendered at the
+  // same weight as everywhere else notes read as real facts (text-sm text-gray-600) — an
+  // ambiguous note (matches neither/both) is left out rather than guessed onto the wrong side.
+  // `caption` stays the narrower, lighter-weight carve-out treatment (text-xs text-gray-400,
+  // golden-set-template.md §3's locked LondonHouse caption style) even once attributed to a side.
+  const captionSide = caption ? fmt.fbNoteSide(caption.value) : null;
+  const foodProse = venue.food_beverage.notes.filter((n) => fmt.fbNoteSide(n.value) === "food").map((n) => n.value);
+  const barProse = venue.food_beverage.notes.filter((n) => fmt.fbNoteSide(n.value) === "bar").map((n) => n.value);
+
   // Fix round: tiers that share a name and differ only by day/season (Diamond Garden's four
   // "All-Inclusive" rows) collapse into one card with a min-max price — the season x day
   // breakdown itself lives in the Pricing section's grid, not repeated as cards here.
@@ -653,17 +672,31 @@ function FoodBeverageSection({ venue, defaultPath }: { venue: VenueDetailsV3; de
             <div className="mb-2 flex flex-wrap gap-2">
               {food.length > 0 ? food.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
             </div>
+            {foodProse.map((text) => (
+              <p key={text} className="text-sm text-gray-600">
+                {text}
+              </p>
+            ))}
+            {captionSide === "food" && <p className="mt-1 text-xs text-gray-400">{caption!.value}</p>}
           </div>
           <div>
             <p className="mb-1.5 mt-5 text-xs font-medium uppercase tracking-wide text-gray-400">Bar</p>
             <div className="mb-2 flex flex-wrap gap-2">
               {bar.length > 0 ? bar.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
             </div>
+            {barProse.map((text) => (
+              <p key={text} className="text-sm text-gray-600">
+                {text}
+              </p>
+            ))}
+            {captionSide === "bar" && <p className="mt-1 text-xs text-gray-400">{caption!.value}</p>}
           </div>
         </>
       )}
 
-      {caption && <p className="text-xs text-gray-400">{caption.value}</p>}
+      {/* `fbLayout` always splits when a caption exists, so this only fires for an ambiguous
+          caption `fbNoteSide` couldn't confidently attribute to either side. */}
+      {!shared && caption && captionSide == null && <p className="text-xs text-gray-400">{caption.value}</p>}
 
       {tiers.length > 0 && (
         <div className="mt-6 grid gap-5 sm:grid-cols-3">

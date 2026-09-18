@@ -7,6 +7,7 @@
  * `headlineCapacity`, `policyRows`, `quickFacts`, `fbPills` stay in derive.ts).
  */
 
+import { fbPills } from "../../../lib/venueDetails/derive";
 import {
   type AddOn,
   type CapacityTuple,
@@ -167,17 +168,27 @@ export interface WholeVenueFeeGroup {
   parts: { label: string; amount: number; fee: FixedFee }[];
 }
 
+/** Day order for the "book both together" whole-venue line specifically — Fri → Sat → Sun (then
+ * everything else), the order a couple actually compares wedding days in, distinct from the
+ * affirmative/Saturday-first order used everywhere else (`DEFAULT_DAY_ORDER`, `buildPriceGrid`'s
+ * own dayOrder) which optimizes for "what's the default/most-asked-about day" instead. */
+const WHOLE_VENUE_DAY_ORDER: Day[] = ["fri", "sat", "sun", "weekday", "mon", "tue", "wed", "thu", "any"];
+
+const SEASON_ORDER: Season[] = ["peak", "off", "any"];
+
+/** Short season prefix for the "book both together" line ("Peak: ... / Off-season: ..."),
+ * distinct from `seasonLabel`'s fuller "Peak season" wording used elsewhere. */
+export const SEASON_PREFIX_LABEL: Record<Season, string> = { peak: "Peak", off: "Off-season", any: "Any season" };
+
 /** Groups the "book both together" whole-venue fees by season so a venue with both off-season
  * and peak-season rows doesn't print six flat, undifferentiated "{Day} rental $N" entries with
  * no way to tell which season each belongs to. */
 export function groupWholeVenueFees(fees: FixedFee[]): WholeVenueFeeGroup[] {
-  const seasonOrder: Season[] = ["peak", "off", "any"];
-  const dayOrder: Day[] = ["sat", "fri", "sun", "weekday", "mon", "tue", "wed", "thu", "any"];
   const dayRank = (f: FixedFee) => {
-    const i = dayOrder.indexOf(f.day ?? "any");
-    return i === -1 ? dayOrder.length : i;
+    const i = WHOLE_VENUE_DAY_ORDER.indexOf(f.day ?? "any");
+    return i === -1 ? WHOLE_VENUE_DAY_ORDER.length : i;
   };
-  const seasons = seasonOrder.filter((s) => fees.some((f) => (f.season ?? "any") === s));
+  const seasons = SEASON_ORDER.filter((s) => fees.some((f) => (f.season ?? "any") === s));
   return seasons.map((season) => ({
     season,
     parts: fees
@@ -185,6 +196,20 @@ export function groupWholeVenueFees(fees: FixedFee[]): WholeVenueFeeGroup[] {
       .sort((a, b) => dayRank(a) - dayRank(b))
       .map((f) => ({ label: feeRentalLabel(f), amount: f.amount, fee: f })),
   }));
+}
+
+/** Plain-text rendering of the "book both together" line's fees: "Fri $X · Sat $Y · Sun $Z", or,
+ * when the venue's fees actually differ by season, "Peak: Fri $X · Sat $Y / Off-season: Fri $A ·
+ * Sat $B" — built on `groupWholeVenueFees` so the day/season ordering never drifts between the
+ * two. */
+export function formatWholeVenueFees(fees: FixedFee[]): string {
+  const groups = groupWholeVenueFees(fees);
+  return groups
+    .map((g) => {
+      const parts = g.parts.map((p) => `${dayLabel(p.fee.day ?? "any")} ${money(p.amount)}`).join(" · ");
+      return groups.length > 1 ? `${SEASON_PREFIX_LABEL[g.season]}: ${parts}` : parts;
+    })
+    .join(" / ");
 }
 
 // ---------------------------------------------------------------------------
@@ -351,6 +376,27 @@ export interface AddOnTable {
   rows: AddOnTableRow[];
 }
 
+/** Known `AddOn.condition` values, humanized for display — golden-set-template.md §2's "name the
+ * trigger" rule: a conditional fee (only charged if a real yes/no decision goes one way) shows
+ * that condition as its own option label instead of a bare, unlabeled "Flat rate". */
+const CONDITION_LABELS: Partial<Record<string, string>> = {
+  ceremony_on_site: "On-site ceremony",
+};
+
+function humanizeCondition(condition: string): string {
+  return CONDITION_LABELS[condition] ?? condition.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** The Option-column label for one add-on row: its own `variant` when it has one, else its
+ * condition named as the trigger (a `group: "ceremony"` add-on's `condition` — "On-site
+ * ceremony" rather than "Flat rate", Marchetti's fix), else the "Flat rate" fallback for a
+ * genuinely unconditional single-price add-on. */
+function addOnVariantLabel(a: AddOn): string {
+  if (a.variant) return a.variant;
+  if (a.group === "ceremony" && a.condition) return humanizeCondition(a.condition);
+  return "Flat rate";
+}
+
 /** Category-rows x variant/space-columns table (golden-set-template.md §2's "genuinely 2-axis"
  * shape, Marchetti's Space & rentals table). One row per category, one sub-row per variant. */
 export function buildAddOnTable(addOns: AddOn[], spaces: Space[]): AddOnTable {
@@ -369,7 +415,7 @@ export function buildAddOnTable(addOns: AddOn[], spaces: Space[]): AddOnTable {
     note: items[0]?.note ?? null,
     variants: items.map((a) => ({
       key: a.id,
-      name: a.variant ?? "Flat rate",
+      name: addOnVariantLabel(a),
       prices: spaceIds.length > 0 ? spaceIds.map((sid) => (a.per_space_prices?.[sid] != null ? money(a.per_space_prices[sid]) : addOnPriceString(a))) : [addOnPriceString(a)],
     })),
   }));
@@ -402,6 +448,36 @@ function sameFbSet(a: FbPill[], b: FbPill[]): boolean {
  * and there's no caption needing its own explanation — golden-set-template.md §3. */
 export function fbSharedRow(food: FbPill[], bar: FbPill[], hasCaption: boolean): boolean {
   return !hasCaption && sameFbSet(food, bar);
+}
+
+/** "shared" | "split" — the full trigger set for golden-set-template.md §3's "two shapes, picked
+ * by whether Food and Bar have anything different to say" rule: identical pills (`fbSharedRow`)
+ * PLUS whether there's real side-tied reference material — a `caption` (a narrow policy
+ * exception worth calling out, LondonHouse's corkage carve-out) or a `catering_guidelines` /
+ * `bar_menu` resource (Greenhouse Loft's composting-guidelines PDF). A bare `food_beverage.notes`
+ * entry with no such resource is NOT on its own enough to force a split — Marchetti's "Villa,
+ * Tenuta, Riserva Bar Collections" note is real, but it's fully restated by the per-guest tier
+ * cards' own `bar_tier` info rendered right below, which is exactly the redundant-subsection
+ * shape the template's own Marchetti fix reverted (§3). */
+export function fbLayout(d: VenueDetailsV3): "shared" | "split" {
+  const { food, bar } = fbPills(d);
+  const hasCaption = d.food_beverage.caption != null;
+  const hasSideResource = d.resources.some((r) => r.kind === "catering_guidelines" || r.kind === "bar_menu");
+  return fbSharedRow(food, bar, hasCaption) && !hasSideResource ? "shared" : "split";
+}
+
+const FOOD_NOTE_PATTERN = /cater|compost|kitchen|\bmenu\b|\bfood\b/i;
+const BAR_NOTE_PATTERN = /\bbar\b|alcohol|cocktail|\bwine\b|\bbeer\b|spirit|liquor|corkage|byob/i;
+
+/** Attributes a free-text F&B note/caption to a side by keyword, for placement under the FOOD or
+ * BAR sub-row in split layout. Null (not rendered under either side) when the text matches both
+ * or neither — an ambiguous note is safer omitted than guessed onto the wrong side. */
+export function fbNoteSide(text: string): "food" | "bar" | null {
+  const food = FOOD_NOTE_PATTERN.test(text);
+  const bar = BAR_NOTE_PATTERN.test(text);
+  if (food && !bar) return "food";
+  if (bar && !food) return "bar";
+  return null;
 }
 
 /** The "Plus X% service charge, plus Y% sales tax" sentence under the F&B tier cards — fix

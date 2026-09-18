@@ -323,6 +323,27 @@ describe("buildAddOnTable", () => {
     expect(table.rows).toHaveLength(1);
     expect(table.rows[0].variants.map((v) => v.name)).toEqual(["7 swags", "13 swags"]);
   });
+
+  it("names a ceremony add-on's option label after its condition, not 'Flat rate' (Marchetti's On-site ceremony fix)", () => {
+    const spaces = [space({ id: "the-pavilion", name: "The Pavilion" }), space({ id: "la-pergola", name: "La Pergola" })];
+    const ceremonyAddOn = addOn({
+      id: "ceremony-onsite",
+      name: "On-site ceremony",
+      category: "Ceremony fee",
+      variant: null,
+      group: "ceremony",
+      condition: "ceremony_on_site",
+      per_space_prices: { "the-pavilion": 2000, "la-pergola": 1000 },
+    });
+    const table = fmt.buildAddOnTable([ceremonyAddOn], spaces);
+    expect(table.rows[0].variants[0].name).toBe("On-site ceremony");
+    expect(table.rows[0].variants[0].name).not.toBe("Flat rate");
+  });
+
+  it("still falls back to 'Flat rate' for a genuinely unconditional add-on with no variant", () => {
+    const table = fmt.buildAddOnTable([addOn({ variant: null, group: "other", condition: null })], []);
+    expect(table.rows[0].variants[0].name).toBe("Flat rate");
+  });
 });
 
 describe("fbPillLabel / fbSharedRow", () => {
@@ -346,6 +367,99 @@ describe("fbPillLabel / fbSharedRow", () => {
 
   it("ignores pill order when comparing sets", () => {
     expect(fmt.fbSharedRow(["byo", "a_la_carte"], ["a_la_carte", "byo"], false)).toBe(true);
+  });
+});
+
+describe("fbLayout", () => {
+  function resource(overrides: Partial<{ kind: "catering_guidelines" | "bar_menu" }> = {}) {
+    return {
+      id: "r1",
+      kind: "catering_guidelines" as const,
+      label: "Guidelines",
+      url: "https://example.com/guidelines.pdf",
+      scope: "venue" as const,
+      embeddable: null,
+      has_text_layer: null,
+      checked_at: null,
+      source_url: "https://example.com",
+      snapshot_id: 1,
+      ...overrides,
+    };
+  }
+
+  it("is 'split' when the pill sets genuinely differ", () => {
+    const d = makeVenue({
+      food_beverage: {
+        food_pills: [fact("byo", "q", "https://example.com", 1)],
+        bar_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
+        caption: null,
+        menus: [],
+        bar_ladders: [],
+        bar_min_guests: null,
+        notes: [],
+      },
+    });
+    expect(fmt.fbLayout(d)).toBe("split");
+  });
+
+  it("is 'split' for Greenhouse Loft's shape: identical BYO/BYO pills, but a catering_guidelines resource", () => {
+    const d = makeVenue({
+      food_beverage: {
+        food_pills: [fact("byo", "q", "https://example.com", 1)],
+        bar_pills: [fact("byo", "q", "https://example.com", 1)],
+        caption: null,
+        menus: [],
+        bar_ladders: [],
+        bar_min_guests: null,
+        notes: [fact("LEED Platinum certified building: mandatory recycling + composting at every event.", "q", "https://example.com", 1)],
+      },
+      resources: [resource({ kind: "catering_guidelines" })],
+    });
+    expect(fmt.fbLayout(d)).toBe("split");
+  });
+
+  it("is 'shared' for Marchetti's shape: identical All-Inclusive pills, no caption, no side resource — a bare note isn't enough on its own", () => {
+    const d = makeVenue({
+      food_beverage: {
+        food_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
+        bar_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
+        caption: null,
+        menus: [],
+        bar_ladders: [],
+        bar_min_guests: null,
+        notes: [fact("Villa, Tenuta, and Riserva Bar Collections build on each other.", "q", "https://example.com", 1)],
+      },
+    });
+    expect(fmt.fbLayout(d)).toBe("shared");
+  });
+
+  it("is 'split' for LondonHouse's shape: identical All-Inclusive pills, but a corkage caption", () => {
+    const d = makeVenue({
+      food_beverage: {
+        food_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
+        bar_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
+        caption: fact("You can bring your own wine or liquor for a $50/bottle corkage fee.", "q", "https://example.com", 1),
+        menus: [],
+        bar_ladders: [],
+        bar_min_guests: null,
+        notes: [],
+      },
+    });
+    expect(fmt.fbLayout(d)).toBe("split");
+  });
+});
+
+describe("fbNoteSide", () => {
+  it("attributes a catering/composting note to food", () => {
+    expect(fmt.fbNoteSide("LEED Platinum certified building: mandatory recycling + composting, caterer load-in via a freight entrance.")).toBe("food");
+  });
+
+  it("attributes a bar/corkage note to bar", () => {
+    expect(fmt.fbNoteSide("You can bring your own wine or liquor for a $50/bottle corkage fee.")).toBe("bar");
+  });
+
+  it("returns null when a note matches neither side", () => {
+    expect(fmt.fbNoteSide("Ask about our seasonal promotions.")).toBeNull();
   });
 });
 
@@ -499,7 +613,9 @@ describe("groupWholeVenueFees", () => {
     ];
     const groups = fmt.groupWholeVenueFees(fees);
     expect(groups.map((g) => g.season)).toEqual(["peak", "off"]); // peak-first
-    expect(groups[0].parts.map((p) => p.label)).toEqual(["Saturday rental", "Friday rental"]);
+    // Fri -> Sat -> Sun within a season for this line specifically (not the affirmative/
+    // Saturday-first order used by pathDayOptions/buildPriceGrid elsewhere).
+    expect(groups[0].parts.map((p) => p.label)).toEqual(["Friday rental", "Saturday rental"]);
   });
 
   it("returns one ungrouped season for a venue with only one real season", () => {
@@ -507,6 +623,27 @@ describe("groupWholeVenueFees", () => {
     const groups = fmt.groupWholeVenueFees(fees);
     expect(groups).toHaveLength(1);
     expect(groups[0].season).toBe("any");
+  });
+});
+
+describe("formatWholeVenueFees", () => {
+  it("orders days Fri -> Sat -> Sun when there's no season split", () => {
+    const fees = [
+      fixedFee({ key: "sun", day: "sun", season: null, amount: 4000 }),
+      fixedFee({ key: "sat", day: "sat", season: null, amount: 5000 }),
+      fixedFee({ key: "fri", day: "fri", season: null, amount: 4500 }),
+    ];
+    expect(fmt.formatWholeVenueFees(fees)).toBe("Fri $4,500 · Sat $5,000 · Sun $4,000");
+  });
+
+  it("groups by season with short Peak/Off-season prefixes when seasons differ", () => {
+    const fees = [
+      fixedFee({ key: "peak-fri", day: "fri", season: "peak", amount: 5000 }),
+      fixedFee({ key: "peak-sat", day: "sat", season: "peak", amount: 6000 }),
+      fixedFee({ key: "off-fri", day: "fri", season: "off", amount: 4000 }),
+      fixedFee({ key: "off-sat", day: "sat", season: "off", amount: 5000 }),
+    ];
+    expect(fmt.formatWholeVenueFees(fees)).toBe("Peak: Fri $5,000 · Sat $6,000 / Off-season: Fri $4,000 · Sat $5,000");
   });
 });
 
