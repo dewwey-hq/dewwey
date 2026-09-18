@@ -6,20 +6,16 @@ If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
 Last rewritten: **2026-09-18** (session resumed; wedding-page finder + renderer punch list landed). Local
-`main` is **eleven commits ahead of `origin/main` (`dd5bd44`), not pushed** (the user has not asked
+`main` is **thirteen commits ahead of `origin/main` (`dd5bd44`), not pushed** (the user has not asked
 for a push): `07bcd4e` D060 docs · `1dd161a` Phase 1a libs · `6161c13` fixtures + renderer ·
 `ef5f4ce` Phase 2 infra · `de1c8f9` crawler seeds + `<base href>` · `4b1909e` LLM half · `6f649a0`
 dry-run checkpoint · then this docs commit. Run `git log --oneline -10` and `git status` to confirm.
 
 ## How to resume (5 minutes)
 
-1. `git log --oneline -12` and `git status` from the repo root. Everything through the wedding-page
-   finder (`e783147`) and the renderer punch list (`eab2e0d`) is committed. **If `git status` shows
-   edits under `apps/web/scripts/venue-details/crawl/weddingPage*.ts` or `discoverWebsites.ts`, that is
-   the wedding-page ranking fix** (prefer info pages over gallery/inquiry-form pages; Geraghty and Adler
-   picked the wrong kind) a builder was finishing: run `cd apps/web && bunx --bun vitest run
-   scripts/venue-details`; if green, commit it; if half-written, `git stash` and re-run it from the
-   description in this paragraph.
+1. `git log --oneline -14` and `git status` from the repo root. Everything through the wedding-page
+   finder and its ranking fix (`d7a9629`) is committed; the working tree was clean at hand-off and no
+   builder was running.
 2. Re-check one live number: `bun run scripts/venue-details/discoverWebsites.ts --batch-id x
    --dry-run --limit 20` from `apps/web` should still print `listed: 421`.
 3. Then work the "Blocked on the user" list below, top to bottom. Nothing in the pipeline has
