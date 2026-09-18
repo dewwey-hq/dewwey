@@ -11,18 +11,15 @@ for a push): `07bcd4e` D060 docs · `1dd161a` Phase 1a libs · `6161c13` fixture
 `ef5f4ce` Phase 2 infra · `de1c8f9` crawler seeds + `<base href>` · `4b1909e` LLM half · `6f649a0`
 dry-run checkpoint · then this docs commit. Run `git log --oneline -10` and `git status` to confirm.
 
-## How to resume tomorrow (5 minutes)
+## How to resume (5 minutes)
 
-1. `git log --oneline -10` and `git status` from the repo root. **If `git status` shows uncommitted
-   files under `apps/web/scripts/venue-details/` (e.g. `crawl/weddingPage.ts`, edits to
-   `discoverWebsites.ts`, `crawlVenue.ts`, `reportCrawlCoverage.ts`, `applyVenueDetailsSchema.ts`,
-   `pipeline/schema.sql`), that is the wedding-page finder a builder was writing when the session
-   ended.** Check it: `cd apps/web && bunx --bun vitest run scripts/venue-details` and the strict
-   tsc line in the D060 addendum; if green, read the diff and commit it as "wedding-page discovery";
-   if broken or half-written, `git stash` it and re-run the builder from the plan's description
-   (D060 addendum, "wedding-page finder" bullet). Its spec: `venue_websites.wedding_url` +
-   `wedding_url_source` (legacy enrichment pages → homepage nav link → common-path probe → manual),
-   crawl seeds from it, coverage report gains a "wedding page" column.
+1. `git log --oneline -12` and `git status` from the repo root. Everything through the wedding-page
+   finder (`e783147`) and the renderer punch list (`eab2e0d`) is committed. **If `git status` shows
+   edits under `apps/web/scripts/venue-details/crawl/weddingPage*.ts` or `discoverWebsites.ts`, that is
+   the wedding-page ranking fix** (prefer info pages over gallery/inquiry-form pages; Geraghty and Adler
+   picked the wrong kind) a builder was finishing: run `cd apps/web && bunx --bun vitest run
+   scripts/venue-details`; if green, commit it; if half-written, `git stash` and re-run it from the
+   description in this paragraph.
 2. Re-check one live number: `bun run scripts/venue-details/discoverWebsites.ts --batch-id x
    --dry-run --limit 20` from `apps/web` should still print `listed: 421`.
 3. Then work the "Blocked on the user" list below, top to bottom. Nothing in the pipeline has
