@@ -5,8 +5,8 @@ session; history lives in `decisions.md`, preferences in Claude's memory, in-fli
 If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-14 ~01:00 CT** (end of the session that built D060 Phases 0-2). Local
-`main` is **eight commits ahead of `origin/main` (`dd5bd44`), not pushed** (the user has not asked
+Last rewritten: **2026-09-18** (session resumed; wedding-page finder + renderer punch list landed). Local
+`main` is **eleven commits ahead of `origin/main` (`dd5bd44`), not pushed** (the user has not asked
 for a push): `07bcd4e` D060 docs · `1dd161a` Phase 1a libs · `6161c13` fixtures + renderer ·
 `ef5f4ce` Phase 2 infra · `de1c8f9` crawler seeds + `<base href>` · `4b1909e` LLM half · `6f649a0`
 dry-run checkpoint · then this docs commit. Run `git log --oneline -10` and `git status` to confirm.
@@ -78,6 +78,14 @@ page text — the reason v3 snapshots go to R2).
 | Have a website candidate | **166** (111 `vendors.website`, 55 IG bio link) |
 | Probed: verified / js_shell / unreachable | **146** / 7 / 13 |
 | No candidate at all (Phase 5 discovery) | 255 |
+| **Wedding page found** (2026-09-18 re-run with the wedding-page finder) | **97 of 166** (legacy pages 39 · homepage link 56 · common path 2) · none 69 |
+
+Calibration wedding URLs (dry-run): Marchetti `/weddings`, Diamond Garden `/wedding`, LondonHouse
+`/weddings/`, Field Museum `/page/weddings`, Chez `/wedding-venue`, Joinery `/events/weddings`, Drake
+`/weddings/plan-your-wedding/`, Botanic Garden `/private-events`, Langham `/events/weddings/`, Peninsula
+`/events/hotel-wedding-venues-chicago`, CAA `/weddings/`, River Roast `/private-events`, Greenhouse none
+(single-page site; homepage is the wedding page). Two picks flagged for a ranking fix in flight:
+Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
 
 | Calibration crawl dry-run (2026-09-14, local cache only; `tmp_analysis/venue_details_crawl_coverage_2026-09-14.md`) | |
 |---|---|
