@@ -1091,6 +1091,38 @@ export function addOnSubgroupLayout(items: AddOn[]): "cards" | "table" {
   return "cards";
 }
 
+/** Round 6 fix (2026-09-19): the venue's own sub-category (`AddOn.category`), shown as a small
+ * caption inside the merged card grid instead of a separate sub-header — omitted when it would
+ * just repeat the item's own name back (Marchetti's "Chef Experiences" category on a "Chef
+ * Experiences" add-on). */
+export function addOnCardCaption(a: AddOn): string | null {
+  return a.category.trim().toLowerCase() === a.name.trim().toLowerCase() ? null : a.category;
+}
+
+export interface AddOnCategoryPartition {
+  /** Every item from a "cards"-layout sub-group, flattened in subgroup order — these all flow
+   * into ONE shared grid per standard category, fixing the bug where a single-item sub-category
+   * used to get its own one-card row at a third of the grid's width. */
+  cards: AddOn[];
+  /** Sub-groups whose own items force a table (`addOnSubgroupLayout(sg.items) === "table"`) —
+   * kept as whole subgroups (not flattened) so the caller can render each one as its own
+   * full-width table block, named by its own sub-category, after the shared card grid. */
+  tables: AddOnSubgroup[];
+}
+
+/** Splits one standard category's sub-groups into the shared card grid vs. the sub-groups that
+ * must render as their own table (round 6 fix, 2026-09-19) — replaces rendering one card grid
+ * PER sub-group, which orphaned single-item sub-categories onto their own fragmented row. */
+export function partitionCategoryItems(subgroups: AddOnSubgroup[]): AddOnCategoryPartition {
+  const cards: AddOn[] = [];
+  const tables: AddOnSubgroup[] = [];
+  for (const sg of subgroups) {
+    if (addOnSubgroupLayout(sg.items) === "table") tables.push(sg);
+    else cards.push(...sg.items);
+  }
+  return { cards, tables };
+}
+
 /** Item|Price table for ONE sub-group (round 5 rule 7) — same shape `buildAddOnCategoryTables`
  * builds per venue-category, just scoped to a single already-resolved item list. */
 export function buildAddOnSubgroupTable(items: AddOn[], spaces: Space[]): { columnLabels: string[]; rows: AddOnCategoryTableRow[] } {
@@ -1320,40 +1352,12 @@ export function showPricingSection(d: VenueDetailsV3): boolean {
 
 /** Pricing section grid class: 2 columns for 2 paths, 3 columns (never 2, which orphans the
  * third card onto its own row) for exactly 3, and back to 2 (wrapping 2x2) for 4+ — round-3 fix.
- * Round 5 rule 6: `fullWidth` (from `pricingSectionNeedsFullWidth`) forces a single column instead
- * — a card must never need internal scrolling. */
-export function pricingGridClass(pathCount: number, fullWidth: boolean = false): string {
-  if (fullWidth) return "grid gap-5 grid-cols-1";
+ * Purely a function of path count (the round 5 rule 6 full-width fallback for tall/bulleted cards
+ * is removed — a fixed 2026-09-19 review: it turned Diamond Garden's three cards into one per row.
+ * Cards may be tall; the grid uses `items-start` so a short card doesn't stretch, and nothing
+ * scrolls internally). */
+export function pricingGridClass(pathCount: number): string {
   return `grid gap-5 sm:grid-cols-2${pathCount === 3 ? " lg:grid-cols-3" : ""}`;
-}
-
-/** A path's own "bullet line" count — `includes` plus its representative (collapsed-by-name) per-
- * guest tier's own inclusions — round 5 rule 6: a card whose bullets alone would exceed 8 lines
- * forces the whole Pricing section to a single full-width column so nothing needs to scroll. */
-export function pathBulletLineCount(path: PricingPath): number {
-  const includesCount = path.includes?.length ?? 0;
-  const representative = collapseTiersByName(path.per_guest_tiers)[0]?.representative;
-  const tierInclusionCount = representative?.inclusions.length ?? 0;
-  return includesCount + tierInclusionCount;
-}
-
-/** True when a path both has bullets (see `pathBulletLineCount`) AND a rate grid (fixed-fee or
- * per-guest-tier) — the combination round 5 rule 6 calls out as risking internal scrolling on a
- * narrower 2/3-column card even with a modest bullet count. */
-export function pathHasGridAndBullets(path: PricingPath, seasons: Pricing["seasons"] | undefined): boolean {
-  const hasFeeGrid = fixedFeeGrid(
-    path.fixed_fees.filter((f) => f.applies_to === "space" || f.applies_to === "whole_venue"),
-    seasons,
-  ).days.length > 0;
-  const hasTierGrid = perGuestTierGrid(path.per_guest_tiers, seasons).days.length > 0;
-  return (hasFeeGrid || hasTierGrid) && pathBulletLineCount(path) > 0;
-}
-
-/** Round 5 rule 6: the standalone Pricing section falls back to one full-width column (via
- * `pricingGridClass`'s `fullWidth`) when ANY of its cards has more than 8 bullet lines, or a grid
- * plus bullets at all — never per-card, since every card in the section shares one grid. */
-export function pricingSectionNeedsFullWidth(paths: PricingPath[], seasons: Pricing["seasons"] | undefined): boolean {
-  return paths.some((p) => pathBulletLineCount(p) > 8 || pathHasGridAndBullets(p, seasons));
 }
 
 export function showInclusions(d: VenueDetailsV3): boolean {

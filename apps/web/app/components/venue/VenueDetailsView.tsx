@@ -285,11 +285,11 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
         <>
           <section id="pricing">
             <SectionHeading title="Pricing" />
-            {/* Round 5 rule 6: cards fall back to one full-width column (instead of the 2/3-col
-                grid) whenever any of them risks needing internal scrolling — season months now
-                render inline on each grid row (rule 4), so there's no separate section-level
-                "Season:" sentence to repeat here anymore. */}
-            <div className={fmt.pricingGridClass(venue.pricing.paths.length, fmt.pricingSectionNeedsFullWidth(venue.pricing.paths, venue.pricing.seasons))}>
+            {/* Grid class is purely by path count (fixed round 2026-09-19: the old full-width
+                fallback for tall/bulleted cards turned Diamond Garden's three cards into one per
+                row). `items-start` so a short card ("Same rental rates as X.") doesn't stretch to
+                match a taller sibling; cards may be tall, nothing scrolls internally. */}
+            <div className={`${fmt.pricingGridClass(venue.pricing.paths.length)} items-start`}>
               {venue.pricing.paths.map((p, i) => (
                 <PricingPathCard key={p.id} path={p} paths={venue.pricing.paths} index={i} seasons={venue.pricing.seasons} capturedAt={venue.sources.crawled_at} />
               ))}
@@ -939,12 +939,17 @@ function WhatsIncludedSection({ inclusions, capturedAt }: { inclusions: Inclusio
 function MergedPriceGridTable({ grid, moneySuffix, seasons }: { grid: fmt.MergedPriceGrid; moneySuffix?: string; seasons?: Pricing["seasons"] }) {
   return (
     <div className="mt-3 overflow-x-auto">
-      <table className="w-full text-xs text-gray-600">
+      {/* min-w so a narrow 3-column Pricing card (fixed 2026-09-19: cards are no longer forced
+          full-width) scrolls this grid horizontally instead of every column shrinking to exactly
+          its content's width; `pl-3` on each price column keeps adjacent same-length values (e.g.
+          two `$68.95/guest` cells back to back) from visually touching once columns are that
+          snug. */}
+      <table className="w-full min-w-[420px] text-xs text-gray-600">
         <thead>
           <tr className="text-gray-400">
             <th className="pb-1.5 text-left font-normal">Season</th>
             {grid.columns.map((c) => (
-              <th key={c.label} className="pb-1.5 text-right font-normal">
+              <th key={c.label} className="pb-1.5 pl-3 text-right font-normal">
                 {c.label}
               </th>
             ))}
@@ -958,7 +963,7 @@ function MergedPriceGridTable({ grid, moneySuffix, seasons }: { grid: fmt.Merged
                   (Jan – Mar)" — no second line. */}
               <td className="py-1 align-top">{fmt.seasonLabelWithMonths(s, seasons)}</td>
               {grid.grid[si].map((amount, ci) => (
-                <td key={ci} className="py-1 text-right">
+                <td key={ci} className="py-1 pl-3 text-right">
                   {amount != null ? `${fmt.money(amount)}${moneySuffix ?? ""}` : <span className="text-gray-300">—</span>}
                 </td>
               ))}
@@ -1141,26 +1146,24 @@ function PricingPathCard({
 // ---------------------------------------------------------------------------
 
 function AddOnCard({ addOn, capturedAt }: { addOn: AddOn; capturedAt: string | null }) {
-  // Round 4 rule 10: notes stay short in cards — full text always reachable via `title`.
-  const note = addOn.note ? fmt.truncateNote(addOn.note) : null;
+  // Round 6 fix (2026-09-19): notes render in full in cards — truncation stays inside table cells
+  // only, where a fixed column width actually needs it.
   // Round 5 rule 9: the same category_std icon map the Add-ons section groups under.
   const Icon = ADD_ON_CATEGORY_ICONS[fmt.resolveCategoryStd(addOn)] ?? Sparkles;
+  const caption = fmt.addOnCardCaption(addOn);
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-black/[0.06] p-4">
+    <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-black/[0.06] p-4">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fdf8f5]">
         <Icon size={15} className="text-rose-400" />
       </div>
       <div className="min-w-0 flex-1">
-        <h4 className={`text-sm text-gray-900 ${uiHeadingClassName}`}>{addOn.name}</h4>
+        {caption && <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{caption}</p>}
+        <h4 className={`break-words text-sm text-gray-900 ${uiHeadingClassName}`}>{addOn.name}</h4>
         <p className="mt-0.5 text-base font-semibold text-gray-900">
           {fmt.addOnPriceString(addOn)}
           <FactSource quote={addOn.quote} source_url={addOn.source_url} snapshot_id={addOn.snapshot_id} capturedAt={capturedAt} />
         </p>
-        {note && (
-          <p className="mt-1 text-xs text-gray-500" title={note.truncated ? note.full : undefined}>
-            {note.display}
-          </p>
-        )}
+        {addOn.note && <p className="mt-1 break-words text-xs text-gray-500">{addOn.note}</p>}
       </div>
     </div>
   );
@@ -1233,10 +1236,13 @@ function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; ro
 }
 
 /** Round 4 rule 12: a couple of real add-ons and no curated categories -> compact rows, unchanged.
- * Everything else (round 5 rule 7): cards grouped under standard `category_std` headers, the
- * venue's own category/blurb as a sub-line, a table only when that sub-group genuinely has 2
- * pricing axes or 6+ priced rows sharing the same columns — restores the round-3 card look under
- * round-4's grouping. */
+ * Everything else (round 6 fix, 2026-09-19): under one standard `category_std` header, ALL
+ * card-shaped sub-categories share ONE grid (`fmt.partitionCategoryItems`) instead of each getting
+ * its own grid — that used to orphan a single-item sub-category onto its own row at a third of the
+ * grid's width. The venue's own sub-category shows as a caption inside the card
+ * (`fmt.addOnCardCaption`); a sub-category that genuinely needs a table (2 pricing axes, or 6+
+ * priced rows sharing columns) still gets one, named by its own sub-category, after the shared
+ * grid. */
 function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: ReactNode }) {
   if (fmt.isCompactAddOnsLayout(venue)) {
     const items = venue.pricing.add_ons.filter((a) => !a.selection_group);
@@ -1256,44 +1262,62 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
   return (
     <section id="add-ons">
       <SectionHeading title="Add-ons & extras" actions={actions} />
-      {groups.map((g, gi) => (
-        <div key={g.category_std} className={gi === 0 ? "" : "mt-8"}>
-          <h3 className={`text-base text-gray-900 ${uiHeadingClassName}`}>{g.label}</h3>
-          {g.subgroups.map((sg, si) => (
-            <div key={sg.category} className={si === 0 ? "mt-3" : "mt-5"}>
-              {/* The venue's own category (+ curated blurb, when there is one) as a sub-line —
-                  skipped only when it would just repeat the std header verbatim with nothing to
-                  add. */}
-              {(sg.category !== g.label || sg.blurb) && (
-                <p className="mb-2 text-xs text-gray-500">
-                  <span className="font-medium text-gray-700">{sg.category}</span>
-                  {sg.blurb ? `: ${sg.blurb}` : ""}
-                </p>
-              )}
-              {sg.items.length > 0 &&
-                (fmt.addOnSubgroupLayout(sg.items) === "table" ? (
-                  <AddOnCategoryTableView table={fmt.buildAddOnSubgroupTable(sg.items, venue.spaces)} />
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {sg.items.map((a) => (
-                      <AddOnCard key={a.id} addOn={a} capturedAt={venue.sources.crawled_at} />
-                    ))}
-                  </div>
+      {groups.map((g, gi) => {
+        const { cards, tables } = fmt.partitionCategoryItems(g.subgroups);
+        // Curated blurb/examples attach per venue sub-category — collected once, up front (blurbs)
+        // and once, after the shared grid (examples), instead of interleaved between per-subgroup
+        // grids the way they used to be.
+        const blurbSubgroups = g.subgroups.filter((sg) => sg.blurb);
+        const cardCategories = new Set(tables.map((sg) => sg.category));
+        const cardExamples = [...new Set(g.subgroups.filter((sg) => !cardCategories.has(sg.category)).flatMap((sg) => sg.examples))];
+        return (
+          <div key={g.category_std} className={gi === 0 ? "" : "mt-8"}>
+            <h3 className={`text-base text-gray-900 ${uiHeadingClassName}`}>{g.label}</h3>
+            {blurbSubgroups.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {blurbSubgroups.map((sg) => (
+                  <p key={sg.category} className="text-xs text-gray-500">
+                    <span className="font-medium text-gray-700">{sg.category}</span>: {sg.blurb}
+                  </p>
                 ))}
-              {sg.examples.length > 0 && (
-                <ul className={`space-y-1 text-xs text-gray-600 ${sg.items.length > 0 ? "mt-2" : ""}`}>
-                  {sg.examples.map((ex) => (
-                    <li key={ex} className="flex gap-1.5">
-                      <span className="text-rose-400">·</span>
-                      {ex}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
-        </div>
-      ))}
+              </div>
+            )}
+            {cards.length > 0 && (
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                {cards.map((a) => (
+                  <AddOnCard key={a.id} addOn={a} capturedAt={venue.sources.crawled_at} />
+                ))}
+              </div>
+            )}
+            {cardExamples.length > 0 && (
+              <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                {cardExamples.map((ex) => (
+                  <li key={ex} className="flex gap-1.5">
+                    <span className="text-rose-400">·</span>
+                    {ex}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {tables.map((sg) => (
+              <div key={sg.category} className="mt-5">
+                <p className="mb-2 text-xs font-medium text-gray-700">{sg.category}</p>
+                <AddOnCategoryTableView table={fmt.buildAddOnSubgroupTable(sg.items, venue.spaces)} />
+                {sg.examples.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                    {sg.examples.map((ex) => (
+                      <li key={ex} className="flex gap-1.5">
+                        <span className="text-rose-400">·</span>
+                        {ex}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </section>
   );
 }

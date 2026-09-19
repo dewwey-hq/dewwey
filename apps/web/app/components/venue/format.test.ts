@@ -667,9 +667,6 @@ describe("pricingGridClass", () => {
   it("wraps 2x2 for 4 paths", () => {
     expect(fmt.pricingGridClass(4)).toBe("grid gap-5 sm:grid-cols-2");
   });
-  it("falls back to one full-width column when fullWidth is true, regardless of path count (round 5 rule 6)", () => {
-    expect(fmt.pricingGridClass(3, true)).toBe("grid gap-5 grid-cols-1");
-  });
 });
 
 describe("pricingHeadlineParts (round 5 rule 6)", () => {
@@ -683,30 +680,6 @@ describe("pricingHeadlineParts (round 5 rule 6)", () => {
   });
   it("is null when the path has nothing fixed to quote", () => {
     expect(fmt.pricingHeadlineParts(fixedFeePath())).toBeNull();
-  });
-});
-
-describe("pathBulletLineCount / pathHasGridAndBullets / pricingSectionNeedsFullWidth (round 5 rule 6)", () => {
-  it("counts includes plus the representative tier's own inclusions", () => {
-    const path = fixedFeePath({ includes: ["Tables", "Kitchen"], per_guest_tiers: [tier({ inclusions: ["Food", "Bar", "Setup"] })] });
-    expect(fmt.pathBulletLineCount(path)).toBe(5);
-  });
-  it("pathHasGridAndBullets is true only when the path has both a rate grid and at least one bullet", () => {
-    const gridOnly = fixedFeePath({ fixed_fees: [fixedFee({ applies_to: "whole_venue", space_id: null, day: "sat" })] });
-    const bulletsOnly = fixedFeePath({ includes: ["Tables"] });
-    const both = fixedFeePath({ fixed_fees: [fixedFee({ applies_to: "whole_venue", space_id: null, day: "sat" })], includes: ["Tables"] });
-    expect(fmt.pathHasGridAndBullets(gridOnly, undefined)).toBe(false);
-    expect(fmt.pathHasGridAndBullets(bulletsOnly, undefined)).toBe(false);
-    expect(fmt.pathHasGridAndBullets(both, undefined)).toBe(true);
-  });
-  it("pricingSectionNeedsFullWidth is true when any path has > 8 bullet lines", () => {
-    const bigPath = fixedFeePath({ includes: Array.from({ length: 9 }, (_, i) => `Item ${i}`) });
-    expect(fmt.pricingSectionNeedsFullWidth([fixedFeePath(), bigPath], undefined)).toBe(true);
-  });
-  it("pricingSectionNeedsFullWidth is false when every path is modest (grid-only or a few bullets, never both)", () => {
-    const gridOnly = fixedFeePath({ fixed_fees: [fixedFee({ applies_to: "whole_venue", space_id: null, day: "sat" })] });
-    const bulletsOnly = fixedFeePath({ includes: ["Tables", "Kitchen"] });
-    expect(fmt.pricingSectionNeedsFullWidth([gridOnly, bulletsOnly], undefined)).toBe(false);
   });
 });
 
@@ -1571,6 +1544,66 @@ describe("resolveCategoryStd / groupAddOnsByCategoryStd / addOnSubgroupLayout (r
   it("addOnSubgroupLayout is 'cards' for a handful of independent, single-axis items", () => {
     const items = [addOn({ id: "a", price: 100 }), addOn({ id: "b", price: 200 })];
     expect(fmt.addOnSubgroupLayout(items)).toBe("cards");
+  });
+});
+
+describe("addOnCardCaption (round 6 fix, 2026-09-19)", () => {
+  it("returns the venue's own category when it differs from the item's name", () => {
+    expect(fmt.addOnCardCaption(addOn({ category: "Chargers", name: "Gold chargers" }))).toBe("Chargers");
+  });
+
+  it("omits the caption when the category just repeats the item's own name (case-insensitive)", () => {
+    expect(fmt.addOnCardCaption(addOn({ category: "Chef Experiences", name: "Chef Experiences" }))).toBeNull();
+    expect(fmt.addOnCardCaption(addOn({ category: "chef experiences", name: "Chef Experiences" }))).toBeNull();
+  });
+});
+
+describe("partitionCategoryItems (round 6 fix, 2026-09-19)", () => {
+  it("flattens every 'cards'-layout sub-group's items into one shared cards array, in sub-group order", () => {
+    const chairs = addOn({ id: "chairs", category: "Chiavari chairs", price: 10 });
+    const stage = addOn({ id: "stage", category: "Stage", price: 175 });
+    const subgroups: fmt.AddOnSubgroup[] = [
+      { category: "Chiavari chairs", blurb: null, examples: [], items: [chairs] },
+      { category: "Stage", blurb: null, examples: [], items: [stage] },
+    ];
+    const { cards, tables } = fmt.partitionCategoryItems(subgroups);
+    expect(cards).toEqual([chairs, stage]);
+    expect(tables).toEqual([]);
+  });
+
+  it("keeps a 'table'-layout sub-group whole (not flattened into cards) instead of giving it its own single-item grid", () => {
+    const danceFloor: fmt.AddOnSubgroup = {
+      category: "Dance floor",
+      blurb: null,
+      examples: [],
+      items: [
+        addOn({ id: "df-white", variant: "White", per_space_prices: { main: 625, hall: 1725 } }),
+        addOn({ id: "df-bw", variant: "Black & white", per_space_prices: { main: 1000, hall: 2500 } }),
+      ],
+    };
+    const chairs = addOn({ id: "chairs", category: "Chiavari chairs", price: 10 });
+    const subgroups: fmt.AddOnSubgroup[] = [danceFloor, { category: "Chiavari chairs", blurb: null, examples: [], items: [chairs] }];
+    const { cards, tables } = fmt.partitionCategoryItems(subgroups);
+    expect(cards).toEqual([chairs]);
+    expect(tables).toEqual([danceFloor]);
+  });
+
+  it("splits a mix of table and card sub-groups correctly (Diamond Garden's decor_lighting shape)", () => {
+    const decoration: fmt.AddOnSubgroup = {
+      category: "Decoration add-ons",
+      blurb: "Ceremony structure, tabletop décor, and linen.",
+      examples: ["Centerpieces ($25-35 each)"],
+      items: [addOn({ id: "d1", price: 9.95 }), addOn({ id: "d2", price: 650 }), addOn({ id: "d3", price: 25 })],
+    };
+    const lighting: fmt.AddOnSubgroup = {
+      category: "Lighting & video add-ons",
+      blurb: "Uplighting and projection for the reception.",
+      examples: ["Uplights, 8 minimum ($25 each)"],
+      items: [addOn({ id: "l1", price: 25 }), addOn({ id: "l2", price: 180 }), addOn({ id: "l3", price: 180 }), addOn({ id: "l4", price: 400 })],
+    };
+    const { cards, tables } = fmt.partitionCategoryItems([decoration, lighting]);
+    expect(cards.map((a) => a.id)).toEqual(["d1", "d2", "d3", "l1", "l2", "l3", "l4"]);
+    expect(tables).toEqual([]);
   });
 });
 
