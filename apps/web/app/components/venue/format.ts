@@ -9,9 +9,12 @@
 
 import { fbPills } from "../../../lib/venueDetails/derive";
 import {
+  ADD_ON_CATEGORIES_STD,
   type AddOn,
+  type AddOnCategoryStd,
   type CapacityTuple,
   type Day,
+  type Fact,
   type FbPill,
   type FixedFee,
   type InclusionItem,
@@ -58,35 +61,45 @@ export function sqFtLabel(sqFt: number | null, structureLabel: string | null): s
   return parts.join(" · ");
 }
 
+export interface SpaceSizeLine {
+  text: string;
+  /** False for the honest "— sq ft (not stated)" placeholder (round 5 rule 2) — the caller renders
+   * it grey/italic instead of the normal size-line color. */
+  stated: boolean;
+}
+
 /** Space header size line (fix round, 2026-09-13 review): "X sq ft indoor · Y sq ft outdoor"
  * when both indoor and outdoor square footage are stated; otherwise the plain sq-ft/structure
- * line. Returns null (omit the line entirely, no "Size not stated" placeholder) when `sqFt`
- * itself isn't stated — reviewed as looking worse than just not showing a size line at all.
+ * line. Round 5 rule 2 (supersedes the 2026-09-13 review's "omit entirely" call): when `sqFt`
+ * itself isn't stated, the line always renders as the honest grey "— sq ft (not stated)"
+ * placeholder (Diamond Garden's own concept page precedent) instead of disappearing.
  *
  * `sqFtLabelRaw` (2026-09-18 review, Field Museum): when the venue states its size as a string
  * rather than a clean number ("~21,000 (main floor)", "11,376–35,997"), `sq_ft` still carries the
  * first integer found in it (for numeric code), but the line itself shows the venue's own wording
  * verbatim instead of the reduced-to-one-number version. */
-export function spaceSizeLine(sqFt: number | null, sqFtOutdoor: number | null, structureLabel: string | null, sqFtLabelRaw?: string | null): string | null {
-  if (sqFt == null) return null;
+export function spaceSizeLine(sqFt: number | null, sqFtOutdoor: number | null, structureLabel: string | null, sqFtLabelRaw?: string | null): SpaceSizeLine {
+  if (sqFt == null) return { text: "— sq ft (not stated)", stated: false };
   const primary = sqFtLabelRaw ? `${sqFtLabelRaw} sq ft` : `${sqFt.toLocaleString()} sq ft`;
   if (sqFtOutdoor != null) {
     const parts = [sqFtLabelRaw ? primary : `${sqFt.toLocaleString()} sq ft indoor`, `${sqFtOutdoor.toLocaleString()} sq ft outdoor`];
     if (structureLabel) parts.push(structureLabel);
-    return parts.join(" · ");
+    return { text: parts.join(" · "), stated: true };
   }
   const parts = [primary];
   if (structureLabel) parts.push(structureLabel);
-  return parts.join(" · ");
+  return { text: parts.join(" · "), stated: true };
 }
 
 /** "Ceiling height: 8–14 ft" (venue's own wording) or "Ceiling height: 22 ft" (formatted number)
- * — same verbatim-label-else-formatted-number rule as `spaceSizeLine`'s `sqFtLabelRaw`. Null (omit
- * the line) when neither is stated. */
-export function ceilingLine(ceilingFt: number | null, ceilingLabel?: string | null): string | null {
+ * — same verbatim-label-else-formatted-number rule as `spaceSizeLine`'s `sqFtLabelRaw`. Round 5
+ * rule 2: when neither is stated, renders the honest "Ceiling height: not stated" gap ONLY when
+ * the space has some other stated size fact (`hasOtherSizeFacts`, default false — a space with no
+ * size facts at all doesn't get a lone ceiling gap line); null (omit) otherwise. */
+export function ceilingLine(ceilingFt: number | null, ceilingLabel?: string | null, hasOtherSizeFacts: boolean = false): string | null {
   if (ceilingLabel) return `Ceiling height: ${ceilingLabel}`;
   if (ceilingFt != null) return `Ceiling height: ${ceilingFt} ft`;
-  return null;
+  return hasOtherSizeFacts ? "Ceiling height: not stated" : null;
 }
 
 const DAY_LABELS: Record<Day, string> = {
@@ -417,14 +430,22 @@ export function minimumValueLabel(m: Minimum): string {
  * "$68.95 – $84.95 /guest" for a per-guest path. Null when the path has neither (an inquire-only
  * or add-on-only path with nothing fixed to show a range for). */
 export function pricingHeadlineLine(path: PricingPath): string | null {
+  const parts = pricingHeadlineParts(path);
+  return parts ? `${parts.main} ${parts.unit}` : null;
+}
+
+/** Same numbers as `pricingHeadlineLine`, split so the Pricing card can render the price large/bold
+ * and the "flat"/"/guest" unit small/grey (round 5 rule 6, rule 8's typography applied to the
+ * headline price line too) instead of one plain string. */
+export function pricingHeadlineParts(path: PricingPath): PriceWithUnit | null {
   if (path.per_guest_tiers.length > 0) {
     const amounts = path.per_guest_tiers.map((t) => t.per_guest);
-    return `${moneyRange(Math.min(...amounts), Math.max(...amounts))} /guest`;
+    return { main: moneyRange(Math.min(...amounts), Math.max(...amounts)), unit: "/guest" };
   }
   const fees = path.fixed_fees.filter((f) => f.applies_to === "space" || f.applies_to === "whole_venue");
   if (fees.length > 0) {
     const amounts = fees.map((f) => f.amount);
-    return `${moneyRange(Math.min(...amounts), Math.max(...amounts))} flat`;
+    return { main: moneyRange(Math.min(...amounts), Math.max(...amounts)), unit: "flat" };
   }
   return null;
 }
@@ -636,14 +657,15 @@ export function pathTierOptions(path: PricingPath): { value: string; label: stri
   return options;
 }
 
-/** "Hall Rental Only · from $2,100" / "All-Inclusive · from $68.95/guest" (round 4 rule 9) —
- * null for a path with nothing fixed to quote (an inquire-only or add-on-only path). */
+/** "($2,100+)" / "($68.95+/guest)" (round 5 rule 8, supersedes round 4 rule 9's "· from $2,100"
+ * middle-dot sublabel): folds directly into the pill's own label with no separator — "Venue only
+ * ($2,100+)". Null for a path with nothing fixed to quote (an inquire-only or add-on-only path). */
 export function pathPillSublabel(path: PricingPath): string | null {
   if (path.per_guest_tiers.length > 0) {
-    return `from ${money(Math.min(...path.per_guest_tiers.map((t) => t.per_guest)))}/guest`;
+    return `(${money(Math.min(...path.per_guest_tiers.map((t) => t.per_guest)))}+/guest)`;
   }
   const fees = path.fixed_fees.filter((f) => f.applies_to === "space" || f.applies_to === "whole_venue");
-  if (fees.length > 0) return `from ${money(Math.min(...fees.map((f) => f.amount)))}`;
+  if (fees.length > 0) return `(${money(Math.min(...fees.map((f) => f.amount)))}+)`;
   return null;
 }
 
@@ -661,6 +683,28 @@ export function guestRangeReminder(range: { min: number | null; max: number | nu
   if (range.max == null) return "";
   if (range.min != null) return `${int(range.min)}–${int(range.max)} ${range.max_measures}`;
   return `Up to ${int(range.max)} ${range.max_measures}`;
+}
+
+/** "190 guests · Opulence · Saturday" — the input callout line shown above the Cost Estimate
+ * breakdown (round 5 rule 8), restating the current selection in plain words: guests always
+ * first, then the chosen tier/package name (only when the calculator actually shows a tier axis),
+ * then the day, spelled out in full. */
+export function calculatorInputCallout(guests: number, tierName: string | null, day: Day): string {
+  const parts = [`${int(guests)} guests`];
+  if (tierName) parts.push(tierName);
+  parts.push(dayFullLabel(day));
+  return parts.join(" · ");
+}
+
+/** "150 guests, Argento, Sun" — the small caption under each end of the example-range bar (round 5
+ * rule 8, ported from the concept calculators, which use commas here, not the "·" of
+ * `calculatorInputCallout`). Day is short-form (`dayLabel`) and omitted entirely when the range
+ * didn't vary by day at all. */
+export function calculatorRangeLabel(input: { guests: number; day: Day | null; tierName: string | null }): string {
+  const parts = [`${int(input.guests)} guests`];
+  if (input.tierName) parts.push(input.tierName);
+  if (input.day) parts.push(dayLabel(input.day));
+  return parts.join(", ");
 }
 
 export interface SelectionGroup {
@@ -948,6 +992,127 @@ export function addOnsLayout(d: VenueDetailsV3): AddOnsLayout {
 }
 
 // ---------------------------------------------------------------------------
+// Add-ons grouped by category_std (round 5 rule 7 — restores the round-3 card look under round-4's
+// grouping: top-level headers are the 8 standard categories, the venue's own `category` becomes a
+// sub-line, and a table only earns its place per SUB-group, not per section.)
+// ---------------------------------------------------------------------------
+
+const CATEGORY_STD_DEFAULT_FROM_GROUP: Record<AddOn["group"], AddOnCategoryStd> = {
+  fb: "fb",
+  ceremony: "ceremony",
+  service: "services_staffing",
+  rental: "space_rentals",
+  other: "space_rentals",
+};
+
+/** `AddOn.category_std` when the venue/importer set one, else derived from the coarser `group`
+ * (round 5: "derive category_std from group when missing" so the lab renders correctly even
+ * before every fixture/extractor carries the new field). */
+export function resolveCategoryStd(a: AddOn): AddOnCategoryStd {
+  return a.category_std ?? CATEGORY_STD_DEFAULT_FROM_GROUP[a.group];
+}
+
+export const ADD_ON_CATEGORY_STD_LABELS: Record<AddOnCategoryStd, string> = {
+  fb: "Food & beverage",
+  space_rentals: "Space & rentals",
+  decor_lighting: "Décor & lighting",
+  entertainment: "Entertainment",
+  services_staffing: "Services & staffing",
+  ceremony: "Ceremony",
+  time: "Extra time",
+  other: "Other",
+};
+
+export interface AddOnSubgroup {
+  /** The venue's own, granular category (Diamond Garden's "Chargers", "Ceremony Décor", …) — shown
+   * as a sub-line under the std header. */
+  category: string;
+  blurb: string | null;
+  examples: string[];
+  items: AddOn[];
+}
+
+export interface AddOnStdGroup {
+  category_std: AddOnCategoryStd;
+  label: string;
+  subgroups: AddOnSubgroup[];
+}
+
+/** Groups every non-selection-group add-on first by `category_std` (in the fixed
+ * `ADD_ON_CATEGORIES_STD` order), then by the venue's own `category` within each — curated
+ * `add_on_categories` blurb/examples attach to the matching sub-group when present. */
+export function groupAddOnsByCategoryStd(d: VenueDetailsV3): AddOnStdGroup[] {
+  const selectable = d.pricing.add_ons.filter((a) => !a.selection_group);
+  const byStd = new Map<AddOnCategoryStd, AddOn[]>();
+  for (const a of selectable) {
+    const std = resolveCategoryStd(a);
+    if (!byStd.has(std)) byStd.set(std, []);
+    byStd.get(std)!.push(a);
+  }
+  const curated = new Map((d.pricing.add_on_categories ?? []).map((c) => [c.category, c] as const));
+  return ADD_ON_CATEGORIES_STD.filter((std) => byStd.has(std)).map((std) => {
+    const items = byStd.get(std)!;
+    const byCategory = new Map<string, AddOn[]>();
+    for (const a of items) {
+      if (!byCategory.has(a.category)) byCategory.set(a.category, []);
+      byCategory.get(a.category)!.push(a);
+    }
+    const subgroups: AddOnSubgroup[] = [...byCategory.entries()].map(([category, catItems]) => {
+      const c = curated.get(category);
+      return { category, blurb: c?.blurb ?? null, examples: c?.examples ?? [], items: catItems };
+    });
+    return { category_std: std, label: ADD_ON_CATEGORY_STD_LABELS[std], subgroups };
+  });
+}
+
+function sameColumnShape(items: AddOn[]): boolean {
+  const shapes = new Set(items.map((a) => (a.per_space_prices ? [...Object.keys(a.per_space_prices)].sort().join(",") : "")));
+  return shapes.size <= 1;
+}
+
+/** Round 5 rule 7: a sub-group renders as a table only when it has 2 genuine pricing axes
+ * (variant × per-space) or ≥ 6 priced rows sharing the same columns; cards otherwise (the round-3
+ * look). */
+export function addOnSubgroupLayout(items: AddOn[]): "cards" | "table" {
+  const hasVariantAxis = new Set(items.map((a) => a.variant).filter((v) => v != null)).size > 1;
+  const hasSpaceAxis = items.some((a) => a.per_space_prices != null && Object.keys(a.per_space_prices).length > 1);
+  if (hasVariantAxis && hasSpaceAxis) return "table";
+  const pricedRows = items.filter((a) => a.price != null || (a.per_space_prices != null && Object.keys(a.per_space_prices).length > 0));
+  if (pricedRows.length >= 6 && sameColumnShape(pricedRows)) return "table";
+  return "cards";
+}
+
+/** Item|Price table for ONE sub-group (round 5 rule 7) — same shape `buildAddOnCategoryTables`
+ * builds per venue-category, just scoped to a single already-resolved item list. */
+export function buildAddOnSubgroupTable(items: AddOn[], spaces: Space[]): { columnLabels: string[]; rows: AddOnCategoryTableRow[] } {
+  const spaceIds = [...new Set(items.flatMap((a) => (a.per_space_prices ? Object.keys(a.per_space_prices) : [])))];
+  const spaceName = (id: string) => spaces.find((s) => s.id === id)?.name ?? id;
+  const columnLabels = spaceIds.length > 0 ? spaceIds.map(spaceName) : ["Price"];
+  const rows: AddOnCategoryTableRow[] = items.map((a) => ({
+    key: a.id,
+    itemLabel: addOnItemLabel(a),
+    prices: spaceIds.length > 0 ? spaceIds.map((sid) => (a.per_space_prices?.[sid] != null ? money(a.per_space_prices[sid]) : addOnPriceString(a))) : [addOnPriceString(a)],
+    note: a.note,
+  }));
+  return { columnLabels, rows };
+}
+
+/** The Cost Estimate's "Add extras" panel, grouped by `category_std` instead of the venue's own
+ * granular `category` (round 5 rules 7/8 — same headers as the Add-ons & extras section). */
+export function groupSelectableAddOnsByCategoryStd(addOns: AddOn[]): CalculatorCategoryGroup[] {
+  const byStd = new Map<AddOnCategoryStd, AddOn[]>();
+  for (const a of addOns) {
+    const std = resolveCategoryStd(a);
+    if (!byStd.has(std)) byStd.set(std, []);
+    byStd.get(std)!.push(a);
+  }
+  return ADD_ON_CATEGORIES_STD.filter((std) => byStd.has(std)).map((std) => {
+    const { groups, individual } = splitAddOnsBySelection(byStd.get(std)!);
+    return { category: ADD_ON_CATEGORY_STD_LABELS[std], groups, individual };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Food & beverage pills
 // ---------------------------------------------------------------------------
 
@@ -974,20 +1139,49 @@ export function fbSharedRow(food: FbPill[], bar: FbPill[], hasCaption: boolean):
   return !hasCaption && sameFbSet(food, bar);
 }
 
-/** "shared" | "split" — the full trigger set for golden-set-template.md §3's "two shapes, picked
- * by whether Food and Bar have anything different to say" rule: identical pills (`fbSharedRow`)
- * PLUS whether there's real side-tied reference material — a `caption` (a narrow policy
- * exception worth calling out, LondonHouse's corkage carve-out) or a `catering_guidelines` /
- * `bar_menu` resource (Greenhouse Loft's composting-guidelines PDF). A bare `food_beverage.notes`
- * entry with no such resource is NOT on its own enough to force a split — Marchetti's "Villa,
- * Tenuta, Riserva Bar Collections" note is real, but it's fully restated by the per-guest tier
- * cards' own `bar_tier` info rendered right below, which is exactly the redundant-subsection
- * shape the template's own Marchetti fix reverted (§3). */
+/** "shared" | "split" pill-row layout (round 5 rule 5, supersedes round 4 rule 7: the F&B section
+ * itself is single-column now, so resource placement and the food_note/bar_note/caption callout
+ * lines no longer depend on this at all — they always render). Purely whether the Food and Bar
+ * pill SETS match: one shared pill row when they do, two labeled Food/Bar pill rows when they
+ * genuinely differ. */
 export function fbLayout(d: VenueDetailsV3): "shared" | "split" {
   const { food, bar } = fbPills(d);
-  const hasCaption = d.food_beverage.caption != null;
-  const hasSideResource = d.resources.some((r) => r.kind === "catering_guidelines" || r.kind === "bar_menu");
-  return fbSharedRow(food, bar, hasCaption) && !hasSideResource ? "shared" : "split";
+  return fbSharedRow(food, bar, false) ? "shared" : "split";
+}
+
+// ---------------------------------------------------------------------------
+// F&B labeled callout lines (round 5 rule 5) — Food:/Bar:/Bar BYO option:/Food & beverage
+// minimum:/Charges & tax:/Not included in package price:, one uniform `Label: text` format,
+// always rendered regardless of the pill-row layout above.
+// ---------------------------------------------------------------------------
+
+const NOT_INCLUDED_PREFIX = /^not included in package price:?\s*/i;
+
+/** True when `fb.bar_note` itself IS the "Not included in package price" sentence (Diamond
+ * Garden's bar-packages carve-out) — the caller skips the plain "Bar:" callout in that case so the
+ * same sentence never renders twice under two different labels. */
+export function barNoteIsNotIncluded(fb: VenueDetailsV3["food_beverage"]): boolean {
+  return fb.bar_note != null && NOT_INCLUDED_PREFIX.test(fb.bar_note.value);
+}
+
+/** "Not included in package price:" callout text (phrase stripped) — checked on `bar_note` first,
+ * else the first `notes[]` entry that starts with the phrase. Null when nothing matches. */
+export function notIncludedLine(fb: VenueDetailsV3["food_beverage"]): string | null {
+  if (barNoteIsNotIncluded(fb)) return fb.bar_note!.value.replace(NOT_INCLUDED_PREFIX, "").trim();
+  const note = fb.notes.find((n) => NOT_INCLUDED_PREFIX.test(n.value));
+  return note ? note.value.replace(NOT_INCLUDED_PREFIX, "").trim() : null;
+}
+
+/** The Food/Bar side note actually shown as the "Food:"/"Bar:" callout (round 5 rule 5): the
+ * explicit `food_note`/`bar_note` when present, else the first `notes[]` entry `fbNoteSide`
+ * attributes to that side (Greenhouse's composting note, which has no dedicated `food_note` field
+ * of its own) — excluding whichever note `notIncludedLine` already claimed, and never surfacing a
+ * `bar_note` that IS the "not included" sentence a second time under "Bar:". */
+export function fbSideNote(fb: VenueDetailsV3["food_beverage"], side: "food" | "bar"): Fact<string> | null {
+  const explicit = side === "food" ? fb.food_note : fb.bar_note;
+  if (explicit) return side === "bar" && barNoteIsNotIncluded(fb) ? null : explicit;
+  const claimedByNotIncluded = fb.notes.find((n) => NOT_INCLUDED_PREFIX.test(n.value));
+  return fb.notes.find((n) => n !== claimedByNotIncluded && fbNoteSide(n.value) === side) ?? null;
 }
 
 const FOOD_NOTE_PATTERN = /cater|compost|kitchen|\bmenu\b|\bfood\b/i;
@@ -1116,9 +1310,41 @@ export function showPricingSection(d: VenueDetailsV3): boolean {
 }
 
 /** Pricing section grid class: 2 columns for 2 paths, 3 columns (never 2, which orphans the
- * third card onto its own row) for exactly 3, and back to 2 (wrapping 2x2) for 4+ — round-3 fix. */
-export function pricingGridClass(pathCount: number): string {
+ * third card onto its own row) for exactly 3, and back to 2 (wrapping 2x2) for 4+ — round-3 fix.
+ * Round 5 rule 6: `fullWidth` (from `pricingSectionNeedsFullWidth`) forces a single column instead
+ * — a card must never need internal scrolling. */
+export function pricingGridClass(pathCount: number, fullWidth: boolean = false): string {
+  if (fullWidth) return "grid gap-5 grid-cols-1";
   return `grid gap-5 sm:grid-cols-2${pathCount === 3 ? " lg:grid-cols-3" : ""}`;
+}
+
+/** A path's own "bullet line" count — `includes` plus its representative (collapsed-by-name) per-
+ * guest tier's own inclusions — round 5 rule 6: a card whose bullets alone would exceed 8 lines
+ * forces the whole Pricing section to a single full-width column so nothing needs to scroll. */
+export function pathBulletLineCount(path: PricingPath): number {
+  const includesCount = path.includes?.length ?? 0;
+  const representative = collapseTiersByName(path.per_guest_tiers)[0]?.representative;
+  const tierInclusionCount = representative?.inclusions.length ?? 0;
+  return includesCount + tierInclusionCount;
+}
+
+/** True when a path both has bullets (see `pathBulletLineCount`) AND a rate grid (fixed-fee or
+ * per-guest-tier) — the combination round 5 rule 6 calls out as risking internal scrolling on a
+ * narrower 2/3-column card even with a modest bullet count. */
+export function pathHasGridAndBullets(path: PricingPath, seasons: Pricing["seasons"] | undefined): boolean {
+  const hasFeeGrid = fixedFeeGrid(
+    path.fixed_fees.filter((f) => f.applies_to === "space" || f.applies_to === "whole_venue"),
+    seasons,
+  ).days.length > 0;
+  const hasTierGrid = perGuestTierGrid(path.per_guest_tiers, seasons).days.length > 0;
+  return (hasFeeGrid || hasTierGrid) && pathBulletLineCount(path) > 0;
+}
+
+/** Round 5 rule 6: the standalone Pricing section falls back to one full-width column (via
+ * `pricingGridClass`'s `fullWidth`) when ANY of its cards has more than 8 bullet lines, or a grid
+ * plus bullets at all — never per-card, since every card in the section shares one grid. */
+export function pricingSectionNeedsFullWidth(paths: PricingPath[], seasons: Pricing["seasons"] | undefined): boolean {
+  return paths.some((p) => pathBulletLineCount(p) > 8 || pathHasGridAndBullets(p, seasons));
 }
 
 export function showInclusions(d: VenueDetailsV3): boolean {
@@ -1282,10 +1508,11 @@ export function resourceLabel(resource: Resource, siblingsOfSameKindInSlot: Reso
   return ownName || standard;
 }
 
-/** Floor plan(s), Virtual tour, Video, Gallery — the fixed order space-level resources render in,
- * whether inside one card (round 4 rule 5's single-space merge) or a multi-space card's own
- * per-space bucket. `capacity_sheet` sorts with `floor_plan` (rule 4: "it is one"). */
-const SPACE_CARD_ORDER: ResourceKind[] = ["floor_plan", "capacity_sheet", "virtual_tour", "video", "gallery"];
+/** Virtual tour, Gallery, Floor plan(s), Video — the fixed order space-level resources render in
+ * (round 5 rule 3, supersedes round 4 rule 5's Floor plan(s)-first order), whether inside one card
+ * (a single-space venue's merged heading+per-space list) or a multi-space card's own per-space
+ * bucket. `capacity_sheet` sorts with `floor_plan` (round 4 rule 4: "it is one"). */
+const SPACE_CARD_ORDER: ResourceKind[] = ["virtual_tour", "gallery", "floor_plan", "capacity_sheet", "video"];
 
 export function orderSpaceCardResources(resources: Resource[]): Resource[] {
   return [...resources].sort((a, b) => SPACE_CARD_ORDER.indexOf(a.kind) - SPACE_CARD_ORDER.indexOf(b.kind));
@@ -1300,12 +1527,9 @@ export interface PlacedResources {
   /** The same five kinds, but space-scoped (`scope: "space:<id>"`) — that one space card's own
    * header row instead of the section heading. Keyed by space id. */
   perSpace: Record<string, Resource[]>;
-  /** Food & Beverage's Food side (`menu`, `catering_guidelines`) when the section is split. */
-  food: Resource[];
-  /** Food & Beverage's Bar side (`bar_menu`) when the section is split. */
-  bar: Resource[];
-  /** Food & Beverage's own section-heading actions when the section is shared (one row, not
-   * split into Food/Bar sides). */
+  /** `menu` / `catering_guidelines` / `bar_menu` — Food & Beverage's own single heading actions row
+   * (round 5 rule 5: the section is single-column now, so every F&B resource lands here regardless
+   * of whether the Food/Bar pills happen to match). */
   fbShared: Resource[];
   /** `other` — Add-ons & extras' own heading actions (Diamond Garden's add-ons PDF). */
   addOns: Resource[];
@@ -1334,19 +1558,12 @@ export function placeResources(venue: VenueDetailsV3): PlacedResources {
     about: [],
     spacesHeading: [],
     perSpace: {},
-    food: [],
-    bar: [],
     fbShared: [],
     addOns: [],
     policies: [],
     vendors: [],
     unplaced: [],
   };
-  // Whenever the F&B section is split into Food/Bar sub-headers, its resources go beside the
-  // matching side; otherwise they collect into one shared action row (fbLayout already forces
-  // "split" whenever a catering_guidelines or bar_menu resource exists — see fbLayout above — so
-  // this never silently strands a real resource in the shared bucket instead of a side).
-  const split = fbLayout(venue) === "split";
 
   for (const r of venue.resources) {
     if (r.kind === "brochure") {
@@ -1364,10 +1581,10 @@ export function placeResources(venue: VenueDetailsV3): PlacedResources {
     }
     if (SPACES_HEADING_KINDS.includes(r.kind)) {
       placed.spacesHeading.push(r);
-    } else if (r.kind === "menu" || r.kind === "catering_guidelines") {
-      (split ? placed.food : placed.fbShared).push(r);
-    } else if (r.kind === "bar_menu") {
-      (split ? placed.bar : placed.fbShared).push(r);
+    } else if (r.kind === "menu" || r.kind === "catering_guidelines" || r.kind === "bar_menu") {
+      // Round 5 rule 5: the F&B section is single-column now — every one of its resources lands
+      // in the section's own single heading actions row, never split by side.
+      placed.fbShared.push(r);
     } else if (r.kind === "contract") {
       placed.policies.push(r);
     } else if (r.kind === "other") {

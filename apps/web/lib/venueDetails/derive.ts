@@ -257,10 +257,13 @@ export function headlineCapacity(d: VenueDetailsV3): HeadlineCapacity {
 }
 
 // ---------------------------------------------------------------------------
-// Guest range (round 4 rule 1) — the venue's own full guest-count range across EVERY layout, not
-// just the seated-dinner compare headline. `headlineCapacity` (above) is unchanged and still
-// drives cross-venue comparison; this is what the quick-fact pill and the calculator's guest
-// stepper/range reminder actually show a couple.
+// Guest range (round 5 rule 1; supersedes round 4's "largest tuple of ANY layout" max) — the
+// quick-fact pill and the calculator's guest stepper/range reminder. Max is the venue's OWN stated
+// guest maximum (`spine.capacity_max_guests`, any layout — Greenhouse's "25-200 guests") when it
+// publishes one; otherwise it falls back to the compare headline (`headlineCapacity`'s seated
+// number, or its own cocktail/other fallback chain) — never a raw tuple max scavenged across
+// layouts. Min is unchanged from round 4: the stated `capacity_min_guests`, else the smallest
+// tuple min, `null` for a conflicting minimum ("unknown beats wrong").
 // ---------------------------------------------------------------------------
 
 export interface GuestRange {
@@ -271,9 +274,9 @@ export interface GuestRange {
 
 /** Min = the stated `capacity_min_guests`, or (when not stated) the smallest tuple `min` across
  * every layout; a `conflicting` minimum is omitted entirely ("unknown beats wrong" — never
- * silently resolved to one candidate or backfilled from a tuple). Max = the largest tuple `max` of
- * ANY layout (Greenhouse's cocktail 200 beats its own seated 175/150) — `max_measures` reads
- * "guests" when that max came from a cocktail tuple, "seated" otherwise. */
+ * silently resolved to one candidate or backfilled from a tuple). Max = `spine.capacity_max_guests`
+ * when the venue itself states one (`max_measures: "guests"`), else the compare headline
+ * (`max_measures: "seated"`, or "guests" when the headline itself is a cocktail-only number). */
 export function guestRange(d: VenueDetailsV3): GuestRange {
   const capMin = d.spine.capacity_min_guests;
   let min: number | null;
@@ -285,10 +288,13 @@ export function guestRange(d: VenueDetailsV3): GuestRange {
     const tupleMins = d.capacities.map((c) => c.min).filter((m): m is number => m != null);
     min = tupleMins.length ? Math.min(...tupleMins) : null;
   }
-  const best = maxBy(d.capacities, (c) => c.max);
-  const max = best?.max ?? null;
-  const max_measures: "seated" | "guests" = best?.tile === "cocktail" ? "guests" : "seated";
-  return { min, max, max_measures };
+
+  const capMax = d.spine.capacity_max_guests;
+  if (isStated(capMax)) {
+    return { min, max: capMax.value, max_measures: "guests" };
+  }
+  const hc = headlineCapacity(d);
+  return { min, max: hc.headline, max_measures: hc.cocktail_only ? "guests" : "seated" };
 }
 
 // ---------------------------------------------------------------------------
@@ -651,6 +657,101 @@ export function selectableAddOns(d: VenueDetailsV3, path_id: string | undefined)
     if (a.path_ids && path_id && !a.path_ids.includes(path_id)) return false;
     return a.price != null || (a.per_space_prices != null && Object.keys(a.per_space_prices).length > 0);
   });
+}
+
+// ---------------------------------------------------------------------------
+// Calculator example range (round 5 rule 8) — the floor-to-ceiling "cheapest realistic booking to
+// priciest" bar the concept calculators show below their breakdown. Path is held fixed at whatever
+// the caller has currently selected (the concept calculators never vary path either — Marchetti and
+// LondonHouse each have exactly one pricing path); guests, tier, day and season vary between the
+// cheap and pricey ends. Built on `estimateCost` itself so the range can never disagree with the
+// breakdown it accompanies.
+// ---------------------------------------------------------------------------
+
+export interface CalculatorRangeInput {
+  guests: number;
+  /** Null when the path doesn't genuinely vary by day (nothing to show — LondonHouse's range
+   * caption never names a day). */
+  day: Day | null;
+  /** Null when the path has no named per-guest tiers (or only one). */
+  tierName: string | null;
+}
+
+export interface CalculatorRange {
+  low: number;
+  high: number;
+  lowInput: CalculatorRangeInput;
+  highInput: CalculatorRangeInput;
+}
+
+/** Cheapest vs priciest booking on the given (or first) path: guests span the venue's own
+ * `guestRange`; day/season pick the cheapest/priciest values the path's own fees/tiers actually use
+ * (falling back to "sat"/"peak" when the path doesn't vary at all); tier picks the cheapest/priciest
+ * named per-guest tier. Ceremony and add-ons never vary (optional, not baseline) — same convention
+ * as the concept calculators' own ranges. Null when the venue has no pricing path at all (the
+ * "Pricing on request" card already covers that case). */
+export function calculatorRange(d: VenueDetailsV3, pathId: string | undefined): CalculatorRange | null {
+  const path = (pathId && d.pricing.paths.find((p) => p.id === pathId)) || d.pricing.paths[0];
+  if (!path) return null;
+
+  const gr = guestRange(d);
+  const minGuests = gr.min ?? 10;
+  const maxGuests = Math.max(gr.max ?? minGuests, minGuests);
+
+  const days = new Set<Day>();
+  const seasons = new Set<Season>();
+  for (const f of path.fixed_fees) {
+    if (f.day) days.add(f.day);
+    if (f.season) seasons.add(f.season);
+  }
+  for (const t of path.per_guest_tiers) {
+    if (t.day) days.add(t.day);
+    if (t.season) seasons.add(t.season);
+  }
+  const dayList = [...days];
+  const seasonList = [...seasons];
+  const variesByDay = dayList.length > 1;
+  const cheapDay: Day = dayList.includes("weekday") ? "weekday" : (dayList.find((x) => x !== "sat") ?? dayList[0] ?? "sat");
+  const pricyDay: Day = dayList.includes("sat") ? "sat" : (dayList[dayList.length - 1] ?? "sat");
+  const cheapSeason: Season = seasonList.includes("off") ? "off" : (seasonList[0] ?? "peak");
+  const pricySeason: Season = seasonList.includes("peak") ? "peak" : (seasonList[seasonList.length - 1] ?? "peak");
+
+  let cheapTierId: string | undefined;
+  let pricyTierId: string | undefined;
+  let cheapTierName: string | null = null;
+  let pricyTierName: string | null = null;
+  const tierNames = new Set(path.per_guest_tiers.map((t) => t.name));
+  if (tierNames.size > 1) {
+    const cheapest = path.per_guest_tiers.reduce((a, b) => (b.per_guest < a.per_guest ? b : a));
+    const priciest = path.per_guest_tiers.reduce((a, b) => (b.per_guest > a.per_guest ? b : a));
+    cheapTierId = cheapest.id;
+    pricyTierId = priciest.id;
+    cheapTierName = cheapest.name;
+    pricyTierName = priciest.name;
+  }
+
+  const spaceId = defaultAxes(d).space_id;
+  const build = (guests: number, day: Day, season: Season, tier_id: string | undefined): EstimateInput => ({
+    guests,
+    day,
+    season,
+    path_id: path.id,
+    tier_id,
+    space_id: spaceId,
+    ceremonyOnSite: false,
+    payment: "cash_check",
+    extras: [],
+  });
+
+  const low = estimateCost(d, build(minGuests, cheapDay, cheapSeason, cheapTierId)).total;
+  const high = estimateCost(d, build(maxGuests, pricyDay, pricySeason, pricyTierId)).total;
+
+  return {
+    low,
+    high,
+    lowInput: { guests: minGuests, day: variesByDay ? cheapDay : null, tierName: cheapTierName },
+    highInput: { guests: maxGuests, day: variesByDay ? pricyDay : null, tierName: pricyTierName },
+  };
 }
 
 // ---------------------------------------------------------------------------

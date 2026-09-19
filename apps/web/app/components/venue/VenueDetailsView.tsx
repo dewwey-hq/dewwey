@@ -12,33 +12,17 @@
 
 import type { ReactNode } from "react";
 import {
-  Accessibility,
-  AirVent,
-  Armchair,
-  BedDouble,
-  Blinds,
-  Camera,
-  Church,
   FileText,
-  GlassWater,
-  House,
   Images,
-  Lamp,
   LayoutGrid,
   MapPin,
-  Music,
-  Projector,
   Rotate3d,
-  Shirt,
-  ShieldCheck,
   Sparkles,
-  SquareParking,
-  Table2,
-  UserCheck,
   Users,
   UtensilsCrossed,
   Video,
   Wine,
+  House,
   type LucideIcon,
 } from "lucide-react";
 import { uiHeadingClassName } from "@/lib/typography";
@@ -54,6 +38,7 @@ import type {
   VenueDetailsV3,
 } from "@/lib/venueDetails/types";
 import * as fmt from "./format";
+import { ADD_ON_CATEGORY_ICONS, INCLUSION_ICONS } from "./icons";
 import { FactSource } from "./FactSource";
 import { ResourceButton } from "./ResourceButton";
 import { ResourceMenuButton } from "./ResourceMenuButton";
@@ -123,29 +108,6 @@ const RESOURCE_ICONS: Record<ResourceKind, LucideIcon> = {
   gallery: Images,
   vendor_list: Users,
   other: FileText,
-};
-
-const INCLUSION_ICONS: Partial<Record<InclusionItem["label"], LucideIcon>> = {
-  "Exclusively yours": House,
-  "Bridal suite": BedDouble,
-  "Bar space": GlassWater,
-  Parking: SquareParking,
-  "Coat check": Shirt,
-  Accessibility: Accessibility,
-  "Heating & A/C": AirVent,
-  Tables: Table2,
-  Chairs: Armchair,
-  Linens: Blinds,
-  "Dance floor": Music,
-  DJ: Music,
-  "Sound & AV": Projector,
-  Photobooth: Camera,
-  Videography: Video,
-  Coordinator: UserCheck,
-  Security: ShieldCheck,
-  "Candle treatment": Lamp,
-  Ceremony: Church,
-  Décor: Blinds,
 };
 
 /** A section heading's (or F&B micro-header's) action row: one button per resource, unless
@@ -323,18 +285,15 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
         <>
           <section id="pricing">
             <SectionHeading title="Pricing" />
-            <div className={fmt.pricingGridClass(venue.pricing.paths.length)}>
+            {/* Round 5 rule 6: cards fall back to one full-width column (instead of the 2/3-col
+                grid) whenever any of them risks needing internal scrolling — season months now
+                render inline on each grid row (rule 4), so there's no separate section-level
+                "Season:" sentence to repeat here anymore. */}
+            <div className={fmt.pricingGridClass(venue.pricing.paths.length, fmt.pricingSectionNeedsFullWidth(venue.pricing.paths, venue.pricing.seasons))}>
               {venue.pricing.paths.map((p, i) => (
                 <PricingPathCard key={p.id} path={p} paths={venue.pricing.paths} index={i} seasons={venue.pricing.seasons} capturedAt={venue.sources.crawled_at} />
               ))}
             </div>
-            {/* Season months are identical across every path on the same venue — stated once
-                here rather than repeated per card. */}
-            {fmt.seasonsMonthsLine(venue.pricing.seasons) && (
-              <p className="mt-4 text-sm text-gray-600">
-                <span className="font-medium text-gray-800">Season:</span> {fmt.seasonsMonthsLine(venue.pricing.seasons)}.
-              </p>
-            )}
           </section>
           <Divider />
         </>
@@ -562,6 +521,45 @@ function DifferentiatorSpotlight({ differentiator }: { differentiator: NonNullab
 // Spaces
 // ---------------------------------------------------------------------------
 
+/** A space card's own resource actions, in round 5 rule 3's fixed slot order — Virtual tour,
+ * Gallery, Floor plan(s) (incl. capacity_sheet), Video — 2+ of the same kind in one slot collapse
+ * to a single menu button. The first populated slot gets the primary (rose) treatment, matching
+ * the concept pages' own weighting (Diamond Garden's primary "Virtual tour" next to its secondary
+ * "Wedding videos"); every other slot is secondary (grey). */
+function SpaceCardActions({ actions }: { actions: Resource[] }) {
+  const ordered = fmt.orderSpaceCardResources(actions);
+  const slots: { key: string; menuLabel: string; icon: LucideIcon; resources: Resource[] }[] = [
+    { key: "virtual_tour", menuLabel: "Virtual tours", icon: Rotate3d, resources: ordered.filter((r) => r.kind === "virtual_tour") },
+    { key: "gallery", menuLabel: "Galleries", icon: Images, resources: ordered.filter((r) => r.kind === "gallery") },
+    { key: "floor_plan", menuLabel: "Floor plans", icon: LayoutGrid, resources: ordered.filter((r) => r.kind === "floor_plan" || r.kind === "capacity_sheet") },
+    { key: "video", menuLabel: "Videos", icon: Video, resources: ordered.filter((r) => r.kind === "video") },
+  ].filter((s) => s.resources.length > 0);
+
+  if (slots.length === 0) return null;
+
+  return (
+    <div className="flex shrink-0 flex-wrap justify-end gap-2">
+      {slots.map((slot, i) => {
+        const variant: "primary" | "secondary" = i === 0 ? "primary" : "secondary";
+        const Icon = slot.icon;
+        if (slot.resources.length === 1) {
+          const r = slot.resources[0];
+          return <ResourceButton key={r.id} label={fmt.resourceLabel(r, slot.resources)} icon={RESOURCE_ICONS[r.kind]} url={r.url} variant={variant} />;
+        }
+        return (
+          <ResourceMenuButton
+            key={slot.key}
+            label={`${slot.menuLabel} (${slot.resources.length})`}
+            icon={<Icon size={13} className={variant === "primary" ? "text-rose-400" : "text-gray-400"} />}
+            items={slot.resources.map((r) => ({ id: r.id, label: fmt.resourceLabel(r, slot.resources), url: r.url }))}
+            variant={variant}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function SpaceCard({
   venue,
   space,
@@ -584,14 +582,9 @@ function SpaceCard({
 }) {
   const tiles = fmt.spaceCapacityTiles(venue, space.id);
   const fees = fmt.pathSpaceFixedFees(defaultPath, space.id);
-  // Round 4 rule 5: capacity_sheet sorts with floor_plan ("it is one" — rule 4); the whole action
-  // list is kept in the fixed Floor plan(s) / Virtual tour / Video / Gallery order, whether it's a
-  // single-space venue's merged heading+per-space list or a multi-space card's own bucket.
-  const ordered = fmt.orderSpaceCardResources(actions);
-  const floorPlans = ordered.filter((r) => r.kind === "floor_plan" || r.kind === "capacity_sheet");
-  const otherActions = ordered.filter((r) => r.kind !== "floor_plan" && r.kind !== "capacity_sheet");
   const sizeLine = fmt.spaceSizeLine(space.sq_ft, space.sq_ft_outdoor, space.structure_label, space.sq_ft_label);
-  const ceiling = fmt.ceilingLine(space.ceiling_ft, space.ceiling_label);
+  const hasOtherSizeFacts = space.sq_ft != null || space.sq_ft_outdoor != null;
+  const ceiling = fmt.ceilingLine(space.ceiling_ft, space.ceiling_label, hasOtherSizeFacts);
   // Round 4 rule 6 (regression fix): `spaceRentalLine` is the single source of truth for which
   // shape this card shows — fee rows, the in-card grid, a one-line summary pointing at the
   // standalone Pricing section, "included in the per-guest package price", or "on request". The
@@ -601,45 +594,26 @@ function SpaceCard({
   const rentalLine = fmt.spaceRentalLine(fees.length, wholeVenueFeesForCard, venue.pricing.paths.length, defaultPath);
   const rentalGridSource = rentalLine.kind === "grid" ? fmt.fixedFeeGrid(wholeVenueFeesForCard, venue.pricing.seasons) : null;
   const rentalGrid = rentalGridSource ? fmt.buildMergedPriceGrid(rentalGridSource) : null;
-  // The terms (round 4 rule 3) render under whichever rate grid this card actually shows — the
-  // space-scoped fee table, or the whole-venue "Rental rate" grid.
+  // Round 4 rule 3 / round 5 rule 4: the venue's own labeled rate terms live INSIDE the same tinted
+  // "Rental rate" box as whichever grid/fee table this card shows, never as a separate line below it.
   const terms = defaultPath?.terms ?? [];
-  const showTermsHere = terms.length > 0 && (fees.length > 0 || rentalGrid != null);
+  const showRentalBox = fees.length > 0 || rentalGrid != null;
 
   return (
     <div className={`rounded-2xl border border-black/[0.06] ${single ? "p-6" : "p-5"}`}>
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className={`text-lg text-gray-900 ${uiHeadingClassName}`}>{space.name}</h3>
-          {sizeLine && <p className="text-sm text-gray-500">{sizeLine}</p>}
+          <p className={`text-sm ${sizeLine.stated ? "text-gray-500" : "italic text-gray-400"}`}>{sizeLine.text}</p>
         </div>
-        {/* Up to 3 buttons (2026-09-18 review): floor plans first — collapsing 2+ into a single
-            "Floor plans (N)" menu button instead of a row that can overflow the card (and cause
-            horizontal scroll at phone width) — then any other space-scoped resource (virtual
-            tour / video / gallery) as its own secondary (grey) button, matching the concept
-            pages' primary-tour / secondary-everything-else weighting. */}
-        {(floorPlans.length > 0 || otherActions.length > 0) && (
-          <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            {floorPlans.length === 1 && <ResourceButton label={fmt.resourceLabel(floorPlans[0], floorPlans)} icon={LayoutGrid} url={floorPlans[0].url} />}
-            {fmt.shouldCollapseFloorPlans(floorPlans.length) && (
-              <ResourceMenuButton
-                label={`Floor plans (${floorPlans.length})`}
-                icon={<LayoutGrid size={13} className="text-rose-400" />}
-                items={floorPlans.map((r) => ({ id: r.id, label: fmt.resourceLabel(r, floorPlans), url: r.url }))}
-              />
-            )}
-            {otherActions.map((r) => (
-              <ResourceButton key={r.id} label={fmt.resourceLabel(r, otherActions)} icon={RESOURCE_ICONS[r.kind]} url={r.url} variant="secondary" />
-            ))}
-          </div>
-        )}
+        <SpaceCardActions actions={actions} />
       </div>
 
       <div className={`mt-4 grid grid-cols-3 ${single ? "gap-3" : "gap-2"} text-center text-sm`}>
         {tiles.map((t) => (
           <div key={t.tile} className={`rounded-xl py-2 ${t.max != null ? "bg-[#fdf8f5]" : "bg-gray-50"}`}>
             <div className={`flex items-center justify-center gap-1 font-semibold ${t.max != null ? "text-gray-900" : "text-gray-300"}`}>
-              {t.max ?? "—"}
+              {t.max != null ? fmt.int(t.max) : "—"}
               {t.max != null && <FactSource quote={t.quote ?? undefined} source_url={t.source_url ?? undefined} snapshot_id={t.snapshot_id} capturedAt={venue.sources.crawled_at} />}
             </div>
             <div className={`text-[11px] leading-tight ${t.max != null ? "text-gray-500" : "text-gray-400"}`}>{t.as_stated_label ?? fmt.TILE_FALLBACK_LABEL[t.tile]}</div>
@@ -650,46 +624,40 @@ function SpaceCard({
       {space.description && <p className="mt-3 text-sm leading-[1.6] text-gray-600">{space.description.value}</p>}
       {ceiling && <p className="mt-1.5 text-xs text-gray-400">{ceiling}</p>}
 
-      {fees.length > 0 && (
-        <table className="mt-4 w-full text-sm text-gray-600">
-          <tbody>
-            {fees.map((f) => (
-              <tr key={f.key} className="border-t border-black/[0.04]">
-                <td className="py-1.5">{fmt.feeRentalLabel(f)}</td>
-                <td className="py-1.5 text-right font-medium text-gray-900">
-                  {fmt.money(f.amount)}
-                  <FactSource quote={f.quote} source_url={f.source_url} snapshot_id={f.snapshot_id} capturedAt={venue.sources.crawled_at} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {rentalGrid && (
+      {/* Round 5 rule 4: everything rate-related — the grid or fee table, then the venue's own
+          rental terms — lives inside ONE tinted box. */}
+      {showRentalBox && (
         <div className="mt-4 rounded-lg bg-[#fdf8f5] p-3 text-sm text-gray-700">
-          <p className={`mb-2 font-medium text-gray-900 ${uiHeadingClassName}`}>Rental rate</p>
-          <MergedPriceGridTable grid={rentalGrid} seasons={venue.pricing.seasons} />
+          {rentalGrid ? (
+            <>
+              <p className={`mb-2 font-medium text-gray-900 ${uiHeadingClassName}`}>Rental rate</p>
+              <MergedPriceGridTable grid={rentalGrid} seasons={venue.pricing.seasons} />
+            </>
+          ) : (
+            <table className="w-full text-sm text-gray-600">
+              <tbody>
+                {fees.map((f) => (
+                  <tr key={f.key} className="border-t border-black/[0.04] first:border-t-0">
+                    <td className="py-1.5">{fmt.feeRentalLabel(f)}</td>
+                    <td className="py-1.5 text-right font-medium text-gray-900">
+                      {fmt.money(f.amount)}
+                      <FactSource quote={f.quote} source_url={f.source_url} snapshot_id={f.snapshot_id} capturedAt={venue.sources.crawled_at} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {terms.length > 0 && (
+            <div className="mt-2.5 space-y-1 text-xs text-gray-500">
+              {terms.map((t) => (
+                <p key={t.label}>
+                  <span className="font-medium text-gray-700">{t.label}:</span> {t.text}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Rental terms (round 4 rule 3) — the venue's own labeled lines ("Access", "Event hours",
-          "Holiday rates") under whichever rate grid this card shows. */}
-      {showTermsHere && (
-        <div className="mt-2.5 space-y-1 text-xs text-gray-500">
-          {terms.map((t) => (
-            <p key={t.label}>
-              <span className="font-medium text-gray-700">{t.label}:</span> {t.text}
-            </p>
-          ))}
-        </div>
-      )}
-
-      {/* Season months (round 4 rule 2) — once under this card's own grid, when it has one. */}
-      {(fees.length > 0 || rentalGrid != null) && fmt.seasonsMonthsLine(venue.pricing.seasons) && (
-        <p className="mt-2 text-xs text-gray-500">
-          <span className="font-medium text-gray-700">Season:</span> {fmt.seasonsMonthsLine(venue.pricing.seasons)}.
-        </p>
       )}
 
       {/* Round 4 rule 6: every card names its rental shape, even when there's no fee table/grid
@@ -803,101 +771,61 @@ function FbBarLaddersTable({ barLadders, barMinGuests, className = "mt-4" }: { b
   );
 }
 
+/** One uniform `Label: text` callout line (round 5 rule 5), evidence-linked when a Fact backs it. */
+function FbCalloutLine({ label, text, fact, capturedAt }: { label: string; text: string; fact?: { quote: string; source_url: string; snapshot_id: number | null } | null; capturedAt: string | null }) {
+  return (
+    <p className="text-sm text-gray-700">
+      <span className="font-medium text-gray-900">{label}:</span> {text}
+      {fact && <FactSource quote={fact.quote} source_url={fact.source_url} snapshot_id={fact.snapshot_id} capturedAt={capturedAt} />}
+    </p>
+  );
+}
+
+/** Round 5 rule 5: Food & Beverage is single-column, grouped — resource buttons in the heading,
+ * then pill row(s), tier cards, menus table, bar table, and finally the labeled callout lines, in
+ * that order, regardless of whether the Food/Bar pills happen to match. */
 function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetailsV3; defaultPath: PricingPath | undefined; placed: fmt.PlacedResources }) {
   const { food, bar } = fbPills(venue); // round 4 rule 13: already BYO -> à la carte -> All-Inclusive order
-  const caption = venue.food_beverage.caption;
-  const layout = fmt.fbLayout(venue);
-  const shared = layout === "shared";
-  // Resources route to the section heading when shared (one row), or beside each side's own
-  // micro-header when split — Diamond Garden's three menus under Food, one bar-packages PDF
-  // under Bar (2026-09-18 review; see `fmt.placeResources`). Round 4 rule 7: resource buttons sit
-  // ABOVE the pills/note prose in each column (they're already the first thing rendered below).
-  const sharedActions = resourceButtons(placed.fbShared, "Resources");
-  const foodActions = resourceButtons(placed.food, "Menus");
-  const barActions = resourceButtons(placed.bar, "Menus");
+  // Round 5 rule 5: this now decides ONLY whether the pill row is one shared row or two labeled
+  // Food/Bar rows — resource placement and the callout lines below never split by side anymore.
+  const pillsShared = fmt.fbLayout(venue) === "shared";
 
-  // Round 4 rule 7: food_note/bar_note are the explicit, sided facts; `notes[]`'s keyword routing
-  // (fmt.fbNoteSide) is a fallback for unsided facts only (Greenhouse's composting note has no
-  // food_note/bar_note field of its own). `caption` stays the narrower carve-out treatment.
-  const captionSide = caption ? fmt.fbNoteSide(caption.value) : null;
-  const foodProse = venue.food_beverage.notes.filter((n) => fmt.fbNoteSide(n.value) === "food").map((n) => n.value);
-  const barProse = venue.food_beverage.notes.filter((n) => fmt.fbNoteSide(n.value) === "bar").map((n) => n.value);
-  const foodNote = venue.food_beverage.food_note ?? null;
-  const barNote = venue.food_beverage.bar_note ?? null;
+  const foodNote = fmt.fbSideNote(venue.food_beverage, "food");
+  const barNote = fmt.fbSideNote(venue.food_beverage, "bar");
+  const barByo = venue.food_beverage.caption;
+  const notIncluded = fmt.notIncludedLine(venue.food_beverage);
+  const chargesTax = fmt.fbRateSentence(venue.pricing.rates);
+  const fbMinimum = fmt.fbMinimumLine(venue.spine.fb_minimum);
 
   // Fix round: tiers that share a name and differ only by day/season (Diamond Garden's four
   // "All-Inclusive" rows) collapse into one card with a min-max price — the season x day
   // breakdown itself lives in the Pricing section's grid, not repeated as cards here.
   const tiers = fmt.collapseTiersByName(defaultPath?.per_guest_tiers ?? []);
-  const rateSentence = fmt.fbRateSentence(venue.pricing.rates);
-  const minimumLine = fmt.fbMinimumLine(venue.spine.fb_minimum);
 
   return (
     <section id="food-beverage">
-      <SectionHeading title="Food & Beverage" actions={shared ? sharedActions : undefined} />
+      <SectionHeading title="Food & Beverage" actions={resourceButtons(placed.fbShared, "Menus")} />
 
-      {shared ? (
-        <div className="mb-2 flex flex-wrap gap-2">
-          {food.map((p) => (
-            <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>
-          ))}
+      {pillsShared ? (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {food.length > 0 ? food.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
         </div>
       ) : (
-        // Round 4 rule 7: two real columns at sm+ (FOOD | BAR), not stacked — each column is
-        // micro-header+actions -> pills -> note prose -> its own side-specific table.
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="mb-4 space-y-3">
           <div>
-            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Food</p>
-              {foodActions && <div className="flex flex-wrap justify-end gap-2">{foodActions}</div>}
-            </div>
-            <div className="mb-2 flex flex-wrap gap-2">
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">Food</p>
+            <div className="flex flex-wrap gap-2">
               {food.length > 0 ? food.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
             </div>
-            {foodNote && (
-              <p className="text-sm text-gray-600">
-                {foodNote.value}
-                <FactSource quote={foodNote.quote} source_url={foodNote.source_url} snapshot_id={foodNote.snapshot_id} capturedAt={venue.sources.crawled_at} />
-              </p>
-            )}
-            {foodProse.map((text) => (
-              <p key={text} className="text-sm text-gray-600">
-                {text}
-              </p>
-            ))}
-            {captionSide === "food" && <p className="mt-1 text-xs text-gray-400">{caption!.value}</p>}
-            {venue.food_beverage.menus.length > 0 && <FbMenusTable menus={venue.food_beverage.menus} />}
           </div>
           <div>
-            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Bar</p>
-              {barActions && <div className="flex flex-wrap justify-end gap-2">{barActions}</div>}
-            </div>
-            <div className="mb-2 flex flex-wrap gap-2">
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">Bar</p>
+            <div className="flex flex-wrap gap-2">
               {bar.length > 0 ? bar.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
             </div>
-            {barNote && (
-              <p className="text-sm text-gray-600">
-                {barNote.value}
-                <FactSource quote={barNote.quote} source_url={barNote.source_url} snapshot_id={barNote.snapshot_id} capturedAt={venue.sources.crawled_at} />
-              </p>
-            )}
-            {barProse.map((text) => (
-              <p key={text} className="text-sm text-gray-600">
-                {text}
-              </p>
-            ))}
-            {captionSide === "bar" && <p className="mt-1 text-xs text-gray-400">{caption!.value}</p>}
-            {venue.food_beverage.bar_ladders.length > 0 && (
-              <FbBarLaddersTable barLadders={venue.food_beverage.bar_ladders} barMinGuests={venue.food_beverage.bar_min_guests} />
-            )}
           </div>
         </div>
       )}
-
-      {/* `fbLayout` always splits when a caption exists, so this only fires for an ambiguous
-          caption `fbNoteSide` couldn't confidently attribute to either side. */}
-      {!shared && caption && captionSide == null && <p className="text-xs text-gray-400">{caption.value}</p>}
 
       {tiers.length > 0 && (
         // A single collapsed tier (Diamond Garden: 8 same-named "All-Inclusive" day/season rows
@@ -941,20 +869,22 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
         </div>
       )}
 
-      {rateSentence && <p className="mt-3 text-sm text-gray-600">{rateSentence}</p>}
-      {/* Round 4 rule 7: "Food & beverage minimum:" whenever one applies, regardless of layout. */}
-      {minimumLine && (
-        <p className="mt-1 text-sm text-gray-600">
-          <span className="font-medium text-gray-800">Food & beverage minimum:</span> {minimumLine}
-        </p>
-      )}
-
-      {/* Shared (non-split) layout: menus/bar ladders render below the one pill row, same as
-          before round 4 — the split layout already nests these inside their own column above. */}
-      {shared && venue.food_beverage.menus.length > 0 && <FbMenusTable menus={venue.food_beverage.menus} />}
-      {shared && venue.food_beverage.bar_ladders.length > 0 && (
+      {/* Round 5 rule 5: menus table, then bar table — single column, shared regardless of the
+          pill-row layout above (bar minimum stays under the bar table). */}
+      {venue.food_beverage.menus.length > 0 && <FbMenusTable menus={venue.food_beverage.menus} />}
+      {venue.food_beverage.bar_ladders.length > 0 && (
         <FbBarLaddersTable barLadders={venue.food_beverage.bar_ladders} barMinGuests={venue.food_beverage.bar_min_guests} />
       )}
+
+      {/* Round 5 rule 5: the labeled callout lines, one uniform "Label: text" format. */}
+      <div className="mt-4 space-y-1.5">
+        {foodNote && <FbCalloutLine label="Food" text={foodNote.value} fact={foodNote} capturedAt={venue.sources.crawled_at} />}
+        {barNote && <FbCalloutLine label="Bar" text={barNote.value} fact={barNote} capturedAt={venue.sources.crawled_at} />}
+        {barByo && <FbCalloutLine label="Bar BYO option" text={barByo.value} fact={barByo} capturedAt={venue.sources.crawled_at} />}
+        {fbMinimum && <FbCalloutLine label="Food & beverage minimum" text={fbMinimum} capturedAt={venue.sources.crawled_at} />}
+        {chargesTax && <FbCalloutLine label="Charges & tax" text={chargesTax} capturedAt={venue.sources.crawled_at} />}
+        {notIncluded && <FbCalloutLine label="Not included in package price" text={notIncluded} capturedAt={venue.sources.crawled_at} />}
+      </div>
     </section>
   );
 }
@@ -1023,12 +953,10 @@ function MergedPriceGridTable({ grid, moneySuffix, seasons }: { grid: fmt.Merged
         <tbody>
           {grid.seasons.map((s, si) => (
             <tr key={s} className="border-t border-black/[0.05]">
-              {/* Round 4: the season name and its months (when the venue states them) render as
-                  two lines — the inline "(Jan, Feb, Mar, Nov)" form crowded a 3-column card. */}
-              <td className="py-1 align-top">
-                <div>{fmt.seasonLabel(s)}</div>
-                {fmt.seasonMonthsOnly(s, seasons) && <div className="text-[11px] text-gray-400">{fmt.seasonMonthsOnly(s, seasons)}</div>}
-              </td>
+              {/* Round 5 rule 4 (supersedes round 4's two-line rendering): the season name and its
+                  months (when the venue states them) render inline on one line, "Off-season
+                  (Jan – Mar)" — no second line. */}
+              <td className="py-1 align-top">{fmt.seasonLabelWithMonths(s, seasons)}</td>
               {grid.grid[si].map((amount, ci) => (
                 <td key={ci} className="py-1 text-right">
                   {amount != null ? `${fmt.money(amount)}${moneySuffix ?? ""}` : <span className="text-gray-300">—</span>}
@@ -1065,7 +993,7 @@ function PricingPathCard({
     ? null
     : fmt.buildMergedPriceGrid(fmt.fixedFeeGrid(path.fixed_fees.filter((f) => f.applies_to === "space" || f.applies_to === "whole_venue"), seasons));
   const tierGrid = fmt.buildMergedPriceGrid(fmt.perGuestTierGrid(path.per_guest_tiers, seasons));
-  const headline = fmt.pricingHeadlineLine(path);
+  const priceParts = fmt.pricingHeadlineParts(path);
   // The representative per-guest tier's own inclusions (round 4 rule 16) — `collapseTiersByName`
   // already picks the first-seen entry per unique package name, the same de-dup this path's own
   // day/season variants need.
@@ -1076,15 +1004,34 @@ function PricingPathCard({
 
   return (
     <div className="rounded-2xl border border-black/[0.06] p-5">
+      {/* Round 5 rule 6: header -> subtitle -> price -> includes/tier bullets -> grid -> notes. */}
       <div className="flex items-center gap-1.5">
         <h3 className={`text-lg text-gray-900 ${uiHeadingClassName}`}>{path.name}</h3>
         <FactSource quote={path.quote} source_url={path.source_url} snapshot_id={path.snapshot_id} capturedAt={capturedAt} />
       </div>
-      {/* When `sameAs` applies, the description is folded into the "Same rental rates as X,
-          plus …" sentence below instead of also appearing as a bare subtitle up here. */}
-      {path.description && !sameAs && <p className="mt-1 text-sm text-gray-600">{path.description}</p>}
 
-      {/* Round 4 rule 16: includes bullets sit ABOVE the rate grid. */}
+      {/* Subtitle: the plain description, or (when this path builds on an earlier one's identical
+          fees) the "Same rental rates as X, plus …" sentence in its place — round 4 rule 16's
+          sentence, moved up to the subtitle slot per round 5's card order. */}
+      {sameAs ? (
+        <p className="mt-1 text-sm text-gray-600">
+          Same rental rates as {sameAs.name}
+          {path.description ? `, plus ${path.description}` : ""}.
+        </p>
+      ) : (
+        path.description && <p className="mt-1 text-sm text-gray-600">{path.description}</p>
+      )}
+
+      {/* Round 5 rule 6 / rule 8: price bold, unit small grey — same typography as the F&B tier
+          cards' headline price. */}
+      {priceParts && (
+        <p className="mt-2 text-2xl font-semibold text-gray-900">
+          {priceParts.main}
+          {priceParts.unit && <span className="text-sm font-normal text-gray-500"> {priceParts.unit}</span>}
+        </p>
+      )}
+
+      {/* Includes / tier-inclusion bullets, both above the grid. */}
       {path.includes && path.includes.length > 0 && (
         <ul className="mt-3 space-y-1.5 text-sm text-gray-600">
           {path.includes.map((inc) => (
@@ -1095,32 +1042,42 @@ function PricingPathCard({
           ))}
         </ul>
       )}
-
-      {/* Round 4 rule 16: a normal-weight quoted price line, not a display-size number — this
-          card already carries title/subtitle/includes/grid, unlike the simpler F&B tier cards
-          rule 8 still applies to. */}
-      {headline && <p className="mt-2 text-lg text-gray-700">{headline}</p>}
-
-      {sameAs && (
-        <p className="mt-3 text-sm text-gray-600">
-          Same rental rates as {sameAs.name}
-          {path.description ? `, plus ${path.description}` : ""}.
-        </p>
-      )}
-      {feeGrid && <MergedPriceGridTable grid={feeGrid} seasons={seasons} />}
-      {tierGrid && <MergedPriceGridTable grid={tierGrid} moneySuffix="/guest" seasons={seasons} />}
-
-      {/* Round 4 rule 3: the venue's own labeled rental terms under the grid. */}
-      {path.terms && path.terms.length > 0 && (
-        <div className="mt-2.5 space-y-1 text-xs text-gray-500">
-          {path.terms.map((t) => (
-            <p key={t.label}>
-              <span className="font-medium text-gray-700">{t.label}:</span> {t.text}
-            </p>
+      {tierInclusionGroups.length > 0 && (
+        <div className={path.includes && path.includes.length > 0 ? "mt-3 space-y-2.5" : "space-y-2.5"}>
+          {tierInclusionGroups.map((g) => (
+            <div key={g.header ?? "flat"}>
+              {g.header && <p className="text-xs font-medium uppercase tracking-wide text-gray-400">{g.header}</p>}
+              <ul className={`space-y-1.5 text-sm text-gray-600 ${g.header ? "mt-1" : ""}`}>
+                {g.items.map((inc) => (
+                  <li key={inc} className="flex gap-2">
+                    <span className="text-rose-400">·</span>
+                    {inc}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
         </div>
       )}
 
+      {/* Round 5 rule 4: the grid, then the venue's own rental terms, inside ONE tinted box. */}
+      {(feeGrid || tierGrid) && (
+        <div className="mt-4 rounded-lg bg-[#fdf8f5] p-3 text-sm text-gray-700">
+          {feeGrid && <MergedPriceGridTable grid={feeGrid} seasons={seasons} />}
+          {tierGrid && <MergedPriceGridTable grid={tierGrid} moneySuffix="/guest" seasons={seasons} />}
+          {path.terms && path.terms.length > 0 && (
+            <div className="mt-2.5 space-y-1 text-xs text-gray-500">
+              {path.terms.map((t) => (
+                <p key={t.label}>
+                  <span className="font-medium text-gray-700">{t.label}:</span> {t.text}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Notes: minimums (one line each), staffing, surcharges, promotions. */}
       {fbMins.length > 0 && (
         <div className="mt-3 space-y-1 text-xs text-gray-500">
           {fbMins.map((m, i) => (
@@ -1138,26 +1095,6 @@ function PricingPathCard({
         <p className="mt-1 text-xs text-gray-500">
           <span className="font-medium text-gray-700">Guest minimum:</span> {guestMinLine}
         </p>
-      )}
-
-      {/* Round 4 rule 16: the representative per-guest tier's own inclusions, grouped under
-          Food:/Bar:/Setup: sub-headers when the venue's own wording carries one. */}
-      {tierInclusionGroups.length > 0 && (
-        <div className="mt-3 space-y-2.5">
-          {tierInclusionGroups.map((g) => (
-            <div key={g.header ?? "flat"}>
-              {g.header && <p className="text-xs font-medium uppercase tracking-wide text-gray-400">{g.header}</p>}
-              <ul className={`space-y-1.5 text-sm text-gray-600 ${g.header ? "mt-1" : ""}`}>
-                {g.items.map((inc) => (
-                  <li key={inc} className="flex gap-2">
-                    <span className="text-rose-400">·</span>
-                    {inc}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
       )}
 
       {path.required_staffing && (
@@ -1199,10 +1136,12 @@ function PricingPathCard({
 function AddOnCard({ addOn, capturedAt }: { addOn: AddOn; capturedAt: string | null }) {
   // Round 4 rule 10: notes stay short in cards — full text always reachable via `title`.
   const note = addOn.note ? fmt.truncateNote(addOn.note) : null;
+  // Round 5 rule 9: the same category_std icon map the Add-ons section groups under.
+  const Icon = ADD_ON_CATEGORY_ICONS[fmt.resolveCategoryStd(addOn)] ?? Sparkles;
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-black/[0.06] p-4">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fdf8f5]">
-        <Sparkles size={15} className="text-rose-400" />
+        <Icon size={15} className="text-rose-400" />
       </div>
       <div className="min-w-0 flex-1">
         <h4 className={`text-sm text-gray-900 ${uiHeadingClassName}`}>{addOn.name}</h4>
@@ -1242,9 +1181,10 @@ function CompactAddOnRow({ addOn, capturedAt }: { addOn: AddOn; capturedAt: stri
   );
 }
 
-/** Round 4 rule 17: an Item|Price table for one category, built from `fmt.buildAddOnCategoryTable`
- * — variant/condition already folded into the item label. */
-function AddOnCategoryTableView({ table }: { table: fmt.AddOnCategoryTable }) {
+/** An Item|Price table for one category/sub-group, built from `fmt.buildAddOnCategoryTables` or
+ * (round 5 rule 7) `fmt.buildAddOnSubgroupTable` — variant/condition already folded into the item
+ * label. Only needs columnLabels/rows: the caller renders the category heading/blurb/examples. */
+function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; rows: fmt.AddOnCategoryTableRow[] } }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[360px] text-sm text-gray-600">
@@ -1285,13 +1225,13 @@ function AddOnCategoryTableView({ table }: { table: fmt.AddOnCategoryTable }) {
   );
 }
 
-/** Round 4 rules 12/17: compact rows for a couple of items, a plain card grid for a genuinely
- * single flat category, grouped category tables otherwise (curated `add_on_categories`, or 2+
- * distinct `category` values) — `fmt.addOnsLayout` decides which. */
+/** Round 4 rule 12: a couple of real add-ons and no curated categories -> compact rows, unchanged.
+ * Everything else (round 5 rule 7): cards grouped under standard `category_std` headers, the
+ * venue's own category/blurb as a sub-line, a table only when that sub-group genuinely has 2
+ * pricing axes or 6+ priced rows sharing the same columns — restores the round-3 card look under
+ * round-4's grouping. */
 function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: ReactNode }) {
-  const layout = fmt.addOnsLayout(venue);
-
-  if (layout === "compact") {
+  if (fmt.isCompactAddOnsLayout(venue)) {
     const items = venue.pricing.add_ons.filter((a) => !a.selection_group);
     return (
       <section id="add-ons">
@@ -1305,43 +1245,46 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
     );
   }
 
-  if (layout === "cards") {
-    const items = fmt.resolvedAddOnCategoryGroups(venue)[0]?.items ?? [];
-    return (
-      <section id="add-ons">
-        <SectionHeading title="Add-ons & extras" actions={actions} />
-        <div className="grid gap-4 sm:grid-cols-2">
-          {items.map((a) => (
-            <AddOnCard key={a.id} addOn={a} capturedAt={venue.sources.crawled_at} />
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  const tables = fmt.buildAddOnCategoryTables(venue);
+  const groups = fmt.groupAddOnsByCategoryStd(venue);
   return (
     <section id="add-ons">
       <SectionHeading title="Add-ons & extras" actions={actions} />
-      {tables.map((t, i) => (
-        <div key={t.category} className={i === 0 ? "" : "mt-6"}>
-          <h3 className={`text-sm text-gray-900 ${uiHeadingClassName}`}>{t.category}</h3>
-          {t.blurb && <p className="mt-0.5 text-xs text-gray-500">{t.blurb}</p>}
-          {t.rows.length > 0 && (
-            <div className="mt-3">
-              <AddOnCategoryTableView table={t} />
+      {groups.map((g, gi) => (
+        <div key={g.category_std} className={gi === 0 ? "" : "mt-8"}>
+          <h3 className={`text-base text-gray-900 ${uiHeadingClassName}`}>{g.label}</h3>
+          {g.subgroups.map((sg, si) => (
+            <div key={sg.category} className={si === 0 ? "mt-3" : "mt-5"}>
+              {/* The venue's own category (+ curated blurb, when there is one) as a sub-line —
+                  skipped only when it would just repeat the std header verbatim with nothing to
+                  add. */}
+              {(sg.category !== g.label || sg.blurb) && (
+                <p className="mb-2 text-xs text-gray-500">
+                  <span className="font-medium text-gray-700">{sg.category}</span>
+                  {sg.blurb ? `: ${sg.blurb}` : ""}
+                </p>
+              )}
+              {sg.items.length > 0 &&
+                (fmt.addOnSubgroupLayout(sg.items) === "table" ? (
+                  <AddOnCategoryTableView table={fmt.buildAddOnSubgroupTable(sg.items, venue.spaces)} />
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {sg.items.map((a) => (
+                      <AddOnCard key={a.id} addOn={a} capturedAt={venue.sources.crawled_at} />
+                    ))}
+                  </div>
+                ))}
+              {sg.examples.length > 0 && (
+                <ul className={`space-y-1 text-xs text-gray-600 ${sg.items.length > 0 ? "mt-2" : ""}`}>
+                  {sg.examples.map((ex) => (
+                    <li key={ex} className="flex gap-1.5">
+                      <span className="text-rose-400">·</span>
+                      {ex}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          )}
-          {t.examples.length > 0 && (
-            <ul className="mt-2 space-y-1 text-xs text-gray-600">
-              {t.examples.map((ex) => (
-                <li key={ex} className="flex gap-1.5">
-                  <span className="text-rose-400">·</span>
-                  {ex}
-                </li>
-              ))}
-            </ul>
-          )}
+          ))}
         </div>
       ))}
     </section>

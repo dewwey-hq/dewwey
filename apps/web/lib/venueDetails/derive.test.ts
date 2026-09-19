@@ -3,6 +3,7 @@ import {
   addOnAxes,
   bandCapacityTuple,
   calculatorAxes,
+  calculatorRange,
   defaultAxes,
   deriveStandardFaqs,
   estimateCost,
@@ -206,7 +207,21 @@ describe("headlineCapacity", () => {
 // ---------------------------------------------------------------------------
 
 describe("guestRange", () => {
-  it("uses the largest tuple max of ANY layout, not just the seated headline (Greenhouse: cocktail 200 beats seated 175)", () => {
+  it("uses spine.capacity_max_guests when the venue states one, even over a larger seated tuple (round 5 rule 1)", () => {
+    const venue = makeVenue({
+      spine: spineWith({ capacity_max_guests: fact(200) }),
+      spaces: [space({ id: "loft" })],
+      capacities: [
+        tuple({ space_id: "loft", layout: "seated_dinner", tile: "seated", max: 175 }),
+        tuple({ space_id: "loft", layout: "cocktail_standing", tile: "cocktail", max: 200 }),
+      ],
+    });
+    const gr = guestRange(venue);
+    expect(gr.max).toBe(200);
+    expect(gr.max_measures).toBe("guests");
+  });
+
+  it("falls back to the seated headline (never a raw cocktail/any-layout tuple max) when capacity_max_guests isn't stated", () => {
     const venue = makeVenue({
       spaces: [space({ id: "loft" })],
       capacities: [
@@ -216,15 +231,27 @@ describe("guestRange", () => {
       ],
     });
     const gr = guestRange(venue);
-    expect(gr.max).toBe(200);
+    expect(gr.max).toBe(175); // the seated-dinner headline, not the larger cocktail tuple
+    expect(gr.max_measures).toBe("seated");
+  });
+
+  it("reads 'guests' when the venue has no seated layout at all, so the headline itself is cocktail-only", () => {
+    const venue = makeVenue({
+      spaces: [space({ id: "hall" })],
+      capacities: [tuple({ space_id: "hall", layout: "cocktail_standing", tile: "cocktail", max: 300 })],
+    });
+    const gr = guestRange(venue);
+    expect(gr.max).toBe(300);
     expect(gr.max_measures).toBe("guests");
   });
 
-  it("reads 'seated' when the largest tuple isn't a cocktail one (LondonHouse's venue-wide max)", () => {
+  it("falls back to the headline when capacity_max_guests is conflicting (unknown beats wrong)", () => {
     const venue = makeVenue({
-      spaces: [space({ id: "juliette" })],
-      capacities: [tuple({ space_id: "juliette", layout: "seated_dinner", tile: "seated", max: 190 })],
+      spine: spineWith({ capacity_max_guests: { status: "conflicting", candidates: [fact(200), fact(250)] } }),
+      spaces: [space({ id: "loft" })],
+      capacities: [tuple({ space_id: "loft", layout: "seated_dinner", tile: "seated", max: 175 })],
     });
+    expect(guestRange(venue).max).toBe(175);
     expect(guestRange(venue).max_measures).toBe("seated");
   });
 
@@ -1148,5 +1175,70 @@ describe("policyDetail (via policyRows) — de-dupes payment_schedule/vendor_acc
     const row = policyRows(venue).find((r) => r.key === "parking")!;
     expect(row.pill).toBe("Included");
     expect(row.detail).toBe("2 free lots, 75+ spaces");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// calculatorRange (round 5 rule 8) — the "example range" bar's floor/ceiling numbers
+// ---------------------------------------------------------------------------
+
+describe("calculatorRange", () => {
+  it("returns null when the venue has no pricing path at all", () => {
+    const venue = makeVenue({ pricing: { archetype: "inquire_only", paths: [], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+    expect(calculatorRange(venue, undefined)).toBeNull();
+  });
+
+  it("varies guests, day and named tiers between the cheap and pricey ends (Marchetti's shape)", () => {
+    const argento = { id: "argento", name: "Argento", per_guest: 200, day: "sun" as const, season: null, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "$200", source_url: src, snapshot_id: 1 };
+    const platino = { id: "platino", name: "Platino", per_guest: 300, day: "sat" as const, season: null, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "$300", source_url: src, snapshot_id: 1 };
+    const venue = makeVenue({
+      spine: spineWith({ capacity_min_guests: fact(50) }),
+      spaces: [space({ id: "pavilion" })],
+      capacities: [tuple({ space_id: "pavilion", layout: "seated_dinner", tile: "seated", max: 425 })],
+      pricing: { archetype: "rental_plus_per_guest_packages", paths: [pathWith({ per_guest_tiers: [argento, platino] })], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+    });
+    const range = calculatorRange(venue, undefined)!;
+    expect(range.lowInput).toEqual({ guests: 50, day: "sun", tierName: "Argento" });
+    expect(range.highInput).toEqual({ guests: 425, day: "sat", tierName: "Platino" });
+    expect(range.low).toBe(50 * 200);
+    expect(range.high).toBe(425 * 300);
+  });
+
+  it("omits the day from both ends when the path doesn't vary by day at all (LondonHouse's shape)", () => {
+    const elegance = { id: "elegance", name: "Elegance", per_guest: 150, day: null, season: null, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "$150", source_url: src, snapshot_id: 1 };
+    const opulence = { id: "opulence", name: "Opulence", per_guest: 220, day: null, season: null, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "$220", source_url: src, snapshot_id: 1 };
+    const venue = makeVenue({
+      spaces: [space({ id: "grand" })],
+      capacities: [tuple({ space_id: "grand", layout: "seated_dinner", tile: "seated", max: 190 })],
+      pricing: { archetype: "rental_plus_per_guest_packages", paths: [pathWith({ per_guest_tiers: [elegance, opulence] })], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+    });
+    const range = calculatorRange(venue, undefined)!;
+    expect(range.lowInput.day).toBeNull();
+    expect(range.highInput.day).toBeNull();
+    expect(range.lowInput.tierName).toBe("Elegance");
+    expect(range.highInput.tierName).toBe("Opulence");
+  });
+
+  it("omits the tier name when the path has only one named tier", () => {
+    const only = { id: "only", name: "All-Inclusive", per_guest: 100, day: null, season: null, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "$100", source_url: src, snapshot_id: 1 };
+    const venue = makeVenue({
+      spaces: [space({ id: "hall" })],
+      capacities: [tuple({ space_id: "hall", layout: "seated_dinner", tile: "seated", max: 300 })],
+      pricing: { archetype: "all_inclusive_per_guest", paths: [pathWith({ per_guest_tiers: [only] })], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+    });
+    const range = calculatorRange(venue, undefined)!;
+    expect(range.lowInput.tierName).toBeNull();
+    expect(range.highInput.tierName).toBeNull();
+  });
+
+  it("holds the path fixed at whichever id the caller passes", () => {
+    const cheapPath = pathWith({ id: "hall-only", name: "Hall Only", fixed_fees: [{ ...feeBase, applies_to: "whole_venue", space_id: null, day: null, season: null, amount: 2100, label: "Rental", key: "r1" }] });
+    const pricePath = pathWith({ id: "all-inclusive", name: "All-Inclusive", per_guest_tiers: [] });
+    const venue = makeVenue({
+      spaces: [space({ id: "hall" })],
+      capacities: [tuple({ space_id: "hall", layout: "seated_dinner", tile: "seated", max: 150 })],
+      pricing: { archetype: "mixed", paths: [cheapPath, pricePath], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+    });
+    expect(calculatorRange(venue, "hall-only")!.low).toBe(2100);
   });
 });

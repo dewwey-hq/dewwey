@@ -12,7 +12,17 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, Minus, Plus } from "lucide-react";
-import { bandCapacityTuple, calculatorAxes, defaultAxes, estimateCost, guestRange, headlineCapacity, selectableAddOns, type EstimateInput } from "@/lib/venueDetails/derive";
+import {
+  bandCapacityTuple,
+  calculatorAxes,
+  calculatorRange,
+  defaultAxes,
+  estimateCost,
+  guestRange,
+  headlineCapacity,
+  selectableAddOns,
+  type EstimateInput,
+} from "@/lib/venueDetails/derive";
 import type { AddOn, Day, EstimateExtra, PricingPath, Season, VenueDetailsV3 } from "@/lib/venueDetails/types";
 import * as fmt from "./format";
 
@@ -39,9 +49,10 @@ function PillGroup<T extends string>({
             }`}
           >
             {opt.label}
-            {/* Round 4 rule 9: tier/path/ceremony pills carry their own money ("Elegance ·
-                $220/guest", "Yes · +$750") instead of a bare label. */}
-            {opt.sublabel ? <span className={`ml-1 ${active ? "text-white/70" : "text-gray-400"}`}>· {opt.sublabel}</span> : null}
+            {/* Round 5 rule 8: tier/path/ceremony pills carry their own money ("Elegance
+                $220/guest", "Venue only ($2,100+)", "Yes +$750") with no middle-dot separator —
+                the money folds directly into the pill's own text. */}
+            {opt.sublabel ? <span className={`ml-1 ${active ? "text-white/70" : "text-gray-400"}`}>{opt.sublabel}</span> : null}
           </button>
         );
       })}
@@ -156,6 +167,10 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   // layout's max), not just the seated-dinner compare headline; the technical floor is the
   // venue's own stated minimum, else 10 (matching every concept calculator's own GUEST_MIN).
   const rangeReminder = fmt.guestRangeReminder(gr);
+  // Round 5 rule 8: the example-range bar's floor/ceiling — held fixed at whichever path is
+  // currently selected. Computed here (before the no-paths early return) so every hook in this
+  // component runs unconditionally on every render, matching the pattern above.
+  const exampleRange = useMemo(() => calculatorRange(venue, pathId), [venue, pathId]);
 
   if (venue.pricing.paths.length === 0) {
     return (
@@ -170,10 +185,10 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   // food/dinnerware/bar/coffee/cake add-ons never show once All-Inclusive is selected, since it
   // already bundles the equivalent).
   const scopedAddOns = selectableAddOns(venue, currentPath.id);
-  // Round 4 rule 18: the extras panel groups by category first (same categories the Add-ons &
-  // extras section itself uses), each category then split into single-select PillGroups vs
+  // Round 5 rules 7/8: the extras panel groups by category_std (same standard headers the Add-ons
+  // & extras section itself uses now), each group then split into single-select PillGroups vs
   // individual chips exactly as before.
-  const categoryGroups = fmt.groupSelectableAddOnsByCategory(scopedAddOns);
+  const categoryGroups = fmt.groupSelectableAddOnsByCategoryStd(scopedAddOns);
   const dayOptions = fmt.pathDayOptions(currentPath);
   const seasonOptions = fmt.pathSeasonOptions(currentPath, venue.pricing.seasons);
   const tierOptions = fmt.pathTierOptions(currentPath);
@@ -222,7 +237,7 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   // *source* is itself a fact worth stating, as a grey row, rather than silently dropping the
   // whole group (derive.ts's `estimateCost` filters a group out entirely once its lines are
   // empty, so this group may not even appear in `estimate.groups`).
-  const otherGroups = estimate.groups.filter((g) => g.group !== "taxes");
+  const otherGroups = estimate.groups.filter((g) => g.group !== "taxes" && g.group !== "venue");
   const taxesGroup = estimate.groups.find((g) => g.group === "taxes");
   const hasSalesTaxLine = taxesGroup?.lines.some((l) => l.label.startsWith("Sales tax")) ?? false;
   const salesTaxFallback = hasSalesTaxLine
@@ -232,6 +247,16 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
       : venue.pricing.rates.sales_tax_source === "unknown"
         ? "Taxes & fees: Not stated"
         : null;
+
+  // Round 5 rule 8: the breakdown ALWAYS has a Venue line — a path that bundles rental into its
+  // per-guest tiers (so `estimateCost` never produces any "venue" lines) still says so plainly,
+  // matching the concept calculators' own "Venue rental: Included in package" row.
+  const venueGroup = estimate.groups.find((g) => g.group === "venue");
+  const venueLines = venueGroup?.lines.length ? venueGroup.lines : null;
+
+  // Round 5 rule 8: the input callout line above the breakdown (the tier name only when the
+  // calculator actually shows a tier axis).
+  const currentTierName = axes.includes("tier") ? (tierOptions.find((t) => t.value === (tierId ?? tierOptions[0]?.value))?.label ?? null) : null;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-black/[0.06]">
@@ -375,9 +400,30 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
       )}
 
       <div className="bg-rose-50/60 p-5">
+        {/* Round 5 rule 8: the input callout line restates the current selection above the
+            breakdown ("190 guests · Opulence · Saturday"). */}
+        <p className="mb-1 text-xs text-gray-500">{fmt.calculatorInputCallout(guests, currentTierName, day)}</p>
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Estimated cost (illustrative only, not a quote)</p>
         <table className="w-full text-sm text-gray-600">
           <tbody>
+            <tr>
+              <td className="pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-gray-400" colSpan={2}>
+                Venue
+              </td>
+            </tr>
+            {venueLines ? (
+              venueLines.map((l, i) => (
+                <tr key={i} className="border-t border-black/[0.06]">
+                  <td className="py-1.5 pl-1">{l.label}</td>
+                  <td className="py-1.5 text-right">{fmt.money(l.amount)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr className="border-t border-black/[0.06] text-gray-400">
+                <td className="py-1.5 pl-1">Venue rental</td>
+                <td className="py-1.5 text-right italic">Included in package</td>
+              </tr>
+            )}
             {otherGroups.map((g) => (
               <Fragment key={g.group}>
                 <tr>
@@ -447,6 +493,23 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
           </p>
         ))}
       </div>
+
+      {/* Round 5 rule 8: the example-range bar, ported from the concept calculators — cheapest vs
+          priciest realistic booking on the currently-selected path. */}
+      {exampleRange && (
+        <div className="border-t border-black/[0.06] p-5">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Example range (any guest count, day, or package)</p>
+          <div className="flex items-baseline justify-between text-sm font-semibold text-gray-900">
+            <span>{fmt.money(exampleRange.low)}</span>
+            <span>{fmt.money(exampleRange.high)}</span>
+          </div>
+          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gradient-to-r from-rose-200 to-rose-400" />
+          <div className="mt-1.5 flex items-baseline justify-between text-[11px] text-gray-400">
+            <span>{fmt.calculatorRangeLabel(exampleRange.lowInput)}</span>
+            <span>{fmt.calculatorRangeLabel(exampleRange.highInput)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

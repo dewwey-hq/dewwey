@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GOLDEN_SLUGS, getGolden } from "../../../lib/venueDetails/golden";
 import { emptyRates, fact, makeVenue } from "../../../lib/venueDetails/testHelpers";
-import type { AddOn, CapacityTuple, FixedFee, InclusionItem, PerGuestTier, Resource, Space, VendorList } from "../../../lib/venueDetails/types";
+import type { AddOn, CapacityTuple, FixedFee, InclusionItem, PerGuestTier, Resource, Space, VendorList, VenueDetailsV3 } from "../../../lib/venueDetails/types";
 import * as fmt from "./format";
 
 function resource(overrides: Partial<Resource> = {}): Resource {
@@ -317,15 +317,15 @@ describe("pathDayOptions / pathSeasonOptions / pathTierOptions", () => {
   });
 });
 
-describe("pathPillSublabel / ceremonyFeeAmount", () => {
-  it("shows a flat 'from $X' sublabel for a fixed-fee path", () => {
+describe("pathPillSublabel / ceremonyFeeAmount (round 5 rule 8: parenthesized, no middle-dot separator)", () => {
+  it("shows a flat '($X+)' sublabel for a fixed-fee path", () => {
     const path = fixedFeePath({ fixed_fees: [fixedFee({ amount: 2100 }), fixedFee({ amount: 6595, space_id: null, applies_to: "whole_venue" })] });
-    expect(fmt.pathPillSublabel(path)).toBe("from $2,100");
+    expect(fmt.pathPillSublabel(path)).toBe("($2,100+)");
   });
 
-  it("shows a per-guest 'from $X/guest' sublabel for a per-guest path", () => {
+  it("shows a per-guest '($X+/guest)' sublabel for a per-guest path", () => {
     const path = fixedFeePath({ per_guest_tiers: [tier({ per_guest: 68.95 }), tier({ per_guest: 84.95 })] });
-    expect(fmt.pathPillSublabel(path)).toBe("from $68.95/guest");
+    expect(fmt.pathPillSublabel(path)).toBe("($68.95+/guest)");
   });
 
   it("is null when the path has nothing fixed to quote", () => {
@@ -357,6 +357,21 @@ describe("guestRangeReminder", () => {
   });
   it("renders nothing when there's no headline at all", () => {
     expect(fmt.guestRangeReminder({ min: null, max: null, max_measures: "seated" })).toBe("");
+  });
+});
+
+describe("calculatorInputCallout / calculatorRangeLabel (round 5 rule 8)", () => {
+  it("joins guests, tier and day with middle dots for the input callout", () => {
+    expect(fmt.calculatorInputCallout(190, "Opulence", "sat")).toBe("190 guests · Opulence · Saturday");
+  });
+  it("omits the tier when there isn't one", () => {
+    expect(fmt.calculatorInputCallout(150, null, "fri")).toBe("150 guests · Friday");
+  });
+  it("joins guests, tier and day with commas and a short day label for the range caption", () => {
+    expect(fmt.calculatorRangeLabel({ guests: 150, day: "sun", tierName: "Argento" })).toBe("150 guests, Argento, Sun");
+  });
+  it("omits the day when the range didn't vary by day", () => {
+    expect(fmt.calculatorRangeLabel({ guests: 120, day: null, tierName: "Elegance" })).toBe("120 guests, Elegance");
   });
 });
 
@@ -444,23 +459,7 @@ describe("fbPillLabel / fbSharedRow", () => {
   });
 });
 
-describe("fbLayout", () => {
-  function resource(overrides: Partial<{ kind: "catering_guidelines" | "bar_menu" }> = {}) {
-    return {
-      id: "r1",
-      kind: "catering_guidelines" as const,
-      label: "Guidelines",
-      url: "https://example.com/guidelines.pdf",
-      scope: "venue" as const,
-      embeddable: null,
-      has_text_layer: null,
-      checked_at: null,
-      source_url: "https://example.com",
-      snapshot_id: 1,
-      ...overrides,
-    };
-  }
-
+describe("fbLayout (round 5 rule 5: pill-row layout depends only on whether the Food/Bar pill SETS match — a resource or caption no longer forces a split; they render as their own always-visible callout lines instead)", () => {
   it("is 'split' when the pill sets genuinely differ", () => {
     const d = makeVenue({
       food_beverage: {
@@ -476,7 +475,7 @@ describe("fbLayout", () => {
     expect(fmt.fbLayout(d)).toBe("split");
   });
 
-  it("is 'split' for Greenhouse Loft's shape: identical BYO/BYO pills, but a catering_guidelines resource", () => {
+  it("is 'shared' for Greenhouse Loft's shape: identical BYO/BYO pills, even with a composting note (round 5: a note no longer forces a split)", () => {
     const d = makeVenue({
       food_beverage: {
         food_pills: [fact("byo", "q", "https://example.com", 1)],
@@ -487,12 +486,11 @@ describe("fbLayout", () => {
         bar_min_guests: null,
         notes: [fact("LEED Platinum certified building: mandatory recycling + composting at every event.", "q", "https://example.com", 1)],
       },
-      resources: [resource({ kind: "catering_guidelines" })],
     });
-    expect(fmt.fbLayout(d)).toBe("split");
+    expect(fmt.fbLayout(d)).toBe("shared");
   });
 
-  it("is 'shared' for Marchetti's shape: identical All-Inclusive pills, no caption, no side resource — a bare note isn't enough on its own", () => {
+  it("is 'shared' for Marchetti's shape: identical All-Inclusive pills, no caption", () => {
     const d = makeVenue({
       food_beverage: {
         food_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
@@ -507,7 +505,7 @@ describe("fbLayout", () => {
     expect(fmt.fbLayout(d)).toBe("shared");
   });
 
-  it("is 'split' for LondonHouse's shape: identical All-Inclusive pills, but a corkage caption", () => {
+  it("is 'shared' for LondonHouse's shape: identical All-Inclusive pills, even with a corkage caption (round 5: caption is its own callout line now, not a layout driver)", () => {
     const d = makeVenue({
       food_beverage: {
         food_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
@@ -519,7 +517,38 @@ describe("fbLayout", () => {
         notes: [],
       },
     });
-    expect(fmt.fbLayout(d)).toBe("split");
+    expect(fmt.fbLayout(d)).toBe("shared");
+  });
+});
+
+describe("notIncludedLine / barNoteIsNotIncluded / fbSideNote (round 5 rule 5)", () => {
+  const emptyFb: VenueDetailsV3["food_beverage"] = { food_pills: [], bar_pills: [], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] };
+
+  it("strips the phrase from a matching bar_note (Diamond Garden's bar-packages carve-out)", () => {
+    const fb = { ...emptyFb, bar_note: fact("Not included in package price: cake cutting and coat check.", "q", "https://example.com", 1) };
+    expect(fmt.barNoteIsNotIncluded(fb)).toBe(true);
+    expect(fmt.notIncludedLine(fb)).toBe("cake cutting and coat check.");
+    expect(fmt.fbSideNote(fb, "bar")).toBeNull();
+  });
+
+  it("strips the phrase from a matching notes[] entry when there's no bar_note match", () => {
+    const fb = { ...emptyFb, notes: [fact("Not included in package price: overtime fees.", "q", "https://example.com", 1)] };
+    expect(fmt.notIncludedLine(fb)).toBe("overtime fees.");
+  });
+
+  it("is null when nothing matches the phrase", () => {
+    expect(fmt.notIncludedLine(emptyFb)).toBeNull();
+  });
+
+  it("fbSideNote prefers the explicit food_note/bar_note over notes[]", () => {
+    const fb = { ...emptyFb, food_note: fact("Explicit food note.", "q", "https://example.com", 1), notes: [fact("Ask about our seasonal promotions.", "q", "https://example.com", 1)] };
+    expect(fmt.fbSideNote(fb, "food")!.value).toBe("Explicit food note.");
+  });
+
+  it("fbSideNote falls back to a notes[] entry attributed to that side (Greenhouse's composting note)", () => {
+    const fb = { ...emptyFb, notes: [fact("LEED Platinum certified building: mandatory recycling + composting at every event.", "q", "https://example.com", 1)] };
+    expect(fmt.fbSideNote(fb, "food")!.value).toContain("composting");
+    expect(fmt.fbSideNote(fb, "bar")).toBeNull();
   });
 });
 
@@ -638,6 +667,47 @@ describe("pricingGridClass", () => {
   it("wraps 2x2 for 4 paths", () => {
     expect(fmt.pricingGridClass(4)).toBe("grid gap-5 sm:grid-cols-2");
   });
+  it("falls back to one full-width column when fullWidth is true, regardless of path count (round 5 rule 6)", () => {
+    expect(fmt.pricingGridClass(3, true)).toBe("grid gap-5 grid-cols-1");
+  });
+});
+
+describe("pricingHeadlineParts (round 5 rule 6)", () => {
+  it("splits a flat-fee path into a bold range and a 'flat' unit", () => {
+    const path = fixedFeePath({ fixed_fees: [fixedFee({ applies_to: "whole_venue", space_id: null, amount: 2100 }), fixedFee({ applies_to: "whole_venue", space_id: null, amount: 6595 })] });
+    expect(fmt.pricingHeadlineParts(path)).toEqual({ main: "$2,100–$6,595", unit: "flat" });
+  });
+  it("splits a per-guest path into a bold range and a '/guest' unit", () => {
+    const path = fixedFeePath({ per_guest_tiers: [tier({ per_guest: 68.95 }), tier({ per_guest: 84.95 })] });
+    expect(fmt.pricingHeadlineParts(path)).toEqual({ main: "$68.95–$84.95", unit: "/guest" });
+  });
+  it("is null when the path has nothing fixed to quote", () => {
+    expect(fmt.pricingHeadlineParts(fixedFeePath())).toBeNull();
+  });
+});
+
+describe("pathBulletLineCount / pathHasGridAndBullets / pricingSectionNeedsFullWidth (round 5 rule 6)", () => {
+  it("counts includes plus the representative tier's own inclusions", () => {
+    const path = fixedFeePath({ includes: ["Tables", "Kitchen"], per_guest_tiers: [tier({ inclusions: ["Food", "Bar", "Setup"] })] });
+    expect(fmt.pathBulletLineCount(path)).toBe(5);
+  });
+  it("pathHasGridAndBullets is true only when the path has both a rate grid and at least one bullet", () => {
+    const gridOnly = fixedFeePath({ fixed_fees: [fixedFee({ applies_to: "whole_venue", space_id: null, day: "sat" })] });
+    const bulletsOnly = fixedFeePath({ includes: ["Tables"] });
+    const both = fixedFeePath({ fixed_fees: [fixedFee({ applies_to: "whole_venue", space_id: null, day: "sat" })], includes: ["Tables"] });
+    expect(fmt.pathHasGridAndBullets(gridOnly, undefined)).toBe(false);
+    expect(fmt.pathHasGridAndBullets(bulletsOnly, undefined)).toBe(false);
+    expect(fmt.pathHasGridAndBullets(both, undefined)).toBe(true);
+  });
+  it("pricingSectionNeedsFullWidth is true when any path has > 8 bullet lines", () => {
+    const bigPath = fixedFeePath({ includes: Array.from({ length: 9 }, (_, i) => `Item ${i}`) });
+    expect(fmt.pricingSectionNeedsFullWidth([fixedFeePath(), bigPath], undefined)).toBe(true);
+  });
+  it("pricingSectionNeedsFullWidth is false when every path is modest (grid-only or a few bullets, never both)", () => {
+    const gridOnly = fixedFeePath({ fixed_fees: [fixedFee({ applies_to: "whole_venue", space_id: null, day: "sat" })] });
+    const bulletsOnly = fixedFeePath({ includes: ["Tables", "Kitchen"] });
+    expect(fmt.pricingSectionNeedsFullWidth([gridOnly, bulletsOnly], undefined)).toBe(false);
+  });
 });
 
 describe("policyEvidence", () => {
@@ -687,17 +757,17 @@ describe("siteDomain", () => {
 
 describe("spaceSizeLine", () => {
   it("shows indoor/outdoor split when sq_ft_outdoor is stated", () => {
-    expect(fmt.spaceSizeLine(3600, 3500, null)).toBe("3,600 sq ft indoor · 3,500 sq ft outdoor");
+    expect(fmt.spaceSizeLine(3600, 3500, null)).toEqual({ text: "3,600 sq ft indoor · 3,500 sq ft outdoor", stated: true });
   });
   it("appends the structure label after the indoor/outdoor split", () => {
-    expect(fmt.spaceSizeLine(3600, 3500, "Tented")).toBe("3,600 sq ft indoor · 3,500 sq ft outdoor · Tented");
+    expect(fmt.spaceSizeLine(3600, 3500, "Tented").text).toBe("3,600 sq ft indoor · 3,500 sq ft outdoor · Tented");
   });
   it("falls back to the plain sq-ft line when there's no outdoor figure", () => {
-    expect(fmt.spaceSizeLine(3000, null, "Glass-enclosed")).toBe("3,000 sq ft · Glass-enclosed");
+    expect(fmt.spaceSizeLine(3000, null, "Glass-enclosed").text).toBe("3,000 sq ft · Glass-enclosed");
   });
-  it("returns null (omit the line) when sq_ft itself isn't stated, never a placeholder", () => {
-    expect(fmt.spaceSizeLine(null, null, null)).toBeNull();
-    expect(fmt.spaceSizeLine(null, 3500, "Tented")).toBeNull();
+  it("renders the honest '— sq ft (not stated)' placeholder, marked unstated, when sq_ft itself isn't stated (round 5 rule 2)", () => {
+    expect(fmt.spaceSizeLine(null, null, null)).toEqual({ text: "— sq ft (not stated)", stated: false });
+    expect(fmt.spaceSizeLine(null, 3500, "Tented")).toEqual({ text: "— sq ft (not stated)", stated: false });
   });
 });
 
@@ -855,16 +925,16 @@ describe("shouldCollapseResourceButtons / shouldCollapseFloorPlans", () => {
 
 describe("spaceSizeLine with sqFtLabelRaw (Field Museum's string-stated sizes)", () => {
   it("shows the venue's own wording verbatim instead of the reduced-to-one-number version", () => {
-    expect(fmt.spaceSizeLine(11376, null, null, "11,376–35,997")).toBe("11,376–35,997 sq ft");
+    expect(fmt.spaceSizeLine(11376, null, null, "11,376–35,997").text).toBe("11,376–35,997 sq ft");
   });
   it("still appends the structure label after the verbatim wording", () => {
-    expect(fmt.spaceSizeLine(21000, null, "Main floor", "~21,000")).toBe("~21,000 sq ft · Main floor");
+    expect(fmt.spaceSizeLine(21000, null, "Main floor", "~21,000").text).toBe("~21,000 sq ft · Main floor");
   });
   it("falls back to the formatted number when no label is given (every other golden venue)", () => {
-    expect(fmt.spaceSizeLine(3000, null, null)).toBe("3,000 sq ft");
+    expect(fmt.spaceSizeLine(3000, null, null).text).toBe("3,000 sq ft");
   });
   it("prefers the label over the plain number even in the indoor/outdoor split", () => {
-    expect(fmt.spaceSizeLine(21000, 500, null, "~21,000 (main floor)")).toBe("~21,000 (main floor) sq ft · 500 sq ft outdoor");
+    expect(fmt.spaceSizeLine(21000, 500, null, "~21,000 (main floor)").text).toBe("~21,000 (main floor) sq ft · 500 sq ft outdoor");
   });
 });
 
@@ -876,9 +946,13 @@ describe("ceilingLine", () => {
     expect(fmt.ceilingLine(76, null)).toBe("Ceiling height: 76 ft");
     expect(fmt.ceilingLine(22)).toBe("Ceiling height: 22 ft");
   });
-  it("returns null (omit the line) when neither is stated", () => {
+  it("returns null (omit the line) when neither is stated and the space has no other size facts", () => {
     expect(fmt.ceilingLine(null, null)).toBeNull();
     expect(fmt.ceilingLine(null)).toBeNull();
+    expect(fmt.ceilingLine(null, null, false)).toBeNull();
+  });
+  it("renders the honest 'not stated' gap when the space has some other stated size fact (round 5 rule 2)", () => {
+    expect(fmt.ceilingLine(null, null, true)).toBe("Ceiling height: not stated");
   });
 });
 
@@ -920,25 +994,13 @@ describe("placeResources", () => {
     expect(placed.unplaced.map((r) => r.id)).toEqual(["cs"]);
   });
 
-  it("splits menu/bar_menu/catering_guidelines by side when the F&B layout is split", () => {
+  it("collects menu/bar_menu/catering_guidelines into one shared F&B actions row, regardless of pill match (round 5 rule 5: no more Food/Bar split)", () => {
     const d = makeVenue({
       food_beverage: { food_pills: [fact("byo")], bar_pills: [fact("byo")], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
-      resources: [resource({ id: "cg", kind: "catering_guidelines" }), resource({ id: "bm", kind: "bar_menu" })],
+      resources: [resource({ id: "cg", kind: "catering_guidelines" }), resource({ id: "bm", kind: "bar_menu" }), resource({ id: "m", kind: "menu" })],
     });
     const placed = fmt.placeResources(d);
-    expect(placed.food.map((r) => r.id)).toEqual(["cg"]);
-    expect(placed.bar.map((r) => r.id)).toEqual(["bm"]);
-    expect(placed.fbShared).toEqual([]);
-  });
-
-  it("collects menu/bar_menu into one shared row when the F&B layout is shared", () => {
-    const d = makeVenue({
-      food_beverage: { food_pills: [fact("all_inclusive")], bar_pills: [fact("all_inclusive")], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
-      resources: [resource({ id: "m", kind: "menu" })],
-    });
-    const placed = fmt.placeResources(d);
-    expect(placed.fbShared.map((r) => r.id)).toEqual(["m"]);
-    expect(placed.food).toEqual([]);
+    expect(placed.fbShared.map((r) => r.id).sort()).toEqual(["bm", "cg", "m"]);
   });
 
   it("routes contract to Policies, other to Add-ons, vendor_list to Vendors", () => {
@@ -960,8 +1022,6 @@ describe("placeResources", () => {
         ...placed.about,
         ...placed.spacesHeading,
         ...Object.values(placed.perSpace).flat(),
-        ...placed.food,
-        ...placed.bar,
         ...placed.fbShared,
         ...placed.addOns,
         ...placed.policies,
@@ -1212,15 +1272,15 @@ describe("resourceLabel (rule 4)", () => {
   });
 });
 
-describe("orderSpaceCardResources (rule 5)", () => {
-  it("orders Floor plan(s) (incl. capacity_sheet), Virtual tour, Video, Gallery", () => {
+describe("orderSpaceCardResources (round 5 rule 3, supersedes round 4 rule 5)", () => {
+  it("orders Virtual tour, Gallery, Floor plan(s) (incl. capacity_sheet), Video", () => {
     const gallery = resource({ id: "g", kind: "gallery" });
     const video = resource({ id: "v", kind: "video" });
     const tour = resource({ id: "t", kind: "virtual_tour" });
     const cap = resource({ id: "cs", kind: "capacity_sheet" });
     const fp = resource({ id: "fp", kind: "floor_plan" });
     const ordered = fmt.orderSpaceCardResources([gallery, video, tour, cap, fp]);
-    expect(ordered.map((r) => r.id)).toEqual(["fp", "cs", "t", "v", "g"]);
+    expect(ordered.map((r) => r.id)).toEqual(["t", "g", "fp", "cs", "v"]);
   });
 });
 
@@ -1446,6 +1506,76 @@ describe("isCompactAddOnsLayout / addOnsLayout (rules 12, 17)", () => {
       },
     });
     expect(fmt.addOnsLayout(d)).toBe("tables");
+  });
+});
+
+describe("resolveCategoryStd / groupAddOnsByCategoryStd / addOnSubgroupLayout (round 5 rule 7)", () => {
+  it("uses the add-on's own category_std when set", () => {
+    expect(fmt.resolveCategoryStd(addOn({ group: "other", category_std: "decor_lighting" }))).toBe("decor_lighting");
+  });
+
+  it("derives category_std from group when missing: fb, ceremony, service->services_staffing, rental/other->space_rentals", () => {
+    expect(fmt.resolveCategoryStd(addOn({ group: "fb" }))).toBe("fb");
+    expect(fmt.resolveCategoryStd(addOn({ group: "ceremony" }))).toBe("ceremony");
+    expect(fmt.resolveCategoryStd(addOn({ group: "service" }))).toBe("services_staffing");
+    expect(fmt.resolveCategoryStd(addOn({ group: "rental" }))).toBe("space_rentals");
+    expect(fmt.resolveCategoryStd(addOn({ group: "other" }))).toBe("space_rentals");
+  });
+
+  it("groups top-level by category_std (fixed order) then by the venue's own category, attaching curated blurbs/examples", () => {
+    const d = makeVenue({
+      pricing: {
+        ...makeVenue().pricing,
+        add_ons: [
+          addOn({ id: "u1", category: "Uplighting", group: "other", category_std: "decor_lighting" }),
+          addOn({ id: "c1", category: "Chargers", group: "other", category_std: "decor_lighting" }),
+          addOn({ id: "b1", category: "Bar upgrade", group: "fb" }),
+        ],
+        add_on_categories: [{ category: "Uplighting", blurb: "Ambient uplighting.", examples: ["Rose gold", "Amber"], evidence: { source_url: "https://example.com", snapshot_id: null } }],
+      },
+    });
+    const groups = fmt.groupAddOnsByCategoryStd(d);
+    // fb sorts before decor_lighting per ADD_ON_CATEGORIES_STD's fixed order.
+    expect(groups.map((g) => g.category_std)).toEqual(["fb", "decor_lighting"]);
+    const decor = groups.find((g) => g.category_std === "decor_lighting")!;
+    expect(decor.subgroups.map((s) => s.category).sort()).toEqual(["Chargers", "Uplighting"]);
+    const uplighting = decor.subgroups.find((s) => s.category === "Uplighting")!;
+    expect(uplighting.blurb).toBe("Ambient uplighting.");
+    expect(uplighting.examples).toEqual(["Rose gold", "Amber"]);
+  });
+
+  it("excludes selection_group items from the grouping (calculator-only single-select options)", () => {
+    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [addOn({ id: "s1", selection_group: "food-package" })] } });
+    expect(fmt.groupAddOnsByCategoryStd(d)).toEqual([]);
+  });
+
+  it("addOnSubgroupLayout is 'table' for a genuine variant × per-space 2-axis category", () => {
+    const items = [
+      addOn({ id: "a", variant: "7 swags", per_space_prices: { main: 100, hall: 200 } }),
+      addOn({ id: "b", variant: "13 swags", per_space_prices: { main: 150, hall: 250 } }),
+    ];
+    expect(fmt.addOnSubgroupLayout(items)).toBe("table");
+  });
+
+  it("addOnSubgroupLayout is 'table' for 6+ priced rows sharing the same (flat) columns", () => {
+    const items = Array.from({ length: 6 }, (_, i) => addOn({ id: `p${i}`, price: 100 + i }));
+    expect(fmt.addOnSubgroupLayout(items)).toBe("table");
+  });
+
+  it("addOnSubgroupLayout is 'cards' for a handful of independent, single-axis items", () => {
+    const items = [addOn({ id: "a", price: 100 }), addOn({ id: "b", price: 200 })];
+    expect(fmt.addOnSubgroupLayout(items)).toBe("cards");
+  });
+});
+
+describe("groupSelectableAddOnsByCategoryStd (round 5 rules 7/8)", () => {
+  it("groups by category_std with the same labels as the Add-ons section, splitting single-select groups from individual chips", () => {
+    const single = addOn({ id: "f1", group: "fb", selection_group: "food-package" });
+    const individual = addOn({ id: "u1", group: "other", category_std: "decor_lighting" });
+    const groups = fmt.groupSelectableAddOnsByCategoryStd([single, individual]);
+    expect(groups.map((g) => g.category)).toEqual(["Food & beverage", "Décor & lighting"]);
+    expect(groups[0].groups[0].key).toBe("food-package");
+    expect(groups[1].individual.map((a) => a.id)).toEqual(["u1"]);
   });
 });
 
