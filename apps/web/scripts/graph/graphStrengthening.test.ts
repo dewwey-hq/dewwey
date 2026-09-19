@@ -1519,13 +1519,17 @@ describe("D061 acquisition invariants (DB)", () => {
 
     // Matches the universe CTE's own rule exactly: a public row only ever enters when scraped_at
     // is after the first acquisition run ever; with ops.crawl_runs empty, NOTHING public should
-    // be reachable at all (coalesce(...,'infinity') makes the bound unreachable).
+    // be reachable at all (coalesce(...,'infinity') makes the bound unreachable). Shortcodes that
+    // staging ALSO holds (629 of Ben's crawl posts on 2026-09-19) are excluded: precedence picks
+    // the staging row for those, so the universe row is a staging row and the public duplicate is
+    // not "reachable" -- a naive shortcode join would count it (first run of this test: 133).
     const { rows } = await pool.query(`
       select count(*)::int as n
       from structural_post_vendor_evidence e
       join v_ig_posts v on v.shortcode = (regexp_match(e.source_post_url, '/p/([^/]+)'))[1]
       where v.corpus_source = 'public'
         and v.scraped_at <= coalesce((select min(started_at) from ops.crawl_runs), 'infinity'::timestamptz)
+        and not exists (select 1 from v_ig_posts s where s.shortcode = v.shortcode and s.corpus_source = 'staging')
     `);
     expect(rows[0].n).toBe(0);
   }, 120000);
