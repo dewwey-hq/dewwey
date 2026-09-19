@@ -13,6 +13,7 @@ export function emptySpine(): VenueSpine {
     one_event_per_day: NOT_STATED,
     space_count_bookable: NOT_STATED,
     capacity_min_guests: NOT_STATED,
+    capacity_max_guests: NOT_STATED,
     ceremony_on_site: NOT_STATED,
     ceremony_fee: NOT_STATED,
     rental_hours_included: NOT_STATED,

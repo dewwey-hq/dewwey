@@ -31,6 +31,9 @@
     "capacity_min_guests": {
       "status": "not_stated"
     },
+    "capacity_max_guests": {
+      "status": "not_stated"
+    },
     "ceremony_on_site": {
       "status": "stated",
       "value": true,
@@ -410,6 +413,7 @@
         "id": "pre-reception-snacks",
         "name": "Pre-reception snacks",
         "category": "Food & beverage",
+        "category_std": "fb",
         "variant": null,
         "group": "fb",
         "price": null,
@@ -432,6 +436,7 @@
         "id": "late-night-snacks",
         "name": "Late-night snacks",
         "category": "Food & beverage",
+        "category_std": "fb",
         "variant": null,
         "group": "fb",
         "price": null,
@@ -454,6 +459,7 @@
         "id": "corkage",
         "name": "Corkage fee",
         "category": "Bar",
+        "category_std": "fb",
         "variant": null,
         "group": "fb",
         "price": 50,
@@ -476,6 +482,7 @@
         "id": "ceremony",
         "name": "On-site ceremony fee",
         "category": "Ceremony",
+        "category_std": "ceremony",
         "variant": null,
         "group": "ceremony",
         "price": 750,

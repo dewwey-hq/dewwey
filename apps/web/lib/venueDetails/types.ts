@@ -222,6 +222,9 @@ export interface VenueSpine {
   one_event_per_day: Tri<boolean>;
   space_count_bookable: Tri<number>;
   capacity_min_guests: Tri<number>;
+  /** The venue's OWN stated guest maximum (any layout) when it publishes one ("25–200 guests");
+   * drives the quick-fact pill and calculator range. Compare still uses the seated headline. Round 5. */
+  capacity_max_guests: Tri<number>;
   ceremony_on_site: Tri<boolean>;
   ceremony_fee: Tri<CeremonyFeePolicy>;
   rental_hours_included: Tri<number>;
@@ -269,6 +272,7 @@ export const SPINE_KEYS = [
   "one_event_per_day",
   "space_count_bookable",
   "capacity_min_guests",
+  "capacity_max_guests",
   "ceremony_on_site",
   "ceremony_fee",
   "rental_hours_included",
@@ -351,6 +355,7 @@ export const SPINE_TIERS: Record<keyof VenueSpine, SpineTier> = {
   taxes_included_in_rental: "important",
   one_event_per_day: "important",
   capacity_min_guests: "important",
+  capacity_max_guests: "important",
   rental_hours_included: "important",
 
   coat_check: "secondary",
@@ -524,10 +529,16 @@ export interface Rates {
   snapshot_id: number | null;
 }
 
+export const ADD_ON_CATEGORIES_STD = ["fb","space_rentals","decor_lighting","entertainment","services_staffing","ceremony","time","other"] as const;
+export type AddOnCategoryStd = (typeof ADD_ON_CATEGORIES_STD)[number];
+
 export interface AddOn {
   id: string;
   name: string;
   category: string;
+  /** Standard grouping shared by the Add-ons section and the Cost Estimate (round 5); the venue's own
+   * `category` stays as the sub-label. */
+  category_std?: AddOnCategoryStd;
   /** e.g. "7 swags" vs "13 swags" — two variants of the same category with their own prices. */
   variant: string | null;
   group: "fb" | "rental" | "service" | "ceremony" | "other";

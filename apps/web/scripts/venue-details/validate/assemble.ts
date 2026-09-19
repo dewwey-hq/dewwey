@@ -11,11 +11,13 @@
  * for every fixable critical/important issue.
  */
 import {
+  ADD_ON_CATEGORIES_STD,
   NOT_STATED,
   SPINE_KEYS,
   SPINE_TIERS,
   VENUE_DETAILS_SCHEMA_VERSION,
   type AddOn,
+  type AddOnCategoryStd,
   type BarPolicy,
   type CapacityTuple,
   type Day,
@@ -81,6 +83,25 @@ export interface AssembleInput {
   pages: AssemblePage[];
   /** URLs seen in the ASSET CANDIDATES block or a PAGE header -- resources[] may only cite these. */
   assetCandidateUrls: string[];
+}
+
+/** Round 5: `AddOn.category_std` default when the model omits it, keyed off the add-on's own
+ * `group` (a coarser, longer-standing classification) -- fb -> fb, ceremony -> ceremony,
+ * service -> services_staffing, rental/other -> space_rentals. An explicit, valid category_std
+ * from the model always wins; this only fills the gap. */
+function defaultCategoryStd(group: AddOn["group"]): AddOnCategoryStd {
+  switch (group) {
+    case "fb":
+      return "fb";
+    case "ceremony":
+      return "ceremony";
+    case "service":
+      return "services_staffing";
+    case "rental":
+    case "other":
+    default:
+      return "space_rentals";
+  }
 }
 
 export interface AssembleOutput {
@@ -540,7 +561,13 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     issues.push(...rateIssues);
 
     for (const a0 of pricingRaw.add_ons) {
-      const a = { ...a0, selection_group: normalizeSelectionGroupSlug(a0.selection_group) };
+      // Round 5: an explicit, valid category_std from the model always wins; an omitted or
+      // invalid one falls back to a default derived from the add-on's own `group`.
+      const categoryStd: AddOnCategoryStd =
+        a0.category_std && (ADD_ON_CATEGORIES_STD as readonly string[]).includes(a0.category_std)
+          ? (a0.category_std as AddOnCategoryStd)
+          : defaultCategoryStd(a0.group as AddOn["group"]);
+      const a = { ...a0, category_std: categoryStd, selection_group: normalizeSelectionGroupSlug(a0.selection_group) };
       const g = ground(a.quote, a.source_url, pagesMap, stats);
       if (g.keep) {
         addOns.push({ ...a, unit: a.unit as AddOn["unit"], group: a.group as AddOn["group"], source_url: g.sourceUrl, snapshot_id: g.snapshotId });

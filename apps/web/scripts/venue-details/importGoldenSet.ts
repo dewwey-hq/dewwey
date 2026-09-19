@@ -30,6 +30,7 @@ import {
   VENUE_DETAILS_SCHEMA_VERSION,
   stated,
   type AddOn,
+  type AddOnCategoryStd,
   type CapacityTuple,
   type Fact,
   type FixedFee,
@@ -61,6 +62,7 @@ function emptySpine(): VenueSpine {
     one_event_per_day: NOT_STATED,
     space_count_bookable: NOT_STATED,
     capacity_min_guests: NOT_STATED,
+    capacity_max_guests: NOT_STATED,
     ceremony_on_site: NOT_STATED,
     ceremony_fee: NOT_STATED,
     rental_hours_included: NOT_STATED,
@@ -231,6 +233,11 @@ function buildMarchetti(): VenueDetailsV3 {
     venue_kind: f("event_space", m.categoryLabel, site),
     setting: f("both", m.quickFacts[1].note!, site),
     space_count_bookable: f(2, "With two distinct event spaces", site),
+    // Round 5: `capacity_max_guests` stays not_stated on purpose. The venue's own quickFacts pill
+    // ("Up to 425 guests") is The Pavilion's per-room seated headline (`capacities` below already
+    // carries it as a `seated` tile), not a venue-wide max the venue states as its own capacity
+    // range/ceiling the way Greenhouse/Diamond Garden/Geraghty do — so the pill correctly falls
+    // back to the seated headline (rule 1) instead of a fabricated venue-level max.
     ceremony_on_site: f(true, m.enhancements[0].note!, brochure),
     ceremony_fee: f("extra_fee", m.enhancements[0].note!, brochure),
     weekday_events: f(true, m.faqs[3].answer, site),
@@ -418,6 +425,7 @@ function buildMarchetti(): VenueDetailsV3 {
     id: "ceremony-onsite",
     name: "On-site ceremony",
     category: "Ceremony fee",
+    category_std: "ceremony",
     variant: null,
     group: "ceremony",
     price: null,
@@ -439,10 +447,11 @@ function buildMarchetti(): VenueDetailsV3 {
     source_url: brochure,
     snapshot_id: null,
   };
-  const rentalAddOn = (id: string, category: string, variant: string | null, pergola: number, pavilion: number, note: string | null = null): AddOn => ({
+  const rentalAddOn = (id: string, category: string, variant: string | null, pergola: number, pavilion: number, note: string | null = null, categoryStd: AddOnCategoryStd = "space_rentals"): AddOn => ({
     id,
     name: variant ? `${category}: ${variant}` : category,
     category,
+    category_std: categoryStd,
     variant,
     group: "rental",
     price: null,
@@ -465,6 +474,7 @@ function buildMarchetti(): VenueDetailsV3 {
     id,
     name,
     category: name,
+    category_std: "fb",
     variant: null,
     group: "fb",
     price,
@@ -503,12 +513,13 @@ function buildMarchetti(): VenueDetailsV3 {
       ceremonyAddOn,
       rentalAddOn("dance-floor-white", "Dance floor", "White", 625, 1725, "Pavilion 13-swag-style upgrade not modeled; see the enhancements table."),
       rentalAddOn("dance-floor-bw", "Dance floor", "Black & white", 1000, 2500),
-      rentalAddOn("bistro-lights-standard", "Bistro lights", "Standard", 1250, 1400, "Pavilion price shown is the 7-swag option; 13 swags is $2,200 (not modeled as a separate variant)."),
-      rentalAddOn("bistro-lights-greenery", "Bistro lights", "With faux greenery", 2250, 2500, "Pavilion price shown is the 7-swag option; 13 swags is $4,400 (not modeled as a separate variant)."),
+      rentalAddOn("bistro-lights-standard", "Bistro lights", "Standard", 1250, 1400, "Pavilion price shown is the 7-swag option; 13 swags is $2,200 (not modeled as a separate variant).", "decor_lighting"),
+      rentalAddOn("bistro-lights-greenery", "Bistro lights", "With faux greenery", 2250, 2500, "Pavilion price shown is the 7-swag option; 13 swags is $4,400 (not modeled as a separate variant).", "decor_lighting"),
       {
         id: "chiavari-chairs",
         name: "Chiavari chairs",
         category: "Chiavari chairs",
+        category_std: "space_rentals",
         variant: null,
         group: "rental",
         price: 10,
@@ -531,6 +542,7 @@ function buildMarchetti(): VenueDetailsV3 {
         id: "stage",
         name: "Stage",
         category: "Stage",
+        category_std: "space_rentals",
         variant: null,
         group: "rental",
         price: 175,
@@ -553,6 +565,7 @@ function buildMarchetti(): VenueDetailsV3 {
         id: "coat-check",
         name: "Coat check",
         category: "Coat check",
+        category_std: "services_staffing",
         variant: null,
         group: "service",
         price: null,
@@ -636,6 +649,9 @@ function buildGreenhouseLoft(): VenueDetailsV3 {
     setting: f("both", g.quickFacts[1].note!, site),
     space_count_bookable: f(1, "Use of our entire loft space + adjacent outdoor garden + art gallery space", site),
     capacity_min_guests: f(25, g.quickFacts[0].note!, faqUrl),
+    // Round 5: the venue's own quick-fact range ("25 – 200 guests") states its own headline max,
+    // from the same FAQ quote as the min above ("...up to 200 people" at maximum capacity).
+    capacity_max_guests: f(200, g.quickFacts[0].note!, faqUrl),
     ceremony_on_site: f(true, "We have a large private space available right outside of the garden ceremony area.", faqUrl),
     weekday_events: f(false, "Weekday rentals are on a case-by-case basis.", faqUrl),
     rental_hours_included: f(7, "You can host an event up to seven hours on Saturdays and Sundays", faqUrl),
@@ -770,6 +786,7 @@ function buildGreenhouseLoft(): VenueDetailsV3 {
         id: "extra-parking",
         name: "Additional Parking",
         category: "Parking",
+        category_std: "space_rentals",
         variant: null,
         group: "rental",
         price: g.calculatorAddOns.extraParking.price,
@@ -792,6 +809,7 @@ function buildGreenhouseLoft(): VenueDetailsV3 {
         id: "rehearsal",
         name: "Rehearsal",
         category: "Rehearsal",
+        category_std: "time",
         variant: null,
         group: "rental",
         price: g.calculatorAddOns.rehearsal.pricePerHour,
@@ -814,6 +832,7 @@ function buildGreenhouseLoft(): VenueDetailsV3 {
         id: "cleaning-fee",
         name: "Cleaning Fee",
         category: "Cleaning",
+        category_std: "services_staffing",
         variant: null,
         group: "service",
         price: 500,
@@ -907,6 +926,9 @@ function buildDiamondGarden(): VenueDetailsV3 {
   doc.spine = spine({
     venue_kind: f("banquet_hall", d.categoryLabel, site),
     setting: f("indoor", d.quickFacts[1].note!, site),
+    // Round 5: the homepage's own general "up to 268 guests" claim (see quickFacts[0].note and
+    // the capacityLabels comment above) is the venue's own stated headline max, not per-room.
+    capacity_max_guests: f(268, d.quickFacts[0].note!, site),
     one_event_per_day: f(false, "We can accommodate 2 events per day, one in the morning and one in the evening.", faqUrl),
     space_count_bookable: f(1, "Yes, we only have one room.", faqUrl),
     ceremony_on_site: f(true, "Ceremony at no extra charge (within your rental hours)", site),
@@ -1111,6 +1133,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
     id: c.id,
     name: c.label,
     category: "Ceremony",
+    category_std: "ceremony",
     variant: null,
     group: "other",
     price: c.price,
@@ -1138,6 +1161,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
       id: item.id,
       name: item.label,
       category: "Decoration add-ons",
+      category_std: "decor_lighting",
       variant: null,
       group: "other",
       price: "perGuest" in item ? (item as any).perGuest : "price" in item ? (item as any).price : null,
@@ -1160,6 +1184,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
     id: "centerpieces",
     name: "Centerpieces",
     category: "Decoration add-ons",
+    category_std: "decor_lighting",
     variant: null,
     group: "other",
     price: 25,
@@ -1182,6 +1207,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
     id: l.id,
     name: l.label,
     category: "Lighting & video add-ons",
+    category_std: "decor_lighting",
     variant: null,
     group: "other",
     price: l.price,
@@ -1204,6 +1230,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
     id: s.id,
     name: s.label,
     category: "Staffing & service add-ons",
+    category_std: "services_staffing",
     variant: null,
     group: "service",
     price: s.price,
@@ -1226,6 +1253,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
     id: it.id,
     name: it.label,
     category: "Food & beverage add-ons",
+    category_std: "fb",
     variant: null,
     group: "fb",
     // Bug fix (round-3): a per-guest item's price used to look ONLY at "price" in item, which
@@ -1252,6 +1280,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
     id: `food-package-${p.key}`,
     name: `Food package: ${p.name}`,
     category: "Food & beverage add-ons",
+    category_std: "fb",
     variant: p.name,
     group: "fb",
     price: p.perGuest,
@@ -1275,6 +1304,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
     id: `dinnerware-${dw.key}`,
     name: `Dinnerware only: ${dw.name}`,
     category: "Food & beverage add-ons",
+    category_std: "fb",
     variant: dw.name,
     group: "fb",
     price: dw.perGuest,
@@ -1298,6 +1328,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
     id: `bar-${slugify(b.name)}`,
     name: `Bar: ${b.name}`,
     category: "Food & beverage add-ons",
+    category_std: "fb",
     variant: b.name,
     group: "fb",
     price: b.price5hr,
@@ -1329,6 +1360,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
     id: `extra-hour-${e.key}`,
     name: e.label,
     category: "Extra hours",
+    category_std: "time",
     variant: null,
     group: "other",
     price: e.price,
@@ -1465,6 +1497,11 @@ function buildLondonHouse(): VenueDetailsV3 {
     venue_kind: f("hotel", l.categoryLabel, site),
     setting: f("indoor", l.quickFacts[1].label, amenitiesUrl),
     space_count_bookable: f(2, "Juliette Grand Ballroom and Étoile", weddingsUrl),
+    // Round 5: not stated. The quickFacts "Up to 190 guests" pill is Juliette Ballroom's own
+    // per-room seated max (see `capacities` below), not a venue-wide headline the venue states
+    // itself — same reasoning as Marchetti's 425. Leaving it not_stated keeps the pill on the
+    // seated headline (rule 1) instead of implying a floor of 60 from Étoile (LondonHouse
+    // pushback, plan round 4).
     ceremony_on_site: f(true, l.pricing.ceremonyFeeNote, weddingsUrl),
     ceremony_fee: f("extra_fee", l.pricing.ceremonyFeeNote, l.weddingMenuUrl),
     catering: f("exclusive_in_house", l.policies[0].value, weddingsUrl),
@@ -1573,10 +1610,10 @@ function buildLondonHouse(): VenueDetailsV3 {
       snapshot_id: null,
     },
     add_ons: [
-      { id: "pre-reception-snacks", name: "Pre-reception snacks", category: "Food & beverage", variant: null, group: "fb", price: null, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: false, tax_pct_override: null, min_guests: null, as_stated_price: "No published rate", note: l.addOns[0].blurb, quote: l.addOns[0].blurb, source_url: weddingsUrl, snapshot_id: null },
-      { id: "late-night-snacks", name: "Late-night snacks", category: "Food & beverage", variant: null, group: "fb", price: null, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: false, tax_pct_override: null, min_guests: null, as_stated_price: "No published rate", note: l.addOns[1].blurb, quote: l.addOns[1].blurb, source_url: weddingsUrl, snapshot_id: null },
-      { id: "corkage", name: "Corkage fee", category: "Bar", variant: null, group: "fb", price: l.pricing.corkagePerBottle, price_max: null, unit: "per_unit", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: l.pricing.salesTaxPercent, min_guests: null, as_stated_price: "$50/bottle", note: l.addOns[2].blurb, quote: l.addOns[2].blurb, source_url: site, snapshot_id: null },
-      { id: "ceremony", name: "On-site ceremony fee", category: "Ceremony", variant: null, group: "ceremony", price: l.pricing.ceremonyFee, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: "ceremony_on_site", priceable: true, tax_pct_override: l.pricing.ceremonyFeeTaxPercent, min_guests: null, as_stated_price: "$750", note: l.addOns[3].blurb, quote: l.addOns[3].blurb, source_url: l.weddingMenuUrl, snapshot_id: null },
+      { id: "pre-reception-snacks", name: "Pre-reception snacks", category: "Food & beverage", category_std: "fb", variant: null, group: "fb", price: null, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: false, tax_pct_override: null, min_guests: null, as_stated_price: "No published rate", note: l.addOns[0].blurb, quote: l.addOns[0].blurb, source_url: weddingsUrl, snapshot_id: null },
+      { id: "late-night-snacks", name: "Late-night snacks", category: "Food & beverage", category_std: "fb", variant: null, group: "fb", price: null, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: false, tax_pct_override: null, min_guests: null, as_stated_price: "No published rate", note: l.addOns[1].blurb, quote: l.addOns[1].blurb, source_url: weddingsUrl, snapshot_id: null },
+      { id: "corkage", name: "Corkage fee", category: "Bar", category_std: "fb", variant: null, group: "fb", price: l.pricing.corkagePerBottle, price_max: null, unit: "per_unit", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: l.pricing.salesTaxPercent, min_guests: null, as_stated_price: "$50/bottle", note: l.addOns[2].blurb, quote: l.addOns[2].blurb, source_url: site, snapshot_id: null },
+      { id: "ceremony", name: "On-site ceremony fee", category: "Ceremony", category_std: "ceremony", variant: null, group: "ceremony", price: l.pricing.ceremonyFee, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: "ceremony_on_site", priceable: true, tax_pct_override: l.pricing.ceremonyFeeTaxPercent, min_guests: null, as_stated_price: "$750", note: l.addOns[3].blurb, quote: l.addOns[3].blurb, source_url: l.weddingMenuUrl, snapshot_id: null },
     ],
     required_third_party: [],
     notes: [],
@@ -1643,6 +1680,10 @@ function buildFieldMuseum(): VenueDetailsV3 {
     venue_kind: f("museum", fm.categoryLabel, site),
     setting: f("both", fm.quickFacts[1].note!, site),
     space_count_bookable: f(4, "Stanley Field Hall & Balcony, Outdoor Terraces, East Atrium & Pavilion, Rice Gallery", site),
+    // Round 5: not stated. The venue never publishes a venue-wide max of its own — "20 to 1,000+
+    // guests" (quickFacts) is a floor-to-ceiling range across every per-room table, not a single
+    // headline figure — so this stays per-room (`capacities` below) rather than a fabricated
+    // venue max.
     // Real, unresolved discrepancy between two of the venue's own pages -- kept `conflicting`,
     // not silently picked (same treatment as Marchetti's payment schedule).
     capacity_min_guests: {
@@ -1714,8 +1755,8 @@ function buildFieldMuseum(): VenueDetailsV3 {
     paths: [],
     rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, sales_tax_source: "unknown", cc_fee_pct: null, quote: null, source_url: null, snapshot_id: null },
     add_ons: [
-      { id: "photo-session-daytime", name: "In-museum photography session (daytime)", category: "Photography", variant: "Daytime", group: "other", price: 900, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: "$900 daytime", note: fm.addOns[0].blurb, quote: fm.addOns[0].price, source_url: site, snapshot_id: null },
-      { id: "photo-session-evening", name: "In-museum photography session (evening)", category: "Photography", variant: "Evening", group: "other", price: 1200, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: "$1,200 evening", note: fm.addOns[0].blurb, quote: fm.addOns[0].price, source_url: site, snapshot_id: null },
+      { id: "photo-session-daytime", name: "In-museum photography session (daytime)", category: "Photography", category_std: "other", variant: "Daytime", group: "other", price: 900, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: "$900 daytime", note: fm.addOns[0].blurb, quote: fm.addOns[0].price, source_url: site, snapshot_id: null },
+      { id: "photo-session-evening", name: "In-museum photography session (evening)", category: "Photography", category_std: "other", variant: "Evening", group: "other", price: 1200, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: "$1,200 evening", note: fm.addOns[0].blurb, quote: fm.addOns[0].price, source_url: site, snapshot_id: null },
     ],
     required_third_party: [],
     // Round 4: the venue's own "reach out for a proposal" wording, so the renderer's "Pricing:
@@ -1779,6 +1820,10 @@ function buildGeraghty(): VenueDetailsV3 {
     venue_kind: f("event_space", g.categoryLabel, site),
     setting: f("indoor", g.quickFacts[1].note!, site),
     space_count_bookable: f(1, "One open, 25,000 sq ft room... fully reconfigurable for ceremony, reception, and afterparty in the same space.", floorPlansUrl),
+    // Round 5: sourced from the venue's own 2 wedding-labeled floor plans (both cap at 300), same
+    // quickFacts note used for the capacity tuple above — a real venue-stated headline, not the
+    // higher gala/corporate maximums the file header flags as the wrong number to use.
+    capacity_max_guests: f(300, g.quickFacts[0].note!, floorPlansUrl),
     ceremony_on_site: f(true, g.space.description, floorPlansUrl),
     catering: f("preferred_list", g.quickFacts[2].note!, faqUrl),
     bar: f("in_house", g.quickFacts[3].note!, faqUrl),

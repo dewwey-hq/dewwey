@@ -416,6 +416,89 @@ describe("assembleDocument -- round 4 fields", () => {
   });
 });
 
+describe("assembleDocument -- round 5 fields", () => {
+  it("carries a stated capacity_max_guests spine value through like any other tri-state field", () => {
+    const spine = miniVenueSpine();
+    spine.spine.capacity_max_guests = { status: "stated", value: 200, quote: "Grand Ballroom seats up to 200 guests", source_url: PAGE1.url };
+    const result = assembleMiniVenue({ spine });
+    const field = result.document.spine.capacity_max_guests;
+    expect(field.status).toBe("stated");
+    if (field.status === "stated") expect(field.value).toBe(200);
+  });
+
+  it("keeps an add-on's own valid category_std from the model", () => {
+    const pricing = miniVenuePricing();
+    pricing.add_ons = [
+      {
+        id: "dj",
+        name: "DJ package",
+        category: "Music",
+        category_std: "entertainment",
+        variant: null,
+        group: "other",
+        price: 800,
+        price_max: null,
+        unit: "flat",
+        per_space_prices: null,
+        applies_to: "all",
+        path_ids: null,
+        condition: null,
+        priceable: true,
+        tax_pct_override: null,
+        min_guests: null,
+        as_stated_price: null,
+        note: null,
+        selection_group: null,
+        quote: "DJ package $800",
+        source_url: PAGE2.url,
+      },
+    ];
+    const pages = [PAGE1, { url: PAGE2.url, text: `${PAGE2.text} DJ package $800.`, snapshot_id: 2 }, PAGE3];
+    const result = assembleMiniVenue({ pricing, pages });
+    expect(result.document.pricing.add_ons[0].category_std).toBe("entertainment");
+  });
+
+  it("defaults category_std from group (fb->fb, ceremony->ceremony, service->services_staffing, rental/other->space_rentals) when the model omits it", () => {
+    const groupCases: { group: "fb" | "rental" | "service" | "ceremony" | "other"; expected: string }[] = [
+      { group: "fb", expected: "fb" },
+      { group: "ceremony", expected: "ceremony" },
+      { group: "service", expected: "services_staffing" },
+      { group: "rental", expected: "space_rentals" },
+      { group: "other", expected: "space_rentals" },
+    ];
+    for (const { group, expected } of groupCases) {
+      const pricing = miniVenuePricing();
+      pricing.add_ons = [
+        {
+          id: `addon-${group}`,
+          name: `Add-on ${group}`,
+          category: "Misc",
+          variant: null,
+          group,
+          price: 100,
+          price_max: null,
+          unit: "flat",
+          per_space_prices: null,
+          applies_to: "all",
+          path_ids: null,
+          condition: null,
+          priceable: true,
+          tax_pct_override: null,
+          min_guests: null,
+          as_stated_price: null,
+          note: null,
+          selection_group: null,
+          quote: `Add-on ${group} $100`,
+          source_url: PAGE2.url,
+        },
+      ];
+      const pages = [PAGE1, { url: PAGE2.url, text: `${PAGE2.text} Add-on ${group} $100.`, snapshot_id: 2 }, PAGE3];
+      const result = assembleMiniVenue({ pricing, pages });
+      expect(result.document.pricing.add_ons[0].category_std).toBe(expected);
+    }
+  });
+});
+
 describe("assembleDocument -- FAQ off-topic gate", () => {
   it("drops hotel-guest FAQs and flags contamination when they're the majority", () => {
     const pricing = miniVenuePricing();

@@ -52,4 +52,87 @@ describe("checkEnums", () => {
     expect(issue).toBeDefined();
     expect(issue?.tier).toBeNull();
   });
+
+  it("emits an enum_invalid issue for a bad add_ons[].category_std (round 5)", () => {
+    const pricing: RawPricingResult = {
+      archetype: null,
+      paths: [],
+      rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, taxes_included_in_rental: null, cc_fee_pct: null, quote: null, source_url: null },
+      add_ons: [
+        {
+          id: "a1",
+          name: "Add-on",
+          category: "Misc",
+          category_std: "not_a_real_category",
+          variant: null,
+          group: "other",
+          price: null,
+          price_max: null,
+          unit: "flat",
+          per_space_prices: null,
+          applies_to: "all",
+          path_ids: null,
+          condition: null,
+          priceable: false,
+          tax_pct_override: null,
+          min_guests: null,
+          as_stated_price: null,
+          note: null,
+          selection_group: null,
+          quote: "q",
+          source_url: "u",
+        },
+      ],
+      add_on_categories: [],
+      food_beverage: { food_pills: [], bar_pills: [], caption: null, food_note: null, bar_note: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+      required_third_party: [],
+      faqs: [],
+      seasons: null,
+      notes: null,
+    };
+    const issues = checkEnums(baseSpine(), pricing);
+    const issue = issues.find((i) => i.code === "enum_invalid" && i.path.includes("category_std"));
+    expect(issue).toBeDefined();
+    expect(issue?.tier).toBeNull();
+  });
+
+  it("emits nothing for a null add_ons[].category_std -- optional, not required", () => {
+    const pricing: RawPricingResult = {
+      archetype: null,
+      paths: [],
+      rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, taxes_included_in_rental: null, cc_fee_pct: null, quote: null, source_url: null },
+      add_ons: [
+        {
+          id: "a1",
+          name: "Add-on",
+          category: "Misc",
+          category_std: null,
+          variant: null,
+          group: "other",
+          price: null,
+          price_max: null,
+          unit: "flat",
+          per_space_prices: null,
+          applies_to: "all",
+          path_ids: null,
+          condition: null,
+          priceable: false,
+          tax_pct_override: null,
+          min_guests: null,
+          as_stated_price: null,
+          note: null,
+          selection_group: null,
+          quote: "q",
+          source_url: "u",
+        },
+      ],
+      add_on_categories: [],
+      food_beverage: { food_pills: [], bar_pills: [], caption: null, food_note: null, bar_note: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+      required_third_party: [],
+      faqs: [],
+      seasons: null,
+      notes: null,
+    };
+    expect(checkEnums(baseSpine(), pricing)).toEqual([]);
+  });
 });

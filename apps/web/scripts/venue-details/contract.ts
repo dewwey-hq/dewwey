@@ -129,6 +129,8 @@ export interface RawPressFeature {
 
 /** `submit_venue_spine` tool-call args, exactly. */
 export interface RawSpineResult {
+  /** Keyed by `keyof VenueSpine` (types.ts `SPINE_KEYS`) -- round 5 adds `capacity_max_guests`
+   * to that list; this dictionary shape doesn't need its own change to carry it. */
   spine: Record<string, RawTriField>;
   about: RawAbout | null;
   differentiator: RawDifferentiator | null;
@@ -252,6 +254,11 @@ export interface RawAddOn {
   id: string;
   name: string;
   category: string;
+  /** Standard cross-venue grouping (round 5) -- `enums.ts` validates against
+   * `ADD_ON_CATEGORIES_STD`; `assemble.ts` defaults it from `group` when the model omits it.
+   * Optional (not just nullable) so existing RawAddOn literals elsewhere in the tree don't need
+   * updating just to keep compiling. */
+  category_std?: string | null;
   variant: string | null;
   group: "fb" | "rental" | "service" | "ceremony" | "other";
   price: number | null;

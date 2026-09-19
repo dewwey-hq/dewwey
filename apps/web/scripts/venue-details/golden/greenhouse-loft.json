@@ -39,6 +39,13 @@
       "source_url": "https://www.greenhouseloft.com/faq",
       "snapshot_id": null
     },
+    "capacity_max_guests": {
+      "status": "stated",
+      "value": 200,
+      "quote": "The venue's own FAQ: \"We can create an intimate gathering for groups as small as 25, or design a sit-down meal for 175. At our maximum capacity, we can host events such as a cocktail party reception for up to 200 people.\"",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
     "ceremony_on_site": {
       "status": "stated",
       "value": true,
@@ -515,6 +522,7 @@
         "id": "extra-parking",
         "name": "Additional Parking",
         "category": "Parking",
+        "category_std": "space_rentals",
         "variant": null,
         "group": "rental",
         "price": 500,
@@ -537,6 +545,7 @@
         "id": "rehearsal",
         "name": "Rehearsal",
         "category": "Rehearsal",
+        "category_std": "time",
         "variant": null,
         "group": "rental",
         "price": 250,
@@ -559,6 +568,7 @@
         "id": "cleaning-fee",
         "name": "Cleaning Fee",
         "category": "Cleaning",
+        "category_std": "services_staffing",
         "variant": null,
         "group": "service",
         "price": 500,
@@ -1052,6 +1062,7 @@
     "/spine/one_event_per_day": "extractor",
     "/spine/space_count_bookable": "extractor",
     "/spine/capacity_min_guests": "extractor",
+    "/spine/capacity_max_guests": "extractor",
     "/spine/ceremony_on_site": "extractor",
     "/spine/rental_hours_included": "extractor",
     "/spine/weekday_events": "extractor",

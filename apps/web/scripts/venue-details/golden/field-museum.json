@@ -45,6 +45,9 @@
         }
       ]
     },
+    "capacity_max_guests": {
+      "status": "not_stated"
+    },
     "ceremony_on_site": {
       "status": "stated",
       "value": true,
@@ -396,6 +399,7 @@
         "id": "photo-session-daytime",
         "name": "In-museum photography session (daytime)",
         "category": "Photography",
+        "category_std": "other",
         "variant": "Daytime",
         "group": "other",
         "price": 900,
@@ -418,6 +422,7 @@
         "id": "photo-session-evening",
         "name": "In-museum photography session (evening)",
         "category": "Photography",
+        "category_std": "other",
         "variant": "Evening",
         "group": "other",
         "price": 1200,

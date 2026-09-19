@@ -4,6 +4,7 @@ import { GOLDEN_ACCOUNT_IDS, GOLDEN_SLUGS, getGolden, isGoldenSlug, type GoldenS
 import { defaultAxes, estimateCost, headlineCapacity } from "../../lib/venueDetails/derive";
 import { isCompareReady, isExcellent } from "../../lib/venueDetails/tiers";
 import {
+  ADD_ON_CATEGORIES_STD,
   BAR_POLICIES,
   CATERING_POLICIES,
   CEREMONY_FEE_POLICIES,
@@ -445,5 +446,72 @@ describe("golden fixtures — round 4 (user feedback 2026-09-19), part B fixture
         expect(resolves(d, path), `${slug}: path ${path} did not resolve`).toBe(true);
       }
     }
+  });
+});
+
+describe("golden fixtures — round 5 (capacity_max_guests + add-on category_std)", () => {
+  it("SPINE_KEYS (including capacity_max_guests) are all present and resolve on every fixture", () => {
+    for (const slug of GOLDEN_SLUGS) {
+      const d = getGolden(slug)!;
+      for (const key of SPINE_KEYS) {
+        expect(d.spine).toHaveProperty(key);
+        expect(resolves(d, `/spine/${key}`)).toBe(true);
+      }
+    }
+  });
+
+  it("every add-on on every fixture has a category_std in ADD_ON_CATEGORIES_STD", () => {
+    for (const slug of GOLDEN_SLUGS) {
+      const d = getGolden(slug)!;
+      for (const a of d.pricing.add_ons) {
+        expect(a.category_std, `${slug}: add-on ${a.id} has no category_std`).toBeDefined();
+        expect(ADD_ON_CATEGORIES_STD, `${slug}: add-on ${a.id} has category_std ${a.category_std}`).toContain(a.category_std);
+      }
+    }
+  });
+
+  it("Greenhouse: capacity_max_guests stated 200, from the same FAQ quote as the min", () => {
+    const d = getGolden("greenhouse-loft")!;
+    expect(d.spine.capacity_max_guests.status).toBe("stated");
+    if (d.spine.capacity_max_guests.status === "stated") expect(d.spine.capacity_max_guests.value).toBe(200);
+  });
+
+  it("Diamond Garden: capacity_max_guests stated 268, the homepage's own general claim", () => {
+    const d = getGolden("diamond-garden-banquet-hall")!;
+    expect(d.spine.capacity_max_guests.status).toBe("stated");
+    if (d.spine.capacity_max_guests.status === "stated") expect(d.spine.capacity_max_guests.value).toBe(268);
+  });
+
+  it("Geraghty: capacity_max_guests stated 300, from the wedding-labeled floor plans", () => {
+    const d = getGolden("geraghty")!;
+    expect(d.spine.capacity_max_guests.status).toBe("stated");
+    if (d.spine.capacity_max_guests.status === "stated") expect(d.spine.capacity_max_guests.value).toBe(300);
+  });
+
+  it("Marchetti, LondonHouse, Field Museum: capacity_max_guests not_stated (per-room headline only)", () => {
+    for (const slug of ["galleria-marchetti", "londonhouse-chicago", "field-museum"] as const) {
+      const d = getGolden(slug)!;
+      expect(d.spine.capacity_max_guests.status, `${slug}`).toBe("not_stated");
+    }
+  });
+
+  it("pinned calculator totals unchanged by the round-5 fixture edits", () => {
+    const marchetti = getGolden("galleria-marchetti")!;
+    const marchettiAxes = defaultAxes(marchetti);
+    expect(estimateCost(marchetti, { ...marchettiAxes, guests: 150, day: "sat", season: "peak", ceremonyOnSite: false }).total).toBe(55240);
+
+    const greenhouse = getGolden("greenhouse-loft")!;
+    const greenhouseAxes = defaultAxes(greenhouse);
+    expect(estimateCost(greenhouse, { ...greenhouseAxes, guests: 150, day: "sat", season: "peak", ceremonyOnSite: true, payment: "credit_card" }).total).toBe(12420);
+
+    const londonhouse = getGolden("londonhouse-chicago")!;
+    const londonhouseAxes = defaultAxes(londonhouse);
+    expect(
+      estimateCost(londonhouse, { ...londonhouseAxes, guests: 120, day: "sat", season: "peak", ceremonyOnSite: true, payment: "cash_check", extras: [] }).total,
+    ).toBe(44451);
+
+    const diamondGarden = getGolden("diamond-garden-banquet-hall")!;
+    const diamondGardenAxes = defaultAxes(diamondGarden);
+    expect(estimateCost(diamondGarden, diamondGardenAxes).total).toBe(7495);
   });
 });

@@ -12,6 +12,7 @@
  */
 
 import {
+  ADD_ON_CATEGORIES_STD,
   BAR_POLICIES,
   CATERING_POLICIES,
   CEREMONY_FEE_POLICIES,
@@ -82,9 +83,11 @@ function strOrAllOrNull(description: string): JsonSchema {
 // Tri-state field schema (spine)
 // ---------------------------------------------------------------------------
 
-// Kept terse deliberately: this wrapper text is repeated once per SPINE_KEYS entry (38x), so a
-// few extra words here costs ~150 tokens across the whole tool schema. The one full explanation
-// of stated/not_stated/conflicting lives in SYSTEM_PROMPT_SPINE instead.
+// Kept terse deliberately: this wrapper text is repeated once per SPINE_KEYS entry (39x, round
+// 5's capacity_max_guests included), so a few extra words here costs ~150 tokens across the whole
+// tool schema -- round 5 trimmed these further to make room for capacity_max_guests within the
+// same ~12k-token budget. The one full explanation of stated/not_stated/conflicting lives in
+// SYSTEM_PROMPT_SPINE instead.
 function candidateSchema(valueSchema: JsonSchema): JsonSchema {
   return strictObject({
     value: valueSchema,
@@ -96,11 +99,11 @@ function candidateSchema(valueSchema: JsonSchema): JsonSchema {
 function triFieldSchema(valueSchema: JsonSchema, description: string): JsonSchema {
   return strictObject(
     {
-      status: enumSchema(["stated", "not_stated", "conflicting"], "never guess -- not_stated when unclear; conflicting when the venue's own docs disagree (fill candidates)."),
+      status: enumSchema(["stated", "not_stated", "conflicting"], "not_stated if unclear; conflicting if the venue's own docs disagree (fill candidates)."),
       value: nullable(valueSchema),
-      quote: nullable({ type: "string", description: "Verbatim proof; required if stated." }),
-      source_url: nullable({ type: "string", description: "Page the quote is from; required if stated." }),
-      candidates: strictArray(candidateSchema(valueSchema), ">=2 entries if conflicting, else empty."),
+      quote: nullable({ type: "string", description: "Verbatim proof if stated." }),
+      source_url: nullable({ type: "string", description: "Page the quote is from." }),
+      candidates: strictArray(candidateSchema(valueSchema), ">=2 if conflicting, else empty."),
     },
     description
   );
@@ -157,6 +160,11 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
   capacity_min_guests: {
     valueSchema: { type: "number" },
     description: "A minimum guest count the venue states applies to booking at all -- not a per-tier minimum (those live in the pricing call's minimums[]).",
+  },
+  capacity_max_guests: {
+    valueSchema: { type: "number" },
+    description:
+      "The max guest count the venue itself states as its capacity headline, any layout ('25-200 guests', 'up to 300 guests'); not_stated when the site only gives per-room tables.",
   },
   ceremony_on_site: {
     valueSchema: { type: "boolean" },
@@ -557,6 +565,14 @@ const ADD_ON_SCHEMA = strictObject(
     id: { type: "string" },
     name: { type: "string" },
     category: { type: "string" },
+    category_std: nullable({
+      ...enumSchema(ADD_ON_CATEGORIES_STD),
+      description:
+        "Standard cross-venue grouping, shared by the Add-ons section and the Cost Estimate. fb: food/drink (catering, bar, cake, stations). " +
+        "space_rentals: physical space/furniture (tables, chairs, dance floor, tents, parking). decor_lighting: decor and lighting (florals, uplighting, drape, centerpieces). " +
+        "entertainment: guest-facing entertainment (DJ, band, photo booth, games). services_staffing: staffing/services (coordinator, security, cleaning, coat check, bartenders). " +
+        "ceremony: on-site ceremony fee/setup. time: extra hours or rehearsal time. other: doesn't fit any of the above. Leave null only if genuinely unclear.",
+    }),
     variant: nullable({ type: "string", description: "e.g. '7 swags' vs '13 swags' are two variants of the same category, each its own add-on row." }),
     group: enumSchema(["fb", "rental", "service", "ceremony", "other"]),
     price: nullable({ type: "number" }),
@@ -1024,6 +1040,7 @@ export function validateShape(raw: unknown): string[] {
       const addOn = a as Record<string, unknown>;
       checkEnum(`add_ons[${i}].unit`, addOn.unit, ["flat", "per_guest", "per_unit", "per_hour"]);
       checkEnum(`add_ons[${i}].group`, addOn.group, ["fb", "rental", "service", "ceremony", "other"]);
+      checkEnum(`add_ons[${i}].category_std`, addOn.category_std, ADD_ON_CATEGORIES_STD);
     });
     const fb = obj.food_beverage as Record<string, unknown> | undefined;
     if (fb) {

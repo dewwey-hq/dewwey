@@ -31,6 +31,13 @@
     "capacity_min_guests": {
       "status": "not_stated"
     },
+    "capacity_max_guests": {
+      "status": "stated",
+      "value": 300,
+      "quote": "From the venue's own 2 wedding-labeled floor plans (Ceremony, Reception & Afterparty; Ceremony & Reception), both capped at 300 guests. The venue's overall maximum across all event types is higher (1,000 seated, per its gala floor plan), but that's not a real wedding configuration.",
+      "source_url": "https://thegeraghty.com/floor-plans/",
+      "snapshot_id": null
+    },
     "ceremony_on_site": {
       "status": "stated",
       "value": true,
@@ -644,6 +651,7 @@
     "/spine/venue_kind": "extractor",
     "/spine/setting": "extractor",
     "/spine/space_count_bookable": "extractor",
+    "/spine/capacity_max_guests": "extractor",
     "/spine/ceremony_on_site": "extractor",
     "/spine/catering": "extractor",
     "/spine/bar": "extractor",
