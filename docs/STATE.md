@@ -40,7 +40,14 @@ totals pinned to the concept calculators: Marchetti 55,240 / 57,475; Greenhouse 
 `vendorId`s are wrong): galleriamarchetti 31, greenhouseloft 477, thegeraghty 507, fieldmuseum 1131
 (alias 5172), lhchicago 2785, diamondgardenbanquet 27389.
 
-**Phase 1b — done, committed.** `apps/web/app/components/venue/*` (`VenueDetailsView`, `FactSource`
+**Phase 1b — done, committed; three review rounds landed 2026-09-18 (`3d8e709`, `5a6e346`).** Round 2:
+every resource kind routed (`placeResources`, invariant-tested), concept spacing, as-stated sizes. Round 3
+(Diamond Garden as the proving venue, all rules data-driven): four optional schema fields
+(`add_on_categories`, `PricingPath.includes`, `Pricing.seasons`, `AddOn.selection_group`), multi-path
+pricing cards, curated add-on categories, single-select calculator extras, `path_ids` honored, tier axis
+only on distinct names, grouped What's Included. 586 tests. **Pending:** three nits (duplicate in-card
+rate grid when a Pricing section exists, 3-column pricing grid, "Bar: In-house or BYO" quick fact) and
+the extractor tool schema learning the new fields — both building at the time of writing. `apps/web/app/components/venue/*` (`VenueDetailsView`, `FactSource`
 popover, `CostEstimate`, `PoliciesList`, `FaqList`, `ResourceMenuButton`, `format.ts`) and
 `apps/web/app/lab/venue/page.tsx` (`?golden=<slug>`, `?u=<username>`, `?compare=1`, noindex). All six
 goldens render at desktop and phone width; screenshots reviewed by Claude (user review still open).
