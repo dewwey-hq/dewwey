@@ -15,8 +15,8 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, Minus, Plus } from "lucide-react";
-import { calculatorAxes, defaultAxes, estimateCost, headlineCapacity, type EstimateInput } from "@/lib/venueDetails/derive";
-import type { AddOn, Day, EstimateExtra, Season, VenueDetailsV3 } from "@/lib/venueDetails/types";
+import { calculatorAxes, defaultAxes, estimateCost, headlineCapacity, selectableAddOns, type EstimateInput } from "@/lib/venueDetails/derive";
+import type { Day, EstimateExtra, PricingPath, Season, VenueDetailsV3 } from "@/lib/venueDetails/types";
 import * as fmt from "./format";
 
 function PillGroup<T extends string>({ options, value, onChange }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
@@ -80,14 +80,20 @@ const WARNING_LABELS: Record<string, string> = {
   no_path: "Pricing on request.",
 };
 
-function selectableAddOns(addOns: AddOn[]): AddOn[] {
-  return addOns.filter((a) => a.group !== "ceremony" && a.priceable !== false && (a.price != null || (a.per_space_prices != null && Object.keys(a.per_space_prices).length > 0)));
+/** Whether the extras panel should start open for a given path: any path with no per-guest
+ * tiers (a flat/BYO-shaped booking) that ISN'T the first (cheapest, "bare") path in the venue's
+ * own cheap-first ordering — Diamond Garden's "Hall + À La Carte" auto-opens, "Hall Rental Only"
+ * (first path) and "All-Inclusive" (has tiers) don't. For every other golden (a single path),
+ * this is always false, unchanged from the prior fixed `useState(false)`. */
+function pathAutoOpensExtras(venue: VenueDetailsV3, path: PricingPath): boolean {
+  return path.per_guest_tiers.length === 0 && venue.pricing.paths[0]?.id !== path.id;
 }
 
 export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   const axes = useMemo(() => calculatorAxes(venue), [venue]);
   const hc = useMemo(() => headlineCapacity(venue), [venue]);
   const base = useMemo(() => defaultAxes(venue), [venue]);
+  const initialPath = useMemo(() => venue.pricing.paths.find((p) => p.id === base.path_id) ?? venue.pricing.paths[0], [venue, base.path_id]);
 
   const [guests, setGuests] = useState(base.guests);
   const [pathId, setPathId] = useState<string | undefined>(base.path_id);
@@ -97,8 +103,9 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   const [tierId, setTierId] = useState<string | undefined>(base.tier_id);
   const [ceremonyOnSite, setCeremonyOnSite] = useState(base.ceremonyOnSite);
   const [payment, setPayment] = useState<"cash_check" | "credit_card">(base.payment ?? "cash_check");
-  const [extrasOpen, setExtrasOpen] = useState(false);
+  const [extrasOpen, setExtrasOpen] = useState(() => (initialPath ? pathAutoOpensExtras(venue, initialPath) : false));
   const [extraQuantities, setExtraQuantities] = useState<Record<string, number>>({});
+  const [groupSelections, setGroupSelections] = useState<Record<string, string>>({});
 
   const rangeReminder = fmt.guestRangeReminder(hc.guest_range);
 
@@ -111,12 +118,24 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   }
 
   const currentPath = venue.pricing.paths.find((p) => p.id === pathId) ?? venue.pricing.paths[0];
-  const addOns = selectableAddOns(venue.pricing.add_ons);
+  // path_ids-scoped: a path change hides add-ons that don't apply to it (Diamond Garden's
+  // food/dinnerware/bar/coffee/cake add-ons never show once All-Inclusive is selected, since it
+  // already bundles the equivalent).
+  const scopedAddOns = selectableAddOns(venue, currentPath.id);
+  // Items sharing a `selection_group` render as one PillGroup ("None" first) instead of
+  // independent toggle chips (Diamond Garden's food package / dinnerware / bar tier / extra
+  // hour); everything else stays an individually toggleable chip, same as before.
+  const { groups: singleSelectGroups, individual: individualAddOns } = fmt.splitAddOnsBySelection(scopedAddOns);
   const dayOptions = fmt.pathDayOptions(currentPath);
   const seasonOptions = fmt.pathSeasonOptions(currentPath);
   const tierOptions = fmt.pathTierOptions(currentPath);
 
-  const extras: EstimateExtra[] = addOns.map((a) => ({ add_on_id: a.id, quantity: extraQuantities[a.id] ?? 0 })).filter((e) => e.quantity > 0);
+  const groupExtras: EstimateExtra[] = singleSelectGroups
+    .map((g) => groupSelections[g.key])
+    .filter((id): id is string => id != null && id !== "")
+    .map((add_on_id) => ({ add_on_id, quantity: 1 }));
+  const individualExtras: EstimateExtra[] = individualAddOns.map((a) => ({ add_on_id: a.id, quantity: extraQuantities[a.id] ?? 0 })).filter((e) => e.quantity > 0);
+  const extras: EstimateExtra[] = [...groupExtras, ...individualExtras];
 
   const input: EstimateInput = {
     guests,
@@ -131,7 +150,13 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   };
 
   const estimate = estimateCost(venue, input);
-  const selectedCount = Object.values(extraQuantities).filter((q) => q > 0).length;
+  const selectedCount = Object.values(extraQuantities).filter((q) => q > 0).length + Object.values(groupSelections).filter((v) => v).length;
+
+  const handlePathChange = (id: string) => {
+    setPathId(id);
+    const newPath = venue.pricing.paths.find((p) => p.id === id);
+    if (newPath) setExtrasOpen(pathAutoOpensExtras(venue, newPath));
+  };
 
   // Fix round: the template's Taxes group is always present, even when there's genuinely
   // nothing to compute (a 0% service charge and no separate sales-tax line) — the sales-tax
@@ -158,13 +183,15 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
             beyond 4 simply wrap to a second row of the same grid. */}
         <div className="grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 sm:divide-x sm:divide-black/[0.06] lg:grid-cols-4">
           <AxisColumn label="Guests">
-            <Stepper value={guests} onChange={setGuests} min={1} step={10} />
+            {/* Clamped to the venue's own headline capacity (round-3 fix) — a couple can't type
+                past the number the Space section already told them this venue seats. */}
+            <Stepper value={guests} onChange={setGuests} min={1} max={hc.headline ?? 999} step={10} />
             {rangeReminder && <p className="mt-1.5 text-[11px] text-gray-400">{rangeReminder}</p>}
           </AxisColumn>
 
           {axes.includes("path") && (
             <AxisColumn label="Package">
-              <PillGroup value={currentPath.id} onChange={setPathId} options={venue.pricing.paths.map((p) => ({ value: p.id, label: p.name }))} />
+              <PillGroup value={currentPath.id} onChange={handlePathChange} options={venue.pricing.paths.map((p) => ({ value: p.id, label: p.name }))} />
             </AxisColumn>
           )}
           {axes.includes("space") && (
@@ -218,15 +245,29 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
         </div>
       </div>
 
-      {addOns.length > 0 && (
+      {(singleSelectGroups.length > 0 || individualAddOns.length > 0) && (
         <div className="border-t border-black/[0.06] px-5 py-3">
           <button type="button" onClick={() => setExtrasOpen((o) => !o)} className="flex w-full items-center justify-between text-sm font-medium text-gray-700">
             <span>Add extras{selectedCount > 0 ? ` (${selectedCount} selected)` : ""}</span>
             <ChevronDown size={16} className={`text-gray-400 transition-transform ${extrasOpen ? "rotate-180" : ""}`} />
           </button>
           {extrasOpen && (
-            <div className="mt-3 space-y-3">
-              {addOns.map((a) => {
+            <div className="mt-3 space-y-4">
+              {/* Single-select groups (food package / dinnerware / bar tier / extra hour) render
+                  as one PillGroup each, "None" first — round-3 fix: these used to show as 20+
+                  independent toggle chips a couple could (wrongly) select several of at once. */}
+              {singleSelectGroups.map((g) => (
+                <div key={g.key}>
+                  <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">{fmt.selectionGroupLabel(g.key)}</p>
+                  <PillGroup
+                    value={groupSelections[g.key] ?? "none"}
+                    onChange={(v) => setGroupSelections((s) => ({ ...s, [g.key]: v === "none" ? "" : v }))}
+                    options={[{ value: "none", label: "None" }, ...g.items.map((a) => ({ value: a.id, label: `${a.variant ?? a.name} (${fmt.addOnPriceString(a)})` }))]}
+                  />
+                </div>
+              ))}
+
+              {individualAddOns.map((a) => {
                 const qty = extraQuantities[a.id] ?? 0;
                 const perUnit = a.unit === "per_unit" || a.unit === "per_hour";
                 return (
@@ -297,7 +338,10 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
               </tr>
             )}
             <tr className="border-t border-black/[0.1] font-medium text-gray-900">
-              <td className="py-2">Estimated total (includes tax)</td>
+              {/* Round-3 fix: "(includes tax)" is only true when a real tax is actually being
+                  computed — a venue whose tax status is genuinely unknown (Diamond Garden) gets
+                  the plain label instead of implying a tax that was never applied. */}
+              <td className="py-2">{venue.pricing.rates.sales_tax_source === "unknown" ? "Estimated total" : "Estimated total (includes tax)"}</td>
               <td className="py-2 text-right">{fmt.money(estimate.total)}</td>
             </tr>
           </tbody>
@@ -317,7 +361,9 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
         {estimate.warnings.length > 0 && (
           <div className="mt-3 space-y-0.5 text-xs text-amber-600">
             {estimate.warnings.map((w) => (
-              <p key={w}>{WARNING_LABELS[w] ?? w}</p>
+              // Round-3 fix: "under_minimum" names the actual day-specific (or general) minimum
+              // that was missed, instead of one static sentence for every venue and day.
+              <p key={w}>{w === "under_minimum" ? (fmt.underMinimumMessage(currentPath, guests, day, season) ?? WARNING_LABELS[w]) : (WARNING_LABELS[w] ?? w)}</p>
             ))}
           </div>
         )}

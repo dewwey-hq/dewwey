@@ -499,6 +499,10 @@ export interface PricingPath {
   quote: string;
   source_url: string;
   snapshot_id: number | null;
+  /** Path-level inclusions (Diamond Garden's Hall Rental Only tables/kitchen) — distinct from a
+   * space's own `includes_summary` (Marchetti's per-space inclusions). Optional: only paths that
+   * carry a real, path-wide inclusion list set this. */
+  includes?: string[];
 }
 
 export interface Rates {
@@ -543,6 +547,11 @@ export interface AddOn {
   quote: string;
   source_url: string;
   snapshot_id: number | null;
+  /** Items sharing a group are single-select in the calculator (Diamond Garden's food package,
+   * dinnerware, bar tier, and extra-hour choices) — rendered as one PillGroup, "None" first,
+   * instead of independent toggle chips. Optional: only venues with a real single-select choice
+   * set this; everything else stays an independently toggleable extra. */
+  selection_group?: string | null;
 }
 
 export interface RequiredThirdPartyCost {
@@ -584,6 +593,15 @@ export interface Pricing {
   notes: Fact<string>[];
   /** Golden fixtures may pin their own default calculator axes. */
   default_axes?: Partial<EstimateInput>;
+  /** Category-level copy for the Add-ons & extras section's curated cards (Diamond Garden's 5
+   * categories: blurb + curated example bullets) — `AddOn.category` is the join key back to the
+   * granular per-item list used by the calculator. Optional: only venues whose add-ons page has
+   * real category-level framing set this; everything else keeps the plain per-item grouping. */
+  add_on_categories?: { category: string; blurb: string | null; examples: string[]; evidence: Sourced }[];
+  /** Month definitions for "peak"/"off" season, rendered once under any season-keyed pricing grid
+   * (Diamond Garden: "off-season is Jan, Feb, Mar, Nov; peak season is Apr–Oct, Dec"). Optional:
+   * only venues whose pricing actually varies by season set this. */
+  seasons?: { peak: string | null; off: string | null };
 }
 
 // --- Food & beverage (its own object, not a pricing side effect) ----------

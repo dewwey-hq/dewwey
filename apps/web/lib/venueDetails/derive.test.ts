@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   addOnAxes,
   calculatorAxes,
+  defaultAxes,
   deriveStandardFaqs,
   estimateCost,
   fbPills,
   headlineCapacity,
   policyRows,
   quickFacts,
+  selectableAddOns,
   type EstimateInput,
 } from "./derive";
 import type { AddOn, CapacityTuple, PricingPath, Rates, Space } from "./types";
@@ -769,5 +771,238 @@ describe("calculatorAxes — space axis only when pricing varies by space", () =
       },
     });
     expect(calculatorAxes(venue)).toContain("space");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Round 3 (Diamond Garden) — path_ids, tier-by-name, ceremony-fee-gated axis, selectTier
+// day/season precedence, defaultAxes guest minimum, selectableAddOns, bar-pill-aware policy text.
+// ---------------------------------------------------------------------------
+
+describe("calculatorAxes — tier axis only when tier NAMES differ; ceremony axis only with a real fee", () => {
+  const sameNameTiers = [
+    { id: "peak-sat", name: "All-Inclusive", per_guest: 84.95, day: "sat" as const, season: "peak" as const, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "q", source_url: src, snapshot_id: 1 },
+    { id: "peak-fri", name: "All-Inclusive", per_guest: 76.95, day: "fri" as const, season: "peak" as const, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "q", source_url: src, snapshot_id: 1 },
+  ];
+  const differentNameTiers = [
+    { id: "oro", name: "Oro", per_guest: 235, day: null, season: null, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "q", source_url: src, snapshot_id: 1 },
+    { id: "argento", name: "Argento", per_guest: 200, day: null, season: null, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "q", source_url: src, snapshot_id: 1 },
+  ];
+
+  it("omits 'tier' when every tier shares one name but different ids (Diamond Garden's 8 day/season rows)", () => {
+    const venue = makeVenue({ pricing: { archetype: "mixed", paths: [pathWith({ per_guest_tiers: sameNameTiers })], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+    expect(calculatorAxes(venue)).not.toContain("tier");
+  });
+
+  it("includes 'tier' when tiers genuinely differ by name (Marchetti's Oro/Argento)", () => {
+    const venue = makeVenue({ pricing: { archetype: "rental_plus_per_guest_packages", paths: [pathWith({ per_guest_tiers: differentNameTiers })], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+    expect(calculatorAxes(venue)).toContain("tier");
+  });
+
+  it("omits 'ceremony' when ceremony_on_site is stated but no add-on actually charges for it (Diamond Garden: free ceremony)", () => {
+    const venue = makeVenue({
+      spine: spineWith({ ceremony_on_site: fact(true) }),
+      pricing: { archetype: "mixed", paths: [pathWith({})], rates: emptyRates(), add_ons: [addOn({ id: "backdrop", group: "other", category: "Ceremony", condition: null })], required_third_party: [], notes: [] },
+    });
+    expect(calculatorAxes(venue)).not.toContain("ceremony");
+  });
+
+  it("includes 'ceremony' when a real ceremony-fee add-on exists", () => {
+    const venue = makeVenue({
+      pricing: { archetype: "hotel_package", paths: [pathWith({})], rates: emptyRates(), add_ons: [addOn({ id: "fee", group: "ceremony", condition: "ceremony_on_site" })], required_third_party: [], notes: [] },
+    });
+    expect(calculatorAxes(venue)).toContain("ceremony");
+  });
+});
+
+describe("estimateCost — ceremony auto-apply is scoped to condition:'ceremony_on_site' exactly", () => {
+  it("does not auto-apply a group:'ceremony' add-on with a null condition (Diamond Garden's old bug: 5 upgrades all firing at once)", () => {
+    const venue = makeVenue({
+      pricing: {
+        archetype: "mixed",
+        paths: [pathWith({})],
+        rates: emptyRates(),
+        add_ons: [addOn({ id: "backdrop", group: "ceremony", condition: null, price: 250 })],
+        required_third_party: [],
+        notes: [],
+      },
+    });
+    const est = estimateCost(venue, { guests: 100, day: "sat", season: "peak", ceremonyOnSite: true, extras: [] });
+    expect(est.total).toBe(0);
+  });
+});
+
+describe("estimateCost — path_ids scope an extra to the paths it's actually relevant to", () => {
+  const inScope = addOn({ id: "food-bronze", path_ids: ["hall-only"], price: 15.95, unit: "per_guest" });
+  const outOfScope = addOn({ id: "also-food", path_ids: ["hall-only"], price: 100, unit: "flat" });
+  const venue = makeVenue({
+    pricing: {
+      archetype: "mixed",
+      paths: [pathWith({ id: "hall-only" }), pathWith({ id: "all-inclusive" })],
+      rates: emptyRates(),
+      add_ons: [inScope, outOfScope],
+      required_third_party: [],
+      notes: [],
+    },
+  });
+
+  it("prices a path_ids-scoped extra when the matching path is selected", () => {
+    const est = estimateCost(venue, { guests: 100, day: "sat", season: "peak", path_id: "hall-only", ceremonyOnSite: false, extras: [{ add_on_id: "food-bronze", quantity: 1 }] });
+    expect(est.total).toBe(1595);
+  });
+
+  it("silently drops the same extra on a path it doesn't apply to (no warning — it's a stale selection, not an error)", () => {
+    const est = estimateCost(venue, { guests: 100, day: "sat", season: "peak", path_id: "all-inclusive", ceremonyOnSite: false, extras: [{ add_on_id: "food-bronze", quantity: 1 }] });
+    expect(est.total).toBe(0);
+    expect(est.warnings).toEqual([]);
+  });
+});
+
+describe("selectableAddOns — path_ids-aware, excludes auto-applied ceremony fees", () => {
+  const venue = makeVenue({
+    pricing: {
+      archetype: "mixed",
+      paths: [pathWith({ id: "hall-only" }), pathWith({ id: "all-inclusive" })],
+      rates: emptyRates(),
+      add_ons: [
+        addOn({ id: "food-bronze", path_ids: ["hall-only"], price: 15.95 }),
+        addOn({ id: "uplights", path_ids: null, price: 25 }),
+        addOn({ id: "ceremony-fee", group: "ceremony", condition: "ceremony_on_site", price: 750 }),
+        addOn({ id: "backdrop", group: "other", condition: null, price: 250 }),
+      ],
+      required_third_party: [],
+      notes: [],
+    },
+  });
+
+  it("returns path-relevant + path-agnostic add-ons, excluding the auto-applied ceremony fee", () => {
+    const ids = selectableAddOns(venue, "hall-only").map((a) => a.id);
+    expect(ids).toEqual(["food-bronze", "uplights", "backdrop"]);
+  });
+
+  it("excludes a path-scoped add-on once a different path is selected", () => {
+    const ids = selectableAddOns(venue, "all-inclusive").map((a) => a.id);
+    expect(ids).toEqual(["uplights", "backdrop"]);
+  });
+});
+
+describe("selectTier — a pinned tier_id that doesn't match the current day/season is ignored", () => {
+  const tiers = [
+    { id: "sat-peak", name: "All-Inclusive", per_guest: 84.95, day: "sat" as const, season: "peak" as const, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "q", source_url: src, snapshot_id: 1 },
+    { id: "fri-peak", name: "All-Inclusive", per_guest: 76.95, day: "fri" as const, season: "peak" as const, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "q", source_url: src, snapshot_id: 1 },
+  ];
+  const venue = makeVenue({ pricing: { archetype: "mixed", paths: [pathWith({ per_guest_tiers: tiers })], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+
+  it("honors the pinned tier_id when it matches the current day/season", () => {
+    const est = estimateCost(venue, { guests: 100, day: "sat", season: "peak", tier_id: "sat-peak", ceremonyOnSite: false, extras: [] });
+    expect(est.groups.find((g) => g.group === "fb")!.lines[0].amount).toBe(8495);
+  });
+
+  it("ignores a stale tier_id and falls back to day/season matching once the day changes (Diamond Garden's Day/Season pills fix)", () => {
+    const est = estimateCost(venue, { guests: 100, day: "fri", season: "peak", tier_id: "sat-peak", ceremonyOnSite: false, extras: [] });
+    expect(est.groups.find((g) => g.group === "fb")!.lines[0].amount).toBe(7695);
+  });
+});
+
+describe("defaultAxes — guests default to the default path's own guest minimum, when it states one", () => {
+  it("uses the path's general guest minimum instead of the flat 100 fallback", () => {
+    const venue = makeVenue({
+      pricing: {
+        archetype: "mixed",
+        paths: [pathWith({ minimums: [{ kind: "guest_minimum", day: null, season: null, amount: 150, quote: "q", source_url: src, snapshot_id: 1 }] })],
+        rates: emptyRates(),
+        add_ons: [],
+        required_third_party: [],
+        notes: [],
+      },
+    });
+    expect(defaultAxes(venue).guests).toBe(150);
+  });
+
+  it("falls back to 100 when the default path states no guest minimum", () => {
+    const venue = makeVenue({ pricing: { archetype: "mixed", paths: [pathWith({})], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+    expect(defaultAxes(venue).guests).toBe(100);
+  });
+
+  it("a fixture's own default_axes.guests still wins over the path's minimum", () => {
+    const venue = makeVenue({
+      pricing: {
+        archetype: "mixed",
+        default_axes: { guests: 150 },
+        paths: [pathWith({ minimums: [{ kind: "guest_minimum", day: null, season: null, amount: 100, quote: "q", source_url: src, snapshot_id: 1 }] })],
+        rates: emptyRates(),
+        add_ons: [],
+        required_third_party: [],
+        notes: [],
+      },
+    });
+    expect(defaultAxes(venue).guests).toBe(150);
+  });
+});
+
+describe("describePolicyValue (via policyRows) — bar 'in_house' + a real byo pill reads as 'In-house or BYO'", () => {
+  it("renders 'In-house or BYO', not a bare 'In-house only' or a false '(corkage)'", () => {
+    const venue = makeVenue({
+      spine: spineWith({ bar: fact("in_house") }),
+      food_beverage: { food_pills: [], bar_pills: [fact("byo")], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+    });
+    const row = policyRows(venue).find((r) => r.key === "bar")!;
+    expect(row.pill).toBe("In-house or BYO");
+  });
+
+  it("keeps the plain 'In-house only' pill when there's no byo pill", () => {
+    const venue = makeVenue({ spine: spineWith({ bar: fact("in_house") }) });
+    const row = policyRows(venue).find((r) => r.key === "bar")!;
+    expect(row.pill).toBe("In-house only");
+  });
+
+  it("keeps '(corkage)' wording for a venue that genuinely charges one", () => {
+    const venue = makeVenue({
+      spine: spineWith({ bar: fact("byo_with_corkage") }),
+      food_beverage: { food_pills: [], bar_pills: [fact("byo")], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+    });
+    const row = policyRows(venue).find((r) => r.key === "bar")!;
+    expect(row.pill).toBe("In-house + BYO (corkage)");
+  });
+});
+
+describe("deriveStandardFaqs — bar 'in_house' + a real byo pill answers accurately", () => {
+  it("says 'Partially' with no invented corkage fee when the venue's bar_pills include byo", () => {
+    const venue = makeVenue({
+      spine: spineWith({ bar: fact("in_house") }),
+      food_beverage: { food_pills: [], bar_pills: [fact("byo")], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+    });
+    const [, bar] = deriveStandardFaqs(venue);
+    expect(bar.answer).not.toContain("corkage");
+    expect(bar.answer).toContain("Partially");
+  });
+});
+
+describe("policyDetail (via policyRows) — de-dupes payment_schedule/vendor_access, surfaces parking's quote", () => {
+  it("omits a balance_due that's identical to (or a strict substring of) the deposit line", () => {
+    const venue = makeVenue({ spine: spineWith({ payment_schedule: fact({ deposit: "$1,000 deposit; monthly payments available", balance_due: "$1,000 deposit" }) }) });
+    const row = policyRows(venue).find((r) => r.key === "payment_schedule")!;
+    expect(row.detail).toBeNull();
+  });
+
+  it("keeps a genuinely distinct balance_due", () => {
+    const venue = makeVenue({ spine: spineWith({ payment_schedule: fact({ deposit: "$1,000 deposit", balance_due: "Balance due 60 days before the event" }) }) });
+    const row = policyRows(venue).find((r) => r.key === "payment_schedule")!;
+    expect(row.detail).toBe("Balance due 60 days before the event");
+  });
+
+  it("omits a setup-hours detail already stated in the vendor_access summary", () => {
+    const venue = makeVenue({
+      spine: spineWith({ vendor_access: fact({ summary: "2 hours before the event for setup", setup_hours_before: 2, teardown_hours_after: null }) }),
+    });
+    const row = policyRows(venue).find((r) => r.key === "vendor_access")!;
+    expect(row.detail).toBeNull();
+  });
+
+  it("surfaces parking's own quote as its detail line (ParkingPolicy is a bare enum with nowhere else to carry it)", () => {
+    const venue = makeVenue({ spine: spineWith({ parking: fact("included", "2 free lots, 75+ spaces") }) });
+    const row = policyRows(venue).find((r) => r.key === "parking")!;
+    expect(row.pill).toBe("Included");
+    expect(row.detail).toBe("2 free lots, 75+ spaces");
   });
 });

@@ -108,6 +108,16 @@ function fact<T>(value: T, quote: string, source_url: string): Fact<T> {
   return { value, quote, source_url, snapshot_id: null };
 }
 
+/** Same formatting as `app/components/venue/format.ts`'s `money`/`moneyRange` — duplicated here
+ * (scripts/ can't import from app/) so every `as_stated_price` the importer writes goes through
+ * one real formatter instead of a hand-typed template string. */
+function money(n: number): string {
+  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+function moneyRange(low: number, high: number): string {
+  return low === high ? money(low) : `${money(low)}–${money(high)}`;
+}
+
 function slugify(s: string): string {
   return s
     .toLowerCase()
@@ -878,11 +888,19 @@ function buildDiamondGarden(): VenueDetailsV3 {
     ceremony_fee: f("included", "Ceremony at no extra charge (within your rental hours)", site),
     rental_hours_included: f(6, "6 hours (1am latest)", packagesUrl),
     catering: f("open", d.quickFacts[2].note!, faqUrl),
-    bar: f("byo_with_corkage", d.quickFacts[3].note!, faqUrl),
+    // `in_house`, not `byo_with_corkage` (round-3 fix, D060 addendum): this venue serves its own
+    // in-house bar packages (Open Bar / Cash Bar) with no corkage fee at all, so the corkage
+    // enum would actively misstate a fee that doesn't exist here. The real, no-fee BYO option is
+    // an extracted Fact on `food_beverage.bar_pills` instead ("byo") — additive, never dropped —
+    // and `describePolicyValue`'s bar case (derive.ts) reads that pill to render "In-house or
+    // BYO" on the Policies row rather than a bare "In-house only".
+    bar: f("in_house", d.quickFacts[3].note!, faqUrl),
     rental_charge_type: f("flat_plus_per_guest", d.policies[2].value, packagesUrl),
     fb_minimum: f({ applies: true, amount_usd: null, detail: d.policies[3].value }, d.policies[3].value, packagesUrl),
     parking: f("included", d.policies[5].value, faqUrl),
-    payment_schedule: f({ deposit: "$1,000 deposit; monthly payments available", balance_due: d.policies[7].value }, d.faqs[9].answer, faqUrl),
+    // balance_due deliberately does NOT repeat "$1,000 deposit" (round-3 fix: the original text
+    // duplicated the deposit line verbatim in both the pill and the detail underneath it).
+    payment_schedule: f({ deposit: "$1,000 deposit; monthly payments available", balance_due: "Balance due 60 days before the event (Hall Rental) or 30 days before (All-Inclusive)" }, d.faqs[9].answer, faqUrl),
     vendor_access: f({ summary: d.policies[11].value, setup_hours_before: 2, teardown_hours_after: null }, "5 hours + 2 hours before for setup (1am latest)", packagesUrl),
     noise_curfew: f(d.policies[12].value, "What is the latest time the event can go until? 1am.", faqUrl),
     vendor_list_policy: f("open", d.quickFacts[2].note!, faqUrl),
@@ -964,7 +982,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
       source_url: faqUrl,
       snapshot_id: null,
     },
-    rental_hours: null,
+    rental_hours: 5,
     year_surcharges: [
       { year: 2027, amount: d.packages.hallOnly.futureYearSurchargeFlat[2027], unit: "flat" },
       { year: 2028, amount: d.packages.hallOnly.futureYearSurchargeFlat[2028], unit: "flat" },
@@ -973,6 +991,20 @@ function buildDiamondGarden(): VenueDetailsV3 {
     quote: "",
     source_url: packagesUrl,
     snapshot_id: null,
+    includes: d.packages.hallOnly.inclusions,
+  };
+
+  // Third real booking path (round-3 fix — the generic page only ever rendered the two paths it
+  // could see as `PricingPath` rows, dropping the venue's genuine middle ground): the same flat
+  // hall rental, but paired with the couple's own picks from the food/dinnerware/bar/add-on
+  // menus below instead of either fully BYO or fully All-Inclusive. Same fixed fees, required
+  // staffing, year surcharges, rental hours and inclusions as Hall Rental Only — only the id,
+  // name and description differ.
+  const hallPlusALaCartePath: PricingPath = {
+    ...hallOnlyPath,
+    id: "hall-plus-a-la-carte",
+    name: "Hall + À La Carte",
+    description: "Same flat hall rental, plus your own picks from the food, bar, and add-on menus below.",
   };
 
   // Every tier shares the same name ("All-Inclusive") and the same real inclusion list (food +
@@ -1031,12 +1063,21 @@ function buildDiamondGarden(): VenueDetailsV3 {
     snapshot_id: null,
   };
 
+  // Both hall-shaped paths take these add-ons (BYO food packages, bar tiers, extra bartender);
+  // All-Inclusive already bundles the equivalent, so it's deliberately excluded.
+  const HALL_PATH_IDS = ["hall-rental-only", "hall-plus-a-la-carte"];
+
+  // group: "other" (not "ceremony") and category: "Ceremony" (not "Decoration") — round-3 fix:
+  // these are individually selectable upgrades a couple picks from, not a fee that should
+  // auto-apply the instant the Yes/No ceremony toggle is set (Diamond Garden's ceremony itself
+  // is free, `spine.ceremony_fee: "included"`; there is no `condition: "ceremony_on_site"`
+  // add-on here, so `calculatorAxes` correctly omits the ceremony axis for this venue).
   const ceremonyAddOns: AddOn[] = d.calculatorAddOns.ceremonyUpgrades.map((c) => ({
     id: c.id,
     name: c.label,
-    category: "Decoration",
+    category: "Ceremony",
     variant: null,
-    group: "ceremony",
+    group: "other",
     price: c.price,
     price_max: null,
     unit: "flat",
@@ -1047,38 +1088,65 @@ function buildDiamondGarden(): VenueDetailsV3 {
     priceable: true,
     tax_pct_override: null,
     min_guests: null,
-    as_stated_price: `$${c.price}`,
+    as_stated_price: money(c.price),
     note: null,
-    quote: `$${c.price}`,
+    quote: money(c.price),
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
   }));
-  const decorAddOns: AddOn[] = d.calculatorAddOns.decor.map((item) => ({
-    id: item.id,
-    name: item.label,
-    category: "Decoration",
+  // Two color variants of the same item ($25/$35) curate into one ranged line — the plan's
+  // "5 curated cards, not 35 atomized ones" spirit applied to the add-on list itself, and a real
+  // use of `AddOn.price_max` (round-3 schema addition) instead of two near-duplicate cards.
+  const decorAddOns: AddOn[] = d.calculatorAddOns.decor
+    .filter((item) => item.id !== "centerpiecesCrystal" && item.id !== "centerpiecesSilver")
+    .map((item) => ({
+      id: item.id,
+      name: item.label,
+      category: "Decoration add-ons",
+      variant: null,
+      group: "other",
+      price: "perGuest" in item ? (item as any).perGuest : "price" in item ? (item as any).price : null,
+      price_max: null,
+      unit: "perGuest" in item ? "per_guest" : "flat",
+      per_space_prices: null,
+      applies_to: "all",
+      path_ids: null,
+      condition: null,
+      priceable: true,
+      tax_pct_override: null,
+      min_guests: item.id === "decorationPackage" ? 100 : null,
+      as_stated_price: "perGuest" in item ? `${money((item as any).perGuest)}/guest` : money((item as any).price),
+      note: null,
+      quote: "perGuest" in item ? `${money((item as any).perGuest)}/guest` : money((item as any).price),
+      source_url: d.addOnsResources[0].url,
+      snapshot_id: null,
+    }));
+  const centerpiecesAddOn: AddOn = {
+    id: "centerpieces",
+    name: "Centerpieces",
+    category: "Decoration add-ons",
     variant: null,
     group: "other",
-    price: "price" in item ? (item as any).price : null,
-    price_max: null,
-    unit: "perGuest" in item ? "per_guest" : "flat",
+    price: 25,
+    price_max: 35,
+    unit: "flat",
     per_space_prices: null,
     applies_to: "all",
     path_ids: null,
     condition: null,
     priceable: true,
     tax_pct_override: null,
-    min_guests: item.id === "decorationPackage" ? 100 : null,
-    as_stated_price: "perGuest" in item ? `$${(item as any).perGuest}/guest` : `$${(item as any).price}`,
-    note: null,
-    quote: "perGuest" in item ? `$${(item as any).perGuest}/guest` : `$${(item as any).price}`,
+    min_guests: null,
+    as_stated_price: `${moneyRange(25, 35)} each`,
+    note: "Crystal ($25) or silver candelabra ($35) styles.",
+    quote: "Crystal centerpieces $25, Silver candelabra centerpieces $35",
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
-  }));
+  };
   const lightingAddOns: AddOn[] = d.calculatorAddOns.lighting.map((l) => ({
     id: l.id,
     name: l.label,
-    category: "Lighting & video",
+    category: "Lighting & video add-ons",
     variant: null,
     group: "other",
     price: l.price,
@@ -1091,16 +1159,16 @@ function buildDiamondGarden(): VenueDetailsV3 {
     priceable: true,
     tax_pct_override: null,
     min_guests: (l as any).adjustable ? 8 : null,
-    as_stated_price: `$${l.price}${(l as any).adjustable ? " each (8 minimum)" : ""}`,
+    as_stated_price: `${money(l.price)}${(l as any).adjustable ? " each (8 minimum)" : ""}`,
     note: null,
-    quote: `$${l.price}`,
+    quote: money(l.price),
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
   }));
   const staffingAddOns: AddOn[] = d.calculatorAddOns.staffing.map((s) => ({
     id: s.id,
     name: s.label,
-    category: "Staffing & service",
+    category: "Staffing & service add-ons",
     variant: null,
     group: "service",
     price: s.price,
@@ -1108,14 +1176,14 @@ function buildDiamondGarden(): VenueDetailsV3 {
     unit: "flat",
     per_space_prices: null,
     applies_to: "all",
-    path_ids: s.hallRentalOnlyOnly ? ["hall-rental-only"] : null,
+    path_ids: s.hallRentalOnlyOnly ? HALL_PATH_IDS : null,
     condition: null,
     priceable: true,
     tax_pct_override: null,
     min_guests: null,
-    as_stated_price: `$${s.price}`,
+    as_stated_price: money(s.price),
     note: null,
-    quote: `$${s.price}`,
+    quote: money(s.price),
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
   }));
@@ -1125,19 +1193,23 @@ function buildDiamondGarden(): VenueDetailsV3 {
     category: "Food & beverage add-ons",
     variant: null,
     group: "fb",
-    price: "price" in it ? (it as any).price : null,
+    // Bug fix (round-3): a per-guest item's price used to look ONLY at "price" in item, which
+    // three of these four entries (coffeeTea/sodaPackage/cakeTable) never have — they only carry
+    // `perGuest` — so they silently priced as null/unpriceable. Same bug, same fix, in
+    // `decorAddOns` above for `decorationPackage`.
+    price: "perGuest" in it ? (it as any).perGuest : "price" in it ? (it as any).price : null,
     price_max: null,
     unit: "perGuest" in it ? "per_guest" : "flat",
     per_space_prices: null,
     applies_to: "all",
-    path_ids: ["hall-rental-only"],
+    path_ids: HALL_PATH_IDS,
     condition: null,
     priceable: true,
     tax_pct_override: null,
     min_guests: it.id === "coffeeTea" ? 150 : it.id === "cakeTable" ? 125 : null,
-    as_stated_price: "perGuest" in it ? `$${(it as any).perGuest}/guest` : `$${(it as any).price}`,
+    as_stated_price: "perGuest" in it ? `${money((it as any).perGuest)}/guest` : money((it as any).price),
     note: null,
-    quote: "perGuest" in it ? `$${(it as any).perGuest}/guest` : `$${(it as any).price}`,
+    quote: "perGuest" in it ? `${money((it as any).perGuest)}/guest` : money((it as any).price),
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
   }));
@@ -1152,16 +1224,17 @@ function buildDiamondGarden(): VenueDetailsV3 {
     unit: "per_guest",
     per_space_prices: null,
     applies_to: "all",
-    path_ids: ["hall-rental-only"],
+    path_ids: HALL_PATH_IDS,
     condition: null,
     priceable: true,
     tax_pct_override: null,
     min_guests: 100,
-    as_stated_price: `$${p.perGuest}/guest`,
+    as_stated_price: `${money(p.perGuest)}/guest`,
     note: "Only Gold includes real silverware, china & glassware; Bronze and Silver use plasticware.",
-    quote: `$${p.perGuest}/guest`,
+    quote: `${money(p.perGuest)}/guest`,
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
+    selection_group: "food-package",
   }));
   const dinnerwareAddOns: AddOn[] = d.calculatorAddOns.dinnerwareOnly.map((dw) => ({
     id: `dinnerware-${dw.key}`,
@@ -1174,16 +1247,17 @@ function buildDiamondGarden(): VenueDetailsV3 {
     unit: "per_guest",
     per_space_prices: null,
     applies_to: "all",
-    path_ids: ["hall-rental-only"],
+    path_ids: HALL_PATH_IDS,
     condition: null,
     priceable: true,
     tax_pct_override: null,
     min_guests: null,
-    as_stated_price: `$${dw.perGuest}/guest`,
+    as_stated_price: `${money(dw.perGuest)}/guest`,
     note: null,
-    quote: `$${dw.perGuest}/guest`,
+    quote: `${money(dw.perGuest)}/guest`,
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
+    selection_group: "dinnerware",
   }));
   const barAddOns: AddOn[] = d.barPackages.map((b) => ({
     id: `bar-${slugify(b.name)}`,
@@ -1196,16 +1270,17 @@ function buildDiamondGarden(): VenueDetailsV3 {
     unit: "per_guest",
     per_space_prices: null,
     applies_to: "all",
-    path_ids: ["hall-rental-only"],
+    path_ids: HALL_PATH_IDS,
     condition: null,
     priceable: true,
     tax_pct_override: null,
     min_guests: d.barPackagesMinGuests,
-    as_stated_price: `$${b.price4hr}/guest (4hr) or $${b.price5hr}/guest (5hr)`,
+    as_stated_price: `${money(b.price4hr)}/guest (4hr) or ${money(b.price5hr)}/guest (5hr)`,
     note: b.note,
     quote: b.includes,
     source_url: d.menuResources.find((m) => m.type === "beverage")!.url,
     snapshot_id: null,
+    selection_group: "bar",
   }));
   // Extra hour: modeled at Saturday's own rate (the default/most common wedding day); the
   // cheaper weekday rate for the same off/peak+servers combination is real but not modeled as
@@ -1231,24 +1306,44 @@ function buildDiamondGarden(): VenueDetailsV3 {
     priceable: true,
     tax_pct_override: null,
     min_guests: null,
-    as_stated_price: `$${e.price}`,
+    as_stated_price: money(e.price),
     note: "Weekday rate is lower and not modeled as a separate variant.",
-    quote: `$${e.price}`,
+    quote: money(e.price),
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
+    selection_group: "extra-hour",
+  }));
+
+  // Category-level copy for the Add-ons & extras section's 5 curated cards (round-3 schema
+  // addition) — `category` is the join key back to the granular per-item add-ons above; the
+  // renderer shows a real per-item price table for a category whose items are independently
+  // selectable (Decoration, Lighting & video, Staffing & service), falling back to these curated
+  // example bullets for a category whose real items are single-select PillGroups instead
+  // (Food & beverage, Extra hours) so nothing curated is lost.
+  const addOnCategories = d.addOns.map((a) => ({
+    category: a.category,
+    blurb: a.blurb,
+    examples: "items" in a && a.items ? a.items.map((it) => `${it.label}: ${it.cost}`) : ((a as any).examples ?? []),
+    evidence: { source_url: d.addOnsResources[0].url, snapshot_id: null },
   }));
 
   doc.pricing = emptyPricing({
     archetype: "mixed",
-    default_axes: { path_id: "all-inclusive", day: "sat", season: "peak", tier_id: "peak-sat", ceremonyOnSite: false },
-    paths: [allInclusivePath, hallOnlyPath],
+    // Cheapest path first (round-3 fix, matches the concept's own cheap-first card order); no
+    // `tier_id` pinned (All-Inclusive's own tier is now selected purely by the Day/Season pills —
+    // see `selectTier`'s day/season-aware fallback in derive.ts).
+    default_axes: { path_id: "hall-rental-only", guests: 150, day: "sat", season: "peak", ceremonyOnSite: false },
+    paths: [hallOnlyPath, hallPlusALaCartePath, allInclusivePath],
     rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, sales_tax_source: "unknown", cc_fee_pct: null, quote: null, source_url: null, snapshot_id: null },
-    add_ons: [...ceremonyAddOns, ...decorAddOns, ...lightingAddOns, ...staffingAddOns, ...foodDrinkExtraAddOns, ...foodPackageAddOns, ...dinnerwareAddOns, ...barAddOns, ...extraHourAddOns],
+    add_ons: [...ceremonyAddOns, ...decorAddOns, centerpiecesAddOn, ...lightingAddOns, ...staffingAddOns, ...foodDrinkExtraAddOns, ...foodPackageAddOns, ...dinnerwareAddOns, ...barAddOns, ...extraHourAddOns],
     required_third_party: [],
     notes: [],
+    add_on_categories: addOnCategories,
+    seasons: { peak: d.packages.hallOnly.pricing.peakSeason.months, off: d.packages.hallOnly.pricing.offSeason.months },
   });
-  tagPath(doc, allInclusivePath);
   tagPath(doc, hallOnlyPath);
+  tagPath(doc, hallPlusALaCartePath);
+  tagPath(doc, allInclusivePath);
   tagAddOns(doc);
   tag(doc, "/pricing/rates");
 
@@ -1272,7 +1367,10 @@ function buildDiamondGarden(): VenueDetailsV3 {
       evidence: { source_url: d.menuResources.find((m) => m.type === "beverage")!.url, snapshot_id: null },
     })),
     bar_min_guests: d.barPackagesMinGuests,
-    notes: [fact(d.barPackagesNote, d.barPackagesNote, d.menuResources.find((m) => m.type === "beverage")!.url)],
+    // Reworded (round-3 fix) so `fmt.fbNoteSide` routes this note to Bar: the original text
+    // ("Bartenders, glassware, service staff, and delivery fees.") never mentioned the word "bar"
+    // as its own word, so it matched neither side and silently never rendered anywhere.
+    notes: [fact(`Bar packages do not include: ${d.barPackagesNote.toLowerCase()}`, d.barPackagesNote, d.menuResources.find((m) => m.type === "beverage")!.url)],
   };
   tag(doc, "/food_beverage", "human_only");
 

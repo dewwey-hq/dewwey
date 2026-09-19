@@ -317,7 +317,9 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
         </>
       )}
 
-      {/* Pricing — standalone section only when the venue has 2+ genuinely distinct paths. */}
+      {/* Pricing — standalone section only when the venue has 2+ genuinely distinct paths.
+          Cards render in the document's own path order, which the importer/pipeline puts
+          cheap-first (Diamond Garden: Hall-only -> Hall + à la carte -> All-Inclusive). */}
       {fmt.showPricingSection(venue) && (
         <>
           <section id="pricing">
@@ -327,6 +329,13 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
                 <PricingPathCard key={p.id} path={p} capturedAt={venue.sources.crawled_at} />
               ))}
             </div>
+            {/* Season months are identical across every path on the same venue — stated once
+                here rather than repeated per card. */}
+            {fmt.seasonsMonthsLine(venue.pricing.seasons) && (
+              <p className="mt-4 text-sm text-gray-600">
+                <span className="font-medium text-gray-800">Season:</span> {fmt.seasonsMonthsLine(venue.pricing.seasons)}.
+              </p>
+            )}
           </section>
           <Divider />
         </>
@@ -735,7 +744,11 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
       {!shared && caption && captionSide == null && <p className="text-xs text-gray-400">{caption.value}</p>}
 
       {tiers.length > 0 && (
-        <div className="mt-6 grid gap-5 sm:grid-cols-3">
+        // A single collapsed tier (Diamond Garden: 8 same-named "All-Inclusive" day/season rows
+        // collapse to exactly one card) reads as sparse/orphaned inside a grid meant for several
+        // side-by-side tiers (Marchetti's Argento/Oro/Platino) — round-3 fix: one real card gets a
+        // plain single-column layout instead of floating alone in a 3-column grid.
+        <div className={tiers.length > 1 ? "mt-6 grid gap-5 sm:grid-cols-3" : "mt-6 max-w-sm"}>
           {tiers.map((t) => {
             const rep = t.representative;
             return (
@@ -778,7 +791,8 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
               <tr className="text-xs text-gray-400">
                 <th className="pb-2 text-left font-normal">Menu</th>
                 <th className="pb-2 pr-6 text-left font-normal">Includes</th>
-                <th className="pb-2 text-left font-normal">Cost</th>
+                <th className="pb-2 pr-6 text-left font-normal">Cost</th>
+                <th className="pb-2 text-left font-normal">Extras</th>
               </tr>
             </thead>
             <tbody>
@@ -786,7 +800,14 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
                 <tr key={m.name} className="border-t border-black/[0.06] align-top">
                   <td className="py-2 pr-3 font-medium text-gray-900">{m.name}</td>
                   <td className="py-2 pr-6 text-xs text-gray-500">{m.includes}</td>
-                  <td className="py-2 text-xs text-gray-500">{m.cost}</td>
+                  <td className="py-2 pr-6 text-xs text-gray-500">{m.cost}</td>
+                  <td className="py-2 space-y-1 text-xs text-gray-500">
+                    {m.extras.map((e) => (
+                      <p key={e.label}>
+                        <span className="font-medium text-gray-700">{e.label}:</span> {e.value}
+                      </p>
+                    ))}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -795,29 +816,34 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
       )}
 
       {venue.food_beverage.bar_ladders.length > 0 && (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm text-gray-600">
-            <thead>
-              <tr className="text-xs text-gray-400">
-                <th className="pb-2 text-left font-normal">Bar package</th>
-                <th className="pb-2 pr-6 text-left font-normal">Includes</th>
-                <th className="pb-2 text-right font-normal">Cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              {venue.food_beverage.bar_ladders.map((b) => (
-                <tr key={b.name} className="border-t border-black/[0.06] align-top">
-                  <td className="py-2 pr-3 font-medium text-gray-900">{b.name}</td>
-                  <td className="py-2 pr-6 text-xs text-gray-500">
-                    {b.includes}
-                    {b.note ? <span className="block text-gray-400">{b.note}</span> : null}
-                  </td>
-                  <td className="py-2 text-right text-xs text-gray-500">{Object.entries(b.prices).map(([label, amount]) => `${label}: ${fmt.money(amount)}`).join(" · ")}</td>
+        <>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm text-gray-600">
+              <thead>
+                <tr className="text-xs text-gray-400">
+                  <th className="pb-2 text-left font-normal">Bar package</th>
+                  <th className="pb-2 pr-6 text-left font-normal">Includes</th>
+                  <th className="pb-2 text-right font-normal">Cost (4 or 5 hours)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {venue.food_beverage.bar_ladders.map((b) => (
+                  <tr key={b.name} className="border-t border-black/[0.06] align-top">
+                    <td className="py-2 pr-3 font-medium text-gray-900">{b.name}</td>
+                    <td className="py-2 pr-6 text-xs text-gray-500">
+                      {b.includes}
+                      {b.note ? <span className="block text-gray-400">{b.note}</span> : null}
+                    </td>
+                    <td className="py-2 text-right text-xs text-gray-500">{fmt.barLadderPriceLabel(b.prices)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {fmt.barMinGuestsLine(venue.food_beverage.bar_min_guests) && (
+            <p className="mt-2 text-xs font-medium text-amber-700">{fmt.barMinGuestsLine(venue.food_beverage.bar_min_guests)}</p>
+          )}
+        </>
       )}
     </section>
   );
@@ -829,11 +855,13 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
 
 function InclusionRow({ inc, capturedAt }: { inc: InclusionItem; capturedAt: string | null }) {
   const Icon = INCLUSION_ICONS[inc.label] ?? Sparkles;
+  const disp = fmt.inclusionDisplay(inc);
   return (
     <div className="flex items-start gap-2.5 text-sm text-gray-700">
       <Icon size={16} className="mt-0.5 shrink-0 text-rose-400" />
       <span>
-        <span className="font-medium text-gray-900">{inc.label}:</span> {inc.detail ?? inc.label_raw}
+        {disp.boldLabel && <span className="font-medium text-gray-900">{disp.boldLabel}: </span>}
+        {disp.text}
         <FactSource quote={inc.quote} source_url={inc.source_url} snapshot_id={inc.snapshot_id} capturedAt={capturedAt} />
       </span>
     </div>
@@ -846,26 +874,18 @@ function WhatsIncludedSection({ inclusions, capturedAt }: { inclusions: Inclusio
     <section id="whats-included">
       <SectionHeading title="What's Included" />
       <div className="rounded-2xl border border-black/[0.06] p-5">
-        {groups ? (
-          <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
-            {groups.map((g) => (
-              <div key={g.category}>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">{g.category}</p>
-                <div className="space-y-2.5">
-                  {g.items.map((inc) => (
-                    <InclusionRow key={`${inc.label}-${inc.label_raw}`} inc={inc} capturedAt={capturedAt} />
-                  ))}
-                </div>
+        <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+          {groups.map((g) => (
+            <div key={g.category}>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">{g.category}</p>
+              <div className="space-y-2.5">
+                {g.items.map((inc) => (
+                  <InclusionRow key={`${inc.label}-${inc.label_raw}`} inc={inc} capturedAt={capturedAt} />
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-            {inclusions.map((inc) => (
-              <InclusionRow key={`${inc.label}-${inc.label_raw}`} inc={inc} capturedAt={capturedAt} />
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -907,9 +927,41 @@ function PriceGridTable({ grid, moneySuffix }: { grid: fmt.PriceGrid; moneySuffi
   );
 }
 
+function MergedPriceGridTable({ grid, moneySuffix }: { grid: fmt.MergedPriceGrid; moneySuffix?: string }) {
+  return (
+    <div className="mt-3 overflow-x-auto">
+      <table className="w-full text-xs text-gray-600">
+        <thead>
+          <tr className="text-gray-400">
+            <th className="pb-1.5 text-left font-normal">Season</th>
+            {grid.columns.map((c) => (
+              <th key={c.label} className="pb-1.5 text-right font-normal">
+                {c.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {grid.seasons.map((s, si) => (
+            <tr key={s} className="border-t border-black/[0.05]">
+              <td className="py-1">{fmt.seasonLabel(s)}</td>
+              {grid.grid[si].map((amount, ci) => (
+                <td key={ci} className="py-1 text-right">
+                  {amount != null ? `${fmt.money(amount)}${moneySuffix ?? ""}` : <span className="text-gray-300">—</span>}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function PricingPathCard({ path, capturedAt }: { path: PricingPath; capturedAt: string | null }) {
-  const feeGrid = fmt.fixedFeeGrid(path.fixed_fees.filter((f) => f.applies_to === "space" || f.applies_to === "whole_venue"));
-  const tierGrid = fmt.perGuestTierGrid(path.per_guest_tiers);
+  const feeGrid = fmt.buildMergedPriceGrid(fmt.fixedFeeGrid(path.fixed_fees.filter((f) => f.applies_to === "space" || f.applies_to === "whole_venue")));
+  const tierGrid = fmt.buildMergedPriceGrid(fmt.perGuestTierGrid(path.per_guest_tiers));
+  const headline = fmt.pricingHeadlineLine(path);
   return (
     <div className="rounded-2xl border border-black/[0.06] p-5">
       <div className="flex items-center gap-1.5">
@@ -917,15 +969,27 @@ function PricingPathCard({ path, capturedAt }: { path: PricingPath; capturedAt: 
         <FactSource quote={path.quote} source_url={path.source_url} snapshot_id={path.snapshot_id} capturedAt={capturedAt} />
       </div>
       {path.description && <p className="mt-1 text-sm text-gray-600">{path.description}</p>}
+      {headline && <p className="mt-1 text-2xl font-semibold text-gray-900">{headline}</p>}
 
-      {path.fixed_fees.length > 0 && <PriceGridTable grid={feeGrid} />}
-      {path.per_guest_tiers.length > 0 && <PriceGridTable grid={tierGrid} moneySuffix="/guest" />}
+      {feeGrid && <MergedPriceGridTable grid={feeGrid} />}
+      {tierGrid && <MergedPriceGridTable grid={tierGrid} moneySuffix="/guest" />}
+
+      {path.includes && path.includes.length > 0 && (
+        <ul className="mt-3 space-y-1.5 text-sm text-gray-600">
+          {path.includes.map((inc) => (
+            <li key={inc} className="flex gap-2">
+              <span className="text-rose-400">·</span>
+              {inc}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {path.minimums.length > 0 && (
         <div className="mt-3 space-y-1 text-xs text-gray-500">
           {path.minimums.map((m, i) => (
             <p key={i}>
-              <span className="font-medium text-gray-700">{m.kind === "fb_minimum" ? "F&B minimum:" : "Guest minimum:"}</span> {fmt.money(m.amount)}
+              <span className="font-medium text-gray-700">{m.kind === "fb_minimum" ? "F&B minimum:" : "Guest minimum:"}</span> {fmt.minimumValueLabel(m)}
               {m.day ? ` (${fmt.dayFullLabel(m.day)})` : ""}
               {m.season ? `, ${fmt.seasonLabel(m.season)}` : ""}
             </p>
@@ -935,7 +999,7 @@ function PricingPathCard({ path, capturedAt }: { path: PricingPath; capturedAt: 
 
       {path.required_staffing && (
         <p className="mt-2 text-xs text-gray-500">
-          <span className="font-medium text-gray-700">Required staffing:</span> {fmt.money(path.required_staffing.price_per_role)} per bartender per{" "}
+          <span className="font-medium text-gray-700">Plus required staff:</span> {fmt.money(path.required_staffing.price_per_role)} each for a bartender per{" "}
           {path.required_staffing.bartender_per_guests} guests, {path.required_staffing.other_roles.join(", ").toLowerCase()}
         </p>
       )}
@@ -992,6 +1056,49 @@ function AddOnCard({ addOn, capturedAt }: { addOn: AddOn; capturedAt: string | n
 // genuinely 2-axis (style variant x space, a table), on the same page. `ceremony` add-ons show
 // alongside rentals rather than getting a third subheader of their own.
 function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: ReactNode }) {
+  // Round-3: a venue with curated `add_on_categories` (Diamond Garden's 5 blurbed categories)
+  // groups by real category instead of the plain fb/rental split every other golden uses — this
+  // branch never fires for a venue without `add_on_categories`, so it changes nothing for the
+  // other five.
+  const categoryGroups = fmt.addOnCategoryGroups(venue);
+  if (categoryGroups) {
+    return (
+      <section id="add-ons">
+        <SectionHeading title="Add-ons & extras" actions={actions} />
+        {categoryGroups.map((g, i) => (
+          <div key={g.category} className={i === 0 ? "" : "mt-6"}>
+            <h3 className={`text-sm text-gray-900 ${uiHeadingClassName}`}>{g.category}</h3>
+            {g.blurb && <p className="mt-0.5 text-xs text-gray-500">{g.blurb}</p>}
+            {g.items.length > 0 ? (
+              <div className="mt-3">
+                {addOnAxes(g.items) === "table" ? (
+                  <AddOnTable table={fmt.buildAddOnTable(g.items, venue.spaces)} />
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {g.items.map((a) => (
+                      <AddOnCard key={a.id} addOn={a} capturedAt={venue.sources.crawled_at} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              g.examples.length > 0 && (
+                <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                  {g.examples.map((ex) => (
+                    <li key={ex} className="flex gap-1.5">
+                      <span className="text-rose-400">·</span>
+                      {ex}
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+          </div>
+        ))}
+      </section>
+    );
+  }
+
   const fbAddOns = venue.pricing.add_ons.filter((a) => a.group === "fb");
   const rentalAddOns = venue.pricing.add_ons.filter((a) => a.group !== "fb");
   const groups = [

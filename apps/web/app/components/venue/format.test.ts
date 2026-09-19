@@ -481,17 +481,48 @@ describe("fbNoteSide", () => {
 });
 
 describe("groupInclusions", () => {
-  it("stays flat (null) at 7 or fewer items", () => {
-    const items = Array.from({ length: 7 }, (_, i) => inclusion({ label_raw: `item ${i}`, category: "Space" }));
-    expect(fmt.groupInclusions(items)).toBeNull();
+  it("always groups, even a handful of items in a single category (round-3 fix: no flat-under-7 threshold)", () => {
+    const items = Array.from({ length: 3 }, (_, i) => inclusion({ label_raw: `item ${i}`, category: "Space" }));
+    const groups = fmt.groupInclusions(items);
+    expect(groups.map((g) => g.category)).toEqual(["Space"]);
+    expect(groups[0].items).toHaveLength(3);
   });
 
-  it("groups by category once past 7 items", () => {
-    const items = Array.from({ length: 8 }, (_, i) => inclusion({ label_raw: `item ${i}`, category: i < 4 ? "Space" : "Furniture" }));
+  it("groups by category in the pinned INCLUSION_CATEGORIES order, not first-seen order", () => {
+    const items = [inclusion({ label_raw: "a", category: "Furniture" }), inclusion({ label_raw: "b", category: "Space" })];
     const groups = fmt.groupInclusions(items);
-    expect(groups).not.toBeNull();
-    expect(groups!.map((g) => g.category)).toEqual(["Space", "Furniture"]);
-    expect(groups!.find((g) => g.category === "Space")!.items).toHaveLength(4);
+    expect(groups.map((g) => g.category)).toEqual(["Space", "Furniture"]);
+    expect(groups.find((g) => g.category === "Space")!.items).toHaveLength(1);
+  });
+});
+
+describe("inclusionDisplay", () => {
+  it("prefers a structured detail, bold-labeled, when present", () => {
+    const inc = inclusion({ label: "Parking", label_raw: "Parking", detail: "30 spaces" });
+    expect(fmt.inclusionDisplay(inc)).toEqual({ boldLabel: "Parking", text: "30 spaces" });
+  });
+
+  it("shows the label alone when label_raw is identical", () => {
+    const inc = inclusion({ label: "Dance floor", label_raw: "Dance floor", detail: null });
+    expect(fmt.inclusionDisplay(inc)).toEqual({ boldLabel: null, text: "Dance floor" });
+  });
+
+  it("shows label_raw alone when it's just the label with an affix (no redundant 'Label: ' prefix)", () => {
+    expect(fmt.inclusionDisplay(inclusion({ label: "Bridal suite", label_raw: "Private bridal suite", detail: null }))).toEqual({
+      boldLabel: null,
+      text: "Private bridal suite",
+    });
+    expect(fmt.inclusionDisplay(inclusion({ label: "Chairs", label_raw: "New silver Chiavari chairs", detail: null }))).toEqual({
+      boldLabel: null,
+      text: "New silver Chiavari chairs",
+    });
+  });
+
+  it("keeps the bold 'Label: raw' form when label_raw is a genuinely separate fact", () => {
+    expect(fmt.inclusionDisplay(inclusion({ label: "Parking", label_raw: "2 parking lots, 75+ spaces", detail: null }))).toEqual({
+      boldLabel: "Parking",
+      text: "2 parking lots, 75+ spaces",
+    });
   });
 });
 
@@ -851,5 +882,185 @@ describe("placeResources", () => {
       expect(new Set(allPlacedIds).size, `${slug}: no resource placed twice`).toBe(allPlacedIds.length);
       expect(allPlacedIds, `${slug}: every fixture resource is placed`).toEqual(d.resources.map((r) => r.id).sort());
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Round 3 (Diamond Garden) — pricing headline/grid/minimum/season, add-on category cards,
+// single-select splitting, bar per-guest pricing.
+// ---------------------------------------------------------------------------
+
+function fixedFeePath(overrides: Partial<import("../../../lib/venueDetails/types").PricingPath> = {}) {
+  return {
+    id: "p",
+    name: "P",
+    description: null,
+    applies_to_spaces: "all" as const,
+    fixed_fees: [],
+    per_guest_tiers: [],
+    minimums: [],
+    required_staffing: null,
+    rental_hours: null,
+    year_surcharges: [],
+    promotions: [],
+    quote: "q",
+    source_url: "https://example.com",
+    snapshot_id: 1,
+    ...overrides,
+  };
+}
+
+describe("minimumValueLabel", () => {
+  it("formats a guest minimum as a headcount, not money (round-3 fix)", () => {
+    expect(fmt.minimumValueLabel({ kind: "guest_minimum", day: null, season: null, amount: 150, quote: "q", source_url: "https://example.com", snapshot_id: 1 })).toBe("150 guests");
+  });
+  it("formats an F&B minimum as money", () => {
+    expect(fmt.minimumValueLabel({ kind: "fb_minimum", day: null, season: null, amount: 3000, quote: "q", source_url: "https://example.com", snapshot_id: 1 })).toBe("$3,000");
+  });
+});
+
+describe("pricingHeadlineLine", () => {
+  it("shows a flat fee range for a fixed-fee path", () => {
+    const path = fixedFeePath({ fixed_fees: [fixedFee({ amount: 2100 }), fixedFee({ amount: 6595, space_id: null, applies_to: "whole_venue" })] });
+    expect(fmt.pricingHeadlineLine(path)).toBe("$2,100–$6,595 flat");
+  });
+  it("shows a /guest range for a per-guest path", () => {
+    const path = fixedFeePath({ per_guest_tiers: [tier({ per_guest: 68.95 }), tier({ per_guest: 84.95 })] });
+    expect(fmt.pricingHeadlineLine(path)).toBe("$68.95–$84.95 /guest");
+  });
+  it("returns null when there's nothing fixed to show", () => {
+    expect(fmt.pricingHeadlineLine(fixedFeePath())).toBeNull();
+  });
+});
+
+describe("buildMergedPriceGrid", () => {
+  it("merges adjacent days whose price is identical across every season into one column (Diamond Garden's Fri/Sun)", () => {
+    const path = fixedFeePath({
+      fixed_fees: [
+        fixedFee({ day: "weekday", season: "off", amount: 2100, applies_to: "whole_venue", space_id: null, key: "wk" }),
+        fixedFee({ day: "fri", season: "off", amount: 3700, applies_to: "whole_venue", space_id: null, key: "fr" }),
+        fixedFee({ day: "sun", season: "off", amount: 3700, applies_to: "whole_venue", space_id: null, key: "su" }),
+        fixedFee({ day: "sat", season: "off", amount: 4700, applies_to: "whole_venue", space_id: null, key: "sa" }),
+      ],
+    });
+    const grid = fmt.buildMergedPriceGrid(fmt.fixedFeeGrid(path.fixed_fees));
+    expect(grid!.columns.map((c) => c.label)).toEqual(["Weekday", "Fri/Sun", "Sat"]);
+    expect(grid!.grid[0]).toEqual([2100, 3700, 4700]);
+  });
+
+  it("merges all three of weekday/Fri/Sun when they share one price (Diamond Garden's All-Inclusive)", () => {
+    const path = fixedFeePath({
+      per_guest_tiers: [
+        tier({ id: "wk", day: "weekday", season: "peak", per_guest: 76.95 }),
+        tier({ id: "fr", day: "fri", season: "peak", per_guest: 76.95 }),
+        tier({ id: "su", day: "sun", season: "peak", per_guest: 76.95 }),
+        tier({ id: "sa", day: "sat", season: "peak", per_guest: 84.95 }),
+      ],
+    });
+    const grid = fmt.buildMergedPriceGrid(fmt.perGuestTierGrid(path.per_guest_tiers));
+    expect(grid!.columns.map((c) => c.label)).toEqual(["Weekday/Fri/Sun", "Sat"]);
+  });
+
+  it("returns null when there's no grid to show", () => {
+    expect(fmt.buildMergedPriceGrid(fmt.fixedFeeGrid([]))).toBeNull();
+  });
+});
+
+describe("seasonsMonthsLine", () => {
+  it("states both season definitions once", () => {
+    expect(fmt.seasonsMonthsLine({ peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("off-season is Jan, Feb, Mar, Nov; peak season is Apr–Oct, Dec");
+  });
+  it("returns null when a venue states neither", () => {
+    expect(fmt.seasonsMonthsLine(undefined)).toBeNull();
+    expect(fmt.seasonsMonthsLine({ peak: null, off: null })).toBeNull();
+  });
+});
+
+describe("barLadderPriceLabel / barMinGuestsLine", () => {
+  it("shows a per-guest range across duration options", () => {
+    expect(fmt.barLadderPriceLabel({ "4hr": 3.95, "5hr": 4.95 })).toBe("$3.95–$4.95 /guest");
+  });
+  it("collapses to one value when durations cost the same", () => {
+    expect(fmt.barLadderPriceLabel({ "4hr": 12, "5hr": 12 })).toBe("$12 /guest");
+  });
+  it("states the bar section's own guest minimum", () => {
+    expect(fmt.barMinGuestsLine(50)).toBe("Bar packages require 50+ guests.");
+    expect(fmt.barMinGuestsLine(null)).toBeNull();
+  });
+});
+
+describe("underMinimumMessage", () => {
+  const path = fixedFeePath({
+    minimums: [
+      { kind: "guest_minimum", day: null, season: null, amount: 150, quote: "q", source_url: "https://example.com", snapshot_id: 1 },
+      { kind: "guest_minimum", day: "fri", season: null, amount: 125, quote: "q", source_url: "https://example.com", snapshot_id: 1 },
+    ],
+  });
+  it("names the day-specific minimum when one applies", () => {
+    expect(fmt.underMinimumMessage(path, 120, "fri", "peak")).toBe("120 guests is below the 125-guest minimum for Fridays.");
+  });
+  it("falls back to the general minimum on a day with no specific one", () => {
+    expect(fmt.underMinimumMessage(path, 100, "sat", "peak")).toBe("100 guests is below the 150-guest minimum.");
+  });
+  it("returns null when the path states no guest minimum at all", () => {
+    expect(fmt.underMinimumMessage(fixedFeePath(), 10, "sat", "peak")).toBeNull();
+  });
+});
+
+describe("splitAddOnsBySelection", () => {
+  it("groups items sharing a selection_group, leaves the rest individual", () => {
+    const bronze = addOn({ id: "bronze", selection_group: "food-package" });
+    const silver = addOn({ id: "silver", selection_group: "food-package" });
+    const parking = addOn({ id: "parking2" });
+    const { groups, individual } = fmt.splitAddOnsBySelection([bronze, silver, parking]);
+    expect(groups).toEqual([{ key: "food-package", items: [bronze, silver] }]);
+    expect(individual).toEqual([parking]);
+  });
+
+  it("returns no groups when nothing sets selection_group", () => {
+    const a = addOn({ id: "a" });
+    expect(fmt.splitAddOnsBySelection([a])).toEqual({ groups: [], individual: [a] });
+  });
+});
+
+describe("selectionGroupLabel", () => {
+  it("humanizes the known Diamond Garden group keys", () => {
+    expect(fmt.selectionGroupLabel("food-package")).toBe("Food package");
+    expect(fmt.selectionGroupLabel("bar")).toBe("Bar tier");
+  });
+  it("title-cases an unknown key as a fallback", () => {
+    expect(fmt.selectionGroupLabel("some-other-group")).toBe("Some Other Group");
+  });
+});
+
+describe("addOnCategoryGroups", () => {
+  it("returns null when the venue has no curated add_on_categories", () => {
+    expect(fmt.addOnCategoryGroups(makeVenue())).toBeNull();
+  });
+
+  it("groups add-ons by category, joining on the category name; excludes selection_group items from `items`", () => {
+    const bronze = addOn({ id: "bronze", category: "Food & beverage add-ons", selection_group: "food-package" });
+    const uplights = addOn({ id: "uplights", category: "Lighting & video add-ons" });
+    const ceremonyUpgrade = addOn({ id: "backdrop", category: "Ceremony" });
+    const d = makeVenue({
+      pricing: {
+        ...makeVenue().pricing,
+        add_ons: [bronze, uplights, ceremonyUpgrade],
+        add_on_categories: [
+          { category: "Food & beverage add-ons", blurb: "Food blurb", examples: ["Food package: $15.95-$35/guest"], evidence: { source_url: "https://example.com", snapshot_id: null } },
+          { category: "Lighting & video add-ons", blurb: "Lighting blurb", examples: [], evidence: { source_url: "https://example.com", snapshot_id: null } },
+        ],
+      },
+    });
+    const groups = fmt.addOnCategoryGroups(d)!;
+    const food = groups.find((g) => g.category === "Food & beverage add-ons")!;
+    expect(food.items).toEqual([]); // bronze excluded — it's a selection_group item
+    expect(food.examples).toEqual(["Food package: $15.95-$35/guest"]);
+    const lighting = groups.find((g) => g.category === "Lighting & video add-ons")!;
+    expect(lighting.items).toEqual([uplights]);
+    // A category the curated list doesn't name still gets a home, not silently dropped.
+    const ceremony = groups.find((g) => g.category === "Ceremony")!;
+    expect(ceremony.items).toEqual([ceremonyUpgrade]);
+    expect(ceremony.blurb).toBeNull();
   });
 });

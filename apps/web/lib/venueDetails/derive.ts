@@ -94,8 +94,14 @@ export function deriveStandardFaqs(d: VenueDetailsV3): DerivedFaq[] {
         return `Yes, ${name} is BYOB.`;
       case "byo_with_corkage":
         return `Partially: ${name}'s bar is in-house, but you can also bring your own alcohol for a corkage fee.`;
-      case "in_house":
-        return `No, ${name}'s bar is in-house only.`;
+      case "in_house": {
+        // A venue whose bar enum is `in_house` but whose own extracted F&B pills additively
+        // include `byo` (Diamond Garden: open bar / cash bar / no-fee BYO) genuinely does allow
+        // a couple to bring their own alcohol — bare "in-house only" would be wrong here, and
+        // "for a corkage fee" (the byo_with_corkage wording) would invent a fee that isn't real.
+        const hasByo = d.food_beverage.bar_pills.some((p) => p.value === "byo");
+        return hasByo ? `Partially: ${name}'s bar is in-house, but you can also bring your own alcohol.` : `No, ${name}'s bar is in-house only.`;
+      }
       case "dry":
         return `No, ${name} does not allow alcohol.`;
       default:
@@ -302,8 +308,12 @@ function specificity(day: Day | null, season: Season | null): number {
 
 function selectTier(tiers: PerGuestTier[], day: Day, season: Season, tierId?: string): PerGuestTier | null {
   if (tierId) {
+    // A pinned tier_id only wins when it actually matches the CURRENT day/season — a leftover
+    // selection from a different day/season (or a different path entirely) must not silently
+    // override the axes the couple just changed (Diamond Garden round-3 fix: Day/Season pills
+    // were inert because a hard-pinned tier_id short-circuited here regardless of day/season).
     const exact = tiers.find((t) => t.id === tierId);
-    if (exact) return exact;
+    if (exact && dayMatches(exact.day, day) && seasonMatches(exact.season, season)) return exact;
   }
   const matches = tiers.filter((t) => dayMatches(t.day, day) && seasonMatches(t.season, season));
   if (matches.length === 0) return null;
@@ -424,8 +434,13 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
   const ceremonyMeta: { amount: number; override: number | null }[] = [];
   if (input.ceremonyOnSite) {
     for (const a of pricing.add_ons) {
-      if (a.group !== "ceremony") continue;
-      if (a.condition && a.condition !== "ceremony_on_site") continue;
+      // The Yes/No ceremony axis auto-applies ONLY the one add-on that IS the on-site ceremony
+      // fee (`condition: "ceremony_on_site"`, exactly) — a venue's other ceremony-adjacent
+      // upgrades (backdrops, pipe & drape, a premium ceremony pack) are individually selectable
+      // extras (`group: "other"`), not auto-applied just because the group happens to be
+      // "ceremony" (Diamond Garden round-3 fix: all 5 of its ceremony upgrades used to auto-apply
+      // together the moment ceremonyOnSite was set to Yes).
+      if (a.group !== "ceremony" || a.condition !== "ceremony_on_site") continue;
       const amount = resolveAddOnAmount(a, chosenSpaceId, guests, 1);
       if (amount == null) {
         warnings.push("unpriceable_extra_ignored");
@@ -445,6 +460,11 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
       warnings.push("unpriceable_extra_ignored");
       continue;
     }
+    // path_ids scopes an add-on to the path(s) it's actually relevant to (Diamond Garden's food
+    // packages/dinnerware/bar tiers only make sense on the à-la-carte-shaped paths, never
+    // All-Inclusive, which already bundles the equivalent) — a stale selection left over from
+    // switching paths is silently dropped, not priced against the wrong path.
+    if (a.path_ids && input.path_id && !a.path_ids.includes(input.path_id)) continue;
     const qty = extra.quantity ?? 1;
     const amount = resolveAddOnAmount(a, chosenSpaceId, guests, qty);
     if (amount == null) {
@@ -529,12 +549,23 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
   return { groups, total, not_included, warnings, assumptions };
 }
 
+/** The path's own general (day/season-agnostic) guest minimum, when it states one — Diamond
+ * Garden's All-Inclusive path requires 150 guests generally (125 Fridays, 100 Sundays); the
+ * general row is what a default guest count should reflect, not a day-specific floor. */
+function pathGuestMinimum(path: PricingPath | undefined): number | null {
+  if (!path) return null;
+  const general = path.minimums.find((m) => m.kind === "guest_minimum" && (m.day == null || m.day === "any"));
+  if (general) return general.amount;
+  return path.minimums.find((m) => m.kind === "guest_minimum")?.amount ?? null;
+}
+
 export function defaultAxes(d: VenueDetailsV3): EstimateInput {
-  const firstPath = d.pricing.paths[0];
+  const pinnedPathId = d.pricing.default_axes?.path_id;
+  const firstPath = (pinnedPathId && d.pricing.paths.find((p) => p.id === pinnedPathId)) || d.pricing.paths[0];
   const hc = headlineCapacity(d);
   const defaultSpaceId = hc.headline_space_id ?? d.spaces.find((s) => s.bookable_separately !== false)?.id;
   const base: EstimateInput = {
-    guests: 100,
+    guests: pathGuestMinimum(firstPath) ?? 100,
     day: "sat",
     season: "peak",
     path_id: firstPath?.id,
@@ -545,6 +576,20 @@ export function defaultAxes(d: VenueDetailsV3): EstimateInput {
     extras: [],
   };
   return { ...base, ...(d.pricing.default_axes ?? {}) };
+}
+
+/** Add-ons genuinely offerable on the given path — path_ids null (relevant regardless of path) or
+ * containing path_id, excluding auto-applied ceremony fees (those are driven by the ceremony
+ * axis, not a selectable extra). Used by the calculator to decide which add-ons/PillGroups to
+ * offer once a path is chosen (Diamond Garden: hides food/dinnerware/bar entirely on
+ * All-Inclusive, which already bundles them). */
+export function selectableAddOns(d: VenueDetailsV3, path_id: string | undefined): AddOn[] {
+  return d.pricing.add_ons.filter((a) => {
+    if (a.group === "ceremony" && a.condition === "ceremony_on_site") return false;
+    if (a.priceable === false) return false;
+    if (a.path_ids && path_id && !a.path_ids.includes(path_id)) return false;
+    return a.price != null || (a.per_space_prices != null && Object.keys(a.per_space_prices).length > 0);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -620,14 +665,22 @@ const POLICY_LABELS: Record<string, string> = {
   noise_curfew: "Noise curfew",
 };
 
-function describePolicyValue(key: string, value: unknown): string {
+function describePolicyValue(key: string, value: unknown, ctx?: { barHasByo?: boolean }): string {
   switch (key) {
     case "catering":
       return (
         { open: "Open", preferred_list: "Preferred list", exclusive_in_house: "In-house only", approved_list_only: "Approved list only" }[value as string] ?? String(value)
       );
-    case "bar":
-      return ({ in_house: "In-house only", byob: "BYOB", byo_with_corkage: "In-house + BYO (corkage)", dry: "Dry" }[value as string] ?? String(value));
+    case "bar": {
+      const label = ({ in_house: "In-house only", byob: "BYOB", byo_with_corkage: "In-house + BYO (corkage)", dry: "Dry" }[value as string] ?? String(value));
+      // A venue whose bar enum is genuinely `in_house` (it serves in-house bar packages, not a
+      // BYO-with-corkage arrangement) but whose own extracted F&B pills additively include `byo`
+      // (Diamond Garden: open bar / cash bar / no-fee BYO) reads wrong as bare "In-house only" —
+      // and "In-house + BYO (corkage)" would be actively false, since there's no corkage fee here.
+      // `ctx.barHasByo` is threaded in by `policyRows` from `food_beverage.bar_pills` (round-3 fix).
+      if (value === "in_house" && ctx?.barHasByo) return "In-house or BYO";
+      return label;
+    }
     case "rental_charge_type":
       return (
         {
@@ -666,12 +719,24 @@ function describePolicyValue(key: string, value: unknown): string {
   }
 }
 
-function policyDetail(key: string, value: unknown): string | null {
+function policyDetail(key: string, value: unknown, quote?: string): string | null {
   switch (key) {
     case "fb_minimum":
       return (value as { detail: string | null }).detail;
-    case "payment_schedule":
-      return (value as { balance_due: string | null }).balance_due;
+    case "parking":
+      // ParkingPolicy is a bare enum with nowhere to carry a venue's own concrete texture (Diamond
+      // Garden: "2 free lots, 75+ spaces") — the fact's own quote fills that role, same treatment
+      // fb_minimum's `detail` field gives a structured value (round-3 fix).
+      return quote ?? null;
+    case "payment_schedule": {
+      const v = value as { deposit: string; balance_due: string | null };
+      // De-dupe: a venue whose "balance due" text was authored as a restatement of the deposit
+      // line (Diamond Garden's original "$1,000 deposit; balance due..." repeating "$1,000
+      // deposit" verbatim) must not show the same sentence twice, once as the pill and once as
+      // the detail underneath it.
+      if (!v.balance_due || v.balance_due === v.deposit || v.deposit.includes(v.balance_due)) return null;
+      return v.balance_due;
+    }
     case "cancellation": {
       const v = value as { deposit_refundable: boolean | null };
       if (v.deposit_refundable === true) return "Deposit refundable.";
@@ -679,10 +744,12 @@ function policyDetail(key: string, value: unknown): string | null {
       return null;
     }
     case "vendor_access": {
-      const v = value as { setup_hours_before: number | null; teardown_hours_after: number | null };
+      const v = value as { summary: string; setup_hours_before: number | null; teardown_hours_after: number | null };
       const parts: string[] = [];
-      if (v.setup_hours_before != null) parts.push(`Setup ${v.setup_hours_before}h before`);
-      if (v.teardown_hours_after != null) parts.push(`teardown ${v.teardown_hours_after}h after`);
+      // De-dupe: only mention a setup/teardown number the summary hasn't already stated (Diamond
+      // Garden's summary already says "2 hours before the event for setup").
+      if (v.setup_hours_before != null && !v.summary.includes(String(v.setup_hours_before))) parts.push(`Setup ${v.setup_hours_before}h before`);
+      if (v.teardown_hours_after != null && !v.summary.includes(String(v.teardown_hours_after))) parts.push(`teardown ${v.teardown_hours_after}h after`);
       return parts.length ? parts.join(", ") : null;
     }
     default:
@@ -691,17 +758,19 @@ function policyDetail(key: string, value: unknown): string | null {
 }
 
 export function policyRows(d: VenueDetailsV3): PolicyRow[] {
+  const barHasByo = d.food_beverage.bar_pills.some((p) => p.value === "byo");
   return POLICY_ROW_KEYS.map((key) => {
     const tri = d.spine[key];
     const label = POLICY_LABELS[key];
+    const ctx = key === "bar" ? { barHasByo } : undefined;
     if (tri.status === "not_stated") {
       return { key, label, pill: "Not stated (please confirm)", detail: null, stated: false };
     }
     if (tri.status === "conflicting") {
-      const detail = `${tri.candidates.map((c) => describePolicyValue(key, c.value)).join(" vs. ")}. Confirm which applies.`;
+      const detail = `${tri.candidates.map((c) => describePolicyValue(key, c.value, ctx)).join(" vs. ")}. Confirm which applies.`;
       return { key, label, pill: "Conflicting sources", detail, stated: false };
     }
-    return { key, label, pill: describePolicyValue(key, tri.value), detail: policyDetail(key, tri.value), stated: true };
+    return { key, label, pill: describePolicyValue(key, tri.value, ctx), detail: policyDetail(key, tri.value, tri.quote), stated: true };
   });
 }
 
@@ -744,7 +813,7 @@ export function calculatorAxes(d: VenueDetailsV3): CalculatorAxis[] {
 
   const days = new Set<string>();
   const seasons = new Set<string>();
-  const tierIds = new Set<string>();
+  const tierNames = new Set<string>();
   for (const p of d.pricing.paths) {
     for (const f of p.fixed_fees) {
       if (f.day) days.add(f.day);
@@ -753,15 +822,24 @@ export function calculatorAxes(d: VenueDetailsV3): CalculatorAxis[] {
     for (const t of p.per_guest_tiers) {
       if (t.day) days.add(t.day);
       if (t.season) seasons.add(t.season);
-      tierIds.add(t.id);
+      tierNames.add(t.name);
     }
   }
   if (days.size > 1) axes.push("day");
   if (seasons.size > 1) axes.push("season");
-  if (tierIds.size > 1) axes.push("tier");
+  // A "Package tier" picker only earns its own axis when tiers genuinely differ by NAME — a
+  // venue whose only real variation is day/season (Diamond Garden's 8 same-named "All-Inclusive"
+  // rows) must drive that variation through the Day/Season pills alone, not a redundant picker of
+  // identical-looking pills (round-3 fix; `selectTier`'s day/season fallback already handles an
+  // unset tier_id correctly).
+  if (tierNames.size > 1) axes.push("tier");
 
-  const hasCeremony = isStated(d.spine.ceremony_on_site) || d.pricing.add_ons.some((a) => a.group === "ceremony");
-  if (hasCeremony) axes.push("ceremony");
+  // The ceremony Yes/No axis only earns its place when there's a real, auto-applied on-site
+  // ceremony FEE to toggle (`condition: "ceremony_on_site"`) — a venue whose ceremony is simply
+  // included at no extra charge (Diamond Garden) has nothing for the toggle to change, so no
+  // axis (round-3 fix: `spine.ceremony_on_site` being stated used to be enough on its own).
+  const hasCeremonyFee = d.pricing.add_ons.some((a) => a.group === "ceremony" && a.condition === "ceremony_on_site");
+  if (hasCeremonyFee) axes.push("ceremony");
 
   if (d.pricing.rates.cc_fee_pct != null) axes.push("payment");
 

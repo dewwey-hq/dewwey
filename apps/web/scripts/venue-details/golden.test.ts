@@ -218,21 +218,28 @@ describe("golden fixtures — pinned calculator totals", () => {
     expect(withCorkage.total).toBe(44675);
   });
 
-  it("Diamond Garden: all-inclusive 150/peak/sat -> 12,742.50; 120/fri -> under_minimum; hall-rental-only 150 -> 7,495, 151 -> 7,720", () => {
+  it("Diamond Garden: default path is Hall Rental Only (cheap-first), 150 guests -> 7,495, 151 -> 7,720; all-inclusive 150/peak/sat -> 12,742.50; 120/fri -> under_minimum, 9,234", () => {
     const d = getGolden("diamond-garden-banquet-hall")!;
     const axes = defaultAxes(d);
-    expect(axes.path_id).toBe("all-inclusive");
-    const allInclusive = estimateCost(d, { ...axes, guests: 150, day: "sat", season: "peak" });
+    // Round-3 fix: the default path is now the cheapest real one (Hall Rental Only), with no
+    // tier_id pinned — All-Inclusive's own rate is selected purely by the Day/Season pills.
+    expect(axes.path_id).toBe("hall-rental-only");
+    expect(axes.guests).toBe(150);
+    expect(axes.day).toBe("sat");
+    expect(axes.season).toBe("peak");
+    expect(axes.tier_id).toBeUndefined();
+
+    const hall150 = estimateCost(d, axes);
+    expect(hall150.total).toBe(7495);
+    const hall151 = estimateCost(d, { ...axes, guests: 151 });
+    expect(hall151.total).toBe(7720);
+
+    const allInclusive = estimateCost(d, { ...axes, path_id: "all-inclusive", tier_id: "sat-peak" });
     expect(allInclusive.total).toBe(12742.5);
 
-    const underMin = estimateCost(d, { ...axes, tier_id: undefined, guests: 120, day: "fri", season: "peak" });
+    const underMin = estimateCost(d, { ...axes, path_id: "all-inclusive", guests: 120, day: "fri", season: "peak" });
     expect(underMin.warnings).toContain("under_minimum");
     expect(underMin.total).toBe(9234);
-
-    const hall150 = estimateCost(d, { ...axes, path_id: "hall-rental-only", guests: 150, day: "sat", season: "peak" });
-    expect(hall150.total).toBe(7495);
-    const hall151 = estimateCost(d, { ...axes, path_id: "hall-rental-only", guests: 151, day: "sat", season: "peak" });
-    expect(hall151.total).toBe(7720);
   });
 
   it("Field Museum and Geraghty: no_path (inquire-only, nothing to compute)", () => {
@@ -241,6 +248,91 @@ describe("golden fixtures — pinned calculator totals", () => {
       const est = estimateCost(d, defaultAxes(d));
       expect(est.warnings).toContain("no_path");
       expect(est.total).toBe(0);
+    }
+  });
+});
+
+describe("golden fixtures — Diamond Garden round-3 structure", () => {
+  const d = getGolden("diamond-garden-banquet-hall")!;
+
+  it("has all three real booking paths, cheap-first", () => {
+    expect(d.pricing.paths.map((p) => p.id)).toEqual(["hall-rental-only", "hall-plus-a-la-carte", "all-inclusive"]);
+  });
+
+  it("Hall + À La Carte shares Hall Rental Only's fixed fees, required staffing, and includes", () => {
+    const hallOnly = d.pricing.paths.find((p) => p.id === "hall-rental-only")!;
+    const alaCarte = d.pricing.paths.find((p) => p.id === "hall-plus-a-la-carte")!;
+    expect(alaCarte.fixed_fees).toEqual(hallOnly.fixed_fees);
+    expect(alaCarte.required_staffing).toEqual(hallOnly.required_staffing);
+    expect(alaCarte.includes).toEqual(hallOnly.includes);
+    expect(alaCarte.includes?.length).toBeGreaterThan(0);
+  });
+
+  it("carries 5 curated add-on categories, joined to the granular add-ons by category name", () => {
+    expect(d.pricing.add_on_categories?.map((c) => c.category)).toEqual([
+      "Food & beverage add-ons",
+      "Decoration add-ons",
+      "Lighting & video add-ons",
+      "Staffing & service add-ons",
+      "Extra hours",
+    ]);
+    const categoryNames = new Set(d.pricing.add_on_categories!.map((c) => c.category));
+    for (const a of d.pricing.add_ons) {
+      if (a.category === "Ceremony") continue; // the one real leftover category not curated
+      expect(categoryNames.has(a.category), `add-on ${a.id} has an uncurated category ${a.category}`).toBe(true);
+    }
+  });
+
+  it("states season months once, shared by every path", () => {
+    expect(d.pricing.seasons).toEqual({ peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" });
+  });
+
+  it("food/dinnerware/bar/coffee/cake add-ons apply to both hall paths, never All-Inclusive; extra hour applies to all", () => {
+    const scoped = d.pricing.add_ons.filter((a) => a.category === "Food & beverage add-ons");
+    expect(scoped.length).toBeGreaterThan(0);
+    for (const a of scoped) expect(a.path_ids).toEqual(["hall-rental-only", "hall-plus-a-la-carte"]);
+    const extraHour = d.pricing.add_ons.filter((a) => a.selection_group === "extra-hour");
+    expect(extraHour.length).toBe(4);
+    for (const a of extraHour) expect(a.path_ids).toBeNull();
+  });
+
+  it("food package / dinnerware / bar tiers / extra hour are single-select groups", () => {
+    const groups = new Set(d.pricing.add_ons.map((a) => a.selection_group).filter(Boolean));
+    expect(groups).toEqual(new Set(["food-package", "dinnerware", "bar", "extra-hour"]));
+  });
+
+  it("ceremony upgrades are individually selectable, not auto-applied (group 'other', category 'Ceremony')", () => {
+    const ceremony = d.pricing.add_ons.filter((a) => a.category === "Ceremony");
+    expect(ceremony.length).toBe(5);
+    for (const a of ceremony) {
+      expect(a.group).toBe("other");
+      expect(a.condition).toBeNull();
+    }
+    // No add-on auto-applies on the ceremony Yes/No toggle for this venue (ceremony is free) —
+    // calculatorAxes correctly omits the axis entirely.
+    expect(d.pricing.add_ons.some((a) => a.group === "ceremony" && a.condition === "ceremony_on_site")).toBe(false);
+  });
+
+  it("spine.bar is 'in_house' (no corkage fee exists here); the byo pill is additive", () => {
+    expect(d.spine.bar.status === "stated" && d.spine.bar.value).toBe("in_house");
+    expect(d.food_beverage.bar_pills.some((p) => p.value === "byo")).toBe(true);
+  });
+
+  it("every menu keeps its real Extras column", () => {
+    expect(d.food_beverage.menus.length).toBe(3);
+    for (const m of d.food_beverage.menus) expect(m.extras.length).toBeGreaterThan(0);
+  });
+
+  it("bar packages state a real guest minimum", () => {
+    expect(d.food_beverage.bar_min_guests).toBe(50);
+  });
+
+  it("the 4 per-guest add-ons that used to price as null now have a real price (decoration package + 3 food/drink extras)", () => {
+    const decorationPackage = d.pricing.add_ons.find((a) => a.id === "decorationPackage")!;
+    expect(decorationPackage.price).toBe(9.95);
+    for (const id of ["coffeeTea", "sodaPackage", "cakeTable"]) {
+      const a = d.pricing.add_ons.find((x) => x.id === id)!;
+      expect(a.price, `${id} should have a real price`).not.toBeNull();
     }
   });
 });

@@ -15,7 +15,10 @@ import {
   type FbPill,
   type FixedFee,
   type InclusionItem,
+  INCLUSION_CATEGORIES,
+  type Minimum,
   type PerGuestTier,
+  type Pricing,
   POLICY_ROW_KEYS,
   type PricingPath,
   type Rates,
@@ -276,6 +279,88 @@ export function perGuestTierGrid(tiers: PerGuestTier[]): PriceGrid {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Merged price grid — cheap-to-expensive day columns (Weekday / Fri / Sun / Sat), collapsing
+// adjacent days whose price is identical across every season into one combined column (Diamond
+// Garden's Hall Rental Only: Fri and Sunday are the same real number, so "Fri/Sun" is one column,
+// not two identical ones; All-Inclusive's weekday/Fri/Sunday share one number too, collapsing to
+// "Weekday/Fri/Sun").
+// ---------------------------------------------------------------------------
+
+export interface PriceGridColumn {
+  label: string;
+  days: Day[];
+}
+
+export interface MergedPriceGrid {
+  seasons: Season[];
+  columns: PriceGridColumn[];
+  /** grid[seasonIndex][columnIndex] */
+  grid: (number | null)[][];
+}
+
+const MERGED_GRID_DAY_ORDER: Day[] = ["weekday", "mon", "tue", "wed", "thu", "fri", "sun", "sat", "any"];
+
+/** Builds the merged, cheap-first column layout from a `PriceGrid` (`fixedFeeGrid`/
+ * `perGuestTierGrid`'s own season x day pivot). Returns null when there's nothing to show. */
+export function buildMergedPriceGrid(grid: PriceGrid): MergedPriceGrid | null {
+  if (grid.days.length === 0 || grid.seasons.length === 0) return null;
+  const orderedDays = MERGED_GRID_DAY_ORDER.filter((d) => grid.days.includes(d));
+  const valuesForDay = (day: Day): (number | null)[] => {
+    const di = grid.days.indexOf(day);
+    return grid.seasons.map((_, si) => grid.grid[si][di]);
+  };
+  const groups: Day[][] = [];
+  for (const day of orderedDays) {
+    const values = valuesForDay(day);
+    const lastGroup = groups[groups.length - 1];
+    const lastValues = lastGroup ? valuesForDay(lastGroup[lastGroup.length - 1]) : null;
+    if (lastValues && values.every((v, i) => v === lastValues[i])) {
+      lastGroup.push(day);
+    } else {
+      groups.push([day]);
+    }
+  }
+  const columns: PriceGridColumn[] = groups.map((days) => ({ days, label: days.map(dayLabel).join("/") }));
+  const mergedGrid = grid.seasons.map((_, si) => columns.map((col) => grid.grid[si][grid.days.indexOf(col.days[0])]));
+  return { seasons: grid.seasons, columns, grid: mergedGrid };
+}
+
+/** "150 guests" for a guest minimum, plain money for an F&B minimum — round-3 fix: a guest
+ * count is a headcount, not a dollar figure ("Guest minimum: $150" was printing a guest COUNT
+ * through the money formatter). */
+export function minimumValueLabel(m: Minimum): string {
+  return m.kind === "guest_minimum" ? `${m.amount.toLocaleString()} guests` : money(m.amount);
+}
+
+/** The Pricing card's headline min–max line: "$2,100 – $6,595 flat" for a fixed-fee path,
+ * "$68.95 – $84.95 /guest" for a per-guest path. Null when the path has neither (an inquire-only
+ * or add-on-only path with nothing fixed to show a range for). */
+export function pricingHeadlineLine(path: PricingPath): string | null {
+  if (path.per_guest_tiers.length > 0) {
+    const amounts = path.per_guest_tiers.map((t) => t.per_guest);
+    return `${moneyRange(Math.min(...amounts), Math.max(...amounts))} /guest`;
+  }
+  const fees = path.fixed_fees.filter((f) => f.applies_to === "space" || f.applies_to === "whole_venue");
+  if (fees.length > 0) {
+    const amounts = fees.map((f) => f.amount);
+    return `${moneyRange(Math.min(...amounts), Math.max(...amounts))} flat`;
+  }
+  return null;
+}
+
+/** The season-months line, rendered once under the Pricing section's whole card grid (not
+ * per-card, since the two definitions are always identical across every path on the same
+ * venue): "off-season is Jan, Feb, Mar, Nov; peak season is Apr–Oct, Dec". Null when a venue
+ * doesn't state season months at all. */
+export function seasonsMonthsLine(seasons: Pricing["seasons"]): string | null {
+  if (!seasons || (!seasons.peak && !seasons.off)) return null;
+  const parts: string[] = [];
+  if (seasons.off) parts.push(`off-season is ${seasons.off}`);
+  if (seasons.peak) parts.push(`peak season is ${seasons.peak}`);
+  return parts.join("; ");
+}
+
 export interface CollapsedTier {
   /** First-seen entry's id — used only as a React key / FactSource anchor. */
   id: string;
@@ -314,6 +399,21 @@ export function collapseTiersByName(tiers: PerGuestTier[]): CollapsedTier[] {
  * varies by day/season. */
 export function tierPriceLabel(min: number, max: number): string {
   return min === max ? `${money(min)} /guest` : `from ${money(min)} to ${money(max)} /guest`;
+}
+
+/** A bar ladder's per-guest price range across its duration options ("$3.95 – $4.95 /guest" for
+ * Diamond Garden's `{"4hr": 3.95, "5hr": 4.95}`), for the F&B bar table's "Cost (4 or 5 hours)"
+ * column — round-3 fix: the old rendering dropped the "/guest" unit entirely. */
+export function barLadderPriceLabel(prices: Record<string, number>): string {
+  const amounts = Object.values(prices);
+  if (amounts.length === 0) return "";
+  return `${moneyRange(Math.min(...amounts), Math.max(...amounts))} /guest`;
+}
+
+/** The bar section's own guest minimum, called out on its own line (round-3 fix: a 50-guest
+ * minimum on bar packages never rendered anywhere). Null when the venue doesn't state one. */
+export function barMinGuestsLine(minGuests: number | null): string | null {
+  return minGuests != null ? `Bar packages require ${minGuests.toLocaleString()}+ guests.` : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -362,6 +462,57 @@ export function guestRangeReminder(range: { min: number | null; max: number | nu
   if (range.max == null) return "";
   if (range.min != null) return `${range.min}–${range.max} ${range.max_measures}`;
   return `Up to ${range.max} ${range.max_measures}`;
+}
+
+export interface SelectionGroup {
+  key: string;
+  items: AddOn[];
+}
+
+export interface SplitAddOns {
+  /** Items sharing a `selection_group` (Diamond Garden's food package / dinnerware / bar tier /
+   * extra hour) — one PillGroup per key, "None" first, single-select. */
+  groups: SelectionGroup[];
+  /** Everything else — independently toggleable chips, same as every other golden. */
+  individual: AddOn[];
+}
+
+/** Splits a path-scoped add-on list into single-select groups vs individually toggleable items
+ * (round-3 addition) — used by the calculator's "Add extras" panel. Pure so it's unit-testable
+ * without rendering `CostEstimate`. */
+export function splitAddOnsBySelection(addOns: AddOn[]): SplitAddOns {
+  const byGroup = new Map<string, AddOn[]>();
+  for (const a of addOns) {
+    if (!a.selection_group) continue;
+    if (!byGroup.has(a.selection_group)) byGroup.set(a.selection_group, []);
+    byGroup.get(a.selection_group)!.push(a);
+  }
+  return { groups: [...byGroup.entries()].map(([key, items]) => ({ key, items })), individual: addOns.filter((a) => !a.selection_group) };
+}
+
+const SELECTION_GROUP_LABELS: Record<string, string> = {
+  "food-package": "Food package",
+  dinnerware: "Dinnerware",
+  bar: "Bar tier",
+  "extra-hour": "Extra hour",
+};
+
+/** Humanized column/group heading for an `AddOn.selection_group` key (Diamond Garden's food
+ * package / dinnerware / bar tier / extra hour single-select groups). Falls back to
+ * title-casing the raw key for a group this table doesn't already know about. */
+export function selectionGroupLabel(key: string): string {
+  return SELECTION_GROUP_LABELS[key] ?? key.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Calculator "under_minimum" copy that names the actual day-specific (or general) minimum that
+ * was missed, instead of one generic sentence for every venue/day (round-3 fix, matching the
+ * concept calculator's own day-aware message). Null when the path states no guest minimum at all. */
+export function underMinimumMessage(path: PricingPath, guests: number, day: Day, season: Season): string | null {
+  const candidates = path.minimums.filter((m) => m.kind === "guest_minimum" && (m.season == null || m.season === "any" || m.season === season));
+  const m = candidates.find((c) => c.day === day) ?? candidates.find((c) => c.day == null || c.day === "any");
+  if (!m) return null;
+  const dayText = m.day && m.day !== "any" ? ` for ${dayFullLabel(m.day)}s` : "";
+  return `${guests.toLocaleString()} guests is below the ${m.amount.toLocaleString()}-guest minimum${dayText}.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -440,6 +591,36 @@ export function buildAddOnTable(addOns: AddOn[], spaces: Space[]): AddOnTable {
   }));
 
   return { columnLabels, rows };
+}
+
+export interface AddOnCategoryGroup {
+  category: string;
+  blurb: string | null;
+  /** Curated example bullets (`Pricing.add_on_categories[].examples`) — always shown; the section
+   * falls back to these when `items` is empty (a category whose real add-ons are all single-select
+   * calculator PillGroup options, so there's nothing left to show as an independent card/table). */
+  examples: string[];
+  /** Independently-selectable add-ons in this category (excludes anything with a
+   * `selection_group` — those are single-select calculator options already fully described by
+   * `examples`, and would otherwise show as a duplicate, individually-toggleable card). */
+  items: AddOn[];
+}
+
+/** Category-level grouping for the Add-ons & extras section, built from `Pricing.add_on_categories`
+ * (round-3 addition) — null when a venue doesn't carry curated categories, so the renderer falls
+ * back to the plain fb/rental split every other golden fixture already uses (this never changes
+ * rendering for a venue without `add_on_categories`). */
+export function addOnCategoryGroups(d: VenueDetailsV3): AddOnCategoryGroup[] | null {
+  const categories = d.pricing.add_on_categories;
+  if (!categories || categories.length === 0) return null;
+  const itemsFor = (category: string) => d.pricing.add_ons.filter((a) => a.category === category && !a.selection_group);
+  const groups: AddOnCategoryGroup[] = categories.map((c) => ({ category: c.category, blurb: c.blurb, examples: c.examples, items: itemsFor(c.category) }));
+  // Any add-on in a category the curated list doesn't name (Diamond Garden's "Ceremony" upgrades)
+  // still needs a home — appended as its own uncurated group rather than silently dropped.
+  const known = new Set(categories.map((c) => c.category));
+  const leftover = [...new Set(d.pricing.add_ons.filter((a) => !known.has(a.category) && !a.selection_group).map((a) => a.category))];
+  for (const category of leftover) groups.push({ category, blurb: null, examples: [], items: itemsFor(category) });
+  return groups;
 }
 
 // ---------------------------------------------------------------------------
@@ -536,16 +717,39 @@ export interface InclusionGroup {
   items: InclusionItem[];
 }
 
-/** Grouped-by-category with uppercase micro-headers once a venue has more than ~7 real items;
- * flat (returns null) otherwise — golden-set-template.md §2. */
-export function groupInclusions(items: InclusionItem[]): InclusionGroup[] | null {
-  if (items.length <= 7) return null;
+/** Always grouped by category, in the pinned `INCLUSION_CATEGORIES` order (round-3 fix: the old
+ * "flat under 7 items" threshold left Diamond Garden's 6-item, 2-category list unheaded, and a
+ * couple can't tell "Chairs"/"Dance floor" (Furniture) apart from the rest at a glance without
+ * the header). A single-category list still gets one header — that's honest, not noise. */
+export function groupInclusions(items: InclusionItem[]): InclusionGroup[] {
   const byCategory = new Map<string, InclusionItem[]>();
   for (const it of items) {
     if (!byCategory.has(it.category)) byCategory.set(it.category, []);
     byCategory.get(it.category)!.push(it);
   }
-  return [...byCategory.entries()].map(([category, items]) => ({ category, items }));
+  return INCLUSION_CATEGORIES.filter((category) => byCategory.has(category)).map((category) => ({ category, items: byCategory.get(category)! }));
+}
+
+export interface InclusionDisplay {
+  /** Bold-weight label prefix, or null when `text` already reads as a complete phrase on its
+   * own (no "Label: Label" or "Label: Private label" redundancy). */
+  boldLabel: string | null;
+  text: string;
+}
+
+/** `label_raw` is shown only when it adds information beyond the canonical `label` (round-3
+ * fix). Three cases: a real structured `detail` always wins ("F&B minimum: $3,000"); a raw
+ * wording that's just `label` with an affix ("Private bridal suite" for "Bridal suite", "New
+ * silver Chiavari chairs" for "Chairs") reads fine alone, no redundant "Label: " prefix; anything
+ * else (raw wording that's a genuinely separate fact, "2 parking lots, 75+ spaces" for "Parking")
+ * keeps the "Label: raw" form so the canonical label still anchors the sentence. */
+export function inclusionDisplay(inc: InclusionItem): InclusionDisplay {
+  if (inc.detail) return { boldLabel: inc.label, text: inc.detail };
+  const rawLower = inc.label_raw.toLowerCase();
+  const labelLower = inc.label.toLowerCase();
+  if (rawLower === labelLower) return { boldLabel: null, text: inc.label };
+  if (rawLower.startsWith(labelLower) || rawLower.endsWith(labelLower)) return { boldLabel: null, text: inc.label_raw };
+  return { boldLabel: inc.label, text: inc.label_raw };
 }
 
 /** Locked Policies pill treatment (golden-set-template.md §2, Greenhouse Loft's fix): a real
