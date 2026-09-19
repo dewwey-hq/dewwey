@@ -2023,7 +2023,7 @@
       "snapshot_id": null
     },
     {
-      "id": "res-6",
+      "id": "addon-resource-1",
       "kind": "other",
       "label": "Rental Add-Ons (2024)",
       "url": "https://www.diamondgardenhall.com/_files/ugd/4b61b7_f01ea5c904234124ba1c8f33636a145a.pdf",
@@ -2035,7 +2035,7 @@
       "snapshot_id": null
     },
     {
-      "id": "res-7",
+      "id": "res-6",
       "kind": "virtual_tour",
       "label": "360° Tour",
       "url": "https://www.diamondgardenhall.com/360-tour-banquet-hall-rental",
@@ -2047,7 +2047,7 @@
       "snapshot_id": null
     },
     {
-      "id": "res-8",
+      "id": "res-7",
       "kind": "video",
       "label": "Videos",
       "url": "https://www.diamondgardenhall.com/wedding",

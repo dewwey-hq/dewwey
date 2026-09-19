@@ -851,7 +851,7 @@ function buildGreenhouseLoft(): VenueDetailsV3 {
     resource({ kind: "contract", label: "GHL Service Agreement (2021 template)", url: serviceAgreementPdf, scope: "venue", embeddable: null, has_text_layer: false, source_url: serviceAgreementPdf }),
     resource({ kind: "virtual_tour", label: "Virtual tour", url: g.space.tourUrl, scope: "venue", embeddable: true, has_text_layer: null, source_url: g.space.tourUrl }),
     resource({ kind: "gallery", label: "Event gallery", url: g.space.galleryUrl, scope: "venue", embeddable: true, has_text_layer: null, source_url: g.space.galleryUrl }),
-    ...g.floorPlanResources.map((fp, i) => resource({ kind: "floor_plan", label: fp.label, url: fp.url, scope: "venue", embeddable: null, has_text_layer: null, source_url: fp.url, id: `floorplan-${i + 1}` })),
+    ...g.floorPlanResources.map((fp, i) => resource({ kind: "floor_plan", label: fp.label, url: fp.url, scope: "space:loft", embeddable: null, has_text_layer: null, source_url: fp.url, id: `floorplan-${i + 1}` })),
   ];
 
   doc.sources = { snapshot_ids: [], pages: g.sourcePages, crawled_at: g.lastVerified };
@@ -1290,7 +1290,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
 
   doc.resources = [
     ...d.menuResources.map((m, i) => resource({ kind: m.type === "food" ? "menu" : "bar_menu", label: m.label, url: m.url, scope: "venue", embeddable: null, has_text_layer: null, source_url: m.url, id: `menu-${i + 1}` })),
-    resource({ kind: "other", label: d.addOnsResources[0].label, url: d.addOnsResources[0].url, scope: "venue", embeddable: null, has_text_layer: null, source_url: d.addOnsResources[0].url }),
+    ...d.addOnsResources.map((r, i) => resource({ kind: "other", label: r.label, url: r.url, scope: "venue", embeddable: null, has_text_layer: null, source_url: r.url, id: `addon-resource-${i + 1}` })),
     resource({ kind: "virtual_tour", label: "360° Tour", url: d.space.tourUrl, scope: "venue", embeddable: false, has_text_layer: null, source_url: d.space.tourUrl }),
     resource({ kind: "video", label: "Videos", url: d.space.videosUrl, scope: "venue", embeddable: false, has_text_layer: null, source_url: d.space.videosUrl }),
   ];
@@ -1517,22 +1517,24 @@ function buildFieldMuseum(): VenueDetailsV3 {
 
   doc.about = { text: fm.about, evidence: { source_url: site, snapshot_id: null } };
 
-  const parseSqFt = (s: string): number | null => {
-    const m = s.match(/^~?([\d,]+)$/);
-    return m ? parseInt(m[1].replace(/,/g, ""), 10) : null;
-  };
-  const parseCeiling = (s: string | null): number | null => {
-    if (!s) return null;
-    const m = s.match(/^(\d+)\s*ft$/);
-    return m ? parseInt(m[1], 10) : null;
+  // Field Museum states sizes as strings, not clean numbers ("~21,000 (main floor)",
+  // "11,376–35,997" sq ft; "8–14 ft (highest in the East Atrium)" ceiling) — the old regexes only
+  // matched a bare number and nulled everything else out. `sq_ft`/`ceiling_ft` still carry the
+  // first integer found (for numeric code — sorting, `headlineCapacity`), and `sq_ft_label`/
+  // `ceiling_label` carry the venue's own wording verbatim for the renderer (2026-09-18 review).
+  const firstInt = (s: string): number | null => {
+    const m = s.match(/\d[\d,]*/);
+    return m ? parseInt(m[0].replace(/,/g, ""), 10) : null;
   };
   doc.spaces = fm.spaces.map((s) => ({
     id: slugify(s.name),
     name: s.name,
     structure_label: null,
-    sq_ft: parseSqFt(s.sqFt),
+    sq_ft: firstInt(s.sqFt),
+    sq_ft_label: s.sqFt,
     sq_ft_outdoor: null,
-    ceiling_ft: parseCeiling(s.ceilingHeight),
+    ceiling_ft: s.ceilingHeight ? firstInt(s.ceilingHeight) : null,
+    ceiling_label: s.ceilingHeight,
     setting: s.name === "Outdoor Terraces" ? "outdoor" : "indoor",
     bookable_separately: true,
     description: fact(s.description, s.description, s.sourceUrl),
@@ -1714,7 +1716,7 @@ function buildGeraghty(): VenueDetailsV3 {
   doc.faqs = g.faqs.map((q) => ({ question: q.question, answer: q.answer, source_url: faqUrl, snapshot_id: null }));
 
   doc.resources = [
-    ...g.space.floorPlans.map((fp, i) => resource({ kind: "floor_plan", label: fp.label, url: fp.imageUrl, scope: "venue", embeddable: null, has_text_layer: null, source_url: floorPlansUrl, id: `floorplan-${i + 1}` })),
+    ...g.space.floorPlans.map((fp, i) => resource({ kind: "floor_plan", label: fp.label, url: fp.imageUrl, scope: "space:the-geraghty", embeddable: null, has_text_layer: null, source_url: floorPlansUrl, id: `floorplan-${i + 1}` })),
     resource({ kind: "virtual_tour", label: "Virtual tour", url: g.space.tourUrl, scope: "venue", embeddable: null, has_text_layer: null, source_url: g.space.tourUrl }),
   ];
 

@@ -20,8 +20,10 @@ export interface ResourceMenuItem {
 
 /** `icon` is a pre-rendered node (e.g. `<LayoutGrid size={13} />`), not a component reference —
  * this is a client component, and a raw `LucideIcon` function can't cross the server/client
- * boundary from `VenueDetailsView` (a server component); only serializable elements can. */
-export function ResourceMenuButton({ label, icon, items }: { label: string; icon: ReactNode; items: ResourceMenuItem[] }) {
+ * boundary from `VenueDetailsView` (a server component); only serializable elements can.
+ *
+ * `variant` mirrors `ResourceButton`'s (2026-09-18 review): a grey pill for a secondary action. */
+export function ResourceMenuButton({ label, icon, items, variant = "primary" }: { label: string; icon: ReactNode; items: ResourceMenuItem[]; variant?: "primary" | "secondary" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -34,16 +36,17 @@ export function ResourceMenuButton({ label, icon, items }: { label: string; icon
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
+  const buttonClassName =
+    variant === "primary"
+      ? "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-50"
+      : "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-rose-200 hover:text-rose-500";
+
   return (
     <div ref={ref} className="relative inline-flex shrink-0">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-50"
-      >
+      <button type="button" onClick={() => setOpen((o) => !o)} className={buttonClassName}>
         {icon}
         {label}
-        <ChevronDown size={12} className={`text-rose-300 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown size={12} className={`transition-transform ${variant === "primary" ? "text-rose-300" : "text-gray-400"} ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div className="absolute right-0 top-full z-20 mt-1.5 w-56 max-w-[80vw] rounded-lg border border-black/[0.08] bg-white p-1.5 text-left shadow-lg">

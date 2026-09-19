@@ -525,7 +525,7 @@
       "kind": "floor_plan",
       "label": "Ceremony, Reception & Afterparty (300 guests)",
       "url": "https://thegeraghty.com/wp-content/uploads/2025/06/Wedding-2-Web-1-2048x1583.png",
-      "scope": "venue",
+      "scope": "space:the-geraghty",
       "embeddable": null,
       "has_text_layer": null,
       "checked_at": null,
@@ -537,7 +537,7 @@
       "kind": "floor_plan",
       "label": "Ceremony & Reception (300 guests)",
       "url": "https://thegeraghty.com/wp-content/uploads/2025/06/Wedding-1-Web-2-2048x1583.png",
-      "scope": "venue",
+      "scope": "space:the-geraghty",
       "embeddable": null,
       "has_text_layer": null,
       "checked_at": null,
@@ -545,7 +545,7 @@
       "snapshot_id": null
     },
     {
-      "id": "res-13",
+      "id": "res-12",
       "kind": "virtual_tour",
       "label": "Virtual tour",
       "url": "https://thegeraghty.com/virtual-tour",

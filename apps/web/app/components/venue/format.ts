@@ -19,6 +19,8 @@ import {
   POLICY_ROW_KEYS,
   type PricingPath,
   type Rates,
+  type Resource,
+  type ResourceKind,
   type Season,
   type Space,
   type VendorList,
@@ -47,15 +49,32 @@ export function sqFtLabel(sqFt: number | null, structureLabel: string | null): s
 /** Space header size line (fix round, 2026-09-13 review): "X sq ft indoor · Y sq ft outdoor"
  * when both indoor and outdoor square footage are stated; otherwise the plain sq-ft/structure
  * line. Returns null (omit the line entirely, no "Size not stated" placeholder) when `sqFt`
- * itself isn't stated — reviewed as looking worse than just not showing a size line at all. */
-export function spaceSizeLine(sqFt: number | null, sqFtOutdoor: number | null, structureLabel: string | null): string | null {
+ * itself isn't stated — reviewed as looking worse than just not showing a size line at all.
+ *
+ * `sqFtLabelRaw` (2026-09-18 review, Field Museum): when the venue states its size as a string
+ * rather than a clean number ("~21,000 (main floor)", "11,376–35,997"), `sq_ft` still carries the
+ * first integer found in it (for numeric code), but the line itself shows the venue's own wording
+ * verbatim instead of the reduced-to-one-number version. */
+export function spaceSizeLine(sqFt: number | null, sqFtOutdoor: number | null, structureLabel: string | null, sqFtLabelRaw?: string | null): string | null {
   if (sqFt == null) return null;
+  const primary = sqFtLabelRaw ? `${sqFtLabelRaw} sq ft` : `${sqFt.toLocaleString()} sq ft`;
   if (sqFtOutdoor != null) {
-    const parts = [`${sqFt.toLocaleString()} sq ft indoor`, `${sqFtOutdoor.toLocaleString()} sq ft outdoor`];
+    const parts = [sqFtLabelRaw ? primary : `${sqFt.toLocaleString()} sq ft indoor`, `${sqFtOutdoor.toLocaleString()} sq ft outdoor`];
     if (structureLabel) parts.push(structureLabel);
     return parts.join(" · ");
   }
-  return sqFtLabel(sqFt, structureLabel) || null;
+  const parts = [primary];
+  if (structureLabel) parts.push(structureLabel);
+  return parts.join(" · ");
+}
+
+/** "Ceiling height: 8–14 ft" (venue's own wording) or "Ceiling height: 22 ft" (formatted number)
+ * — same verbatim-label-else-formatted-number rule as `spaceSizeLine`'s `sqFtLabelRaw`. Null (omit
+ * the line) when neither is stated. */
+export function ceilingLine(ceilingFt: number | null, ceilingLabel?: string | null): string | null {
+  if (ceilingLabel) return `Ceiling height: ${ceilingLabel}`;
+  if (ceilingFt != null) return `Ceiling height: ${ceilingFt} ft`;
+  return null;
 }
 
 const DAY_LABELS: Record<Day, string> = {
@@ -624,4 +643,106 @@ export function siteDomain(websiteUrl: string | null): string | null {
   } catch {
     return websiteUrl;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Resource placement (fix round, 2026-09-18 user review of the goldens): the old renderer only
+// ever looked for `kind: "floor_plan"` scoped to a space, or a hand-picked kind list per section
+// heading — 18 of the 34 resources across the six fixtures never reached the DOM (a Greenhouse
+// floor plan/tour/gallery mis-scoped `venue` instead of `space:loft`, a Diamond Garden add-ons PDF
+// hard-indexed to `[0]`, LondonHouse's capacity chart + video never routed anywhere). One routing
+// table instead: every `Resource` on a document lands in exactly one bucket below; `unplaced`
+// should always be empty (see the placement invariant test in format.test.ts, over all six golden
+// fixtures) — a resource kind this function doesn't recognize is a bug to surface, not to drop.
+// ---------------------------------------------------------------------------
+
+export interface PlacedResources {
+  about: Resource[];
+  /** Venue-scoped capacity_sheet/floor_plan/virtual_tour/video/gallery — the Spaces (or, for a
+   * single-space venue, "The Space") section heading's own actions row, e.g. LondonHouse's
+   * capacity chart + wedding video. */
+  spacesHeading: Resource[];
+  /** The same five kinds, but space-scoped (`scope: "space:<id>"`) — that one space card's own
+   * header row instead of the section heading. Keyed by space id. */
+  perSpace: Record<string, Resource[]>;
+  /** Food & Beverage's Food side (`menu`, `catering_guidelines`) when the section is split. */
+  food: Resource[];
+  /** Food & Beverage's Bar side (`bar_menu`) when the section is split. */
+  bar: Resource[];
+  /** Food & Beverage's own section-heading actions when the section is shared (one row, not
+   * split into Food/Bar sides). */
+  fbShared: Resource[];
+  /** `other` — Add-ons & extras' own heading actions (Diamond Garden's add-ons PDF). */
+  addOns: Resource[];
+  /** `contract` — Policies' own heading actions (`catering_guidelines` no longer lands here; it
+   * belongs to Food & Beverage and was a duplicate, Greenhouse's fix). */
+  policies: Resource[];
+  /** `vendor_list` — Vendors' own heading actions. */
+  vendors: Resource[];
+  /** Should always be empty for a real document; a non-empty list means this function's routing
+   * table missed a kind/scope combination. */
+  unplaced: Resource[];
+}
+
+/** Venue-scoped resources of these kinds render as Spaces-heading actions (LondonHouse's capacity
+ * chart + video shape on the concept page). `capacity_sheet` is deliberately absent from
+ * `SPACE_CARD_KINDS` below — a capacity sheet is always venue-level, never per-room. */
+const SPACES_HEADING_KINDS: ResourceKind[] = ["floor_plan", "capacity_sheet", "virtual_tour", "video", "gallery"];
+
+/** The same kinds, minus `capacity_sheet`, render in a specific space's own card header when
+ * scoped to that space (Field Museum's four per-space video tours; Marchetti/Greenhouse/Geraghty's
+ * per-space or single-space floor plans). */
+const SPACE_CARD_KINDS: ResourceKind[] = ["floor_plan", "virtual_tour", "video", "gallery"];
+
+export function placeResources(venue: VenueDetailsV3): PlacedResources {
+  const placed: PlacedResources = {
+    about: [],
+    spacesHeading: [],
+    perSpace: {},
+    food: [],
+    bar: [],
+    fbShared: [],
+    addOns: [],
+    policies: [],
+    vendors: [],
+    unplaced: [],
+  };
+  // Whenever the F&B section is split into Food/Bar sub-headers, its resources go beside the
+  // matching side; otherwise they collect into one shared action row (fbLayout already forces
+  // "split" whenever a catering_guidelines or bar_menu resource exists — see fbLayout above — so
+  // this never silently strands a real resource in the shared bucket instead of a side).
+  const split = fbLayout(venue) === "split";
+
+  for (const r of venue.resources) {
+    if (r.kind === "brochure") {
+      placed.about.push(r);
+      continue;
+    }
+    if (r.scope !== "venue") {
+      if (SPACE_CARD_KINDS.includes(r.kind)) {
+        const spaceId = r.scope.slice("space:".length);
+        (placed.perSpace[spaceId] ??= []).push(r);
+      } else {
+        placed.unplaced.push(r);
+      }
+      continue;
+    }
+    if (SPACES_HEADING_KINDS.includes(r.kind)) {
+      placed.spacesHeading.push(r);
+    } else if (r.kind === "menu" || r.kind === "catering_guidelines") {
+      (split ? placed.food : placed.fbShared).push(r);
+    } else if (r.kind === "bar_menu") {
+      (split ? placed.bar : placed.fbShared).push(r);
+    } else if (r.kind === "contract") {
+      placed.policies.push(r);
+    } else if (r.kind === "other") {
+      placed.addOns.push(r);
+    } else if (r.kind === "vendor_list") {
+      placed.vendors.push(r);
+    } else {
+      placed.unplaced.push(r);
+    }
+  }
+
+  return placed;
 }

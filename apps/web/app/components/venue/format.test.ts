@@ -1,7 +1,24 @@
 import { describe, expect, it } from "vitest";
+import { GOLDEN_SLUGS, getGolden } from "../../../lib/venueDetails/golden";
 import { emptyRates, fact, makeVenue } from "../../../lib/venueDetails/testHelpers";
-import type { AddOn, CapacityTuple, FixedFee, InclusionItem, PerGuestTier, Space, VendorList } from "../../../lib/venueDetails/types";
+import type { AddOn, CapacityTuple, FixedFee, InclusionItem, PerGuestTier, Resource, Space, VendorList } from "../../../lib/venueDetails/types";
 import * as fmt from "./format";
+
+function resource(overrides: Partial<Resource> = {}): Resource {
+  return {
+    id: "r1",
+    kind: "brochure",
+    label: "Resource",
+    url: "https://example.com/r.pdf",
+    scope: "venue",
+    embeddable: null,
+    has_text_layer: null,
+    checked_at: null,
+    source_url: "https://example.com",
+    snapshot_id: null,
+    ...overrides,
+  };
+}
 
 function space(overrides: Partial<Space> = {}): Space {
   return {
@@ -708,5 +725,131 @@ describe("shouldCollapseResourceButtons / shouldCollapseFloorPlans", () => {
   it("collapses a space card's floor plan buttons past 1 (stricter — a much smaller layout)", () => {
     expect(fmt.shouldCollapseFloorPlans(1)).toBe(false);
     expect(fmt.shouldCollapseFloorPlans(2)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fix round (2026-09-18 user review of the goldens)
+// ---------------------------------------------------------------------------
+
+describe("spaceSizeLine with sqFtLabelRaw (Field Museum's string-stated sizes)", () => {
+  it("shows the venue's own wording verbatim instead of the reduced-to-one-number version", () => {
+    expect(fmt.spaceSizeLine(11376, null, null, "11,376–35,997")).toBe("11,376–35,997 sq ft");
+  });
+  it("still appends the structure label after the verbatim wording", () => {
+    expect(fmt.spaceSizeLine(21000, null, "Main floor", "~21,000")).toBe("~21,000 sq ft · Main floor");
+  });
+  it("falls back to the formatted number when no label is given (every other golden venue)", () => {
+    expect(fmt.spaceSizeLine(3000, null, null)).toBe("3,000 sq ft");
+  });
+  it("prefers the label over the plain number even in the indoor/outdoor split", () => {
+    expect(fmt.spaceSizeLine(21000, 500, null, "~21,000 (main floor)")).toBe("~21,000 (main floor) sq ft · 500 sq ft outdoor");
+  });
+});
+
+describe("ceilingLine", () => {
+  it("shows the venue's own wording verbatim when given", () => {
+    expect(fmt.ceilingLine(8, "8–14 ft (highest in the East Atrium)")).toBe("Ceiling height: 8–14 ft (highest in the East Atrium)");
+  });
+  it("falls back to the formatted number when no label is given", () => {
+    expect(fmt.ceilingLine(76, null)).toBe("Ceiling height: 76 ft");
+    expect(fmt.ceilingLine(22)).toBe("Ceiling height: 22 ft");
+  });
+  it("returns null (omit the line) when neither is stated", () => {
+    expect(fmt.ceilingLine(null, null)).toBeNull();
+    expect(fmt.ceilingLine(null)).toBeNull();
+  });
+});
+
+describe("placeResources", () => {
+  it("routes a brochure to About regardless of scope", () => {
+    const d = makeVenue({ resources: [resource({ id: "b1", kind: "brochure" })] });
+    const placed = fmt.placeResources(d);
+    expect(placed.about.map((r) => r.id)).toEqual(["b1"]);
+    expect(placed.unplaced).toEqual([]);
+  });
+
+  it("routes venue-scoped floor_plan/capacity_sheet/virtual_tour/video/gallery to the Spaces heading", () => {
+    const d = makeVenue({
+      resources: [
+        resource({ id: "fp", kind: "floor_plan", scope: "venue" }),
+        resource({ id: "cs", kind: "capacity_sheet", scope: "venue" }),
+        resource({ id: "vt", kind: "virtual_tour", scope: "venue" }),
+        resource({ id: "v", kind: "video", scope: "venue" }),
+        resource({ id: "g", kind: "gallery", scope: "venue" }),
+      ],
+    });
+    const placed = fmt.placeResources(d);
+    expect(placed.spacesHeading.map((r) => r.id).sort()).toEqual(["cs", "fp", "g", "v", "vt"]);
+    expect(placed.unplaced).toEqual([]);
+  });
+
+  it("routes the same kinds, space-scoped, to that space's own bucket — except capacity_sheet, which stays venue-level", () => {
+    const d = makeVenue({
+      resources: [
+        resource({ id: "fp", kind: "floor_plan", scope: "space:main" }),
+        resource({ id: "vt", kind: "virtual_tour", scope: "space:main" }),
+        resource({ id: "cs", kind: "capacity_sheet", scope: "space:main" }),
+      ],
+    });
+    const placed = fmt.placeResources(d);
+    expect(placed.perSpace.main.map((r) => r.id).sort()).toEqual(["fp", "vt"]);
+    // A space-scoped capacity_sheet has nowhere to go in the routing table (capacity sheets are
+    // always venue-level) — surfaced via `unplaced`, not silently dropped.
+    expect(placed.unplaced.map((r) => r.id)).toEqual(["cs"]);
+  });
+
+  it("splits menu/bar_menu/catering_guidelines by side when the F&B layout is split", () => {
+    const d = makeVenue({
+      food_beverage: { food_pills: [fact("byo")], bar_pills: [fact("byo")], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+      resources: [resource({ id: "cg", kind: "catering_guidelines" }), resource({ id: "bm", kind: "bar_menu" })],
+    });
+    const placed = fmt.placeResources(d);
+    expect(placed.food.map((r) => r.id)).toEqual(["cg"]);
+    expect(placed.bar.map((r) => r.id)).toEqual(["bm"]);
+    expect(placed.fbShared).toEqual([]);
+  });
+
+  it("collects menu/bar_menu into one shared row when the F&B layout is shared", () => {
+    const d = makeVenue({
+      food_beverage: { food_pills: [fact("all_inclusive")], bar_pills: [fact("all_inclusive")], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+      resources: [resource({ id: "m", kind: "menu" })],
+    });
+    const placed = fmt.placeResources(d);
+    expect(placed.fbShared.map((r) => r.id)).toEqual(["m"]);
+    expect(placed.food).toEqual([]);
+  });
+
+  it("routes contract to Policies, other to Add-ons, vendor_list to Vendors", () => {
+    const d = makeVenue({
+      resources: [resource({ id: "c", kind: "contract" }), resource({ id: "o", kind: "other" }), resource({ id: "vl", kind: "vendor_list" })],
+    });
+    const placed = fmt.placeResources(d);
+    expect(placed.policies.map((r) => r.id)).toEqual(["c"]);
+    expect(placed.addOns.map((r) => r.id)).toEqual(["o"]);
+    expect(placed.vendors.map((r) => r.id)).toEqual(["vl"]);
+    expect(placed.unplaced).toEqual([]);
+  });
+
+  it("invariant: every resource in all six golden fixtures is placed exactly once, unplaced is empty", () => {
+    for (const slug of GOLDEN_SLUGS) {
+      const d = getGolden(slug)!;
+      const placed = fmt.placeResources(d);
+      const allPlaced = [
+        ...placed.about,
+        ...placed.spacesHeading,
+        ...Object.values(placed.perSpace).flat(),
+        ...placed.food,
+        ...placed.bar,
+        ...placed.fbShared,
+        ...placed.addOns,
+        ...placed.policies,
+        ...placed.vendors,
+      ];
+      const allPlacedIds = allPlaced.map((r) => r.id).sort();
+      expect(placed.unplaced, `${slug}: unplaced should be empty`).toEqual([]);
+      expect(new Set(allPlacedIds).size, `${slug}: no resource placed twice`).toBe(allPlacedIds.length);
+      expect(allPlacedIds, `${slug}: every fixture resource is placed`).toEqual(d.resources.map((r) => r.id).sort());
+    }
   });
 });

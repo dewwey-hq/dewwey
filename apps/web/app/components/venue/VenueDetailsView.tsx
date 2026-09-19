@@ -81,7 +81,7 @@ export interface VenueDetailsViewProps {
 
 function SectionHeading({ title, subtitle, id, actions, icon }: { title: string; subtitle?: string; id?: string; actions?: ReactNode; icon?: ReactNode }) {
   return (
-    <div id={id} className="mb-4 flex items-start justify-between gap-3 scroll-mt-20">
+    <div id={id} className="mb-4 flex flex-wrap items-start justify-between gap-3 scroll-mt-20">
       <div className="flex items-center gap-2.5">
         {icon}
         <div>
@@ -155,24 +155,26 @@ const RELATIONSHIP_LABEL: Record<VendorList["relationship"], string> = {
   recommended: "Recommended",
 };
 
-/** A section heading's action row: one button per resource, unless that's more than
- * `MAX_INLINE_RESOURCE_BUTTONS` — a fix-round rule (2026-09-13 review) so a venue with many
- * resources of the same kind (menus, capacity sheets) never overflows the heading. */
-function resourceActions(resources: Resource[], kinds: ResourceKind[]): ReactNode | undefined {
-  const matches = resources.filter((r) => kinds.includes(r.kind));
-  if (matches.length === 0) return undefined;
-  if (fmt.shouldCollapseResourceButtons(matches.length)) {
+/** A section heading's (or F&B micro-header's) action row: one button per resource, unless
+ * that's more than `MAX_INLINE_RESOURCE_BUTTONS` — a fix-round rule (2026-09-13 review) so a
+ * venue with many resources of the same kind (menus, capacity sheets) never overflows the
+ * heading. Takes an already-placed bucket from `fmt.placeResources` (2026-09-18 review) instead
+ * of filtering `venue.resources` by kind itself, so every heading's actions come from the one
+ * routing table. */
+function resourceButtons(resources: Resource[], collapseLabel: string): ReactNode | undefined {
+  if (resources.length === 0) return undefined;
+  if (fmt.shouldCollapseResourceButtons(resources.length)) {
     return (
       <ResourceMenuButton
-        label={`Resources (${matches.length})`}
+        label={`${collapseLabel} (${resources.length})`}
         icon={<FileText size={13} className="text-rose-400" />}
-        items={matches.map((r) => ({ id: r.id, label: r.label, url: r.url }))}
+        items={resources.map((r) => ({ id: r.id, label: r.label, url: r.url }))}
       />
     );
   }
   return (
     <>
-      {matches.map((r) => (
+      {resources.map((r) => (
         <ResourceButton key={r.id} label={r.label} icon={RESOURCE_ICONS[r.kind]} url={r.url} />
       ))}
     </>
@@ -185,7 +187,11 @@ function resourceActions(resources: Resource[], kinds: ResourceKind[]): ReactNod
 
 export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }: VenueDetailsViewProps) {
   const defaultPath: PricingPath | undefined = venue.pricing.paths[0];
-  const brochure = venue.resources.find((r) => r.kind === "brochure");
+  // Every resource on the document, routed once (2026-09-18 review — the old ad-hoc per-section
+  // kind filters missed scope, so 18 of 34 resources across the six golden fixtures never
+  // reached the DOM). See `fmt.placeResources` for the routing table.
+  const placed = fmt.placeResources(venue);
+  const singleSpace = venue.spaces.length === 1;
   const wholeVenueFees = fmt.pathWholeVenueFixedFees(defaultPath);
   const visibleVendorLists = fmt.visibleVendorLists(venue);
   const domain = fmt.siteDomain(venue.website_url);
@@ -205,7 +211,7 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
           of the two sections that always render). */}
       {venue.about && (
         <div>
-          <SectionHeading title="About" actions={brochure ? <ResourceButton label={brochure.label} icon={RESOURCE_ICONS[brochure.kind]} url={brochure.url} /> : undefined} />
+          <SectionHeading title="About" actions={resourceButtons(placed.about, "Brochures")} />
           <p className="text-[15px] leading-[1.65] text-gray-600">
             {venue.about.text} <FactSource source_url={venue.about.evidence.source_url} snapshot_id={venue.about.evidence.snapshot_id} capturedAt={venue.sources.crawled_at} />
           </p>
@@ -237,7 +243,10 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
         </section>
       )}
 
-      {(feed || photos || venue.differentiator) && <Divider />}
+      {/* Unconditional (fix round, 2026-09-18 user review): the quick-facts row always needs a
+          divider before whatever comes next, whether or not the feed/photos/differentiator slots
+          are present — the old conditional left no gap when none of those three rendered. */}
+      <Divider />
 
       {/* Differentiator spotlight — only when the venue's own site demonstrates something
           genuinely unique (golden-set-template.md §4). Emerald for sustainability, rose
@@ -254,7 +263,7 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
       {venue.spaces.length > 0 && (
         <>
           <section id="spaces">
-            <SectionHeading title="Spaces" />
+            <SectionHeading title={singleSpace ? "The Space" : "Spaces"} actions={resourceButtons(placed.spacesHeading, "Resources")} />
             {showBookBothLine &&
               (() => {
                 const groups = fmt.groupWholeVenueFees(wholeVenueFees);
@@ -278,7 +287,7 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
                   </p>
                 );
               })()}
-            <div className={venue.spaces.length === 1 ? "mx-auto max-w-xl" : "grid gap-5 sm:grid-cols-2"}>
+            <div className={singleSpace ? "mx-auto max-w-2xl" : "grid gap-5 sm:grid-cols-2"}>
               {venue.spaces.map((space) => (
                 <SpaceCard
                   key={space.id}
@@ -286,6 +295,8 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
                   space={space}
                   defaultPath={defaultPath}
                   wholeVenueFeesForCard={wholeVenueFeesBelongInCard ? wholeVenueFees : []}
+                  actions={placed.perSpace[space.id] ?? []}
+                  single={singleSpace}
                 />
               ))}
             </div>
@@ -295,7 +306,7 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
       )}
 
       {/* Food & Beverage */}
-      <FoodBeverageSection venue={venue} defaultPath={defaultPath} />
+      <FoodBeverageSection venue={venue} defaultPath={defaultPath} placed={placed} />
       <Divider />
 
       {/* What's Included */}
@@ -324,7 +335,7 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
       {/* Add-ons & extras */}
       {fmt.showAddOns(venue) && (
         <>
-          <AddOnsSection venue={venue} />
+          <AddOnsSection venue={venue} actions={resourceButtons(placed.addOns, "Resources")} />
           <Divider />
         </>
       )}
@@ -338,7 +349,7 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
 
       {/* Policies — always 13 rows (the other section that never omits). */}
       <section id="policies">
-        <SectionHeading title="Policies" actions={resourceActions(venue.resources, ["contract", "catering_guidelines"])} />
+        <SectionHeading title="Policies" actions={resourceButtons(placed.policies, "Documents")} />
         <div className="divide-y divide-black/[0.05] rounded-xl border border-black/[0.06]">
           {policyRows(venue).map((p) => {
             const evidence = fmt.policyEvidence(venue, p.key);
@@ -389,7 +400,7 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
         <>
           <Divider />
           <section id="vendors">
-            <SectionHeading title="Vendors" />
+            <SectionHeading title="Vendors" actions={resourceButtons(placed.vendors, "Resources")} />
             {visibleVendorLists.map((l) => (
               <div key={l.label} className="mb-5 last:mb-0">
                 <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -541,47 +552,61 @@ function SpaceCard({
   space,
   defaultPath,
   wholeVenueFeesForCard,
+  actions,
+  single,
 }: {
   venue: VenueDetailsV3;
   space: Space;
   defaultPath: PricingPath | undefined;
   wholeVenueFeesForCard: ReturnType<typeof fmt.pathWholeVenueFixedFees>;
+  /** This space's own resources (`fmt.placeResources(venue).perSpace[space.id]`) — floor plans,
+   * and/or a virtual tour / video / gallery scoped to this space (Field Museum's per-space video
+   * tours). */
+  actions: Resource[];
+  /** True for a single-space venue — the concept pages use a roomier card (`p-6`, `gap-3` tiles)
+   * for the one-space shape than the multi-space grid (`p-5`, `gap-2`). */
+  single: boolean;
 }) {
   const tiles = fmt.spaceCapacityTiles(venue, space.id);
   const fees = fmt.pathSpaceFixedFees(defaultPath, space.id);
-  const floorPlans = venue.resources.filter((r) => r.kind === "floor_plan" && r.scope === `space:${space.id}`);
-  const sizeLine = fmt.spaceSizeLine(space.sq_ft, space.sq_ft_outdoor, space.structure_label);
+  const floorPlans = actions.filter((r) => r.kind === "floor_plan");
+  const otherActions = actions.filter((r) => r.kind !== "floor_plan");
+  const sizeLine = fmt.spaceSizeLine(space.sq_ft, space.sq_ft_outdoor, space.structure_label, space.sq_ft_label);
+  const ceiling = fmt.ceilingLine(space.ceiling_ft, space.ceiling_label);
   // Fix round: only when this space has no space-scoped fee of its own do the whole-venue fees
   // render here, as a "Rental rate" season x day grid (greenhouse-loft's shape) — never both.
   const rentalGrid = fees.length === 0 && wholeVenueFeesForCard.length > 0 ? fmt.fixedFeeGrid(wholeVenueFeesForCard) : null;
 
   return (
-    <div className="rounded-2xl border border-black/[0.06] p-5">
+    <div className={`rounded-2xl border border-black/[0.06] ${single ? "p-6" : "p-5"}`}>
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className={`text-lg text-gray-900 ${uiHeadingClassName}`}>{space.name}</h3>
           {sizeLine && <p className="text-sm text-gray-500">{sizeLine}</p>}
         </div>
-        {/* Fix round: never more than one inline resource button in a space card header — 2+
-            floor plans collapse to a single "Floor plans (N)" menu button instead of a row that
-            can overflow the card (and cause horizontal scroll at phone width). */}
-        {floorPlans.length === 1 && (
-          <div className="shrink-0">
-            <ResourceButton label={floorPlans[0].label} icon={LayoutGrid} url={floorPlans[0].url} />
-          </div>
-        )}
-        {fmt.shouldCollapseFloorPlans(floorPlans.length) && (
-          <div className="shrink-0">
-            <ResourceMenuButton
-              label={`Floor plans (${floorPlans.length})`}
-              icon={<LayoutGrid size={13} className="text-rose-400" />}
-              items={floorPlans.map((r) => ({ id: r.id, label: r.label, url: r.url }))}
-            />
+        {/* Up to 3 buttons (2026-09-18 review): floor plans first — collapsing 2+ into a single
+            "Floor plans (N)" menu button instead of a row that can overflow the card (and cause
+            horizontal scroll at phone width) — then any other space-scoped resource (virtual
+            tour / video / gallery) as its own secondary (grey) button, matching the concept
+            pages' primary-tour / secondary-everything-else weighting. */}
+        {(floorPlans.length > 0 || otherActions.length > 0) && (
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            {floorPlans.length === 1 && <ResourceButton label={floorPlans[0].label} icon={LayoutGrid} url={floorPlans[0].url} />}
+            {fmt.shouldCollapseFloorPlans(floorPlans.length) && (
+              <ResourceMenuButton
+                label={`Floor plans (${floorPlans.length})`}
+                icon={<LayoutGrid size={13} className="text-rose-400" />}
+                items={floorPlans.map((r) => ({ id: r.id, label: r.label, url: r.url }))}
+              />
+            )}
+            {otherActions.map((r) => (
+              <ResourceButton key={r.id} label={r.label} icon={RESOURCE_ICONS[r.kind]} url={r.url} variant="secondary" />
+            ))}
           </div>
         )}
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+      <div className={`mt-4 grid grid-cols-3 ${single ? "gap-3" : "gap-2"} text-center text-sm`}>
         {tiles.map((t) => (
           <div key={t.tile} className={`rounded-xl py-2 ${t.max != null ? "bg-[#fdf8f5]" : "bg-gray-50"}`}>
             <div className={`flex items-center justify-center gap-1 font-semibold ${t.max != null ? "text-gray-900" : "text-gray-300"}`}>
@@ -594,6 +619,7 @@ function SpaceCard({
       </div>
 
       {space.description && <p className="mt-3 text-sm leading-[1.6] text-gray-600">{space.description.value}</p>}
+      {ceiling && <p className="mt-1.5 text-xs text-gray-400">{ceiling}</p>}
 
       {fees.length > 0 && (
         <table className="mt-4 w-full text-sm text-gray-600">
@@ -631,11 +657,17 @@ function SpaceCard({
 // Food & Beverage
 // ---------------------------------------------------------------------------
 
-function FoodBeverageSection({ venue, defaultPath }: { venue: VenueDetailsV3; defaultPath: PricingPath | undefined }) {
+function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetailsV3; defaultPath: PricingPath | undefined; placed: fmt.PlacedResources }) {
   const { food, bar } = fbPills(venue);
   const caption = venue.food_beverage.caption;
   const layout = fmt.fbLayout(venue);
   const shared = layout === "shared";
+  // Resources route to the section heading when shared (one row), or beside each side's own
+  // micro-header when split — Diamond Garden's three menus under Food, one bar-packages PDF
+  // under Bar (2026-09-18 review; see `fmt.placeResources`).
+  const sharedActions = resourceButtons(placed.fbShared, "Resources");
+  const foodActions = resourceButtons(placed.food, "Menus");
+  const barActions = resourceButtons(placed.bar, "Menus");
 
   // Split layout's "one short prose line" per side (golden-set-template.md §3): any
   // food_beverage.notes attributed to that side by keyword (fmt.fbNoteSide), rendered at the
@@ -653,11 +685,9 @@ function FoodBeverageSection({ venue, defaultPath }: { venue: VenueDetailsV3; de
   const tiers = fmt.collapseTiersByName(defaultPath?.per_guest_tiers ?? []);
   const rateSentence = fmt.fbRateSentence(venue.pricing.rates);
 
-  const actions = resourceActions(venue.resources, ["menu", "bar_menu", "catering_guidelines"]);
-
   return (
     <section id="food-beverage">
-      <SectionHeading title="Food & Beverage" actions={actions} />
+      <SectionHeading title="Food & Beverage" actions={shared ? sharedActions : undefined} />
 
       {shared ? (
         <div className="mb-2 flex flex-wrap gap-2">
@@ -668,7 +698,10 @@ function FoodBeverageSection({ venue, defaultPath }: { venue: VenueDetailsV3; de
       ) : (
         <>
           <div>
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">Food</p>
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Food</p>
+              {foodActions && <div className="flex flex-wrap justify-end gap-2">{foodActions}</div>}
+            </div>
             <div className="mb-2 flex flex-wrap gap-2">
               {food.length > 0 ? food.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
             </div>
@@ -680,7 +713,10 @@ function FoodBeverageSection({ venue, defaultPath }: { venue: VenueDetailsV3; de
             {captionSide === "food" && <p className="mt-1 text-xs text-gray-400">{caption!.value}</p>}
           </div>
           <div>
-            <p className="mb-1.5 mt-5 text-xs font-medium uppercase tracking-wide text-gray-400">Bar</p>
+            <div className="mb-1.5 mt-5 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Bar</p>
+              {barActions && <div className="flex flex-wrap justify-end gap-2">{barActions}</div>}
+            </div>
             <div className="mb-2 flex flex-wrap gap-2">
               {bar.length > 0 ? bar.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
             </div>
@@ -955,7 +991,7 @@ function AddOnCard({ addOn, capturedAt }: { addOn: AddOn; capturedAt: string | n
 // whole section — Marchetti's fb experiences are genuinely 1-axis (cards) while its rentals are
 // genuinely 2-axis (style variant x space, a table), on the same page. `ceremony` add-ons show
 // alongside rentals rather than getting a third subheader of their own.
-function AddOnsSection({ venue }: { venue: VenueDetailsV3 }) {
+function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: ReactNode }) {
   const fbAddOns = venue.pricing.add_ons.filter((a) => a.group === "fb");
   const rentalAddOns = venue.pricing.add_ons.filter((a) => a.group !== "fb");
   const groups = [
@@ -964,7 +1000,7 @@ function AddOnsSection({ venue }: { venue: VenueDetailsV3 }) {
   ];
   return (
     <section id="add-ons">
-      <SectionHeading title="Add-ons & extras" />
+      <SectionHeading title="Add-ons & extras" actions={actions} />
       {groups.map((g, i) => (
         <div key={g.label} className={i === 0 ? "" : "mt-6"}>
           {groups.length > 1 && <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">{g.label}</p>}

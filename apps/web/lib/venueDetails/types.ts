@@ -378,8 +378,15 @@ export interface Space {
   name: string;
   structure_label: string | null;
   sq_ft: number | null;
+  /** Verbatim size wording when the venue states it as a string, not a single number
+   * ("~21,000 (main floor)", "11,376–35,997") — `sq_ft` still carries the first integer found in
+   * it so numeric code (headline capacity, sorting) keeps working; the renderer prefers this label
+   * verbatim when present. Optional: only fixtures/venues that need it (Field Museum) set it. */
+  sq_ft_label?: string | null;
   sq_ft_outdoor: number | null;
   ceiling_ft: number | null;
+  /** Same verbatim-string treatment as `sq_ft_label`, for ceiling height ("8–14 ft"). Optional. */
+  ceiling_label?: string | null;
   setting: Setting | null;
   /** False for a sub-room that only exists as part of a larger rental (e.g. a whole-venue-only
    * booking) — excluded from the headline-capacity computation. */

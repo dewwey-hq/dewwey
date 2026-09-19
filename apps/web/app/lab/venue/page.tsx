@@ -71,21 +71,25 @@ export default async function VenueDetailsLabPage({ searchParams }: { searchPara
       return (
         <Shell>
           <div className="mx-auto grid max-w-[1600px] gap-6 px-4 xl:grid-cols-2">
-            <div className="rounded-3xl bg-white p-6 shadow-xl sm:p-8">
-              <p className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-400">Generic renderer (this build)</p>
-              <VenueDetailsView venue={venue} />
+            <div className="rounded-3xl bg-white shadow-xl">
+              <div className="px-5 py-6 sm:px-8">
+                <p className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-400">Generic renderer (this build)</p>
+                <VenueDetailsView venue={venue} />
+              </div>
             </div>
-            <div className="rounded-3xl bg-white p-6 shadow-xl sm:p-8">
-              <p className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-400">Hand-built reference</p>
-              <p className="text-sm text-gray-600">Compare against the hand-built concept page this fixture was converted from:</p>
-              <a
-                href={`/concept/${conceptPath}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-50"
-              >
-                Open /concept/{conceptPath} →
-              </a>
+            <div className="rounded-3xl bg-white shadow-xl">
+              <div className="px-5 py-6 sm:px-8">
+                <p className="mb-4 text-xs font-medium uppercase tracking-wide text-gray-400">Hand-built reference</p>
+                <p className="text-sm text-gray-600">Compare against the hand-built concept page this fixture was converted from:</p>
+                <a
+                  href={`/concept/${conceptPath}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-50"
+                >
+                  Open /concept/{conceptPath} →
+                </a>
+              </div>
             </div>
           </div>
         </Shell>
@@ -94,8 +98,10 @@ export default async function VenueDetailsLabPage({ searchParams }: { searchPara
 
     return (
       <Shell>
-        <div className="mx-auto max-w-5xl rounded-3xl bg-white p-6 shadow-xl sm:p-8">
-          <VenueDetailsView venue={venue} />
+        <div className="mx-auto max-w-5xl rounded-3xl bg-white shadow-xl">
+          <div className="px-5 py-6 sm:px-8">
+            <VenueDetailsView venue={venue} />
+          </div>
         </div>
       </Shell>
     );
@@ -105,8 +111,8 @@ export default async function VenueDetailsLabPage({ searchParams }: { searchPara
     const venue = await getVenueDetailsByUsername(username);
     return (
       <Shell>
-        <div className="mx-auto max-w-5xl rounded-3xl bg-white p-6 shadow-xl sm:p-8">
-          {venue ? <VenueDetailsView venue={venue} /> : <p className="text-sm text-gray-500">No served details yet.</p>}
+        <div className="mx-auto max-w-5xl rounded-3xl bg-white shadow-xl">
+          <div className="px-5 py-6 sm:px-8">{venue ? <VenueDetailsView venue={venue} /> : <p className="text-sm text-gray-500">No served details yet.</p>}</div>
         </div>
       </Shell>
     );
