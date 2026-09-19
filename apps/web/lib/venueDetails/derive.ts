@@ -11,6 +11,7 @@ import {
   type Day,
   type EstimateExtra,
   type EstimateInput,
+  FB_PILLS,
   type FbPill,
   type Layout,
   type PerGuestTier,
@@ -256,6 +257,64 @@ export function headlineCapacity(d: VenueDetailsV3): HeadlineCapacity {
 }
 
 // ---------------------------------------------------------------------------
+// Guest range (round 4 rule 1) — the venue's own full guest-count range across EVERY layout, not
+// just the seated-dinner compare headline. `headlineCapacity` (above) is unchanged and still
+// drives cross-venue comparison; this is what the quick-fact pill and the calculator's guest
+// stepper/range reminder actually show a couple.
+// ---------------------------------------------------------------------------
+
+export interface GuestRange {
+  min: number | null;
+  max: number | null;
+  max_measures: "seated" | "guests";
+}
+
+/** Min = the stated `capacity_min_guests`, or (when not stated) the smallest tuple `min` across
+ * every layout; a `conflicting` minimum is omitted entirely ("unknown beats wrong" — never
+ * silently resolved to one candidate or backfilled from a tuple). Max = the largest tuple `max` of
+ * ANY layout (Greenhouse's cocktail 200 beats its own seated 175/150) — `max_measures` reads
+ * "guests" when that max came from a cocktail tuple, "seated" otherwise. */
+export function guestRange(d: VenueDetailsV3): GuestRange {
+  const capMin = d.spine.capacity_min_guests;
+  let min: number | null;
+  if (capMin.status === "conflicting") {
+    min = null;
+  } else if (isStated(capMin)) {
+    min = capMin.value;
+  } else {
+    const tupleMins = d.capacities.map((c) => c.min).filter((m): m is number => m != null);
+    min = tupleMins.length ? Math.min(...tupleMins) : null;
+  }
+  const best = maxBy(d.capacities, (c) => c.max);
+  const max = best?.max ?? null;
+  const max_measures: "seated" | "guests" = best?.tile === "cocktail" ? "guests" : "seated";
+  return { min, max, max_measures };
+}
+
+// ---------------------------------------------------------------------------
+// Band vs DJ capacity (round 4 rule 9) — a capacity tuple's `condition` can carry a real
+// constraint tied to a specific number ("live band" vs "DJ", Greenhouse Loft). Shared by
+// `estimateCost`'s over_capacity check and the calculator's own "Seated capacity is N with a live
+// band" note, so both agree on which tuple a given `band` choice resolves to.
+// ---------------------------------------------------------------------------
+
+/** The capacity tuple that applies for the given space and `band` choice: when `band` is true,
+ * prefer a tuple whose condition mentions "band"; when false, prefer one mentioning "DJ"; either
+ * way, fall back to a condition-less tuple, then to whatever's first. Null when the space has no
+ * seated/seated_dance tuple at all. */
+export function bandCapacityTuple(d: VenueDetailsV3, spaceId: string | undefined, band: boolean | undefined): CapacityTuple | null {
+  if (!spaceId) return null;
+  const candidates = d.capacities.filter((c) => c.space_id === spaceId && (c.tile === "seated" || c.tile === "seated_dance"));
+  if (candidates.length === 0) return null;
+  const bandTuple = candidates.find((c) => c.condition && /band/i.test(c.condition));
+  const djTuple = candidates.find((c) => c.condition && /dj/i.test(c.condition));
+  const plain = candidates.find((c) => !c.condition);
+  if (band === true) return bandTuple ?? plain ?? candidates[0];
+  if (band === false) return djTuple ?? plain ?? candidates[0];
+  return plain ?? candidates[0];
+}
+
+// ---------------------------------------------------------------------------
 // Cost estimate
 // ---------------------------------------------------------------------------
 
@@ -366,8 +425,10 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
   const chosenSpaceId = input.space_id ?? hc.headline_space_id ?? undefined;
 
   // --- over_capacity -------------------------------------------------------
+  // Round 4 rule 9: when a space has distinct band/DJ capacity tuples (Greenhouse Loft), the
+  // chosen `input.band` picks which one the over-capacity check compares against.
   if (chosenSpaceId) {
-    const tuple = d.capacities.find((c) => c.space_id === chosenSpaceId && (c.tile === "seated" || c.tile === "seated_dance"));
+    const tuple = bandCapacityTuple(d, chosenSpaceId, input.band);
     if (tuple && guests > tuple.max) warnings.push("over_capacity");
   }
 
@@ -621,12 +682,15 @@ function barPillLabel(spine: VenueSpine, barHasByo: boolean): string {
 }
 
 export function quickFacts(d: VenueDetailsV3): QuickFactPill[] {
-  const hc = headlineCapacity(d);
   const pills: QuickFactPill[] = [];
 
-  if (hc.headline != null) {
-    const min = hc.guest_range.min;
-    pills.push({ icon: "guests", label: min != null ? `${min} – ${hc.headline} guests` : `Up to ${hc.headline} guests` });
+  // Round 4 rule 1: the pill uses the venue's own full range across every layout (Greenhouse's
+  // cocktail 200, not just its seated headline) — `headlineCapacity` is unchanged and still drives
+  // cross-venue comparison. Thousands separators everywhere a number renders.
+  const gr = guestRange(d);
+  if (gr.max != null) {
+    const maxStr = gr.max.toLocaleString();
+    pills.push({ icon: "guests", label: gr.min != null ? `${gr.min.toLocaleString()} – ${maxStr} guests` : `Up to ${maxStr} guests` });
   } else {
     pills.push({ icon: "guests", label: "Guest count not stated" });
   }
@@ -869,5 +933,7 @@ export function fbPills(d: VenueDetailsV3): { food: FbPill[]; bar: FbPill[] } {
   const bar = new Set<FbPill>(d.food_beverage.bar_pills.map((f) => f.value));
   const hasCorkage = d.pricing.add_ons.some((a) => /corkage/i.test(a.name));
   if (hasCorkage) bar.add("byo");
-  return { food: [...food], bar: [...bar] };
+  // Round 4 rule 13: fixed display order (most to least flexible), regardless of fixture/extractor
+  // insertion order, on both sides — `FB_PILLS` is already declared in that order in types.ts.
+  return { food: FB_PILLS.filter((p) => food.has(p)), bar: FB_PILLS.filter((p) => bar.has(p)) };
 }

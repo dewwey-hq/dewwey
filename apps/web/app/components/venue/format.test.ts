@@ -232,25 +232,47 @@ describe("pathSpaceFixedFees / pathWholeVenueFixedFees", () => {
 });
 
 describe("buildPriceGrid (fixedFeeGrid)", () => {
-  it("pivots season x day, leaving unmatched cells null", () => {
+  it("pivots season x day, leaving unmatched cells null (round 4 rule 2: calendar day order, Fri before Sat)", () => {
     const fees = [fixedFee({ day: "fri", season: "peak", amount: 4000 }), fixedFee({ day: "sat", season: "peak", amount: 6000 })];
     const grid = fmt.fixedFeeGrid(fees);
     expect(grid.seasons).toEqual(["peak"]);
-    expect(grid.days).toEqual(["sat", "fri"]); // sat leads (affirmative/default-first order)
-    expect(grid.grid).toEqual([[6000, 4000]]);
+    expect(grid.days).toEqual(["fri", "sat"]);
+    expect(grid.grid).toEqual([[4000, 6000]]);
   });
 
-  it("orders peak season before off-season", () => {
+  it("falls back to off-season-first when the venue's own season months aren't given (round 4 rule 2)", () => {
     const grid = fmt.fixedFeeGrid([fixedFee({ season: "off", day: "sat" }), fixedFee({ season: "peak", day: "sat" })]);
-    expect(grid.seasons).toEqual(["peak", "off"]);
+    expect(grid.seasons).toEqual(["off", "peak"]);
+  });
+
+  it("orders seasons chronologically by the venue's own month definitions when given", () => {
+    const fees = [fixedFee({ season: "off", day: "sat" }), fixedFee({ season: "peak", day: "sat" })];
+    // Greenhouse shape: off-season is Jan-Mar (month 1), peak is Apr-Dec (month 4) -> off first.
+    expect(fmt.fixedFeeGrid(fees, { peak: "Apr–Dec", off: "Jan–Mar" }).seasons).toEqual(["off", "peak"]);
+    // A venue whose peak starts earlier in the year than its off-season -> peak first.
+    expect(fmt.fixedFeeGrid(fees, { peak: "Jan–Jun", off: "Jul–Dec" }).seasons).toEqual(["peak", "off"]);
   });
 });
 
 describe("perGuestTierGrid", () => {
-  it("pivots per-guest amounts the same way as fixed fees", () => {
+  it("pivots per-guest amounts the same way as fixed fees, calendar day order", () => {
     const grid = fmt.perGuestTierGrid([tier({ day: "sat", per_guest: 150 }), tier({ day: "fri", per_guest: 120 })]);
-    expect(grid.days).toEqual(["sat", "fri"]);
-    expect(grid.grid[0]).toEqual([150, 120]);
+    expect(grid.days).toEqual(["fri", "sat"]);
+    expect(grid.grid[0]).toEqual([120, 150]);
+  });
+});
+
+describe("parseFirstMonth / seasonOrderFor", () => {
+  it("parses the first month from a venue's own season-definition string", () => {
+    expect(fmt.parseFirstMonth("Apr–Oct, Dec")).toBe(4);
+    expect(fmt.parseFirstMonth("Jan, Feb, Mar, Nov")).toBe(1);
+    expect(fmt.parseFirstMonth(null)).toBeNull();
+    expect(fmt.parseFirstMonth("")).toBeNull();
+  });
+
+  it("falls back to off-first when months can't be parsed or aren't stated", () => {
+    expect(fmt.seasonOrderFor(undefined)).toEqual(["off", "peak", "any"]);
+    expect(fmt.seasonOrderFor({ peak: null, off: null })).toEqual(["off", "peak", "any"]);
   });
 });
 
@@ -275,19 +297,54 @@ describe("pathDayOptions / pathSeasonOptions / pathTierOptions", () => {
     snapshot_id: 1,
   };
 
-  it("orders days affirmative/default-first (Saturday before Friday)", () => {
-    expect(fmt.pathDayOptions(path).map((o) => o.value)).toEqual(["sat", "fri"]);
+  it("orders days calendar-first (Friday before Saturday) — round 4 rule 2", () => {
+    expect(fmt.pathDayOptions(path).map((o) => o.value)).toEqual(["fri", "sat"]);
   });
 
-  it("orders seasons peak-first", () => {
-    expect(fmt.pathSeasonOptions(path).map((o) => o.value)).toEqual(["peak", "off"]);
+  it("orders seasons off-first by default (no season months given) — round 4 rule 2", () => {
+    expect(fmt.pathSeasonOptions(path).map((o) => o.value)).toEqual(["off", "peak"]);
   });
 
-  it("dedupes tiers by id, preserving first-seen order", () => {
+  it("orders seasons chronologically once the venue's own season months are given", () => {
+    expect(fmt.pathSeasonOptions(path, { peak: "Jan–Jun", off: "Jul–Dec" }).map((o) => o.value)).toEqual(["peak", "off"]);
+  });
+
+  it("dedupes tiers by id, preserving first-seen order, each carrying its own price sublabel (round 4 rule 9)", () => {
     expect(fmt.pathTierOptions(path)).toEqual([
-      { value: "argento", label: "Argento" },
-      { value: "oro", label: "Oro" },
+      { value: "argento", label: "Argento", sublabel: "$100/guest" },
+      { value: "oro", label: "Oro", sublabel: "$130/guest" },
     ]);
+  });
+});
+
+describe("pathPillSublabel / ceremonyFeeAmount", () => {
+  it("shows a flat 'from $X' sublabel for a fixed-fee path", () => {
+    const path = fixedFeePath({ fixed_fees: [fixedFee({ amount: 2100 }), fixedFee({ amount: 6595, space_id: null, applies_to: "whole_venue" })] });
+    expect(fmt.pathPillSublabel(path)).toBe("from $2,100");
+  });
+
+  it("shows a per-guest 'from $X/guest' sublabel for a per-guest path", () => {
+    const path = fixedFeePath({ per_guest_tiers: [tier({ per_guest: 68.95 }), tier({ per_guest: 84.95 })] });
+    expect(fmt.pathPillSublabel(path)).toBe("from $68.95/guest");
+  });
+
+  it("is null when the path has nothing fixed to quote", () => {
+    expect(fmt.pathPillSublabel(fixedFeePath())).toBeNull();
+  });
+
+  it("resolves the ceremony fee's amount for the chosen space", () => {
+    const ceremonyAddOn = addOn({ group: "ceremony", condition: "ceremony_on_site", price: null, per_space_prices: { pavilion: 2000, "la-pergola": 1000 } });
+    expect(fmt.ceremonyFeeAmount([ceremonyAddOn], "pavilion")).toBe(2000);
+    expect(fmt.ceremonyFeeAmount([ceremonyAddOn], "la-pergola")).toBe(1000);
+  });
+
+  it("falls back to the flat price when there's no per-space price for the chosen space", () => {
+    const ceremonyAddOn = addOn({ group: "ceremony", condition: "ceremony_on_site", price: 750 });
+    expect(fmt.ceremonyFeeAmount([ceremonyAddOn], "juliette")).toBe(750);
+  });
+
+  it("is null when there's no real ceremony fee add-on", () => {
+    expect(fmt.ceremonyFeeAmount([addOn({ group: "other", condition: null })], "main")).toBeNull();
   });
 });
 
@@ -502,26 +559,33 @@ describe("inclusionDisplay", () => {
     expect(fmt.inclusionDisplay(inc)).toEqual({ boldLabel: "Parking", text: "30 spaces" });
   });
 
-  it("shows the label alone when label_raw is identical", () => {
+  it("round 4 rule 15: every row is Label: detail — 'Included' when label_raw is just the label itself", () => {
     const inc = inclusion({ label: "Dance floor", label_raw: "Dance floor", detail: null });
-    expect(fmt.inclusionDisplay(inc)).toEqual({ boldLabel: null, text: "Dance floor" });
+    expect(fmt.inclusionDisplay(inc)).toEqual({ boldLabel: "Dance floor", text: "Included" });
   });
 
-  it("shows label_raw alone when it's just the label with an affix (no redundant 'Label: ' prefix)", () => {
+  it("strips the label phrase out of label_raw and capitalizes what remains", () => {
     expect(fmt.inclusionDisplay(inclusion({ label: "Bridal suite", label_raw: "Private bridal suite", detail: null }))).toEqual({
-      boldLabel: null,
-      text: "Private bridal suite",
+      boldLabel: "Bridal suite",
+      text: "Private",
     });
     expect(fmt.inclusionDisplay(inclusion({ label: "Chairs", label_raw: "New silver Chiavari chairs", detail: null }))).toEqual({
-      boldLabel: null,
-      text: "New silver Chiavari chairs",
+      boldLabel: "Chairs",
+      text: "New silver Chiavari",
     });
   });
 
-  it("keeps the bold 'Label: raw' form when label_raw is a genuinely separate fact", () => {
+  it("keeps the full raw text as the detail when the label phrase doesn't literally occur in it", () => {
+    expect(fmt.inclusionDisplay(inclusion({ label: "Accessibility", label_raw: "Handicap accessible", detail: null }))).toEqual({
+      boldLabel: "Accessibility",
+      text: "Handicap accessible",
+    });
+  });
+
+  it("keeps the bold 'Label: raw' form (stripped) when label_raw is a genuinely separate fact", () => {
     expect(fmt.inclusionDisplay(inclusion({ label: "Parking", label_raw: "2 parking lots, 75+ spaces", detail: null }))).toEqual({
       boldLabel: "Parking",
-      text: "2 parking lots, 75+ spaces",
+      text: "2 lots, 75+ spaces",
     });
   });
 });
@@ -959,8 +1023,8 @@ describe("pricingHeadlineLine", () => {
   });
 });
 
-describe("buildMergedPriceGrid", () => {
-  it("merges adjacent days whose price is identical across every season into one column (Diamond Garden's Fri/Sun)", () => {
+describe("buildMergedPriceGrid — round 4 rule 2 drops the old identical-price day-merging", () => {
+  it("never merges Fri/Sun even when their price is identical — four separate calendar-order columns (Diamond Garden's shape)", () => {
     const path = fixedFeePath({
       fixed_fees: [
         fixedFee({ day: "weekday", season: "off", amount: 2100, applies_to: "whole_venue", space_id: null, key: "wk" }),
@@ -970,11 +1034,11 @@ describe("buildMergedPriceGrid", () => {
       ],
     });
     const grid = fmt.buildMergedPriceGrid(fmt.fixedFeeGrid(path.fixed_fees));
-    expect(grid!.columns.map((c) => c.label)).toEqual(["Weekday", "Fri/Sun", "Sat"]);
-    expect(grid!.grid[0]).toEqual([2100, 3700, 4700]);
+    expect(grid!.columns.map((c) => c.label)).toEqual(["Weekday", "Fri", "Sat", "Sun"]);
+    expect(grid!.grid[0]).toEqual([2100, 3700, 4700, 3700]);
   });
 
-  it("merges all three of weekday/Fri/Sun when they share one price (Diamond Garden's All-Inclusive)", () => {
+  it("never merges weekday/Fri/Sun even when they share one price (Diamond Garden's All-Inclusive)", () => {
     const path = fixedFeePath({
       per_guest_tiers: [
         tier({ id: "wk", day: "weekday", season: "peak", per_guest: 76.95 }),
@@ -984,14 +1048,14 @@ describe("buildMergedPriceGrid", () => {
       ],
     });
     const grid = fmt.buildMergedPriceGrid(fmt.perGuestTierGrid(path.per_guest_tiers));
-    expect(grid!.columns.map((c) => c.label)).toEqual(["Weekday/Fri/Sun", "Sat"]);
+    expect(grid!.columns.map((c) => c.label)).toEqual(["Weekday", "Fri", "Sat", "Sun"]);
   });
 
   it("returns null when there's no grid to show", () => {
     expect(fmt.buildMergedPriceGrid(fmt.fixedFeeGrid([]))).toBeNull();
   });
 
-  it("uses the same cheap-first Weekday/Fri/Sun/Sat column order for whole-venue fees as the Pricing cards use for path fees — the single-space card's 'Rental rate' grid must not fall back to the old Sat-first order", () => {
+  it("uses calendar order (Weekday, Fri, Sat, Sun) for whole-venue fees, same as the Pricing cards use for path fees", () => {
     const wholeVenueFees = [
       fixedFee({ key: "wk", day: "weekday", season: "off", amount: 2100, applies_to: "whole_venue", space_id: null }),
       fixedFee({ key: "fr", day: "fri", season: "off", amount: 3700, applies_to: "whole_venue", space_id: null }),
@@ -999,7 +1063,7 @@ describe("buildMergedPriceGrid", () => {
       fixedFee({ key: "sa", day: "sat", season: "off", amount: 4700, applies_to: "whole_venue", space_id: null }),
     ];
     const grid = fmt.buildMergedPriceGrid(fmt.fixedFeeGrid(wholeVenueFees));
-    expect(grid!.columns.map((c) => c.label)).toEqual(["Weekday", "Fri/Sun", "Sat"]);
+    expect(grid!.columns.map((c) => c.label)).toEqual(["Weekday", "Fri", "Sat", "Sun"]);
   });
 });
 
@@ -1099,5 +1163,333 @@ describe("addOnCategoryGroups", () => {
     const ceremony = groups.find((g) => g.category === "Ceremony")!;
     expect(ceremony.items).toEqual([ceremonyUpgrade]);
     expect(ceremony.blurb).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Round 4 — six-venue review (2026-09-19)
+// ---------------------------------------------------------------------------
+
+describe("int (rule 1)", () => {
+  it("adds thousands separators", () => {
+    expect(fmt.int(1500)).toBe("1,500");
+    expect(fmt.int(60)).toBe("60");
+  });
+});
+
+describe("resourceLabel (rule 4)", () => {
+  it("uses the standard label for a kind with only one resource in its slot", () => {
+    const r = resource({ id: "fp1", kind: "floor_plan", label: "Whatever the venue called it" });
+    expect(fmt.resourceLabel(r, [r])).toBe("Floor plan");
+  });
+
+  it("capacity_sheet also reads 'Floor plan'", () => {
+    const r = resource({ id: "cs", kind: "capacity_sheet" });
+    expect(fmt.resourceLabel(r, [r])).toBe("Floor plan");
+  });
+
+  it("a space-scoped video reads 'Video tour'", () => {
+    const r = resource({ id: "v", kind: "video", scope: "space:loft" });
+    expect(fmt.resourceLabel(r, [r])).toBe("Video tour");
+  });
+
+  it("a venue-scoped video reads plain 'Video'", () => {
+    const r = resource({ id: "v", kind: "video", scope: "venue" });
+    expect(fmt.resourceLabel(r, [r])).toBe("Video");
+  });
+
+  it("disambiguates with the venue's own name (menu suffix stripped) only when 2+ share a kind+slot", () => {
+    const cuisine = resource({ id: "m1", kind: "menu", label: "Italian Menu" });
+    const bbq = resource({ id: "m2", kind: "menu", label: "BBQ menu" });
+    const siblings = [cuisine, bbq];
+    expect(fmt.resourceLabel(cuisine, siblings)).toBe("Italian");
+    expect(fmt.resourceLabel(bbq, siblings)).toBe("BBQ");
+  });
+
+  it("never repeats the venue name when there's only one resource of that kind, even with an odd own label", () => {
+    const r = resource({ id: "m1", kind: "menu", label: "The Geraghty Wedding Menu" });
+    expect(fmt.resourceLabel(r, [r])).toBe("Menu");
+  });
+});
+
+describe("orderSpaceCardResources (rule 5)", () => {
+  it("orders Floor plan(s) (incl. capacity_sheet), Virtual tour, Video, Gallery", () => {
+    const gallery = resource({ id: "g", kind: "gallery" });
+    const video = resource({ id: "v", kind: "video" });
+    const tour = resource({ id: "t", kind: "virtual_tour" });
+    const cap = resource({ id: "cs", kind: "capacity_sheet" });
+    const fp = resource({ id: "fp", kind: "floor_plan" });
+    const ordered = fmt.orderSpaceCardResources([gallery, video, tour, cap, fp]);
+    expect(ordered.map((r) => r.id)).toEqual(["fp", "cs", "t", "v", "g"]);
+  });
+});
+
+describe("spaceRentalLine (rule 6; regression fix — precedence must survive a standalone Pricing section)", () => {
+  const pathWithTiers = fixedFeePath({ per_guest_tiers: [tier()] });
+  const pathWithoutTiers = fixedFeePath();
+  const wholeVenueFees = [
+    fixedFee({ key: "a", applies_to: "whole_venue", space_id: null, amount: 2100 }),
+    fixedFee({ key: "b", applies_to: "whole_venue", space_id: null, amount: 6595 }),
+  ];
+
+  it("(1) is 'fees' when this space has its own scoped fee rows, regardless of anything else", () => {
+    expect(fmt.spaceRentalLine(1, wholeVenueFees, 3, pathWithTiers)).toEqual({ kind: "fees" });
+  });
+
+  it("(2a) is 'grid' when the default path prices the whole venue and there's no standalone Pricing section", () => {
+    expect(fmt.spaceRentalLine(0, wholeVenueFees, 1, pathWithTiers)).toEqual({ kind: "grid" });
+    expect(fmt.spaceRentalLine(0, wholeVenueFees, 0, pathWithTiers)).toEqual({ kind: "grid" });
+  });
+
+  it("(2b) is 'summary' — never 'on_request' — when a standalone Pricing section already shows the grid (Diamond Garden regression)", () => {
+    expect(fmt.spaceRentalLine(0, wholeVenueFees, 3, pathWithTiers)).toEqual({ kind: "summary", line: "$2,100–$6,595 flat · see Pricing below" });
+  });
+
+  it("(3) is 'bundled' when the default path has per-guest tiers and no whole-venue fees either, same-rate flag from applies_to_spaces", () => {
+    expect(fmt.spaceRentalLine(0, [], 3, pathWithTiers)).toEqual({ kind: "bundled", sameRateAnyRoom: true });
+    expect(fmt.spaceRentalLine(0, [], 3, { ...pathWithTiers, applies_to_spaces: ["a"] })).toEqual({ kind: "bundled", sameRateAnyRoom: false });
+  });
+
+  it("(4) is 'on_request' with no fees, no whole-venue fees, and no per-guest tiers (inquire-only / no paths)", () => {
+    expect(fmt.spaceRentalLine(0, [], 3, pathWithoutTiers)).toEqual({ kind: "on_request" });
+    expect(fmt.spaceRentalLine(0, [], 0, undefined)).toEqual({ kind: "on_request" });
+  });
+});
+
+describe("fbMinimumLine (rule 7)", () => {
+  it("uses the venue's own detail text when stated", () => {
+    expect(fmt.fbMinimumLine(fact({ applies: true, amount_usd: 3000, detail: "Varies by date and guest count" }))).toBe("Varies by date and guest count");
+  });
+  it("falls back to the plain amount", () => {
+    expect(fmt.fbMinimumLine(fact({ applies: true, amount_usd: 5000, detail: null }))).toBe("$5,000");
+  });
+  it("says amount not published when a minimum applies with no number", () => {
+    expect(fmt.fbMinimumLine(fact({ applies: true, amount_usd: null, detail: null }))).toBe("Amount not published");
+  });
+  it("is null when no minimum applies, or the field isn't stated", () => {
+    expect(fmt.fbMinimumLine(fact({ applies: false, amount_usd: null, detail: null }))).toBeNull();
+    expect(fmt.fbMinimumLine({ status: "not_stated" })).toBeNull();
+  });
+});
+
+describe("tierPriceParts (rule 8)", () => {
+  it("splits a flat price from its /guest unit", () => {
+    expect(fmt.tierPriceParts(100, 100)).toEqual({ main: "$100", unit: "/guest" });
+  });
+  it("splits a range from its /guest unit", () => {
+    expect(fmt.tierPriceParts(68.95, 84.95)).toEqual({ main: "from $68.95 to $84.95", unit: "/guest" });
+  });
+});
+
+describe("collapsedGuestMinimumLine (rule 16)", () => {
+  it("collapses a general minimum plus day-specific ones into one line", () => {
+    const minimums = [
+      { kind: "guest_minimum" as const, day: null, season: null, amount: 150, quote: "q", source_url: "https://example.com", snapshot_id: 1 },
+      { kind: "guest_minimum" as const, day: "fri" as const, season: null, amount: 125, quote: "q", source_url: "https://example.com", snapshot_id: 1 },
+      { kind: "guest_minimum" as const, day: "sun" as const, season: null, amount: 100, quote: "q", source_url: "https://example.com", snapshot_id: 1 },
+    ];
+    expect(fmt.collapsedGuestMinimumLine(minimums)).toBe("150 guests (125 Friday, 100 Sunday)");
+  });
+
+  it("shows just the general minimum when there's no day-specific one", () => {
+    expect(fmt.collapsedGuestMinimumLine([{ kind: "guest_minimum", day: null, season: null, amount: 150, quote: "q", source_url: "https://example.com", snapshot_id: 1 }])).toBe("150 guests");
+  });
+
+  it("is null when the path states no guest minimum at all (fb_minimum rows don't count)", () => {
+    expect(fmt.collapsedGuestMinimumLine([{ kind: "fb_minimum", day: null, season: null, amount: 3000, quote: "q", source_url: "https://example.com", snapshot_id: 1 }])).toBeNull();
+    expect(fmt.collapsedGuestMinimumLine([])).toBeNull();
+  });
+});
+
+describe("groupTierInclusionBullets (rule 16)", () => {
+  it("returns one flat list when no inclusion carries a Food:/Bar:/Setup: prefix", () => {
+    expect(fmt.groupTierInclusionBullets(["Tables and chairs", "Linens"])).toEqual([{ header: null, items: ["Tables and chairs", "Linens"] }]);
+  });
+
+  it("groups by prefix header when the venue's own inclusions carry one", () => {
+    const groups = fmt.groupTierInclusionBullets(["Food: Plated dinner", "Food: Dessert station", "Bar: 4-hour open bar", "Setup: 2-hour access"]);
+    expect(groups).toEqual([
+      { header: "Food", items: ["Plated dinner", "Dessert station"] },
+      { header: "Bar", items: ["4-hour open bar"] },
+      { header: "Setup", items: ["2-hour access"] },
+    ]);
+  });
+
+  it("returns [] for a tier with no inclusions", () => {
+    expect(fmt.groupTierInclusionBullets([])).toEqual([]);
+  });
+});
+
+describe("samePricingAsEarlierPath (rule 16)", () => {
+  const feeA = fixedFee({ key: "a", day: "sat", season: "peak", amount: 6595, applies_to: "whole_venue", space_id: null });
+  const feeB = fixedFee({ key: "b", day: "sat", season: "peak", amount: 6595, applies_to: "whole_venue", space_id: null });
+  const feeC = fixedFee({ key: "c", day: "sat", season: "peak", amount: 9999, applies_to: "whole_venue", space_id: null });
+
+  it("finds an earlier path with the identical fee shape (same day/season/amount)", () => {
+    const paths = [fixedFeePath({ id: "hall-only", name: "Hall Rental Only", fixed_fees: [feeA] }), fixedFeePath({ id: "hall-plus", name: "Hall + À La Carte", fixed_fees: [feeB] })];
+    expect(fmt.samePricingAsEarlierPath(paths, 1)?.name).toBe("Hall Rental Only");
+  });
+
+  it("returns null when fees differ, or the path has none, or it's the first path", () => {
+    const paths = [fixedFeePath({ id: "a", fixed_fees: [feeA] }), fixedFeePath({ id: "b", fixed_fees: [feeC] })];
+    expect(fmt.samePricingAsEarlierPath(paths, 1)).toBeNull();
+    expect(fmt.samePricingAsEarlierPath(paths, 0)).toBeNull();
+    expect(fmt.samePricingAsEarlierPath([fixedFeePath({ fixed_fees: [] })], 0)).toBeNull();
+  });
+});
+
+describe("seasonLabelWithMonths (rule 16)", () => {
+  it("appends the venue's own months in parens", () => {
+    expect(fmt.seasonLabelWithMonths("off", { peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("Off-season (Jan, Feb, Mar, Nov)");
+    expect(fmt.seasonLabelWithMonths("peak", { peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("Peak season (Apr–Oct, Dec)");
+  });
+  it("falls back to the plain label with no months stated", () => {
+    expect(fmt.seasonLabelWithMonths("peak", undefined)).toBe("Peak season");
+  });
+});
+
+describe("seasonMonthsOnly", () => {
+  it("returns just the months half, for rendering the season name and months on two lines", () => {
+    expect(fmt.seasonMonthsOnly("off", { peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("Jan, Feb, Mar, Nov");
+    expect(fmt.seasonMonthsOnly("peak", { peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("Apr–Oct, Dec");
+  });
+  it("is null when the venue doesn't state months for that season, or at all", () => {
+    expect(fmt.seasonMonthsOnly("peak", undefined)).toBeNull();
+    expect(fmt.seasonMonthsOnly("any", { peak: "Apr", off: "Jan" })).toBeNull();
+  });
+});
+
+describe("truncateNote (rule 10)", () => {
+  it("passes short notes through unchanged", () => {
+    expect(fmt.truncateNote("Short note")).toEqual({ display: "Short note", full: "Short note", truncated: false });
+  });
+  it("truncates at 140 chars with an ellipsis, keeping the full text", () => {
+    const long = "x".repeat(200);
+    const { display, full, truncated } = fmt.truncateNote(long);
+    expect(truncated).toBe(true);
+    expect(full).toBe(long);
+    expect(display.length).toBe(140);
+    expect(display.endsWith("…")).toBe(true);
+  });
+});
+
+describe("humanizeCondition via buildAddOnTable (rule 10)", () => {
+  it("names a non-ceremony condition in plain words, not just enum-cased", () => {
+    const a = addOn({ id: "corkage-note", condition: "not_in_house_bar_or_catering", variant: null, group: "other" });
+    const table = fmt.buildAddOnTable([a], []);
+    expect(table.rows[0].variants[0].name).toBe("If you're not using the venue's own bar or catering");
+  });
+});
+
+describe("resolvedAddOnCategoryGroups / buildAddOnCategoryTables (rule 17)", () => {
+  it("falls back to plain distinct-category grouping when there are no curated categories", () => {
+    const a = addOn({ id: "a1", category: "Parking" });
+    const b = addOn({ id: "a2", category: "Rehearsal" });
+    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [a, b] } });
+    const groups = fmt.resolvedAddOnCategoryGroups(d);
+    expect(groups.map((g) => g.category).sort()).toEqual(["Parking", "Rehearsal"]);
+  });
+
+  it("builds an Item|Price table per category, folding variant/condition into the item label", () => {
+    const dj = addOn({ id: "dj", category: "Entertainment", name: "DJ upgrade", variant: "Premium package" });
+    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [dj] } });
+    const tables = fmt.buildAddOnCategoryTables(d);
+    const entertainment = tables.find((t) => t.category === "Entertainment")!;
+    expect(entertainment.columnLabels).toEqual(["Price"]);
+    expect(entertainment.rows[0].itemLabel).toBe("DJ upgrade (Premium package)");
+  });
+
+  it("skips the redundant '(X)' when the add-on's own name already says X (Marchetti's 'Dance floor: White' + variant 'White')", () => {
+    const danceFloor = addOn({ id: "df1", category: "Dance floor", name: "Dance floor: White", variant: "White" });
+    const ceremony = addOn({ id: "c1", category: "Ceremony fee", name: "On-site ceremony", group: "ceremony", condition: "ceremony_on_site", variant: null });
+    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [danceFloor, ceremony] } });
+    const tables = fmt.buildAddOnCategoryTables(d);
+    expect(tables.find((t) => t.category === "Dance floor")!.rows[0].itemLabel).toBe("Dance floor: White");
+    expect(tables.find((t) => t.category === "Ceremony fee")!.rows[0].itemLabel).toBe("On-site ceremony");
+  });
+
+  it("uses per-space columns when the category's items carry per_space_prices", () => {
+    const spaces = [space({ id: "s1", name: "La Pergola" }), space({ id: "s2", name: "The Pavilion" })];
+    const a = addOn({ id: "d1", category: "Dance floor", per_space_prices: { s1: 1000, s2: 1200 } });
+    const d = makeVenue({ spaces, pricing: { ...makeVenue().pricing, add_ons: [a] } });
+    const table = fmt.buildAddOnCategoryTables(d).find((t) => t.category === "Dance floor")!;
+    expect(table.columnLabels).toEqual(["La Pergola", "The Pavilion"]);
+    expect(table.rows[0].prices).toEqual(["$1,000", "$1,200"]);
+  });
+});
+
+describe("isCompactAddOnsLayout / addOnsLayout (rules 12, 17)", () => {
+  it("is compact for 2 or fewer real add-ons and no curated categories", () => {
+    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [addOn({ id: "a" }), addOn({ id: "b" })] } });
+    expect(fmt.isCompactAddOnsLayout(d)).toBe(true);
+    expect(fmt.addOnsLayout(d)).toBe("compact");
+  });
+
+  it("is 'cards' for a single, uncurated flat category with more than 2 items", () => {
+    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [addOn({ id: "a", category: "Extras" }), addOn({ id: "b", category: "Extras" }), addOn({ id: "c", category: "Extras" })] } });
+    expect(fmt.addOnsLayout(d)).toBe("cards");
+  });
+
+  it("is 'tables' once there are 2+ distinct categories, even uncurated", () => {
+    const d = makeVenue({
+      pricing: { ...makeVenue().pricing, add_ons: [addOn({ id: "a", category: "Parking" }), addOn({ id: "b", category: "Rehearsal" }), addOn({ id: "c", category: "Rehearsal" })] },
+    });
+    expect(fmt.addOnsLayout(d)).toBe("tables");
+  });
+
+  it("is 'tables' whenever curated add_on_categories exist, regardless of item count", () => {
+    const d = makeVenue({
+      pricing: {
+        ...makeVenue().pricing,
+        add_ons: [addOn({ id: "a", category: "Food" })],
+        add_on_categories: [{ category: "Food", blurb: null, examples: [], evidence: { source_url: "https://example.com", snapshot_id: null } }],
+      },
+    });
+    expect(fmt.addOnsLayout(d)).toBe("tables");
+  });
+});
+
+describe("groupVendorListsByRelationship (rule 11)", () => {
+  const list = (relationship: VendorList["relationship"], label: string): VendorList => ({
+    label,
+    category: label,
+    relationship,
+    entries: [{ name: "A", url: null, instagram: null }, { name: "B", url: null, instagram: null }],
+    source_url: "https://example.com",
+    snapshot_id: 1,
+  });
+
+  it("groups by relationship with a plain-language header + sentence", () => {
+    const groups = fmt.groupVendorListsByRelationship([list("preferred", "Caterers"), list("in_house_partner", "Décor")]);
+    expect(groups.map((g) => g.header)).toEqual(["Required (in-house partners)", "Preferred"]);
+    expect(groups.find((g) => g.relationship === "in_house_partner")!.sentence).toBe("You'll work with these vendors; they're part of the venue.");
+    expect(groups.find((g) => g.relationship === "preferred")!.sentence).toContain("confirm whether outside caterers");
+  });
+
+  it("collects multiple lists sharing one relationship under one group", () => {
+    const groups = fmt.groupVendorListsByRelationship([list("in_house_partner", "Décor"), list("in_house_partner", "A/V")]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].lists.map((l) => l.label)).toEqual(["Décor", "A/V"]);
+  });
+
+  it("says catering must come from the list for approved_required", () => {
+    const groups = fmt.groupVendorListsByRelationship([list("approved_required", "Caterers")]);
+    expect(groups[0].header).toBe("Approved list only");
+    expect(groups[0].sentence).toBe("Catering must come from this list.");
+  });
+});
+
+describe("groupSelectableAddOnsByCategory (rule 18)", () => {
+  it("groups by category, splitting each category into single-select groups vs individual items", () => {
+    const bronze = addOn({ id: "bronze", category: "Food", selection_group: "food-package" });
+    const silver = addOn({ id: "silver", category: "Food", selection_group: "food-package" });
+    const parking = addOn({ id: "parking", category: "Rentals" });
+    const groups = fmt.groupSelectableAddOnsByCategory([bronze, silver, parking]);
+    const food = groups.find((g) => g.category === "Food")!;
+    expect(food.groups).toEqual([{ key: "food-package", items: [bronze, silver] }]);
+    expect(food.individual).toEqual([]);
+    const rentals = groups.find((g) => g.category === "Rentals")!;
+    expect(rentals.individual).toEqual([parking]);
+    expect(rentals.groups).toEqual([]);
   });
 });

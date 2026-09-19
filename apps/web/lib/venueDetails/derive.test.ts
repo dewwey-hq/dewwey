@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   addOnAxes,
+  bandCapacityTuple,
   calculatorAxes,
   defaultAxes,
   deriveStandardFaqs,
   estimateCost,
   fbPills,
+  guestRange,
   headlineCapacity,
   policyRows,
   quickFacts,
@@ -200,6 +202,111 @@ describe("headlineCapacity", () => {
 });
 
 // ---------------------------------------------------------------------------
+// guestRange (round 4 rule 1) — the pill/stepper's own full range, distinct from headlineCapacity
+// ---------------------------------------------------------------------------
+
+describe("guestRange", () => {
+  it("uses the largest tuple max of ANY layout, not just the seated headline (Greenhouse: cocktail 200 beats seated 175)", () => {
+    const venue = makeVenue({
+      spaces: [space({ id: "loft" })],
+      capacities: [
+        tuple({ space_id: "loft", layout: "seated_dinner", tile: "seated", max: 175 }),
+        tuple({ space_id: "loft", layout: "seated_with_dance", tile: "seated_dance", max: 150 }),
+        tuple({ space_id: "loft", layout: "cocktail_standing", tile: "cocktail", max: 200 }),
+      ],
+    });
+    const gr = guestRange(venue);
+    expect(gr.max).toBe(200);
+    expect(gr.max_measures).toBe("guests");
+  });
+
+  it("reads 'seated' when the largest tuple isn't a cocktail one (LondonHouse's venue-wide max)", () => {
+    const venue = makeVenue({
+      spaces: [space({ id: "juliette" })],
+      capacities: [tuple({ space_id: "juliette", layout: "seated_dinner", tile: "seated", max: 190 })],
+    });
+    expect(guestRange(venue).max_measures).toBe("seated");
+  });
+
+  it("omits a conflicting stated minimum entirely — never falls back to a tuple min (unknown beats wrong)", () => {
+    const venue = makeVenue({
+      spine: spineWith({ capacity_min_guests: { status: "conflicting", candidates: [fact(10), fact(20)] } }),
+      spaces: [space({ id: "hall" })],
+      capacities: [tuple({ space_id: "hall", min: 50, max: 1500 })],
+    });
+    expect(guestRange(venue).min).toBeNull();
+  });
+
+  it("falls back to the smallest stated tuple min when capacity_min_guests isn't stated at all", () => {
+    const venue = makeVenue({
+      spaces: [space({ id: "a" }), space({ id: "b" })],
+      capacities: [tuple({ space_id: "a", min: 50, max: 300 }), tuple({ space_id: "b", min: 20, max: 100 })],
+    });
+    expect(guestRange(venue).min).toBe(20);
+  });
+
+  it("prefers the stated capacity_min_guests over any tuple min", () => {
+    const venue = makeVenue({
+      spine: spineWith({ capacity_min_guests: fact(75) }),
+      spaces: [space({ id: "a" })],
+      capacities: [tuple({ space_id: "a", min: 10, max: 300 })],
+    });
+    expect(guestRange(venue).min).toBe(75);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// quickFacts guest pill — thousands separators (round 4 rule 1)
+// ---------------------------------------------------------------------------
+
+describe("quickFacts — guest pill formatting", () => {
+  it("adds thousands separators (Field Museum's 1,500)", () => {
+    const venue = makeVenue({ spaces: [space({ id: "hall" })], capacities: [tuple({ space_id: "hall", max: 1500 })] });
+    const guests = quickFacts(venue).find((p) => p.icon === "guests")!;
+    expect(guests.label).toBe("Up to 1,500 guests");
+  });
+
+  it("shows a min-max range with separators when a minimum is stated", () => {
+    const venue = makeVenue({
+      spine: spineWith({ capacity_min_guests: fact(25) }),
+      spaces: [space({ id: "loft" })],
+      capacities: [tuple({ space_id: "loft", layout: "cocktail_standing", tile: "cocktail", max: 1200 })],
+    });
+    const guests = quickFacts(venue).find((p) => p.icon === "guests")!;
+    expect(guests.label).toBe("25 – 1,200 guests");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// bandCapacityTuple / estimateCost — band vs DJ capacity (round 4 rule 9)
+// ---------------------------------------------------------------------------
+
+describe("bandCapacityTuple / estimateCost — band vs DJ capacity", () => {
+  const venue = makeVenue({
+    spaces: [space({ id: "loft" })],
+    capacities: [
+      tuple({ space_id: "loft", layout: "seated_with_dance", tile: "seated_dance", max: 150, condition: "live band", as_stated_label: "Seated (w/ band)" }),
+      tuple({ space_id: "loft", layout: "seated_dinner", tile: "seated", max: 175, condition: "DJ", as_stated_label: "Seated (w/ DJ)" }),
+    ],
+    pricing: { archetype: "raw_space_byo", paths: [pathWith({})], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+  });
+
+  it("picks the band tuple when input.band is true", () => {
+    expect(bandCapacityTuple(venue, "loft", true)?.max).toBe(150);
+  });
+
+  it("picks the DJ tuple when input.band is false", () => {
+    expect(bandCapacityTuple(venue, "loft", false)?.max).toBe(175);
+  });
+
+  it("estimateCost warns over_capacity against the band tuple's lower max once band is chosen", () => {
+    const base: EstimateInput = { guests: 160, day: "sat", season: "peak", space_id: "loft", ceremonyOnSite: false, extras: [] };
+    expect(estimateCost(venue, { ...base, band: true }).warnings).toContain("over_capacity");
+    expect(estimateCost(venue, { ...base, band: false }).warnings).not.toContain("over_capacity");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // policyRows
 // ---------------------------------------------------------------------------
 
@@ -331,7 +438,20 @@ describe("fbPills", () => {
       food_beverage: { ...makeVenue().food_beverage, food_pills: [fact("all_inclusive")], bar_pills: [fact("all_inclusive")] },
       pricing: { ...makeVenue().pricing, add_ons: [addOn({ id: "corkage", name: "Corkage fee" })] },
     });
-    expect(fbPills(venue)).toEqual({ food: ["all_inclusive"], bar: ["all_inclusive", "byo"] });
+    // Round 4 rule 13: fixed pill order (BYO -> a la carte -> All-Inclusive), so the implied byo
+    // pill sorts BEFORE all_inclusive regardless of which one was added second.
+    expect(fbPills(venue)).toEqual({ food: ["all_inclusive"], bar: ["byo", "all_inclusive"] });
+  });
+
+  it("orders pills BYO -> a la carte -> All-Inclusive regardless of fixture/extraction order (round 4 rule 13)", () => {
+    const venue = makeVenue({
+      food_beverage: {
+        ...makeVenue().food_beverage,
+        food_pills: [fact("all_inclusive"), fact("a_la_carte"), fact("byo")],
+        bar_pills: [fact("a_la_carte"), fact("byo")],
+      },
+    });
+    expect(fbPills(venue)).toEqual({ food: ["byo", "a_la_carte", "all_inclusive"], bar: ["byo", "a_la_carte"] });
   });
 });
 

@@ -7,19 +7,24 @@
  * groups in the locked order (Venue / Food & beverage / Ceremony / Add-ons, then Taxes, then the
  * total) — golden-set-template.md §2. Illustrative only, never framed as a quote.
  *
- * PUNCH LIST: `calculatorAxes` can return a "band" axis (a capacity constraint like "live band"
- * vs "DJ" — see `CapacityTuple.condition`), but `EstimateInput`/`estimateCost` has no field for
- * it — there's nowhere to plumb a selection through. Not rendered here; flagged rather than
- * silently faked. `event_year` surcharges are also unwired (no UI axis names a year to compare).
+ * PUNCH LIST: `event_year` surcharges are unwired (no UI axis names a year to compare).
  */
 
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, Minus, Plus } from "lucide-react";
-import { calculatorAxes, defaultAxes, estimateCost, headlineCapacity, selectableAddOns, type EstimateInput } from "@/lib/venueDetails/derive";
-import type { Day, EstimateExtra, PricingPath, Season, VenueDetailsV3 } from "@/lib/venueDetails/types";
+import { bandCapacityTuple, calculatorAxes, defaultAxes, estimateCost, guestRange, headlineCapacity, selectableAddOns, type EstimateInput } from "@/lib/venueDetails/derive";
+import type { AddOn, Day, EstimateExtra, PricingPath, Season, VenueDetailsV3 } from "@/lib/venueDetails/types";
 import * as fmt from "./format";
 
-function PillGroup<T extends string>({ options, value, onChange }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
+function PillGroup<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: T; label: string; sublabel?: string | null }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
   return (
     <div className="flex flex-wrap justify-center gap-1.5">
       {options.map((opt) => {
@@ -34,6 +39,9 @@ function PillGroup<T extends string>({ options, value, onChange }: { options: { 
             }`}
           >
             {opt.label}
+            {/* Round 4 rule 9: tier/path/ceremony pills carry their own money ("Elegance ·
+                $220/guest", "Yes · +$750") instead of a bare label. */}
+            {opt.sublabel ? <span className={`ml-1 ${active ? "text-white/70" : "text-gray-400"}`}>· {opt.sublabel}</span> : null}
           </button>
         );
       })}
@@ -47,7 +55,7 @@ function Stepper({ value, onChange, min = 0, max = 999, step = 1 }: { value: num
       <button type="button" onClick={() => onChange(Math.max(min, value - step))} className="flex h-6 w-6 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Decrease">
         <Minus size={12} />
       </button>
-      <span className="w-8 text-center text-sm font-semibold tabular-nums text-gray-900">{value}</span>
+      <span className="w-8 text-center text-sm font-semibold tabular-nums text-gray-900">{fmt.int(value)}</span>
       <button type="button" onClick={() => onChange(Math.min(max, value + step))} className="flex h-6 w-6 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Increase">
         <Plus size={12} />
       </button>
@@ -84,14 +92,47 @@ const WARNING_LABELS: Record<string, string> = {
  * tiers (a flat/BYO-shaped booking) that ISN'T the first (cheapest, "bare") path in the venue's
  * own cheap-first ordering — Diamond Garden's "Hall + À La Carte" auto-opens, "Hall Rental Only"
  * (first path) and "All-Inclusive" (has tiers) don't. For every other golden (a single path),
- * this is always false, unchanged from the prior fixed `useState(false)`. */
+ * this is always false, unchanged from the prior fixed `useState(false)`. Round 4 rule 18: the
+ * panel opening does not expand any of its own category accordions — those stay collapsed. */
 function pathAutoOpensExtras(venue: VenueDetailsV3, path: PricingPath): boolean {
   return path.per_guest_tiers.length === 0 && venue.pricing.paths[0]?.id !== path.id;
+}
+
+/** One individually-toggleable extra's row (round 4 rule 10: notes truncated, full text via
+ * `title`). */
+function ExtraRow({ a, qty, onQtyChange }: { a: AddOn; qty: number; onQtyChange: (v: number) => void }) {
+  const perUnit = a.unit === "per_unit" || a.unit === "per_hour";
+  const note = a.note ? fmt.truncateNote(a.note) : null;
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm text-gray-700">
+      <div className="min-w-0">
+        <p className="font-medium text-gray-900">{a.name}</p>
+        <p className="text-xs text-gray-500" title={note?.truncated ? note.full : undefined}>
+          {fmt.addOnPriceString(a)}
+          {note ? ` — ${note.display}` : ""}
+        </p>
+      </div>
+      {perUnit ? (
+        <Stepper value={qty} onChange={onQtyChange} max={50} />
+      ) : (
+        <button
+          type="button"
+          onClick={() => onQtyChange(qty > 0 ? 0 : 1)}
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+            qty > 0 ? "border-rose-400 bg-rose-400 text-white" : "border-black/[0.1] bg-white text-gray-700 hover:border-rose-300"
+          }`}
+        >
+          {qty > 0 ? "Added" : "Add"}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   const axes = useMemo(() => calculatorAxes(venue), [venue]);
   const hc = useMemo(() => headlineCapacity(venue), [venue]);
+  const gr = useMemo(() => guestRange(venue), [venue]);
   const base = useMemo(() => defaultAxes(venue), [venue]);
   const initialPath = useMemo(() => venue.pricing.paths.find((p) => p.id === base.path_id) ?? venue.pricing.paths[0], [venue, base.path_id]);
 
@@ -102,12 +143,19 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   const [season, setSeason] = useState<Season>(base.season);
   const [tierId, setTierId] = useState<string | undefined>(base.tier_id);
   const [ceremonyOnSite, setCeremonyOnSite] = useState(base.ceremonyOnSite);
+  const [band, setBand] = useState<boolean | undefined>(base.band);
   const [payment, setPayment] = useState<"cash_check" | "credit_card">(base.payment ?? "cash_check");
   const [extrasOpen, setExtrasOpen] = useState(() => (initialPath ? pathAutoOpensExtras(venue, initialPath) : false));
   const [extraQuantities, setExtraQuantities] = useState<Record<string, number>>({});
   const [groupSelections, setGroupSelections] = useState<Record<string, string>>({});
+  // Round 4 rule 18: the extras panel's own category sub-sections, collapsed by default even
+  // once the outer panel auto-opens.
+  const [categoryOpen, setCategoryOpen] = useState<Record<string, boolean>>({});
 
-  const rangeReminder = fmt.guestRangeReminder(hc.guest_range);
+  // Round 4 rule 1: the stepper's own bounds/reminder use the venue's full guest range (any
+  // layout's max), not just the seated-dinner compare headline; the technical floor is the
+  // venue's own stated minimum, else 10 (matching every concept calculator's own GUEST_MIN).
+  const rangeReminder = fmt.guestRangeReminder(gr);
 
   if (venue.pricing.paths.length === 0) {
     return (
@@ -122,19 +170,25 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   // food/dinnerware/bar/coffee/cake add-ons never show once All-Inclusive is selected, since it
   // already bundles the equivalent).
   const scopedAddOns = selectableAddOns(venue, currentPath.id);
-  // Items sharing a `selection_group` render as one PillGroup ("None" first) instead of
-  // independent toggle chips (Diamond Garden's food package / dinnerware / bar tier / extra
-  // hour); everything else stays an individually toggleable chip, same as before.
-  const { groups: singleSelectGroups, individual: individualAddOns } = fmt.splitAddOnsBySelection(scopedAddOns);
+  // Round 4 rule 18: the extras panel groups by category first (same categories the Add-ons &
+  // extras section itself uses), each category then split into single-select PillGroups vs
+  // individual chips exactly as before.
+  const categoryGroups = fmt.groupSelectableAddOnsByCategory(scopedAddOns);
   const dayOptions = fmt.pathDayOptions(currentPath);
-  const seasonOptions = fmt.pathSeasonOptions(currentPath);
+  const seasonOptions = fmt.pathSeasonOptions(currentPath, venue.pricing.seasons);
   const tierOptions = fmt.pathTierOptions(currentPath);
+  const pathOptions = venue.pricing.paths.map((p) => ({ value: p.id, label: p.name, sublabel: fmt.pathPillSublabel(p) }));
+  const ceremonyFeeAmount = fmt.ceremonyFeeAmount(venue.pricing.add_ons, spaceId ?? hc.headline_space_id ?? undefined);
 
-  const groupExtras: EstimateExtra[] = singleSelectGroups
+  const groupExtras: EstimateExtra[] = categoryGroups
+    .flatMap((c) => c.groups)
     .map((g) => groupSelections[g.key])
     .filter((id): id is string => id != null && id !== "")
     .map((add_on_id) => ({ add_on_id, quantity: 1 }));
-  const individualExtras: EstimateExtra[] = individualAddOns.map((a) => ({ add_on_id: a.id, quantity: extraQuantities[a.id] ?? 0 })).filter((e) => e.quantity > 0);
+  const individualExtras: EstimateExtra[] = categoryGroups
+    .flatMap((c) => c.individual)
+    .map((a) => ({ add_on_id: a.id, quantity: extraQuantities[a.id] ?? 0 }))
+    .filter((e) => e.quantity > 0);
   const extras: EstimateExtra[] = [...groupExtras, ...individualExtras];
 
   const input: EstimateInput = {
@@ -145,6 +199,7 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
     tier_id: tierId,
     space_id: spaceId,
     ceremonyOnSite,
+    band,
     payment,
     extras,
   };
@@ -157,6 +212,10 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
     const newPath = venue.pricing.paths.find((p) => p.id === id);
     if (newPath) setExtrasOpen(pathAutoOpensExtras(venue, newPath));
   };
+
+  // Round 4 rule 9: choosing a live band switches the over-capacity check to the band tuple
+  // (`estimateCost` already does this via `input.band`) and names the number under the stepper.
+  const bandTuple = band === true ? bandCapacityTuple(venue, spaceId ?? hc.headline_space_id ?? undefined, true) : null;
 
   // Fix round: the template's Taxes group is always present, even when there's genuinely
   // nothing to compute (a 0% service charge and no separate sales-tax line) — the sales-tax
@@ -183,15 +242,17 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
             beyond 4 simply wrap to a second row of the same grid. */}
         <div className="grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 sm:divide-x sm:divide-black/[0.06] lg:grid-cols-4">
           <AxisColumn label="Guests">
-            {/* Clamped to the venue's own headline capacity (round-3 fix) — a couple can't type
-                past the number the Space section already told them this venue seats. */}
-            <Stepper value={guests} onChange={setGuests} min={1} max={hc.headline ?? 999} step={10} />
+            {/* Round 4 rule 1: bounded by the venue's own full guest range, floored at its stated
+                minimum (else 10, the concept calculators' own floor) — not the seated-dinner
+                compare headline. */}
+            <Stepper value={guests} onChange={setGuests} min={gr.min ?? 10} max={gr.max ?? 999} step={10} />
             {rangeReminder && <p className="mt-1.5 text-[11px] text-gray-400">{rangeReminder}</p>}
+            {bandTuple && <p className="mt-1 text-[11px] text-gray-400">Seated capacity is {fmt.int(bandTuple.max)} with a live band</p>}
           </AxisColumn>
 
           {axes.includes("path") && (
             <AxisColumn label="Package">
-              <PillGroup value={currentPath.id} onChange={handlePathChange} options={venue.pricing.paths.map((p) => ({ value: p.id, label: p.name }))} />
+              <PillGroup value={currentPath.id} onChange={handlePathChange} options={pathOptions} />
             </AxisColumn>
           )}
           {axes.includes("space") && (
@@ -224,6 +285,20 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
                 value={ceremonyOnSite ? "yes" : "no"}
                 onChange={(v) => setCeremonyOnSite(v === "yes")}
                 options={[
+                  { value: "yes", label: "Yes", sublabel: ceremonyFeeAmount != null ? `+${fmt.money(ceremonyFeeAmount)}` : null },
+                  { value: "no", label: "No" },
+                ]}
+              />
+            </AxisColumn>
+          )}
+          {/* Round 4 rule 9: "Live band?" only earns its axis when a space's capacity genuinely
+              differs by band vs DJ. */}
+          {axes.includes("band") && (
+            <AxisColumn label="Live band?">
+              <PillGroup
+                value={band === true ? "yes" : "no"}
+                onChange={(v) => setBand(v === "yes")}
+                options={[
                   { value: "yes", label: "Yes" },
                   { value: "no", label: "No" },
                 ]}
@@ -245,52 +320,51 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
         </div>
       </div>
 
-      {(singleSelectGroups.length > 0 || individualAddOns.length > 0) && (
+      {categoryGroups.length > 0 && (
         <div className="border-t border-black/[0.06] px-5 py-3">
           <button type="button" onClick={() => setExtrasOpen((o) => !o)} className="flex w-full items-center justify-between text-sm font-medium text-gray-700">
             <span>Add extras{selectedCount > 0 ? ` (${selectedCount} selected)` : ""}</span>
             <ChevronDown size={16} className={`text-gray-400 transition-transform ${extrasOpen ? "rotate-180" : ""}`} />
           </button>
           {extrasOpen && (
-            <div className="mt-3 space-y-4">
-              {/* Single-select groups (food package / dinnerware / bar tier / extra hour) render
-                  as one PillGroup each, "None" first — round-3 fix: these used to show as 20+
-                  independent toggle chips a couple could (wrongly) select several of at once. */}
-              {singleSelectGroups.map((g) => (
-                <div key={g.key}>
-                  <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">{fmt.selectionGroupLabel(g.key)}</p>
-                  <PillGroup
-                    value={groupSelections[g.key] ?? "none"}
-                    onChange={(v) => setGroupSelections((s) => ({ ...s, [g.key]: v === "none" ? "" : v }))}
-                    options={[{ value: "none", label: "None" }, ...g.items.map((a) => ({ value: a.id, label: `${a.variant ?? a.name} (${fmt.addOnPriceString(a)})` }))]}
-                  />
-                </div>
-              ))}
-
-              {individualAddOns.map((a) => {
-                const qty = extraQuantities[a.id] ?? 0;
-                const perUnit = a.unit === "per_unit" || a.unit === "per_hour";
+            <div className="mt-3 space-y-2">
+              {/* Round 4 rule 18: the panel's own top-level items are category headers (same
+                  categories as the Add-ons & extras section), each individually expandable and
+                  collapsed by default — only the outer panel auto-opens (round 3's à-la-carte
+                  behavior), never a category inside it. */}
+              {categoryGroups.map((cg) => {
+                const selectedInCategory =
+                  cg.groups.filter((g) => groupSelections[g.key]).length + cg.individual.filter((a) => (extraQuantities[a.id] ?? 0) > 0).length;
+                const open = categoryOpen[cg.category] ?? false;
                 return (
-                  <div key={a.id} className="flex items-center justify-between gap-3 text-sm text-gray-700">
-                    <div>
-                      <p className="font-medium text-gray-900">{a.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {fmt.addOnPriceString(a)}
-                        {a.note ? ` — ${a.note}` : ""}
-                      </p>
-                    </div>
-                    {perUnit ? (
-                      <Stepper value={qty} onChange={(v) => setExtraQuantities((s) => ({ ...s, [a.id]: v }))} max={50} />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setExtraQuantities((s) => ({ ...s, [a.id]: qty > 0 ? 0 : 1 }))}
-                        className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                          qty > 0 ? "border-rose-400 bg-rose-400 text-white" : "border-black/[0.1] bg-white text-gray-700 hover:border-rose-300"
-                        }`}
-                      >
-                        {qty > 0 ? "Added" : "Add"}
-                      </button>
+                  <div key={cg.category} className="rounded-lg border border-black/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => setCategoryOpen((s) => ({ ...s, [cg.category]: !open }))}
+                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-700"
+                    >
+                      <span>
+                        {cg.category}
+                        {selectedInCategory > 0 ? ` (${selectedInCategory} selected)` : ""}
+                      </span>
+                      <ChevronDown size={14} className={`text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+                    </button>
+                    {open && (
+                      <div className="space-y-4 border-t border-black/[0.06] px-3 py-3">
+                        {cg.groups.map((g) => (
+                          <div key={g.key}>
+                            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">{fmt.selectionGroupLabel(g.key)}</p>
+                            <PillGroup
+                              value={groupSelections[g.key] ?? "none"}
+                              onChange={(v) => setGroupSelections((s) => ({ ...s, [g.key]: v === "none" ? "" : v }))}
+                              options={[{ value: "none", label: "None" }, ...g.items.map((a) => ({ value: a.id, label: `${a.variant ?? a.name} (${fmt.addOnPriceString(a)})` }))]}
+                            />
+                          </div>
+                        ))}
+                        {cg.individual.map((a) => (
+                          <ExtraRow key={a.id} a={a} qty={extraQuantities[a.id] ?? 0} onQtyChange={(v) => setExtraQuantities((s) => ({ ...s, [a.id]: v }))} />
+                        ))}
+                      </div>
                     )}
                   </div>
                 );
