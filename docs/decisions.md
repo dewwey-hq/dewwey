@@ -4,6 +4,77 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D061 — 2026-09-19 — Acquisition loop: budgeted Instagram acquisition with yield priors, coverage first; pilot through Gate 0 incl. a real rollback
+
+Status: Accepted (commit 1 + pilot). Plan of record `~/.claude/plans/on-1-what-do-joyful-church.md`
+(rev 2, approved after two outside review rounds); proposal and priors in
+`docs/engineering/acquisition-loop/README.md`.
+
+**Context.** Apify credits came back (Starter, $29/cycle). Ben's one tagged-feed crawl (308 seeds,
+~$18 of results) had produced 1,360 venue-anchored weddings, an order of magnitude cheaper per
+wedding than Jeremy's own-profile corpus, and the product gap is coverage (302 listed venues at 1-5
+weddings, only 54 ever tagged-crawled). The user asked for a loop that learns from our own yield and
+drives spend per credible wedding down, coverage first, with provenance and duplicate handling
+designed in.
+
+**Decisions.**
+- The unit is a *crawl target* (account x feed x depth) with a yield prior; ticks spend a capped
+  budget in prior order, 20% on probes. Acquisition never pauses for the human queue; creation does.
+- **Creation tier = the D055 machinery unchanged** (reader W >= 0.8 -> verdict -> derived CONFIRM ->
+  creation), plus reconciliation in the chain: inside an acquisition batch a >= 0.7 match is skipped
+  and counted `would_attach`, 0.5-0.7 creates flagged `weak_match` (excluded from the coverage number
+  until the duplicate-merge report clears it), else create. No ATTACH lift in month 1 (D031 stands).
+- **Provenance:** one `ops.post_observations` row per sighting (run, seed, target prior row, fetch
+  time, caption hash), `ops.crawl_runs` as the clock (Apify run + dataset ids, exact input, cost,
+  pipeline versions), one creation batch per tick (`acq-YYYYMMDD-<tick>-create-<n>`) so
+  `revertWeddingBatch.ts --retire-verdicts` undoes a tick; `ops.creation_decisions` append-only
+  (CREATE / CREATE_WEAK_MATCH / WOULD_ATTACH / HUMAN / SKIP / REVERTED). Posts and observations are
+  never deleted. Three clocks reported separately. Drill: `tmp_analysis/d061_post_provenance.sql`.
+- **Duplicates:** shortcode is the cross-source key; `v_ig_posts` is a *pure* normalization view
+  (staging u public, no filtering); precedence and eligibility live in the structural universe CTE and
+  in an unconditional documented-post guard in clustering; images to R2 at ingest (fail-open).
+- Month 1 is coverage first: pilot -> spot-check -> canary -> probes of never-crawled thin venues +
+  alias siblings -> **vendor tagged feeds** -> zero-wedding probes -> small deepen; tier A/B
+  own-profile recency is month 2.
+
+**Findings that changed the plan.**
+- Ben's hop-0 seeds included 99 non-venue vendors (Places returned caterers/planners/DJs for
+  "wedding venue"). Their tagged feeds yield 0.37 weddings/post vs 0.14 for venues and landed 164
+  weddings at 145 thin venues from 2,099 posts -- 3.5x the thin-venue yield per post of venue probes.
+  Now tick 3b.
+- Re-sourcing the structural universe onto the union view with `distinct on (shortcode)` made the
+  planner estimate 42 rows for ~46k and the full view went from ~2 min to > 15 min (nested loops over
+  CTE scans). An OR on a session setting for batch scoping cut the estimate 20x too. Final shape: two
+  UNION ALL branches (staging; public with no staging twin) and a **batch-scoped function**
+  `structural_post_vendor_evidence_for_batch(batch_id)` generated from the same template. Full view
+  now 5-12 s (was ~2 min); scoped 13-19 s.
+- The rollback rehearsal found two real defects: `creation_decisions` FKs blocked deleting a reverted
+  wedding (now `on delete set null` + a REVERTED row), and retiring *every* model verdict (not just
+  THIS_VENUE) left a two-post candidate "undecided" and blocked re-creation (now THIS_VENUE only).
+- The pooler is transaction-mode (port 6543): `set local` inside a transaction is the only way to
+  lengthen the 2-minute statement timeout; a bare `set` does nothing for the next statement.
+
+**Pilot (tick `acq-20260919-pilot`, 10 pinned proven venues x 25 tagged posts).** Apify $0.575 (meter
+reconciles to the cent); 249 posts fetched, **98 new**, 151 already held from crawl no.1; images 305
+stored / 29 videos skipped / 0 failed; parser 97 posts, **49 full stacks, 55 venue credits**;
+clustering 53 + 2 new candidates, 3 + 2 attachments (structural-v2 and v3-a1); reconciliation 0
+high, 1 ambiguous; reader 59 posts $0.30 (47 THIS_VENUE at >= 0.8, 7 NOT_WEDDING, 3 OTHER_VENUE, 2
+UNSURE); creation **45 weddings** (43 v2 + 2 A1), 343 vendor rows, 10 candidates to the human queue,
+0 would_attach, 0 weak_match. Weddings 5,972 -> 6,017. Rollback round trip: revert of create-1 (43
+weddings, 45 verdicts superseded, run marked reverted) -> next dry-run creates 0 -> verdicts replayed
+from history (file-first SQL) -> re-created as create-3 (43) -> counts identical. $ per created
+wedding $0.013 (Apify only). Gate 0 passed; all pilot venues were already at 16+, so the coverage
+number is by design 0 here.
+
+**Not done / next.** Blind spot-check of the pilot's 47 model-written posts (needs
+`spotCheckSample.ts`, commit 2) before probes auto-create; `targets.ts` + `measure.ts`; the canary
+(20 venues + 5 vendor feeds); `pipeline_versions` is stamped by hand on run 1 until `measure.ts`
+writes it. Cosmetic: creation log now prints the effective clustering version. Two
+`graphStrengthening.test.ts` invariants fail on `main` from before D061 (D059 moved the counts).
+Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-rigor`.
+
+---
+
 ## D060 — 2026-09-13 — VenueDetails v3: the venue Details tab becomes one typed schema (comparison spine + detail layer) filled by a provenance-first loop
 
 **Context.** The Details tab is the product's core: couples compare Venue A (all-inclusive, odd

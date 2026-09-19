@@ -24,9 +24,12 @@
  */
 import { getPool, closePool } from "../classify/db";
 
-const STATEMENTS: string[] = [
-  `create or replace view structural_post_vendor_evidence as
-   with latest as (
+// D061 (2026-09-19): ONE template, TWO database objects. The view is the full corpus (no batch
+// clause at all, so the planner's row estimates come from table statistics -- see the pilot
+// note inside). The function is the same body with the universe restricted to one acquisition
+// tick's first-observed posts; it returns the view's own row type, so every consumer that
+// selects from the view can select from the function instead under --acquisition-batch.
+const STRUCTURAL_VIEW_BODY = (universeSource: string): string => `   with latest as (
      select distinct on (post_url, line_no, handle)
        post_url as source_post_url, line_no, handle, role, role_raw, source, stack_parser_version as parser_version
      from stack_extraction_entries
@@ -41,12 +44,7 @@ const STATEMENTS: string[] = [
      -- NOTHING public enters, so Ben's pre-existing ~6,370 crawl posts stay out in month 1).
      select sp.post_url, sp.caption_raw, sp.post_timestamp, sp.location_tag, sp.owner_username
      from (
-       select distinct on (shortcode) *
-       from v_ig_posts
-       where corpus_source = 'staging'
-          or scraped_at > coalesce((select min(started_at) from ops.crawl_runs), 'infinity'::timestamptz)
-       order by shortcode, (corpus_source = 'staging') desc
-     ) sp
+${universeSource}     ) sp
      where not exists (
          select 1 from wedding_posts wp join posts p on p.id = wp.post_id where p.shortcode = sp.shortcode
        )
@@ -251,7 +249,48 @@ const STATEMENTS: string[] = [
      coalesce(u.caption_raw ~* '\\y(mitzvah|quincea|sweet\\s*16|birthday|corporate|baby shower|bridal shower|graduation|anniversary party|retirement|gala|networking|fundraiser|holiday party|prom|conference|expo|trade show|open house)\\y', false) as has_non_wedding_event_keyword
    from combined c
    join universe u on u.post_url = c.source_post_url
-   join couple_extract ce on ce.post_url = c.source_post_url;`,
+   join couple_extract ce on ce.post_url = c.source_post_url;`;
+
+const UNIVERSE_SOURCE_FULL = `
+       -- Precedence without a distinct-on: staging rows always; a public row only when no staging
+       -- row shares its shortcode. Same rule either way, but the planner keeps table statistics
+       -- (a Unique over the union estimated ~200 rows and turned the join with the 90k-row
+       -- latest CTE into a nested loop -- the full view went from ~2 min to >15 min, D061 pilot).
+       -- Two UNION ALL branches rather than one OR: an OR over the union view cut the planner's
+       -- universe estimate 20x (2.3k for ~46k rows) and produced a 9.7-billion-row merge-join plan.
+       select * from v_ig_posts where corpus_source = 'staging'
+       union all
+       select * from v_ig_posts v
+       where v.corpus_source = 'public'
+         and v.scraped_at > coalesce((select min(started_at) from ops.crawl_runs), 'infinity'::timestamptz)
+         and not exists (select 1 from staging.instagram_posts s2
+                         where (regexp_match(s2.post_url, '/p/([^/]+)'))[1] = v.shortcode)
+`;
+
+const UNIVERSE_SOURCE_FOR_BATCH = `
+       -- BATCH-SCOPED variant (structural_post_vendor_evidence_for_batch): the full source, then
+       -- only the tick's first-observed posts. A join, not an OR on a session setting -- an OR
+       -- cut the unscoped estimate 40x and re-created the nested-loop plan (D061 pilot).
+       select * from (
+${UNIVERSE_SOURCE_FULL}
+       ) full_source
+       where shortcode in (
+         select p.shortcode from ops.post_observations o
+         join ops.crawl_runs r on r.id = o.run_id
+         join posts p on p.id = o.post_id
+         where r.batch_id = p_batch and o.is_first)
+`;
+
+const STATEMENTS: string[] = [
+  `create or replace view structural_post_vendor_evidence as
+${STRUCTURAL_VIEW_BODY(UNIVERSE_SOURCE_FULL)}`,
+  `create or replace function structural_post_vendor_evidence_for_batch(p_batch text)
+   returns setof structural_post_vendor_evidence
+   language sql stable
+   as $fn$
+${STRUCTURAL_VIEW_BODY(UNIVERSE_SOURCE_FOR_BATCH).replace(/;\s*$/, '')}
+   $fn$;`,
+  `comment on function structural_post_vendor_evidence_for_batch(text) is 'DERIVED (D061): structural_post_vendor_evidence restricted to one acquisition tick (ops.crawl_runs.batch_id) -- same body, same row type, computes in seconds. Consumers under --acquisition-batch select from this instead of the view.';`,
   `comment on view structural_post_vendor_evidence is 'DERIVED (D055 "squeeze the 47k" Phase 0, precision fixes for structural-v2 2026-09-08; extracted_venue_anchors 5th anchor source added 2026-09-09; D061 2026-09-19: universe re-sourced from v_ig_posts, shortcode precedence, public rows gated on scraped_at > first acquisition run): venue-anchors a post from credit-line, author-is-known-venue, IG location-tag, inline @mention, venue-branded hashtag, or (lowest priority, last resort) the Haiku pool-b reader''s own extraction (priority order, alias-resolved, conflict-flagged), plus the post''s own non-venue stack credits. has_couple_signal/couple_guess veto business-word false matches (e.g. "Lido Banquets & Events"). Eligibility (venue anchor + supporting evidence, anchor-source-dependent) and the couple-guess merge veto are enforced in runJeremyWeddingClustering.ts --evidence-source structural, not here. See docs/decisions.md D055, D061.';`,
   `alter table jeremy_wedding_candidates add column if not exists venue_anchor_source text;`,
   `alter table jeremy_wedding_candidates add column if not exists venue_anchor_conflict boolean;`,
@@ -274,10 +313,28 @@ async function main() {
     await pool.query(sql);
     console.log(`[apply-structural-evidence] statement ${i + 1}/${STATEMENTS.length} ok`);
   }
-  const { rows } = await pool.query<{ n: string; posts: string }>(
-    `select count(*) as n, count(distinct source_post_url) as posts from structural_post_vendor_evidence`
-  );
-  console.log(`[apply-structural-evidence] structural_post_vendor_evidence: ${rows[0].n} evidence rows across ${rows[0].posts} posts`);
+  // The full view takes minutes and the role's statement_timeout is 2 min (D061 pilot, 2026-09-19:
+  // this count timed out right after the DDL succeeded and looked like a failed apply). Run it
+  // inside one transaction with a local timeout, and report the runtime -- it is the number that
+  // tells us whether the view has regressed.
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query("set local statement_timeout = '900s'");
+    const t0 = Date.now();
+    const { rows } = await client.query<{ n: string; posts: string }>(
+      `select count(*) as n, count(distinct source_post_url) as posts from structural_post_vendor_evidence`
+    );
+    await client.query("commit");
+    console.log(
+      `[apply-structural-evidence] structural_post_vendor_evidence: ${rows[0].n} evidence rows across ${rows[0].posts} posts (${((Date.now() - t0) / 1000).toFixed(0)} s)`
+    );
+  } catch (e) {
+    await client.query("rollback").catch(() => undefined);
+    console.error(`[apply-structural-evidence] DDL applied; the post-apply count failed: ${(e as Error).message}`);
+  } finally {
+    client.release();
+  }
   console.log("[apply-structural-evidence] done");
   await closePool();
 }

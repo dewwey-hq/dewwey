@@ -120,36 +120,45 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
      Then validate → repair → `scoreAgainstGolden.ts --source runs --mustnot` and iterate the prompt.
 4. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
 
-## Second mission (parallel window, 2026-09-19) — D061 Acquisition loop, commit 1 built, $0 spent
+## Second mission (parallel window, 2026-09-19) — D061 Acquisition loop: commit 1 + pilot done, Gate 0 passed
 
-Plan of record `~/.claude/plans/on-1-what-do-joyful-church.md` (rev 2, approved after two Cursor
-rounds); README `docs/engineering/acquisition-loop/README.md` kept in line with it. Apify credits are
-live (Starter, $28.86 of $29 left, cycle 09-17 → 10-16). **Commit 1 is code-complete and committed:**
-`apps/web/scripts/acquire/` (schema script, Apify client, two-phase ingest with R2 images,
-`runTick`, funnel report; 37 tests), the pure `v_ig_posts` view + structural universe CTE re-sourced
-with shortcode precedence and the month-1 public-row gate, unconditional documented-post guard in
-clustering, `fetchPostsFromPublic`, `--acquisition-batch` on parser / clustering / reconciliation /
-reader / creation (reconciliation rule: ≥ 0.7 → WOULD_ATTACH skip, 0.5–0.7 → CREATE_WEAK_MATCH),
-`--retire-verdicts` on revert, `ops.creation_decisions`. Typecheck clean; 244 tests green in the
-touched suites. Pilot dry-run prints one run, 10 venues × 25, $0.575.
+Decision: `docs/decisions.md` D061. Plan of record `~/.claude/plans/on-1-what-do-joyful-church.md`
+(rev 2). README `docs/engineering/acquisition-loop/README.md`. Spend so far: **Apify $0.575**
+(cycle 09-17 → 10-16, $28.29 left), **OpenRouter $0.30**.
 
-**Blocked on the user (in order):**
-1. Apply schema (DDL, run with `!` from `apps/web`): `bun run scripts/acquire/applyAcquisitionSchema.ts`
-   then `bun run scripts/graph/applyStructuralEvidenceSchema.ts --apply` (re-creates the structural
-   view on the new source). Dry proof after: `structural_post_vendor_evidence` counts must equal the
-   pre-apply baseline: **49,383 rows / 20,459 distinct posts** (2026-09-19).
-2. Say "go" for the pilot: `bun run scripts/acquire/runTick.ts --tick pilot --feed tagged
-   --account-ids 520,551,522,534,540,595,477,524,515,521 --results-limit 25 --tier pilot --max-cost-usd 0.7`
-   (≈$0.58), then parse → cluster → reconcile → reader (~$1 Haiku) → creation dry-run → creation →
-   funnel → rollback round trip = Gate 0.
-3. After Gate 0: label the blind spot-check (≤ 100 posts) in `/label/candidates`; then ticks 2–5.
+**State:** schema applied (`ops.crawl_targets/crawl_runs/crawl_run_seeds/post_observations/
+creation_decisions`, `post_images`, `v_ig_posts`, `structural_post_vendor_evidence` re-sourced +
+`structural_post_vendor_evidence_for_batch(batch_id)`); pilot tick `acq-20260919-pilot` fetched 249
+posts (98 new), parsed (49 full stacks), clustered (55 candidates), read (47 THIS_VENUE ≥ 0.8),
+created **45 weddings** (batches `-create-2` = 2 A1, `-create-3` = 43 v2; `-create-1` was reverted
+and re-created as the rollback rehearsal). Weddings **6,017**. Funnel:
+`tmp_analysis/acquisition_funnel_acq-20260919-pilot_2026-09-19.md`. Provenance drill works
+(`tmp_analysis/d061_post_provenance.sql -v wedding_id=…`).
 
-**Findings today worth keeping:** Ben's hop-0 seeds included 99 non-venue vendors (Places returned
-caterers/planners/DJs for "wedding venue"); their tagged feeds yield 0.37 weddings/post vs 0.14 for
-venues and landed 164 weddings at 145 thin venues — now tick 3b. Two `graphStrengthening.test.ts`
-invariants (`wedding_vendors` untouched 51,168 → live 52,618; galleriamarchetti 100 → 104) fail on
-`main` **before** any D061 change (last re-pinned 09-10; D059 attire split moved them) — the D059
-owner should re-pin them.
+**Blocked on the user:**
+1. **Blind spot-check** of the pilot's 47 model-written posts before probes may auto-create
+   (`spotCheckSample.ts` is commit 2; until it exists, the 10 human-queue candidates from the pilot are
+   already in `/label/candidates`).
+2. Say "go" for tick 2 (profiles, ~$1.0) and the canary (20 probe venues + 5 vendor feeds, ~$1.4).
+
+**Next actions (Claude):** commit 2 = `targets.ts` (priors from README §1 + vendor tier),
+`measure.ts` (yield → prior update, tri-state status, writes `pipeline_versions`),
+`spotCheckSample.ts`; then canary → Gate 1a → probes A/3b/B under the gates.
+
+**D061 landmines (new today):**
+- The pooler is transaction-mode: only `begin; set local statement_timeout…; …; commit` lengthens
+  the 2-minute timeout. Scripts that need it must use one client + one transaction.
+- Never put a `distinct on` or an `OR` on a session setting in the structural universe CTE: the
+  planner's estimate collapses and the view goes from seconds to > 15 minutes. Batch scoping is the
+  generated function, never a filter on the view.
+- `post_extraction_runs` is unique on (post_url, prompt_version): a second reader run over another
+  clustering version overwrites the row's `candidate_id`/result for a post shared by two candidates.
+- `revertWeddingBatch.ts --retire-verdicts` supersedes THIS_VENUE model verdicts only; to re-create
+  after a revert, replay verdicts from history (`tmp_analysis/d061_replay_verdicts_after_rollback.sql`).
+- The creation script's `--from-confirmed-candidates` did not consult reconciliation before D061;
+  under `--acquisition-batch` it now does (≥ 0.7 → WOULD_ATTACH skip).
+- Non-venue hop-0 seeds (caterers/planners/DJs) out-yield venues 0.37 vs 0.14 weddings per tagged
+  post and fill thin venues 3.5× faster per post — vendor tagged feeds are tick 3b.
 
 ## Next actions (Claude, when unblocked)
 

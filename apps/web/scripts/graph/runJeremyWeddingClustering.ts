@@ -339,11 +339,22 @@ async function main() {
     evidenceSource === "structural"
       ? "source_post_url, account_id, role, venue_anchor_source, venue_anchor_conflict, has_couple_signal, has_wedding_keyword, couple_guess, has_non_wedding_event_keyword"
       : "source_post_url, account_id, role, null as venue_anchor_source, null as venue_anchor_conflict, null as has_couple_signal, null as has_wedding_keyword, null as couple_guess, null as has_non_wedding_event_keyword";
+  // D061 (2026-09-19, found on the pilot): the structural view's CTEs are materialized, so a
+  // `where source_post_url = any(...)` on the outside never reaches the universe CTE -- the whole
+  // 47k-post view is computed first and the 2-minute statement timeout fires. Under
+  // --acquisition-batch the structural source is therefore the batch-scoped FUNCTION
+  // structural_post_vendor_evidence_for_batch(batch_id) (applyStructuralEvidenceSchema.ts: same
+  // body, same row type, universe restricted to the tick's first-observed posts), which computes
+  // in seconds. Other evidence sources keep the plain url filter -- their views are small.
+  const evidenceRelation =
+    acquisitionBatch && evidenceSource === "structural"
+      ? `structural_post_vendor_evidence_for_batch($2::text)`
+      : evidenceView;
   const { rows: evidence } = await pool.query<EvidenceRow>(
     acquisitionBatchUrls
-      ? `select ${evidenceColumns} from ${evidenceView} where source_post_url = any($1::text[])`
+      ? `select ${evidenceColumns} from ${evidenceRelation} where source_post_url = any($1::text[])`
       : `select ${evidenceColumns} from ${evidenceView}`,
-    acquisitionBatchUrls ? [acquisitionBatchUrls] : []
+    acquisitionBatchUrls ? (evidenceSource === "structural" ? [acquisitionBatchUrls, acquisitionBatch] : [acquisitionBatchUrls]) : []
   );
   const evidenceByPost = new Map<string, EvidenceRow[]>();
   for (const e of evidence) {

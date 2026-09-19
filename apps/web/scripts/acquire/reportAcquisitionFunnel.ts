@@ -186,7 +186,10 @@ async function main() {
     // Creation decisions (batch-total only -- no tier column).
     // ------------------------------------------------------------
     const { rows: decisionRows } = await client.query(
-      `select cd.decision, count(*)::int as n from ops.creation_decisions cd where ${acquisitionBatchFilter} group by cd.decision`,
+      // Per creation batch, so a reverted batch's CREATE rows (still there, created_wedding_id
+      // nulled, plus REVERTED rows) don't read as live creations -- the pilot's rollback rehearsal
+      // showed CREATE=88 / REVERTED=43 as one blended total.
+      `select cd.batch_id || ': ' || cd.decision as decision, count(*)::int as n from ops.creation_decisions cd where ${acquisitionBatchFilter} group by cd.batch_id, cd.decision order by 1`,
       filterParams
     );
 

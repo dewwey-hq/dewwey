@@ -36,7 +36,7 @@ left join ops.crawl_runs r       on r.id = o.run_id
 left join accounts sa            on sa.id = o.seed_account_id
 left join ops.crawl_targets t    on t.id = o.target_id
 left join lateral (select stack_parser_version from stack_extraction_runs s where s.post_url = p.url
-                   order by s.created_at desc nulls last limit 1) ser on true
+                   order by s.extracted_at desc nulls last limit 1) ser on true
 left join lateral (select prompt_version, model, confidence from post_extraction_runs x where x.post_url = p.url
                    order by x.created_at desc nulls last limit 1) per on true
 left join jeremy_weddings_created jwc on jwc.wedding_id = w.id

@@ -1011,7 +1011,7 @@ async function runFromConfirmedCandidates(
   const scoped = opts.limit != null ? eligible.slice(0, opts.limit) : eligible;
 
   console.log(
-    `[create-weddings] --from-confirmed-candidates: clustering_version=${STRUCTURAL_CLUSTERING_VERSION} ` +
+    `[create-weddings] --from-confirmed-candidates: clustering_version=${opts.clusteringVersion ?? STRUCTURAL_CLUSTERING_VERSION} ` +
       `eligible=${eligible.length}${opts.since ? ` since=${opts.since}` : ""} ` +
       `processing=${scoped.length}${opts.limit != null ? ` (--limit ${opts.limit})` : ""}`
   );

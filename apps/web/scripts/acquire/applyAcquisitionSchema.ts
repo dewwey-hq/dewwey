@@ -122,6 +122,20 @@ export const STATEMENTS: string[] = [
      note                   text
    );`,
   `create index if not exists idx_creation_decisions_acquisition_batch on ops.creation_decisions (acquisition_batch_id);`,
+  // D061 pilot rollback rehearsal (2026-09-19): the first revert failed on
+  // creation_decisions_created_wedding_id_fkey -- a decision row pointed at the wedding being
+  // deleted. Decisions are append-only history, so the FK now sets null on delete (the row keeps
+  // its candidate, batch and decision) and a REVERTED decision is allowed for the revert script
+  // to append. Idempotent: drop-if-exists, then add.
+  `alter table ops.creation_decisions drop constraint if exists creation_decisions_created_wedding_id_fkey;`,
+  `alter table ops.creation_decisions add constraint creation_decisions_created_wedding_id_fkey
+     foreign key (created_wedding_id) references weddings(id) on delete set null;`,
+  `alter table ops.creation_decisions drop constraint if exists creation_decisions_matched_wedding_id_fkey;`,
+  `alter table ops.creation_decisions add constraint creation_decisions_matched_wedding_id_fkey
+     foreign key (matched_wedding_id) references weddings(id) on delete set null;`,
+  `alter table ops.creation_decisions drop constraint if exists creation_decisions_decision_check;`,
+  `alter table ops.creation_decisions add constraint creation_decisions_decision_check
+     check (decision in ('CREATE','CREATE_WEAK_MATCH','WOULD_ATTACH','HUMAN','SKIP','REVERTED'));`,
   `comment on table ops.creation_decisions is 'OPS (D061): one row per candidate createWeddingsFromJeremyEvidence.ts considered under --acquisition-batch scoping -- CREATE (no match), CREATE_WEAK_MATCH (0.5-0.7 reconciliation match, excluded from the coverage number until mergeDuplicateWeddings.ts clears it), WOULD_ATTACH (>=0.7 match, skipped -- no ATTACH lift in month 1), HUMAN (routed to /label/candidates), or SKIP. reportAcquisitionFunnel.ts reads this by acquisition_batch_id.';`,
 
   // Pure normalization view: union of staging.instagram_posts and public.posts (venue_tagged /

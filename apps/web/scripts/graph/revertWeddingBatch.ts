@@ -232,7 +232,12 @@ async function main() {
       }>(
         `select post_url, candidate_id, venue_account_id, reviewed_by
          from post_venue_verdicts_current
-         where post_url = any($1::text[])`,
+         where post_url = any($1::text[])
+           -- Only the verdict that made the candidate CONFIRM. Superseding a NOT_WEDDING or
+           -- OTHER_VENUE with SKIP loses information and leaves the candidate "undecided"
+           -- (posts_decided < posts_total), so it would resurface in the human queue and block a
+           -- re-creation -- found on the D061 rollback rehearsal (2026-09-19, 1 of 45 verdicts).
+           and verdict = 'THIS_VENUE'`,
         [allUrls]
       );
       for (const v of verdictRows) {
@@ -355,6 +360,20 @@ async function main() {
           );
         }
         await client.query(`delete from jeremy_weddings_created where candidate_id = $1`, [w.candidate_id]);
+        // D061: decisions are append-only history -- record the revert as its own decision row
+        // (the CREATE row keeps its candidate/batch; its created_wedding_id becomes null via the
+        // FK's on delete set null once the wedding row goes). Found by the pilot's rollback
+        // rehearsal on 2026-09-19, where the original FK blocked the delete outright.
+        if (acquisitionBatchPrefix && w.candidate_id != null) {
+          const { rows: cdGuard } = await client.query<{ ok: string | null }>(`select to_regclass('ops.creation_decisions')::text as ok`);
+          if (cdGuard[0].ok) {
+            await client.query(
+              `insert into ops.creation_decisions (batch_id, acquisition_batch_id, candidate_id, decision, matched_wedding_id, created_wedding_id, note)
+               values ($1, $2, $3, 'REVERTED', null, null, $4)`,
+              [batchId, acquisitionBatchPrefix, w.candidate_id, `revertWeddingBatch.ts --execute; reverted wedding ${w.wedding_id}`]
+            );
+          }
+        }
         await client.query(`delete from weddings where id = $1`, [w.wedding_id]);
       }
 
