@@ -284,7 +284,8 @@
       {
         "id": "hall-rental-only",
         "name": "Venue only",
-        "description": "Hall Rental Only: flat fee, bring your own everything, plus required staffing.",
+        "subtitle": "Hall Rental Only",
+        "description": "Flat fee, bring your own everything, plus required staffing.",
         "applies_to_spaces": "all",
         "fixed_fees": [
           {
@@ -439,6 +440,7 @@
       {
         "id": "hall-plus-a-la-carte",
         "name": "Venue + à la carte",
+        "subtitle": "Hall Rental + add-ons",
         "description": "Start from the Venue-only rental, then pick your own food packages, bar packages, and add-ons individually.",
         "applies_to_spaces": "all",
         "fixed_fees": [
@@ -594,6 +596,7 @@
       {
         "id": "all-inclusive",
         "name": "All-Inclusive",
+        "subtitle": "All-Inclusive package",
         "description": "Per-guest, all-inclusive: catering, bar, cake, rentals, staff.",
         "applies_to_spaces": "all",
         "fixed_fees": [],

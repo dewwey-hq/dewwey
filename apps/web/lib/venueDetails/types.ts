@@ -512,6 +512,9 @@ export interface PricingPath {
    * ("Access", "Event hours", "Holiday rates", "Overtime"). Rendered as `Label: text` under the
    * rate grid (round 4). */
   terms?: { label: string; text: string; evidence: Sourced }[];
+  /** The venue's own name for this path, shown light-grey under our standardized title ("Hall Rental
+   * Only" under "Venue only"). Round 6. */
+  subtitle?: string | null;
 }
 
 export interface Rates {

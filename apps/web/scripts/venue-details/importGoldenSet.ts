@@ -1019,7 +1019,8 @@ function buildDiamondGarden(): VenueDetailsV3 {
     // (`name` shown to couples; the FAQ's "Hall Rental Only" wording stays in the description and
     // everywhere else in the fixture that quotes the venue directly).
     name: "Venue only",
-    description: "Hall Rental Only: flat fee, bring your own everything, plus required staffing.",
+    subtitle: "Hall Rental Only",
+    description: "Flat fee, bring your own everything, plus required staffing.",
     applies_to_spaces: "all",
     fixed_fees: [...hallFeesForSeason("off"), ...hallFeesForSeason("peak")],
     per_guest_tiers: [],
@@ -1054,6 +1055,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
     ...hallOnlyPath,
     id: "hall-plus-a-la-carte",
     name: "Venue + à la carte",
+    subtitle: "Hall Rental + add-ons",
     description: "Start from the Venue-only rental, then pick your own food packages, bar packages, and add-ons individually.",
   };
 
@@ -1086,6 +1088,7 @@ function buildDiamondGarden(): VenueDetailsV3 {
   const allInclusivePath: PricingPath = {
     id: "all-inclusive",
     name: d.packages.complete.name,
+    subtitle: "All-Inclusive package",
     description: "Per-guest, all-inclusive: catering, bar, cake, rentals, staff.",
     applies_to_spaces: "all",
     fixed_fees: [],
