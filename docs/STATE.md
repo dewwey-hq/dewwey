@@ -45,9 +45,9 @@ every resource kind routed (`placeResources`, invariant-tested), concept spacing
 (Diamond Garden as the proving venue, all rules data-driven): four optional schema fields
 (`add_on_categories`, `PricingPath.includes`, `Pricing.seasons`, `AddOn.selection_group`), multi-path
 pricing cards, curated add-on categories, single-select calculator extras, `path_ids` honored, tier axis
-only on distinct names, grouped What's Included. 586 tests. **Pending:** three nits (duplicate in-card
-rate grid when a Pricing section exists, 3-column pricing grid, "Bar: In-house or BYO" quick fact) and
-the extractor tool schema learning the new fields — both building at the time of writing. `apps/web/app/components/venue/*` (`VenueDetailsView`, `FactSource`
+only on distinct names, grouped What's Included. Nits landed (`9bea7d8`) and the extractor tool schema +
+assembler + scorer learned the new fields (`01fde35`, SPINE_TOOL ≈ 12k tokens, PRICING_TOOL ≈ 3.2k).
+614 tests. Working tree clean; nothing building. `apps/web/app/components/venue/*` (`VenueDetailsView`, `FactSource`
 popover, `CostEstimate`, `PoliciesList`, `FaqList`, `ResourceMenuButton`, `format.ts`) and
 `apps/web/app/lab/venue/page.tsx` (`?golden=<slug>`, `?u=<username>`, `?compare=1`, noindex). All six
 goldens render at desktop and phone width; screenshots reviewed by Claude (user review still open).
