@@ -515,6 +515,15 @@ export function samePricingAsEarlierPath(paths: PricingPath[], index: number): P
   return null;
 }
 
+/** The standalone "Same rental rates as {name}." sentence a `samePricingAsEarlierPath` card shows
+ * (fix round, 2026-09-19 review): kept as ITS OWN sentence, never concatenated with the path's own
+ * `description` — the price line, includes/tier bullets, grid, and staffing/surcharge notes are all
+ * identical to the earlier path by definition, so the card renders only its title, description, and
+ * this one line. */
+export function sameRentalRatesLine(earlierPathName: string): string {
+  return `Same rental rates as ${earlierPathName}.`;
+}
+
 /** The season-months line, rendered once under the Pricing section's whole card grid (not
  * per-card, since the two definitions are always identical across every path on the same
  * venue): "off-season is Jan, Feb, Mar, Nov; peak season is Apr–Oct, Dec". Null when a venue

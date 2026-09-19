@@ -1398,6 +1398,12 @@ describe("samePricingAsEarlierPath (rule 16)", () => {
   });
 });
 
+describe("sameRentalRatesLine (fix round, 2026-09-19 review)", () => {
+  it("is a standalone sentence naming the earlier path, never carrying the description", () => {
+    expect(fmt.sameRentalRatesLine("Venue only")).toBe("Same rental rates as Venue only.");
+  });
+});
+
 describe("seasonLabelWithMonths (rule 16)", () => {
   it("appends the venue's own months in parens", () => {
     expect(fmt.seasonLabelWithMonths("off", { peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("Off-season (Jan, Feb, Mar, Nov)");

@@ -1485,6 +1485,9 @@ function buildDiamondGarden(): VenueDetailsV3 {
 // ===========================================================================
 
 const CORKAGE_NOTE_LH = "LondonHouse's own bar service is included in every package. Beyond that, you can bring your own wine or liquor for a $50/bottle corkage fee.";
+// Fix round (2026-09-19 review): the F&B `caption` is the narrow BYO exception ONLY — the
+// "own bar service is included" half duplicates `bar_note` verbatim, so it doesn't belong here too.
+const CORKAGE_EXCEPTION_LH = "You can bring your own wine or liquor for a $50/bottle corkage fee.";
 
 function buildLondonHouse(): VenueDetailsV3 {
   const l = londonhouse;
@@ -1628,7 +1631,7 @@ function buildLondonHouse(): VenueDetailsV3 {
     // "byo" is NOT stored here directly -- the corkage add-on above implies it additively via
     // `fbPills()` (derive.ts), same mechanism the plan calls "the LondonHouse fix".
     bar_pills: [fact("all_inclusive", "LondonHouse's own bar service is included in every package.", site)],
-    caption: fact(CORKAGE_NOTE_LH, CORKAGE_NOTE_LH, site),
+    caption: fact(CORKAGE_EXCEPTION_LH, CORKAGE_EXCEPTION_LH, site),
     // Round 4: sided Food/Bar prose. Bar is the package-bar sentence, distinct from the corkage
     // `caption` above (the narrow BYO-wine exception), which stays as its own field per plan.
     food_note: fact("In-house only. LondonHouse's own catering team handles all food & beverage.", "In-house only. LondonHouse's own catering team handles all food & beverage.", weddingsUrl),

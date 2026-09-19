@@ -989,9 +989,25 @@ function PricingPathCard({
   // + à la carte" reusing "Hall Rental Only"'s grid) says so in one sentence instead of repeating
   // the grid.
   const sameAs = fmt.samePricingAsEarlierPath(paths, index);
-  const feeGrid = sameAs
-    ? null
-    : fmt.buildMergedPriceGrid(fmt.fixedFeeGrid(path.fixed_fees.filter((f) => f.applies_to === "space" || f.applies_to === "whole_venue"), seasons));
+
+  // Fix round (2026-09-19 review): the fees are identical to `sameAs` by definition, so the price
+  // line, includes/tier bullets, grid, and staffing/surcharge/promotion notes below would just be
+  // exact repeats — the card renders ONLY its title, its own description (its own sentence, never
+  // concatenated onto the "Same rental rates" line), and that one line.
+  if (sameAs) {
+    return (
+      <div className="rounded-2xl border border-black/[0.06] p-5">
+        <div className="flex items-center gap-1.5">
+          <h3 className={`text-lg text-gray-900 ${uiHeadingClassName}`}>{path.name}</h3>
+          <FactSource quote={path.quote} source_url={path.source_url} snapshot_id={path.snapshot_id} capturedAt={capturedAt} />
+        </div>
+        {path.description && <p className="mt-1 text-sm text-gray-600">{path.description}</p>}
+        <p className="mt-1 text-sm text-gray-600">{fmt.sameRentalRatesLine(sameAs.name)}</p>
+      </div>
+    );
+  }
+
+  const feeGrid = fmt.buildMergedPriceGrid(fmt.fixedFeeGrid(path.fixed_fees.filter((f) => f.applies_to === "space" || f.applies_to === "whole_venue"), seasons));
   const tierGrid = fmt.buildMergedPriceGrid(fmt.perGuestTierGrid(path.per_guest_tiers, seasons));
   const priceParts = fmt.pricingHeadlineParts(path);
   // The representative per-guest tier's own inclusions (round 4 rule 16) — `collapseTiersByName`
@@ -1010,17 +1026,8 @@ function PricingPathCard({
         <FactSource quote={path.quote} source_url={path.source_url} snapshot_id={path.snapshot_id} capturedAt={capturedAt} />
       </div>
 
-      {/* Subtitle: the plain description, or (when this path builds on an earlier one's identical
-          fees) the "Same rental rates as X, plus …" sentence in its place — round 4 rule 16's
-          sentence, moved up to the subtitle slot per round 5's card order. */}
-      {sameAs ? (
-        <p className="mt-1 text-sm text-gray-600">
-          Same rental rates as {sameAs.name}
-          {path.description ? `, plus ${path.description}` : ""}.
-        </p>
-      ) : (
-        path.description && <p className="mt-1 text-sm text-gray-600">{path.description}</p>
-      )}
+      {/* Subtitle: the plain description. */}
+      {path.description && <p className="mt-1 text-sm text-gray-600">{path.description}</p>}
 
       {/* Round 5 rule 6 / rule 8: price bold, unit small grey — same typography as the F&B tier
           cards' headline price. */}
