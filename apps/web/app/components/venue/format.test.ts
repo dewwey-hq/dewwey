@@ -564,6 +564,18 @@ describe("section visibility predicates", () => {
   });
 });
 
+describe("pricingGridClass", () => {
+  it("uses 2 columns for 2 paths", () => {
+    expect(fmt.pricingGridClass(2)).toBe("grid gap-5 sm:grid-cols-2");
+  });
+  it("uses 3 columns for exactly 3 paths so the third card isn't orphaned onto its own row", () => {
+    expect(fmt.pricingGridClass(3)).toBe("grid gap-5 sm:grid-cols-2 lg:grid-cols-3");
+  });
+  it("wraps 2x2 for 4 paths", () => {
+    expect(fmt.pricingGridClass(4)).toBe("grid gap-5 sm:grid-cols-2");
+  });
+});
+
 describe("policyEvidence", () => {
   it("returns none for not_stated", () => {
     const d = makeVenue();
@@ -648,6 +660,20 @@ describe("anySpaceHasScopedFees", () => {
   it("is false when no space has a space-scoped fee (Greenhouse's one whole-venue rental)", () => {
     expect(fmt.anySpaceHasScopedFees([space({ id: "other" })], path)).toBe(false);
     expect(fmt.anySpaceHasScopedFees([space({ id: "main" })], undefined)).toBe(false);
+  });
+});
+
+describe("showSpaceRentalGrid", () => {
+  it("renders when the space has no scoped fee, there are whole-venue fees, and there's no standalone Pricing section", () => {
+    expect(fmt.showSpaceRentalGrid(0, 2, 1)).toBe(true);
+    expect(fmt.showSpaceRentalGrid(0, 2, 0)).toBe(true);
+  });
+  it("is false once there's a standalone Pricing section (2+ paths) — that section already shows the same fees per path", () => {
+    expect(fmt.showSpaceRentalGrid(0, 2, 2)).toBe(false);
+  });
+  it("is false when the space has its own scoped fee, or there are no whole-venue fees to show", () => {
+    expect(fmt.showSpaceRentalGrid(1, 2, 1)).toBe(false);
+    expect(fmt.showSpaceRentalGrid(0, 0, 1)).toBe(false);
   });
 });
 
@@ -963,6 +989,17 @@ describe("buildMergedPriceGrid", () => {
 
   it("returns null when there's no grid to show", () => {
     expect(fmt.buildMergedPriceGrid(fmt.fixedFeeGrid([]))).toBeNull();
+  });
+
+  it("uses the same cheap-first Weekday/Fri/Sun/Sat column order for whole-venue fees as the Pricing cards use for path fees — the single-space card's 'Rental rate' grid must not fall back to the old Sat-first order", () => {
+    const wholeVenueFees = [
+      fixedFee({ key: "wk", day: "weekday", season: "off", amount: 2100, applies_to: "whole_venue", space_id: null }),
+      fixedFee({ key: "fr", day: "fri", season: "off", amount: 3700, applies_to: "whole_venue", space_id: null }),
+      fixedFee({ key: "su", day: "sun", season: "off", amount: 3700, applies_to: "whole_venue", space_id: null }),
+      fixedFee({ key: "sa", day: "sat", season: "off", amount: 4700, applies_to: "whole_venue", space_id: null }),
+    ];
+    const grid = fmt.buildMergedPriceGrid(fmt.fixedFeeGrid(wholeVenueFees));
+    expect(grid!.columns.map((c) => c.label)).toEqual(["Weekday", "Fri/Sun", "Sat"]);
   });
 });
 

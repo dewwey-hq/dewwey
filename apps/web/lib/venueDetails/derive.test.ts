@@ -356,6 +356,30 @@ describe("quickFacts", () => {
     expect(pills).toHaveLength(5);
     expect(pills[4]).toEqual({ icon: "sparkle", label: "LEED Platinum certified" });
   });
+
+  it("bar pill reads 'In-house or BYO' when bar is in_house but bar_pills additively include byo (Diamond Garden shape)", () => {
+    const venue = makeVenue({
+      spine: spineWith({ bar: fact("in_house") }),
+      food_beverage: { food_pills: [], bar_pills: [fact("byo")], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+    });
+    const bar = quickFacts(venue).find((p) => p.icon === "bar")!;
+    expect(bar.label).toBe("Bar: In-house or BYO");
+  });
+
+  it("keeps the plain 'In-house' bar pill when there's no byo pill", () => {
+    const venue = makeVenue({ spine: spineWith({ bar: fact("in_house") }) });
+    const bar = quickFacts(venue).find((p) => p.icon === "bar")!;
+    expect(bar.label).toBe("Bar: In-house");
+  });
+
+  it("keeps '+ BYO (corkage)' wording for a venue that genuinely charges one", () => {
+    const venue = makeVenue({
+      spine: spineWith({ bar: fact("byo_with_corkage") }),
+      food_beverage: { food_pills: [], bar_pills: [fact("byo")], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+    });
+    const bar = quickFacts(venue).find((p) => p.icon === "bar")!;
+    expect(bar.label).toBe("Bar: In-house + BYO");
+  });
 });
 
 // ---------------------------------------------------------------------------

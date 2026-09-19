@@ -185,6 +185,17 @@ export function anySpaceHasScopedFees(spaces: Space[], path: PricingPath | undef
   return spaces.some((s) => pathSpaceFixedFees(path, s.id).length > 0);
 }
 
+/** The single-space card's own "Rental rate" season x day grid only renders when this space has
+ * no space-scoped fee of its own (`spaceFeesCount === 0`), there are whole-venue fees to show
+ * (`wholeVenueFeesCount > 0`), AND there's no standalone Pricing section already showing those
+ * same fees per path (`pricingPathsCount < 2`, `showPricingSection`'s own threshold) —
+ * duplicate-rate-grid fix, 2026-09-18 review: a venue with 2+ pricing paths already gets a
+ * per-path grid in the Pricing section, so the card would otherwise print the same numbers
+ * twice. */
+export function showSpaceRentalGrid(spaceFeesCount: number, wholeVenueFeesCount: number, pricingPathsCount: number): boolean {
+  return spaceFeesCount === 0 && wholeVenueFeesCount > 0 && pricingPathsCount < 2;
+}
+
 export interface WholeVenueFeeGroup {
   season: Season;
   parts: { label: string; amount: number; fee: FixedFee }[];
@@ -764,6 +775,12 @@ export function policyPillClassName(stated: boolean): string {
 
 export function showPricingSection(d: VenueDetailsV3): boolean {
   return d.pricing.paths.length >= 2;
+}
+
+/** Pricing section grid class: 2 columns for 2 paths, 3 columns (never 2, which orphans the
+ * third card onto its own row) for exactly 3, and back to 2 (wrapping 2x2) for 4+ — round-3 fix. */
+export function pricingGridClass(pathCount: number): string {
+  return `grid gap-5 sm:grid-cols-2${pathCount === 3 ? " lg:grid-cols-3" : ""}`;
 }
 
 export function showInclusions(d: VenueDetailsV3): boolean {

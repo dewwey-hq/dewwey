@@ -609,9 +609,14 @@ function cateringPillLabel(spine: VenueSpine): string {
   return { open: "Open, any caterer", preferred_list: "Preferred list", exclusive_in_house: "In-house only", approved_list_only: "Approved list only" }[c.value];
 }
 
-function barPillLabel(spine: VenueSpine): string {
+/** `barHasByo` mirrors `policyRows`'s `ctx.barHasByo` fix: a venue whose bar enum is genuinely
+ * `in_house` (an in-house bar, not a BYO-with-corkage arrangement) but whose own extracted F&B
+ * pills additively include `byo` (Diamond Garden: open bar / cash bar / no-fee BYO) also allows a
+ * couple to bring their own alcohol — bare "In-house" would be wrong here. */
+function barPillLabel(spine: VenueSpine, barHasByo: boolean): string {
   const b = spine.bar;
   if (b.status !== "stated") return "Not stated";
+  if (b.value === "in_house" && barHasByo) return "In-house or BYO";
   return { in_house: "In-house", byob: "BYOB", byo_with_corkage: "In-house + BYO", dry: "No alcohol" }[b.value];
 }
 
@@ -628,7 +633,8 @@ export function quickFacts(d: VenueDetailsV3): QuickFactPill[] {
 
   pills.push({ icon: "setting", label: isStated(d.spine.setting) ? SETTING_LABEL[d.spine.setting.value] : "Not stated" });
   pills.push({ icon: "catering", label: `Catering: ${cateringPillLabel(d.spine)}` });
-  pills.push({ icon: "bar", label: `Bar: ${barPillLabel(d.spine)}` });
+  const barHasByo = d.food_beverage.bar_pills.some((p) => p.value === "byo");
+  pills.push({ icon: "bar", label: `Bar: ${barPillLabel(d.spine, barHasByo)}` });
 
   if (d.differentiator?.tagline) {
     pills.push({ icon: "sparkle", label: d.differentiator.tagline });

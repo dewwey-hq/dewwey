@@ -324,7 +324,7 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
         <>
           <section id="pricing">
             <SectionHeading title="Pricing" />
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className={fmt.pricingGridClass(venue.pricing.paths.length)}>
               {venue.pricing.paths.map((p) => (
                 <PricingPathCard key={p.id} path={p} capturedAt={venue.sources.crawled_at} />
               ))}
@@ -582,9 +582,15 @@ function SpaceCard({
   const otherActions = actions.filter((r) => r.kind !== "floor_plan");
   const sizeLine = fmt.spaceSizeLine(space.sq_ft, space.sq_ft_outdoor, space.structure_label, space.sq_ft_label);
   const ceiling = fmt.ceilingLine(space.ceiling_ft, space.ceiling_label);
-  // Fix round: only when this space has no space-scoped fee of its own do the whole-venue fees
-  // render here, as a "Rental rate" season x day grid (greenhouse-loft's shape) — never both.
-  const rentalGrid = fees.length === 0 && wholeVenueFeesForCard.length > 0 ? fmt.fixedFeeGrid(wholeVenueFeesForCard) : null;
+  // Fix round (2026-09-18 review): only when this space has no space-scoped fee of its own, AND
+  // there's no standalone Pricing section already showing these same whole-venue fees per path,
+  // do they render here as a "Rental rate" season x day grid (greenhouse-loft's shape) — a venue
+  // with 2+ pricing paths must never print the same numbers twice. Uses the same cheap-first,
+  // merged-identical-days column builder as the Pricing cards (`buildMergedPriceGrid`), not the
+  // old Sat-first `fixedFeeGrid`-only order.
+  const rentalGrid = fmt.showSpaceRentalGrid(fees.length, wholeVenueFeesForCard.length, venue.pricing.paths.length)
+    ? fmt.buildMergedPriceGrid(fmt.fixedFeeGrid(wholeVenueFeesForCard))
+    : null;
 
   return (
     <div className={`rounded-2xl border border-black/[0.06] ${single ? "p-6" : "p-5"}`}>
@@ -649,7 +655,7 @@ function SpaceCard({
       {rentalGrid && (
         <div className="mt-4 rounded-lg bg-[#fdf8f5] p-3 text-sm text-gray-700">
           <p className={`mb-2 font-medium text-gray-900 ${uiHeadingClassName}`}>Rental rate</p>
-          <PriceGridTable grid={rentalGrid} />
+          <MergedPriceGridTable grid={rentalGrid} />
         </div>
       )}
 
@@ -894,38 +900,6 @@ function WhatsIncludedSection({ inclusions, capturedAt }: { inclusions: Inclusio
 // ---------------------------------------------------------------------------
 // Pricing (standalone section, 2+ paths)
 // ---------------------------------------------------------------------------
-
-function PriceGridTable({ grid, moneySuffix }: { grid: fmt.PriceGrid; moneySuffix?: string }) {
-  if (grid.days.length === 0 || grid.seasons.length === 0) return null;
-  return (
-    <div className="mt-3 overflow-x-auto">
-      <table className="w-full text-xs text-gray-600">
-        <thead>
-          <tr className="text-gray-400">
-            <th className="pb-1.5 text-left font-normal">Season</th>
-            {grid.days.map((d) => (
-              <th key={d} className="pb-1.5 text-right font-normal">
-                {fmt.dayLabel(d)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {grid.seasons.map((s, si) => (
-            <tr key={s} className="border-t border-black/[0.05]">
-              <td className="py-1">{fmt.seasonLabel(s)}</td>
-              {grid.grid[si].map((amount, di) => (
-                <td key={di} className="py-1 text-right">
-                  {amount != null ? `${fmt.money(amount)}${moneySuffix ?? ""}` : <span className="text-gray-300">—</span>}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 function MergedPriceGridTable({ grid, moneySuffix }: { grid: fmt.MergedPriceGrid; moneySuffix?: string }) {
   return (
