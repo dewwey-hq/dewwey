@@ -140,6 +140,16 @@
  *   bun run scripts/graph/runJeremyWeddingClustering.ts --evidence-source structural --dry-run
  *   bun run scripts/graph/runJeremyWeddingClustering.ts --evidence-source structural --dry-run --ignore-existing-candidates
  *   bun run scripts/graph/runJeremyWeddingClustering.ts --evidence-source structural --eligibility venue-anchor-plus-wedding-keyword --clustering-version structural-v3-a1 --dry-run
+ *
+ * --acquisition-batch <batch_id> (D061, any evidence source): scopes the evidence rows
+ * considered to one acquisition tick's first-observed posts only -- `select p.url from
+ * ops.post_observations o join ops.crawl_runs r on r.id = o.run_id join posts p on p.id =
+ * o.post_id where r.batch_id = $1 and o.is_first`, applied as a SQL `where source_post_url = any
+ * (...)` on the evidence-view query itself (never a JS-side filter after the fact). Candidates
+ * created in this run are NOT stamped with the batch on jeremy_wedding_candidates (no such column
+ * -- would require a schema change out of scope here); they're findable by scoping
+ * jeremy_wedding_candidate_posts to the same batch post set, which is sufficient since every post
+ * this run touches is already in that set.
  */
 import { getPool, closePool } from "../classify/db";
 import { effectiveDate, daysBetween, jaccard } from "./clusteringUtils";
@@ -257,7 +267,20 @@ function parseArgs() {
     );
   }
 
-  return { evidenceSource: evidenceSource as EvidenceSource, dryRun, ignoreExistingCandidates, eligibility, clusteringVersionOverride };
+  // D061: restrict the evidence rows considered to one acquisition tick's first-observed post
+  // set (joined in SQL, not filtered in JS after the fact -- see main()). Valid with any
+  // evidence source; leftover non-acquisition runs (structural sizing, human_confirmed, etc.)
+  // omit it and behave exactly as before.
+  const acquisitionBatch = a.includes("--acquisition-batch") ? a[a.indexOf("--acquisition-batch") + 1] : null;
+
+  return {
+    evidenceSource: evidenceSource as EvidenceSource,
+    dryRun,
+    ignoreExistingCandidates,
+    eligibility,
+    clusteringVersionOverride,
+    acquisitionBatch,
+  };
 }
 
 const CLUSTERING_VERSION_BY_SOURCE: Record<EvidenceSource, string> = {
@@ -276,10 +299,34 @@ const EVIDENCE_VIEW_BY_SOURCE: Record<EvidenceSource, string> = {
 };
 
 async function main() {
-  const { evidenceSource, dryRun, ignoreExistingCandidates, eligibility, clusteringVersionOverride } = parseArgs();
+  const { evidenceSource, dryRun, ignoreExistingCandidates, eligibility, clusteringVersionOverride, acquisitionBatch } = parseArgs();
   const clusteringVersion = clusteringVersionOverride ?? CLUSTERING_VERSION_BY_SOURCE[evidenceSource];
   const evidenceView = EVIDENCE_VIEW_BY_SOURCE[evidenceSource];
   const pool = getPool();
+
+  // D061: resolve the acquisition tick's first-observed post urls BEFORE fetching evidence, so
+  // the evidence-view query itself can scope with a `where source_post_url = any(...)` -- the
+  // plan's "in SQL, not in JS" requirement. Guarded with to_regclass so this script still gives a
+  // clear error (not a bare "relation does not exist") before the ops schema is applied.
+  let acquisitionBatchUrls: string[] | null = null;
+  if (acquisitionBatch) {
+    const { rows: guard } = await pool.query<{ ok: string | null }>(`select to_regclass('ops.post_observations')::text as ok`);
+    if (!guard[0].ok) {
+      throw new Error("--acquisition-batch requires ops.post_observations to exist (acquisition schema not applied yet)");
+    }
+    const { rows: scoped } = await pool.query<{ post_url: string }>(
+      `select p.url as post_url
+       from ops.post_observations o
+       join ops.crawl_runs r on r.id = o.run_id
+       join posts p on p.id = o.post_id
+       where r.batch_id = $1 and o.is_first`,
+      [acquisitionBatch]
+    );
+    acquisitionBatchUrls = scoped.map((r) => r.post_url);
+    console.log(
+      `[jeremy-cluster] --acquisition-batch ${acquisitionBatch}: scoping to ${acquisitionBatchUrls.length} first-observed post(s)`
+    );
+  }
 
   // Fetch the (moderately expensive — a per-row lateral join) evidence view exactly ONCE.
   // Referencing it twice in a single SQL statement (once directly, once in a subquery) made
@@ -292,7 +339,12 @@ async function main() {
     evidenceSource === "structural"
       ? "source_post_url, account_id, role, venue_anchor_source, venue_anchor_conflict, has_couple_signal, has_wedding_keyword, couple_guess, has_non_wedding_event_keyword"
       : "source_post_url, account_id, role, null as venue_anchor_source, null as venue_anchor_conflict, null as has_couple_signal, null as has_wedding_keyword, null as couple_guess, null as has_non_wedding_event_keyword";
-  const { rows: evidence } = await pool.query<EvidenceRow>(`select ${evidenceColumns} from ${evidenceView}`);
+  const { rows: evidence } = await pool.query<EvidenceRow>(
+    acquisitionBatchUrls
+      ? `select ${evidenceColumns} from ${evidenceView} where source_post_url = any($1::text[])`
+      : `select ${evidenceColumns} from ${evidenceView}`,
+    acquisitionBatchUrls ? [acquisitionBatchUrls] : []
+  );
   const evidenceByPost = new Map<string, EvidenceRow[]>();
   for (const e of evidence) {
     if (!evidenceByPost.has(e.source_post_url)) evidenceByPost.set(e.source_post_url, []);
@@ -389,19 +441,38 @@ async function main() {
         })()
       : await (async () => {
           // Most human-confirmed/venue-couple-signal/venue-inline-mention/structural posts never
-          // had a V3 run -- source posted_at directly from the corpus table instead. No
+          // had a V3 run -- source posted_at directly from the corpus instead. No
           // event_date/event_date_confidence available here (only V3 extracts those);
-          // effectiveDate() falls back to posted_at cleanly. This is the same
-          // staging.instagram_posts.post_timestamp the structural view's own `event_date` column
-          // is built from, so re-deriving it here (rather than selecting it off the view) is
-          // redundant work, not a different number.
-          const { rows } = await pool.query<PostRow>(
-            `select post_url as source_post_url, post_timestamp::text as posted_at,
-                    null::text as event_date, null::real as event_date_confidence
-             from staging.instagram_posts
-             where post_url = any($1::text[])`,
-            [eligiblePostUrls]
+          // effectiveDate() falls back to posted_at cleanly.
+          //
+          // D061: sourced from v_ig_posts (pure union of staging + acquisition-fed public posts)
+          // rather than staging.instagram_posts directly -- structural's universe (and any other
+          // evidence source, going forward) can now include public posts with no staging row at
+          // all. Matched by shortcode, staging-precedence `distinct on`, same rule as the
+          // structural universe CTE (applyStructuralEvidenceSchema.ts) -- never by url equality,
+          // since url is a convention shared by all three sources today but never guaranteed. The
+          // returned source_post_url is always the url that was asked for (not whatever
+          // v_ig_posts happens to store for that shortcode), so downstream code keeps keying off
+          // the urls it already has.
+          const shortcodeToUrl = new Map<string, string>();
+          for (const url of eligiblePostUrls) {
+            const m = url.match(/\/p\/([^/]+)/);
+            if (m) shortcodeToUrl.set(m[1], url);
+          }
+          const shortcodes = [...shortcodeToUrl.keys()];
+          const { rows: dated } = await pool.query<{ shortcode: string; posted_at: string | null }>(
+            `select distinct on (shortcode) shortcode, post_timestamp::text as posted_at
+             from v_ig_posts
+             where shortcode = any($1::text[])
+             order by shortcode, (corpus_source = 'staging') desc`,
+            [shortcodes]
           );
+          const rows: PostRow[] = [];
+          for (const r of dated) {
+            const url = shortcodeToUrl.get(r.shortcode);
+            if (!url) continue;
+            rows.push({ source_post_url: url, posted_at: r.posted_at, event_date: null, event_date_confidence: null });
+          }
           return rows;
         })();
   // distinct on post_url, keeping the latest classified_at row (v3 query above is pre-sorted for this)
@@ -418,18 +489,19 @@ async function main() {
   // The real alreadyClusteredSet is still fetched/logged above for visibility either way.
   const effectiveAlreadyClusteredSet = ignoreExistingCandidates ? new Set<string>() : alreadyClusteredSet;
 
-  // Pool-A1-only (D055 Stage 2): also skip posts that are already DOCUMENTED -- a `posts` row
-  // (matched by shortcode parsed from the URL, same convention as
+  // Originally pool-A1-only (D055 Stage 2): skip posts that are already DOCUMENTED -- a `posts`
+  // row (matched by shortcode parsed from the URL, same convention as
   // createWeddingsFromJeremyEvidence.ts's shortcodeFromUrl/duplicate_post guard) joined to
-  // `wedding_posts` -- even though jeremy_wedding_candidate_posts has no row for it. The default
-  // structural rule doesn't do this (that guard lives at CREATE time in
-  // createWeddingsFromJeremyEvidence.ts instead, which is sufficient there); pool A1 is sized and
-  // reported against this check up front, per the mission's accounting ("1,897 venue-anchored+
-  // keyword never-clustered minus 220 with a non-wedding keyword" already nets out documented
-  // posts), so it's applied here rather than left to surface as CREATE-time skips later.
-  const isPoolA1 = evidenceSource === "structural" && eligibility === "venue-anchor-plus-wedding-keyword";
+  // `wedding_posts` -- even though jeremy_wedding_candidate_posts has no row for it yet.
+  // D061 (2026-09-19): unconditional for every evidence source/eligibility -- was pool-A1-only.
+  // A post already documented in wedding_posts must never spawn a second candidate from any
+  // evidence pool. CREATE-time also guards this (createWeddingsFromJeremyEvidence.ts), but
+  // skipping it here keeps a documented post from occupying a brand-new candidate slot in the
+  // meantime, which matters now that acquisition-fed public posts (already-documented via Ben's
+  // venue-tagged crawl nº1) flow through the same evidence sources. Matched by shortcode, same
+  // convention as everywhere else in this file.
   const alreadyDocumentedSet = new Set<string>();
-  if (isPoolA1) {
+  {
     const shortcodeToUrl = new Map<string, string>();
     for (const url of eligiblePostUrls) {
       const m = url.match(/\/p\/([^/]+)/);
@@ -461,9 +533,9 @@ async function main() {
   console.log(
     `[jeremy-cluster] ${dryRun ? "DRY RUN — " : ""}evidence-source=${evidenceSource}${
       evidenceSource === "structural" ? ` eligibility=${eligibility}` : ""
-    } version=${clusteringVersion} clustering-eligible=${eligiblePostUrls.length} already-clustered=${alreadyClusteredSet.size}${ignoreExistingCandidates ? " (IGNORED for to-process via --ignore-existing-candidates)" : ""}${
-      isPoolA1 ? ` already-documented=${alreadyDocumentedSet.size}` : ""
-    } to-process=${sortable.length}${
+    } version=${clusteringVersion}${
+      acquisitionBatch ? ` acquisition-batch=${acquisitionBatch}` : ""
+    } clustering-eligible=${eligiblePostUrls.length} already-clustered=${alreadyClusteredSet.size}${ignoreExistingCandidates ? " (IGNORED for to-process via --ignore-existing-candidates)" : ""} already-documented=${alreadyDocumentedSet.size} to-process=${sortable.length}${
       evidenceSource === "structural" ? ` non-wedding-event-excluded=${nonWeddingEventExcludedCount}` : ""
     }`
   );

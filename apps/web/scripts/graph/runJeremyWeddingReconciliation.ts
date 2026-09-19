@@ -9,6 +9,13 @@
  * is the strongest anchor (matching the existing "a wedding is Chicago iff
  * its venue is" principle) and matching without one would be guessing.
  *
+ * --acquisition-batch <batch_id> (D061, 2026-09-19): scope reconciliation to candidates that
+ * contain at least one post from one acquisition tick's first-observed set (a cheap `exists`
+ * join through jeremy_wedding_candidate_posts, not a restructure of the scoring logic below --
+ * this script already reconciles every current candidate unconditionally and idempotently
+ * on every run, so the flag only narrows which candidates are touched this time). Without it,
+ * the script's existing unscoped, whole-table, idempotent behavior is unchanged.
+ *
  * Usage (from apps/web): bun run scripts/graph/runJeremyWeddingReconciliation.ts
  */
 import { getPool, closePool } from "../classify/db";
@@ -30,11 +37,43 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 async function main() {
   const pool = getPool();
 
+  const acquisitionBatchIdx = process.argv.indexOf("--acquisition-batch");
+  const acquisitionBatch = acquisitionBatchIdx >= 0 ? process.argv[acquisitionBatchIdx + 1] : null;
+  let acquisitionBatchUrls: string[] | null = null;
+  if (acquisitionBatch) {
+    const { rows: guard } = await pool.query<{ ok: string | null }>(`select to_regclass('ops.post_observations')::text as ok`);
+    if (!guard[0].ok) {
+      throw new Error("--acquisition-batch requires ops.post_observations to exist (acquisition schema not applied yet)");
+    }
+    const { rows: scoped } = await pool.query<{ post_url: string }>(
+      `select p.url as post_url
+       from ops.post_observations o
+       join ops.crawl_runs r on r.id = o.run_id
+       join posts p on p.id = o.post_id
+       where r.batch_id = $1 and o.is_first`,
+      [acquisitionBatch]
+    );
+    acquisitionBatchUrls = scoped.map((r) => r.post_url);
+    console.log(
+      `[jeremy-reconcile] --acquisition-batch ${acquisitionBatch}: scoping to candidates touching ${acquisitionBatchUrls.length} first-observed post(s)`
+    );
+  }
+
   const { rows: candidates } = await pool.query<{
     id: number;
     venue_account_id: number | null;
     event_date_est: string | null;
-  }>(`select id, venue_account_id, event_date_est::text as event_date_est from jeremy_wedding_candidates`);
+  }>(
+    acquisitionBatchUrls
+      ? `select id, venue_account_id, event_date_est::text as event_date_est
+         from jeremy_wedding_candidates c
+         where exists (
+           select 1 from jeremy_wedding_candidate_posts cp
+           where cp.candidate_id = c.id and cp.source_post_url = any($1::text[])
+         )`
+      : `select id, venue_account_id, event_date_est::text as event_date_est from jeremy_wedding_candidates`,
+    acquisitionBatchUrls ? [acquisitionBatchUrls] : []
+  );
 
   const { rows: candidateVendorRows } = await pool.query<{ candidate_id: number; account_id: number; role: string }>(
     `select candidate_id, account_id, role from jeremy_wedding_candidate_vendors`
@@ -46,7 +85,11 @@ async function main() {
   }
 
   const withVenue = candidates.filter((c) => c.venue_account_id != null);
-  console.log(`[jeremy-reconcile] version=${RECONCILIATION_VERSION} candidates=${candidates.length} with-venue=${withVenue.length}`);
+  console.log(
+    `[jeremy-reconcile] version=${RECONCILIATION_VERSION}${
+      acquisitionBatch ? ` acquisition-batch=${acquisitionBatch}` : ""
+    } candidates=${candidates.length} with-venue=${withVenue.length}`
+  );
 
   const venueIds = [...new Set(withVenue.map((c) => c.venue_account_id))];
   const { rows: bendWeddings } = await pool.query<{

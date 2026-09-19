@@ -112,9 +112,21 @@
  *   bun run scripts/classify/runExtract.ts --mode ben-weddings --limit 20 --dry-run
  *   bun run scripts/classify/runExtract.ts --mode ben-weddings --limit 1602 --max-cost-usd 10
  *   bun run scripts/classify/runExtract.ts --mode ben-weddings --limit 500 --escalate-band 0.5-0.8
+ *   bun run scripts/classify/runExtract.ts --mode corpus --acquisition-batch acq-20260920-pilot --write-verdicts
+ *
+ * --acquisition-batch <batch_id> (D061, --mode corpus only): scopes the corpus post set to one
+ * acquisition tick's first-observed posts (via jeremy_wedding_candidate_posts.source_post_url,
+ * which already keys on post_url whether the post is staging or public/acquisition-sourced --
+ * see selectCorpusMeta). A post whose shortcode has no staging.instagram_posts row (a
+ * venue_tagged/own_profile post the acquisition loop ingested straight into `posts`) gets its
+ * caption/context from fetchExtractContextsFromPublic (source.ts's fetchPostsFromPublic) instead
+ * of the staging query; 629 posts today exist in both corpora, and those are read from staging
+ * (staging precedence, same rule as the structural universe CTE and v_ig_posts everywhere else).
+ * Refused with any mode other than corpus.
  */
 import type { Pool } from "pg";
 import { getPool, closePool } from "./db";
+import { fetchPostsFromPublic } from "./source";
 import { MODEL_CHEAP, MODEL_EXPENSIVE } from "./llmClassifier";
 import { callTool, OpenRouterError } from "./openrouter";
 import { parseEscalateBand, shouldEscalate, type EscalateBand } from "./escalation";
@@ -187,6 +199,11 @@ interface Args {
    *  -- the project's existing upper-tier OpenRouter model id, same one runClassify.ts's tiered
    *  classifier already escalates to). */
   escalateModel: string;
+  /** --acquisition-batch <batch_id> (D061, --mode corpus only): scopes the corpus post set to
+   *  one acquisition tick's first-observed posts. Caption/context for a post whose shortcode has
+   *  no staging.instagram_posts row (public-only, i.e. venue_tagged/own_profile) is fetched via
+   *  fetchPostsFromPublic instead of the staging query -- see fetchExtractContextsFromPublic. */
+  acquisitionBatch: string | null;
 }
 
 function parseArgs(): Args {
@@ -219,7 +236,29 @@ function parseArgs(): Args {
     includeAmbiguous: a.includes("--include-ambiguous"),
     escalateBand: parseEscalateBand(get("--escalate-band")),
     escalateModel: get("--escalate-model") ?? MODEL_EXPENSIVE,
+    acquisitionBatch: get("--acquisition-batch") ?? null,
   };
+}
+
+/** D061: `select p.url from ops.post_observations o join ops.crawl_runs r on r.id = o.run_id join
+ * posts p on p.id = o.post_id where r.batch_id = $1 and o.is_first` -- the batch's first-observed
+ * post set, same scoping query as every other --acquisition-batch consumer
+ * (runJeremyWeddingClustering.ts, runStackParserBaseline.ts, runJeremyWeddingReconciliation.ts).
+ * Guarded with to_regclass so this gives a clear error before the ops schema is applied. */
+async function resolveAcquisitionBatchUrls(pool: Pool, batchId: string): Promise<string[]> {
+  const { rows: guard } = await pool.query<{ ok: string | null }>(`select to_regclass('ops.post_observations')::text as ok`);
+  if (!guard[0].ok) {
+    throw new Error("--acquisition-batch requires ops.post_observations to exist (acquisition schema not applied yet)");
+  }
+  const { rows } = await pool.query<{ post_url: string }>(
+    `select p.url as post_url
+     from ops.post_observations o
+     join ops.crawl_runs r on r.id = o.run_id
+     join posts p on p.id = o.post_id
+     where r.batch_id = $1 and o.is_first`,
+    [batchId]
+  );
+  return rows.map((r) => r.post_url);
 }
 
 interface PostMeta {
@@ -272,7 +311,8 @@ async function selectCorpusMeta(
   limit: number,
   force: boolean,
   clusteringVersion: string,
-  includeAmbiguous: boolean
+  includeAmbiguous: boolean,
+  acquisitionBatchUrls: string[] | null = null
 ): Promise<PostMeta[]> {
   const chicagoStatuses = includeAmbiguous ? ["CHICAGO_CONFIRMED", "CHICAGO_AMBIGUOUS"] : ["CHICAGO_CONFIRMED"];
   const { rows } = await pool.query(
@@ -301,13 +341,17 @@ async function selectCorpusMeta(
            -- a pool-b venue-discovery read (no anchor shown) does not count as an anchored read
            and coalesce(per.pool, '') <> 'pool-b'
        ))
+       -- D061: --acquisition-batch scopes to one tick's first-observed posts (cp.source_post_url
+       -- is already the join key jeremy_wedding_candidate_posts keys on, whether the post is a
+       -- staging or a public/acquisition row -- see the file header on candidate lookup).
+       and ($6::text[] is null or cp.source_post_url = any($6::text[]))
      order by
        case jwc.chicago_status when 'CHICAGO_CONFIRMED' then 0 when 'CHICAGO_AMBIGUOUS' then 1 else 2 end,
        coalesce(vc.n, 0) asc,
        cp.candidate_id asc,
        cp.source_post_url asc
      limit $1`,
-    [limit, force, EXTRACT_PROMPT_VERSION, clusteringVersion, chicagoStatuses]
+    [limit, force, EXTRACT_PROMPT_VERSION, clusteringVersion, chicagoStatuses, acquisitionBatchUrls]
   );
   return rows.map((r) => ({
     post_url: r.post_url,
@@ -433,6 +477,88 @@ async function fetchExtractContexts(pool: Pool, metaRows: PostMeta[]): Promise<E
       stack: stackByUrl.get(m.post_url) ?? [],
       couple_guess: p?.couple_guess ?? null,
       has_non_wedding_event_keyword: Boolean(p?.has_non_wedding_event_keyword),
+    };
+  });
+}
+
+/** D061: the public-corpus sibling of fetchExtractContexts, for --mode corpus under
+ * --acquisition-batch -- posts whose shortcode has no staging.instagram_posts row at all (a
+ * venue_tagged/own_profile post the acquisition loop, or Ben's original crawl, ingested
+ * straight into `posts`). Base fields (caption/location_tag/owner_username/post_timestamp) come
+ * from fetchPostsFromPublic (source.ts); couple_guess/has_non_wedding_event_keyword are
+ * recomputed here with the SAME regexes as fetchExtractContexts/fetchBenWeddingsContexts,
+ * sourced from `posts.caption` instead of `staging.instagram_posts.caption_raw` (fetchPostsFromPublic's
+ * PostContext shape has no room for these extract-only computed fields, so they're fetched
+ * separately, same "batched, post_url-scoped" discipline as every other context fetcher here).
+ * Venue account lookup and credit stack (stack_extraction_entries, same table/version regardless
+ * of corpus source) are identical to fetchExtractContexts. */
+async function fetchExtractContextsFromPublic(pool: Pool, metaRows: PostMeta[]): Promise<ExtractPostContext[]> {
+  if (metaRows.length === 0) return [];
+  const postUrls = metaRows.map((m) => m.post_url);
+  const venueAccountIds = [...new Set(metaRows.map((m) => m.venue_account_id).filter((id): id is number => id != null))];
+
+  const [baseContexts, { rows: computedRows }, { rows: venueRows }, { rows: stackRows }] = await Promise.all([
+    fetchPostsFromPublic(pool, { postUrls }),
+    pool.query<{ post_url: string; couple_guess: string | null; has_non_wedding_event_keyword: boolean }>(
+      `select
+         p.url as post_url,
+         (case
+            when cx.raw_match is not null and cx.raw_match !~* '${COUPLE_BUSINESS_WORD_VETO_SQL}'
+            then lower(cx.raw_match) else null
+          end) as couple_guess,
+         coalesce(p.caption ~* '${NON_WEDDING_EVENT_KEYWORD_SQL}', false) as has_non_wedding_event_keyword
+       from posts p
+       left join lateral (
+         select substring(p.caption from '${COUPLE_RAW_MATCH_SQL}') as raw_match
+       ) cx on true
+       where p.url = any($1::text[])`,
+      [postUrls]
+    ),
+    venueAccountIds.length
+      ? pool.query(
+          `select id as account_id, username::text as username, full_name, biography
+           from accounts where id = any($1::bigint[])`,
+          [venueAccountIds]
+        )
+      : Promise.resolve({ rows: [] }),
+    pool.query(
+      `select post_url, role_raw, role, handle, line_no
+       from stack_extraction_entries
+       where post_url = any($1::text[]) and stack_parser_version = $2
+       order by post_url, line_no asc`,
+      [postUrls, STACK_PARSER_VERSION]
+    ),
+  ]);
+
+  const baseByUrl = new Map(baseContexts.map((c) => [c.post_url, c]));
+  const computedByUrl = new Map(computedRows.map((r) => [r.post_url, r]));
+  const venueById = new Map<number, (typeof venueRows)[number]>();
+  for (const r of venueRows) venueById.set(Number(r.account_id), r);
+  const stackByUrl = new Map<string, StackEntry[]>();
+  for (const r of stackRows) {
+    const list = stackByUrl.get(r.post_url) ?? [];
+    list.push({ role_raw: r.role_raw, role: r.role, handle: r.handle });
+    stackByUrl.set(r.post_url, list);
+  }
+
+  return metaRows.map((m) => {
+    const base = baseByUrl.get(m.post_url);
+    const computed = computedByUrl.get(m.post_url);
+    const v = m.venue_account_id != null ? venueById.get(m.venue_account_id) : undefined;
+    return {
+      post_url: m.post_url,
+      caption_raw: base?.caption ?? null,
+      location_tag: base?.location_tag ?? null,
+      owner_username: base?.owner_username ?? null,
+      post_timestamp: base?.post_timestamp ?? null,
+      candidate_id: m.candidate_id,
+      venue_anchor_source: m.venue_anchor_source,
+      venue_username: v?.username ?? null,
+      venue_full_name: v?.full_name ?? null,
+      venue_biography: truncateBio(v?.biography ?? null),
+      stack: stackByUrl.get(m.post_url) ?? [],
+      couple_guess: computed?.couple_guess ?? null,
+      has_non_wedding_event_keyword: Boolean(computed?.has_non_wedding_event_keyword),
     };
   });
 }
@@ -1600,12 +1726,16 @@ async function main() {
       "--write-verdicts is only valid with --mode corpus (calibration/venue-calibration/pool-b/ben-weddings never write verdicts)"
     );
   }
+  if (args.acquisitionBatch && args.mode !== "corpus") {
+    throw new Error("--acquisition-batch is only valid with --mode corpus");
+  }
 
   console.log(
     `[extract] mode=${args.mode} limit=${args.limit} threshold=${args.threshold} dryRun=${args.dryRun} ` +
       `writeVerdicts=${args.writeVerdicts} concurrency=${args.concurrency} maxCostUsd=${args.maxCostUsd} force=${args.force} ` +
       `clusteringVersion=${args.clusteringVersion} includeAmbiguous=${args.includeAmbiguous} ` +
-      `escalateBand=${args.escalateBand ? `${args.escalateBand.lo}-${args.escalateBand.hi}` : "(disabled)"} escalateModel=${args.escalateModel}`
+      `escalateBand=${args.escalateBand ? `${args.escalateBand.lo}-${args.escalateBand.hi}` : "(disabled)"} escalateModel=${args.escalateModel} ` +
+      `acquisitionBatch=${args.acquisitionBatch ?? "(none)"}`
   );
 
   if (args.mode === "venue-calibration") {
@@ -1626,10 +1756,18 @@ async function main() {
     return;
   }
 
+  // D061: resolve the acquisition tick's first-observed post urls BEFORE selecting the corpus
+  // set, so selectCorpusMeta can scope with a SQL `= any(...)` (never a JS-side filter).
+  const acquisitionBatchUrls =
+    args.mode === "corpus" && args.acquisitionBatch ? await resolveAcquisitionBatchUrls(pool, args.acquisitionBatch) : null;
+  if (acquisitionBatchUrls) {
+    console.log(`[extract] --acquisition-batch ${args.acquisitionBatch}: scoping to ${acquisitionBatchUrls.length} first-observed post(s)`);
+  }
+
   const metaRows =
     args.mode === "calibration"
       ? await selectCalibrationMeta(pool, args.limit, args.force)
-      : await selectCorpusMeta(pool, args.limit, args.force, args.clusteringVersion, args.includeAmbiguous);
+      : await selectCorpusMeta(pool, args.limit, args.force, args.clusteringVersion, args.includeAmbiguous, acquisitionBatchUrls);
   console.log(`[extract] selected ${metaRows.length} posts`);
   if (metaRows.length === 0) {
     console.log("[extract] nothing to do (all posts already extracted for this prompt_version, or the queue is empty)");
@@ -1637,7 +1775,35 @@ async function main() {
     return;
   }
 
-  const contexts = await fetchExtractContexts(pool, metaRows);
+  // D061: under --acquisition-batch, a post's caption/context comes from staging when its
+  // shortcode has a staging.instagram_posts row (629 overlaps exist today) and from
+  // fetchExtractContextsFromPublic (public.posts, via fetchPostsFromPublic) otherwise -- a
+  // venue_tagged/own_profile post ingested by the acquisition loop never has a staging row at
+  // all. Matched by shortcode, never URL equality (D061 convention throughout this mission).
+  // Results are re-assembled in metaRows' original order (selectCorpusMeta's own ordering),
+  // not the order either fetch happens to return.
+  let contexts: ExtractPostContext[];
+  if (args.mode === "corpus" && acquisitionBatchUrls) {
+    const shortcodeOf = (url: string) => url.match(/\/p\/([^/]+)/)?.[1] ?? null;
+    const { rows: stagingShortcodeRows } = await pool.query<{ shortcode: string }>(
+      `select distinct (regexp_match(post_url, '/p/([^/]+)'))[1] as shortcode
+       from staging.instagram_posts
+       where post_url = any($1::text[])`,
+      [metaRows.map((m) => m.post_url)]
+    );
+    const inStaging = new Set(stagingShortcodeRows.map((r) => r.shortcode));
+    const stagingRows = metaRows.filter((m) => inStaging.has(shortcodeOf(m.post_url) ?? ""));
+    const publicRows = metaRows.filter((m) => !inStaging.has(shortcodeOf(m.post_url) ?? ""));
+    const [stagingContexts, publicContexts] = await Promise.all([
+      fetchExtractContexts(pool, stagingRows),
+      fetchExtractContextsFromPublic(pool, publicRows),
+    ]);
+    console.log(`[extract] --acquisition-batch context split: staging=${stagingContexts.length} public=${publicContexts.length}`);
+    const contextByUrl = new Map([...stagingContexts, ...publicContexts].map((c) => [c.post_url, c]));
+    contexts = metaRows.map((m) => contextByUrl.get(m.post_url)).filter((c): c is ExtractPostContext => c != null);
+  } else {
+    contexts = await fetchExtractContexts(pool, metaRows);
+  }
   const metaByUrl = new Map(metaRows.map((m) => [m.post_url, m]));
 
   if (args.dryRun) {

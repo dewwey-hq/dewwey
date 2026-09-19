@@ -7,6 +7,11 @@
  * when own_profile rows exist in public.posts post-migration, add a second
  * fetch function here with the same PostContext shape and the rest of the
  * pipeline is unaffected.
+ *
+ * D061 (2026-09-19): that second fetch function is fetchPostsFromPublic below --
+ * venue_tagged/own_profile posts in public.posts (Ben's crawl + the acquisition loop), which
+ * never land in staging.instagram_posts. Same PostContext shape; vendor_* fields are always
+ * null (no staging.vendors row to join).
  */
 import type { Pool } from "pg";
 
@@ -90,6 +95,79 @@ function rowToContext(row: any): PostContext {
     account_archetype: null,
     account_archetype_confidence: null,
   };
+}
+
+// D061: same PostContext shape, sourced from public.posts instead of staging.instagram_posts --
+// posts.raw for the venue_tagged/own_profile sources still holds the original Apify actor item
+// (shortCode, ownerUsername, caption, timestamp, mentions, hashtags, type, displayUrl, ...), so
+// hashtags/mentions/location_tag/image_url/post_type are pulled off `raw` the same way
+// scoreScreensTick3.ts already does (raw->'hashtags', raw->'mentions', raw->>'locationName').
+// There is no staging.vendors row for these posts, so every vendor_* field is null; the
+// classifier already treats those as optional (see rowToContext above).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToPublicContext(row: any): PostContext {
+  return {
+    post_url: row.post_url,
+    caption: row.caption_raw,
+    hashtags: arr(row.hashtags),
+    mentions: arr(row.mentions),
+    location_tag: row.location_tag,
+    post_timestamp: row.post_timestamp,
+    likes_count: row.likes_count,
+    owner_username: row.owner_username,
+    post_type: row.post_type,
+    image_url: row.image_url,
+    vendor_name: null,
+    vendor_category: null,
+    vendor_rating: null,
+    vendor_review_count: null,
+    vendor_ai_summary: null,
+    vendor_city: null,
+    vendor_neighborhood: null,
+    vendor_instagram_handle: null,
+    is_own_profile_post: row.source === "own_profile",
+    known_vendor_mentions: [],
+    account_archetype: null,
+    account_archetype_confidence: null,
+  };
+}
+
+/** D061: the public-corpus sibling of fetchPosts -- venue_tagged/own_profile posts (Ben's crawl
+ * + the acquisition loop), which never have a staging.instagram_posts row at all. Same
+ * PostContext shape, vendor_* always null (no staging.vendors join possible), is_own_profile_post
+ * derived from posts.source instead of the owner-equals-handle heuristic rowToContext uses. */
+export async function fetchPostsFromPublic(
+  pool: Pool,
+  opts: { postUrls?: string[]; limit?: number } = {}
+): Promise<PostContext[]> {
+  let sql = `
+    select
+      p.url as post_url, p.caption as caption_raw,
+      coalesce(p.raw->'hashtags', '[]'::jsonb) as hashtags,
+      coalesce(p.raw->'mentions', '[]'::jsonb) as mentions,
+      p.raw->>'locationName' as location_tag,
+      p.posted_at::text as post_timestamp,
+      p.likes_count,
+      a.username::text as owner_username,
+      p.raw->>'type' as post_type,
+      p.raw->>'displayUrl' as image_url,
+      p.source
+    from posts p
+    join accounts a on a.id = p.owner_id
+    where p.source in ('venue_tagged','own_profile')
+  `;
+  const params: unknown[] = [];
+  if (opts.postUrls?.length) {
+    params.push(opts.postUrls);
+    sql += ` and p.url = ANY($${params.length})`;
+  }
+  sql += " order by p.id";
+  if (opts.limit) {
+    params.push(opts.limit);
+    sql += ` limit $${params.length}`;
+  }
+  const { rows } = await pool.query(sql, params);
+  return rows.map(rowToPublicContext);
 }
 
 export interface FetchOptions {

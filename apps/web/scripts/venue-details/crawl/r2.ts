@@ -36,3 +36,17 @@ export async function putSnapshotText(key: string, text: string): Promise<void> 
 export async function getSnapshotText(key: string): Promise<string> {
   return client().file(key).text();
 }
+
+/**
+ * Generic byte-blob writer (D061 acquisition loop) -- posts/avatars images land at
+ * `posts/<shortcode>/<idx>.jpg` / `avatars/<username>.jpg` (D007: keys, never URLs).
+ * Distinct from putSnapshotText because images are binary + carry their own content-type,
+ * not always text/plain.
+ */
+export async function putBytes(
+  key: string,
+  bytes: Uint8Array | ArrayBuffer,
+  contentType: string
+): Promise<void> {
+  await client().file(key).write(bytes, { type: contentType });
+}

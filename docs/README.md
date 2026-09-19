@@ -21,6 +21,10 @@ at the repo root with a "Now" section.
   the comparison spine + detail schema, generic Details renderer, and the provenance-first fill loop
   replacing the retired enrichment pipeline and the hand-built concept pages
 - [product/](product/) — feature docs (venue enrichment, lightbox, embeds)
+- [engineering/acquisition-loop/](engineering/acquisition-loop/README.md) — **proposal (D061
+  candidate, 2026-09-19)**: budget-bounded Apify acquisition loop (tagged feeds of venues, own feeds of
+  high-yield authors) with per-target yield priors learned from crawl nº1 and Jeremy's corpus; month-1
+  plan inside the $29 credit
 - [engineering/venue-enrichment/](engineering/venue-enrichment/) — the
   venue-website extraction data plane (adopted wholesale in the merged schema); the golden-set
   template (locked page format), quality rubric, and `industry-research-2026-09-13.md`

@@ -93,6 +93,21 @@
  * Usage:
  *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --from-golden-legacy --batch-id <id> --dry-run
  *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --from-golden-legacy --batch-id <id>
+ *
+ * `--acquisition-batch <batch_id>` (D061, 2026-09-19, --from-confirmed-candidates only, requires
+ * --batch-id as always): scopes candidates to those with >=1 post in one acquisition tick's
+ * first-observed set; captions/post rows come from v_ig_posts (so a public/acquisition-sourced
+ * post resolves) instead of staging.instagram_posts, and a public row is linked by shortcode
+ * rather than re-inserted (posts.source is never rewritten). Applies the month-1 reconciliation
+ * rule (decideAcquisitionCreation, docs/decisions.md D061 item 1): a candidate whose latest
+ * jeremy_wedding_candidate_reconciliation match_confidence is >=0.7 is skipped as WOULD_ATTACH
+ * (no ATTACH lift in month 1); 0.5-0.7 still creates, flagged CREATE_WEAK_MATCH; every decision
+ * (including under --dry-run, discarded by the same transaction rollback as every other write
+ * here) is logged to ops.creation_decisions. Without this flag, nothing about
+ * --from-confirmed-candidates changes.
+ *
+ * Usage:
+ *   bun run scripts/graph/createWeddingsFromJeremyEvidence.ts --from-confirmed-candidates --batch-id <id> --acquisition-batch acq-20260920-pilot --dry-run
  */
 import { readdirSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { getPool, closePool } from "../classify/db";
@@ -821,9 +836,42 @@ const CANDIDATE_IDS = [
   3405, 3415, 3429, 3438, 3446, 3454,
 ];
 
-function shortcodeFromUrl(url: string): string | null {
+export function shortcodeFromUrl(url: string): string | null {
   const m = url.match(/\/p\/([^/]+)/);
   return m ? m[1] : null;
+}
+
+/** D061 month-1 creation-tier rule under --acquisition-batch (docs/decisions.md D061, item 1).
+ * match_confidence >= 0.7 means the wedding is almost certainly already documented -- no ATTACH
+ * lift in month 1 (false-merge risk lives on ATTACH, not CREATE), so this is a skip, counted
+ * WOULD_ATTACH. 0.5-0.7 creates anyway but flagged CREATE_WEAK_MATCH (excluded from the coverage
+ * number until mergeDuplicateWeddings.ts clears it). Anything weaker, or no reconciliation row at
+ * all (null), creates outright -- D030's magnet pattern (same venue, reused vendors, different
+ * date) is exactly the thin-venue wedding this loop exists to document, not a false merge. */
+export function decideAcquisitionCreation(matchConfidence: number | null): "WOULD_ATTACH" | "CREATE_WEAK_MATCH" | "CREATE" {
+  if (matchConfidence != null && matchConfidence >= 0.7) return "WOULD_ATTACH";
+  if (matchConfidence != null && matchConfidence >= 0.5) return "CREATE_WEAK_MATCH";
+  return "CREATE";
+}
+
+/** D061: `select p.url from ops.post_observations o join ops.crawl_runs r on r.id = o.run_id join
+ * posts p on p.id = o.post_id where r.batch_id = $1 and o.is_first` -- same scoping query as
+ * every other --acquisition-batch consumer in this mission. Guarded with to_regclass so this
+ * gives a clear error before the ops schema is applied. */
+async function resolveAcquisitionBatchUrls(client: PoolClient, acquisitionBatchId: string): Promise<string[]> {
+  const { rows: guard } = await client.query<{ ok: string | null }>(`select to_regclass('ops.post_observations')::text as ok`);
+  if (!guard[0].ok) {
+    throw new Error("--acquisition-batch requires ops.post_observations to exist (acquisition schema not applied yet)");
+  }
+  const { rows } = await client.query<{ post_url: string }>(
+    `select p.url as post_url
+     from ops.post_observations o
+     join ops.crawl_runs r on r.id = o.run_id
+     join posts p on p.id = o.post_id
+     where r.batch_id = $1 and o.is_first`,
+    [acquisitionBatchId]
+  );
+  return rows.map((r) => r.post_url);
 }
 
 // D055 preflight refusal (Phase 1 step 9): the provenance rule is "no create batch without a
@@ -861,6 +909,12 @@ interface FromConfirmedCandidatesOptions {
   /** D055 (2026-09-10): minimum model confidence for a CONFIRM on an author-anchored candidate
    *  when no human W exists (spot-check: venue-authored posts 83% vs 98% at >=0.9). */
   authorMinConfidence?: number;
+  /** --acquisition-batch <batch_id> (D061, 2026-09-19): scopes candidates to those with >=1
+   *  included (or WRONG_VENUE-corrected) post in this tick's first-observed set, reads captions
+   *  from v_ig_posts instead of staging.instagram_posts (so public/acquisition posts resolve),
+   *  and applies the month-1 reconciliation rule (decideAcquisitionCreation) plus
+   *  ops.creation_decisions logging. Without it, nothing about this function changes. */
+  acquisitionBatch?: string;
 }
 
 interface FromConfirmedCandidatesResult {
@@ -894,6 +948,20 @@ async function runFromConfirmedCandidates(
   let weddingsCreated = 0;
   let postsImported = 0;
   let vendorsInserted = 0;
+
+  // D061: resolve the acquisition tick's first-observed post urls BEFORE the eligibility query,
+  // so the candidate-scope filter below is a SQL array-overlap, not a JS-side filter. Also guards
+  // ops.creation_decisions exists (written per-decision further down) before any work happens.
+  const acquisitionBatchUrls = opts.acquisitionBatch ? await resolveAcquisitionBatchUrls(client, opts.acquisitionBatch) : null;
+  if (opts.acquisitionBatch) {
+    const { rows: guard } = await client.query<{ ok: string | null }>(`select to_regclass('ops.creation_decisions')::text as ok`);
+    if (!guard[0].ok) {
+      throw new Error("--acquisition-batch requires ops.creation_decisions to exist (acquisition schema not applied yet)");
+    }
+    console.log(
+      `[create-weddings] --acquisition-batch ${opts.acquisitionBatch}: scoping to ${acquisitionBatchUrls!.length} first-observed post(s)`
+    );
+  }
 
   const { rows: eligible } = await client.query<{
     candidate_id: number;
@@ -930,8 +998,14 @@ async function runFromConfirmedCandidates(
              where v.candidate_id = jwc.id and v.verdict = 'THIS_VENUE'
                and (v.reviewed_by not like 'haiku-%'
                     or coalesce((regexp_match(coalesce(v.notes,''), 'conf=([0-9.]+)'))[1]::real, 0) >= $3::real)))
+       -- D061: --acquisition-batch scope = candidates with >=1 post (included OR, for
+       -- WRONG_VENUE, an other-venue post that a correction may resolve to included) in this
+       -- tick's first-observed set.
+       and ($4::text[] is null or (
+             coalesce(crd.included_post_urls, array[]::text[]) || coalesce(crd.other_venue_post_urls, array[]::text[])
+           ) && $4::text[])
      order by crd.reviewed_at asc`,
-    [opts.clusteringVersion ?? STRUCTURAL_CLUSTERING_VERSION, opts.since ?? null, opts.authorMinConfidence ?? null]
+    [opts.clusteringVersion ?? STRUCTURAL_CLUSTERING_VERSION, opts.since ?? null, opts.authorMinConfidence ?? null, acquisitionBatchUrls]
   );
 
   const scoped = opts.limit != null ? eligible.slice(0, opts.limit) : eligible;
@@ -942,9 +1016,56 @@ async function runFromConfirmedCandidates(
       `processing=${scoped.length}${opts.limit != null ? ` (--limit ${opts.limit})` : ""}`
   );
 
+  // D061: candidates in the batch scope (any review state, not already created) that the
+  // eligibility query above did NOT pick up -- i.e. not yet a complete CONFIRM/WRONG_VENUE --
+  // are the HUMAN backlog for this tick's funnel (item 5 of the plan).
+  let humanCount = 0;
+  if (opts.acquisitionBatch && acquisitionBatchUrls) {
+    const { rows: batchScopeRows } = await client.query<{ n: string }>(
+      `select count(distinct jwc.id)::text as n
+       from jeremy_wedding_candidates jwc
+       join jeremy_wedding_candidate_posts cp on cp.candidate_id = jwc.id
+       where jwc.clustering_version = $1
+         and cp.source_post_url = any($2::text[])
+         and not exists (select 1 from jeremy_weddings_created jc where jc.candidate_id = jwc.id)`,
+      [opts.clusteringVersion ?? STRUCTURAL_CLUSTERING_VERSION, acquisitionBatchUrls]
+    );
+    humanCount = Math.max(0, Number(batchScopeRows[0].n) - eligible.length);
+  }
+
   const outcomeCounts: Record<string, number> = {};
   const bump = (label: string) => {
     outcomeCounts[label] = (outcomeCounts[label] ?? 0) + 1;
+  };
+
+  // D061 (--acquisition-batch only): one row per candidate considered, per the plan's
+  // ops.creation_decisions contract. Runs inside the caller's transaction, so a --dry-run's
+  // insert is discarded by main()'s own rollback exactly like every other write in this
+  // function -- never a special-cased "skip the insert" branch.
+  const recordDecision = async (params: {
+    candidateId: number;
+    decision: "CREATE" | "CREATE_WEAK_MATCH" | "WOULD_ATTACH" | "SKIP";
+    matchConfidence: number | null;
+    matchedWeddingId: number | null;
+    createdWeddingId: number | null;
+    note: string | null;
+  }): Promise<void> => {
+    if (!opts.acquisitionBatch) return;
+    await client.query(
+      `insert into ops.creation_decisions
+         (batch_id, acquisition_batch_id, candidate_id, decision, match_confidence, matched_wedding_id, created_wedding_id, note)
+       values ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [
+        batchId,
+        opts.acquisitionBatch,
+        params.candidateId,
+        params.decision,
+        params.matchConfidence,
+        params.matchedWeddingId,
+        params.createdWeddingId,
+        params.note,
+      ]
+    );
   };
 
   // venueAccountId (canonical, pre-alias-resolution — resolved below) -> # new weddings this
@@ -963,6 +1084,14 @@ async function runFromConfirmedCandidates(
         `[create-weddings] candidate=${cand.candidate_id} already created as wedding=${existingCreated[0].wedding_id}, skipping`
       );
       bump("SKIP(already_created)");
+      await recordDecision({
+        candidateId: cand.candidate_id,
+        decision: "SKIP",
+        matchConfidence: null,
+        matchedWeddingId: null,
+        createdWeddingId: null,
+        note: `already_created:wedding=${existingCreated[0].wedding_id}`,
+      });
       continue;
     }
 
@@ -1018,6 +1147,24 @@ async function runFromConfirmedCandidates(
       venueInMetro,
       includedPostUrls: includedUrls,
     });
+
+    // D061: month-1 reconciliation rule, --acquisition-batch only (docs/decisions.md D061 item
+    // 1) -- same "latest reconciliation row" lookup as --from-golden-legacy's sub-case (a).
+    let reconMatchedWeddingId: number | null = null;
+    let reconMatchConfidence: number | null = null;
+    if (opts.acquisitionBatch) {
+      const { rows: reconRows } = await client.query<{ matched_wedding_id: number | null; match_confidence: number | null }>(
+        `select matched_wedding_id, match_confidence
+         from jeremy_wedding_candidate_reconciliation
+         where candidate_id = $1
+         order by reconciled_at desc
+         limit 1`,
+        [cand.candidate_id]
+      );
+      reconMatchedWeddingId = reconRows[0]?.matched_wedding_id ?? null;
+      reconMatchConfidence = reconRows[0]?.match_confidence ?? null;
+    }
+    const acquisitionDecision = opts.acquisitionBatch ? decideAcquisitionCreation(reconMatchConfidence) : null;
 
     const displayVenueAccountId = gate.action === "CREATE" ? gate.venueAccountId : geoTargetAccountId;
     let venueUsername = "?";
@@ -1091,6 +1238,27 @@ async function runFromConfirmedCandidates(
     let vendorsForPrint =
       nonVenueVendors.length + otherVenueVendors.length + (displayVenueAccountId != null ? 1 : 0);
 
+    // D061: >=0.7 reconciliation match on an --acquisition-batch candidate means the wedding is
+    // almost certainly already documented -- no ATTACH lift in month 1, so this is a skip
+    // (WOULD_ATTACH), never a CREATE, regardless of what the structural gate decided. Checked
+    // BEFORE the duplicate-post guard below (a would-be-duplicate check is moot if we're not
+    // creating at all).
+    if (gate.action === "CREATE" && acquisitionDecision === "WOULD_ATTACH") {
+      console.log(
+        `[create-weddings] candidate=${cand.candidate_id} venue=@${venueUsername} decision=${cand.decision} posts=${includedUrls.length} vendors=${vendorsForPrint} -> WOULD_ATTACH (match_confidence=${reconMatchConfidence}, matched_wedding=${reconMatchedWeddingId})`
+      );
+      bump("WOULD_ATTACH");
+      await recordDecision({
+        candidateId: cand.candidate_id,
+        decision: "WOULD_ATTACH",
+        matchConfidence: reconMatchConfidence,
+        matchedWeddingId: reconMatchedWeddingId,
+        createdWeddingId: null,
+        note: null,
+      });
+      continue;
+    }
+
     if (gate.action === "CREATE") {
       // D050 duplicate-post guard, same check as the hardcoded-array loop: if any of this
       // candidate's INCLUDED posts already belongs to an EXISTING wedding's wedding_posts, the
@@ -1108,13 +1276,26 @@ async function runFromConfirmedCandidates(
           `[create-weddings] candidate=${cand.candidate_id} venue=@${venueUsername} decision=${cand.decision} posts=${includedUrls.length} vendors=${vendorsForPrint} -> SKIP(duplicate_post) — already belongs to wedding=${alreadyDocumented[0].wedding_id}`
         );
         bump("SKIP(duplicate_post)");
+        await recordDecision({
+          candidateId: cand.candidate_id,
+          decision: "SKIP",
+          matchConfidence: reconMatchConfidence,
+          matchedWeddingId: reconMatchedWeddingId,
+          createdWeddingId: null,
+          note: `duplicate_post:wedding=${alreadyDocumented[0].wedding_id}`,
+        });
         continue;
       }
 
+      // D061: a 0.5-0.7 match still creates (month 1 rule), but flagged CREATE_WEAK_MATCH in the
+      // funnel -- excluded from the coverage number until mergeDuplicateWeddings.ts clears it.
+      const isWeakMatch = acquisitionDecision === "CREATE_WEAK_MATCH";
       console.log(
-        `[create-weddings] candidate=${cand.candidate_id} venue=@${venueUsername} decision=${cand.decision} posts=${includedUrls.length} vendors=${vendorsForPrint} -> CREATE`
+        `[create-weddings] candidate=${cand.candidate_id} venue=@${venueUsername} decision=${cand.decision} posts=${includedUrls.length} vendors=${vendorsForPrint} -> ${isWeakMatch ? "CREATE_WEAK_MATCH" : "CREATE"}${
+          isWeakMatch ? ` (match_confidence=${reconMatchConfidence}, matched_wedding=${reconMatchedWeddingId})` : ""
+        }`
       );
-      bump("CREATE");
+      bump(isWeakMatch ? "CREATE_WEAK_MATCH" : "CREATE");
 
       const venueAccountId = gate.venueAccountId;
 
@@ -1128,53 +1309,83 @@ async function runFromConfirmedCandidates(
 
       // Full post rows, fetched ONLY for the included (THIS_VENUE) urls -- never
       // other_venue_post_urls.
-      const { rows: posts } = await client.query<{
+      //
+      // D061: under --acquisition-batch, an included post may be a public/acquisition-sourced
+      // post with NO staging.instagram_posts row at all -- read from v_ig_posts instead (same
+      // shortcode-precedence distinct on as everywhere else), and carry corpus_source through so
+      // the insert loop below can skip the `insert into posts` for a public row entirely (it's
+      // already a `posts` row -- see D061 item 2 of the plan). Without --acquisition-batch, the
+      // query and behavior are byte-for-byte unchanged.
+      interface FetchedPost {
         post_url: string;
         caption_raw: string | null;
         post_timestamp: string;
         owner_username: string;
         likes_count: number | null;
-      }>(
-        `select post_url, caption_raw, post_timestamp::text, owner_username, likes_count
-         from staging.instagram_posts
-         where post_url = any($1::text[])`,
-        [includedUrls]
-      );
+        corpus_source?: "staging" | "public";
+      }
+      const { rows: posts } = opts.acquisitionBatch
+        ? await client.query<FetchedPost>(
+            `select distinct on (shortcode) post_url, caption_raw, post_timestamp::text as post_timestamp,
+                    owner_username, likes_count, corpus_source
+             from v_ig_posts
+             where post_url = any($1::text[])
+             order by shortcode, (corpus_source = 'staging') desc`,
+            [includedUrls]
+          )
+        : await client.query<FetchedPost>(
+            `select post_url, caption_raw, post_timestamp::text, owner_username, likes_count
+             from staging.instagram_posts
+             where post_url = any($1::text[])`,
+            [includedUrls]
+          );
 
       for (const p of posts) {
         const shortcode = shortcodeFromUrl(p.post_url);
         if (!shortcode) continue;
 
-        const { rows: ownerRows } = await client.query<{ id: number }>(
-          `insert into accounts (username) values ($1)
-           on conflict (username) do update set username = excluded.username
-           returning id`,
-          [p.owner_username.toLowerCase()]
-        );
-        const ownerId = ownerRows[0].id;
-
-        const { rows: postRows } = await client.query<{ id: number }>(
-          `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, source, raw)
-           values ($1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7)
-           on conflict (shortcode) do nothing
-           returning id`,
-          [shortcode, p.post_url, ownerId, p.caption_raw, p.post_timestamp, p.likes_count, JSON.stringify(p)]
-        );
         let postId: number;
-        if (postRows.length === 0) {
-          // D055 batch-3 lesson (2026-09-09): the post already exists in `posts` (Ben's
-          // venue_tagged crawl imported it, but no wedding ever claimed it -- the D050 guard
-          // above already proved it isn't in wedding_posts). Skipping here orphaned 8 weddings
-          // in batch 3 (created with zero posts). Link the EXISTING row instead.
-          const { rows: existingRows } = await client.query<{ id: number }>(
-            `select id from posts where shortcode = $1`,
-            [shortcode]
-          );
-          if (existingRows.length === 0) continue;
+        if (p.corpus_source === "public") {
+          // D061: already a `posts` row (Ben's venue_tagged crawl, or the acquisition loop,
+          // ingested it directly) -- never insert, and NEVER touch posts.source (it stays
+          // whatever it already is, e.g. venue_tagged/own_profile -- not rewritten to
+          // 'jeremy_evidence').
+          const { rows: existingRows } = await client.query<{ id: number }>(`select id from posts where shortcode = $1`, [
+            shortcode,
+          ]);
+          if (existingRows.length === 0) continue; // shouldn't happen -- v_ig_posts said it's public
           postId = existingRows[0].id;
         } else {
-          postsImported++;
-          postId = postRows[0].id;
+          const { rows: ownerRows } = await client.query<{ id: number }>(
+            `insert into accounts (username) values ($1)
+             on conflict (username) do update set username = excluded.username
+             returning id`,
+            [p.owner_username.toLowerCase()]
+          );
+          const ownerId = ownerRows[0].id;
+
+          const { rows: postRows } = await client.query<{ id: number }>(
+            `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, source, raw)
+             values ($1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7)
+             on conflict (shortcode) do nothing
+             returning id`,
+            [shortcode, p.post_url, ownerId, p.caption_raw, p.post_timestamp, p.likes_count, JSON.stringify(p)]
+          );
+          if (postRows.length === 0) {
+            // D055 batch-3 lesson (2026-09-09): the post already exists in `posts` (Ben's
+            // venue_tagged crawl imported it, but no wedding ever claimed it -- the D050 guard
+            // above already proved it isn't in wedding_posts). Skipping here orphaned 8 weddings
+            // in batch 3 (created with zero posts). Link the EXISTING row instead.
+            const { rows: existingRows } = await client.query<{ id: number }>(
+              `select id from posts where shortcode = $1`,
+              [shortcode]
+            );
+            if (existingRows.length === 0) continue;
+            postId = existingRows[0].id;
+          } else {
+            postsImported++;
+            postId = postRows[0].id;
+          }
         }
 
         await client.query(`insert into wedding_posts (wedding_id, post_id) values ($1, $2) on conflict (post_id) do nothing`, [
@@ -1213,17 +1424,47 @@ async function runFromConfirmedCandidates(
         `insert into jeremy_weddings_created (candidate_id, wedding_id, batch_id) values ($1, $2, $3) on conflict (candidate_id) do nothing`,
         [cand.candidate_id, weddingId, batchId]
       );
+      await recordDecision({
+        candidateId: cand.candidate_id,
+        decision: isWeakMatch ? "CREATE_WEAK_MATCH" : "CREATE",
+        matchConfidence: reconMatchConfidence,
+        matchedWeddingId: reconMatchedWeddingId,
+        createdWeddingId: weddingId,
+        note: null,
+      });
     } else {
       console.log(
         `[create-weddings] candidate=${cand.candidate_id} venue=@${venueUsername} decision=${cand.decision} posts=${includedUrls.length} vendors=${vendorsForPrint} -> SKIP(${gate.reason})`
       );
       bump(`SKIP(${gate.reason})`);
+      await recordDecision({
+        candidateId: cand.candidate_id,
+        decision: "SKIP",
+        matchConfidence: reconMatchConfidence,
+        matchedWeddingId: reconMatchedWeddingId,
+        createdWeddingId: null,
+        note: gate.reason,
+      });
     }
   }
 
   console.log(`\n[create-weddings] --from-confirmed-candidates totals by outcome:`);
   for (const [label, n] of Object.entries(outcomeCounts)) {
     console.log(`  ${label}: ${n}`);
+  }
+
+  // D061 item 5: the acquisition-specific funnel line -- CREATE / CREATE_WEAK_MATCH /
+  // WOULD_ATTACH / HUMAN (candidates in scope not CONFIRM/WRONG_VENUE-complete yet) / SKIP
+  // (every SKIP(reason) bucket, summed).
+  if (opts.acquisitionBatch) {
+    const skipTotal = Object.entries(outcomeCounts)
+      .filter(([label]) => label.startsWith("SKIP"))
+      .reduce((sum, [, n]) => sum + n, 0);
+    console.log(
+      `[create-weddings] --acquisition-batch ${opts.acquisitionBatch} summary: ` +
+        `CREATE=${outcomeCounts["CREATE"] ?? 0} CREATE_WEAK_MATCH=${outcomeCounts["CREATE_WEAK_MATCH"] ?? 0} ` +
+        `WOULD_ATTACH=${outcomeCounts["WOULD_ATTACH"] ?? 0} HUMAN=${humanCount} SKIP=${skipTotal}`
+    );
   }
 
   await printCoverageDelta(client, newWeddingsByVenue);
@@ -1896,6 +2137,12 @@ async function main() {
   const clusteringVersion = cvIdx >= 0 ? process.argv[cvIdx + 1] : undefined;
   const amcIdx = process.argv.indexOf("--author-min-confidence");
   const authorMinConfidence = amcIdx >= 0 ? Number(process.argv[amcIdx + 1]) : undefined;
+  const acqIdx = process.argv.indexOf("--acquisition-batch");
+  const acquisitionBatch = acqIdx >= 0 ? process.argv[acqIdx + 1] : undefined;
+  if (acquisitionBatch && !fromConfirmedCandidates) {
+    console.error("[create-weddings] --acquisition-batch is only valid with --from-confirmed-candidates");
+    process.exit(1);
+  }
   const since = sinceFlagIndex !== -1 ? process.argv[sinceFlagIndex + 1] : undefined;
   if (since !== undefined && (since.startsWith("--") || isNaN(Date.parse(since)))) {
     console.error(`[create-weddings] --since must be a valid ISO timestamp, got "${since}"`);
@@ -1962,7 +2209,13 @@ async function main() {
       // --from-confirmed-candidates mode (D055 Phase 1 step 9) -- entirely separate candidate
       // source and gating logic, see runFromConfirmedCandidates above. The hardcoded-array mode
       // below (CANDIDATE_IDS loop) is completely unchanged.
-      const result = await runFromConfirmedCandidates(client, batchId, { since, limit, clusteringVersion, authorMinConfidence });
+      const result = await runFromConfirmedCandidates(client, batchId, {
+        since,
+        limit,
+        clusteringVersion,
+        authorMinConfidence,
+        acquisitionBatch,
+      });
       weddingsCreated = result.weddingsCreated;
       postsImported = result.postsImported;
       vendorsInserted = result.vendorsInserted;
@@ -2153,7 +2406,13 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Guarded (D061) so shortcodeFromUrl/decideAcquisitionCreation can be imported (e.g. by
+// scripts/graph/acquisitionPlumbing.test.ts) without re-triggering a live create run as a side
+// effect of the import -- same convention as runJeremyWeddingClustering.ts/
+// runJeremyWeddingReconciliation.ts's own guard.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

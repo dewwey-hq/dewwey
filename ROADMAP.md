@@ -16,10 +16,14 @@ sessions: `docs/engineering/working-across-sessions.md`.
   Phases 0-2 built; waiting on the user's three approvals (golden render review, schema apply, first
   crawl/extraction writes). Full picture: `docs/STATE.md`; narrative: `docs/decisions.md` D060; plan of
   record `~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md`.
+- **Proposed: Acquisition loop (D061 candidate, 2026-09-19)** — Apify credits are live again
+  ($29/cycle, cycle started 09-17). Replaces D055's "Phase 2 / coverage items 2–3" with a measured,
+  budget-bounded loop over crawl targets with yield priors. Proposal + month-1 budget + the decisions
+  it needs: `docs/engineering/acquisition-loop/README.md`. Not approved, nothing spent.
 - **Paused: D055 "squeeze the 47k"** (2026-09-08 →). Phase 0 done, Phase 1 (human
   review at `/label/candidates` + batched creation) ran — weddings 3,541 → 5,972 across
-  batches through 2026-09-11. Phase 2 blocked on OpenRouter credit and Apify credits
-  (2026-09-11). Narrative: `docs/decisions.md` D055.
+  batches through 2026-09-11. Phase 2's image slice still waits on image re-acquisition, which the
+  acquisition loop's ingest provides. Narrative: `docs/decisions.md` D055.
 - Ben ↔ Jeremy merge conversation (`docs/merge-eval.md` is the case). Data
   import already done on Ben's authorization (2026-08-22); the conversation
   is now about the merge itself and rotating his RDS/API credentials.

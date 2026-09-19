@@ -6,7 +6,7 @@ If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
 Last rewritten: **2026-09-18** (session resumed; wedding-page finder + renderer punch list landed). Local
-`main` is **thirteen commits ahead of `origin/main` (`dd5bd44`), not pushed** (the user has not asked
+`main` is **twenty-four commits ahead of `origin/main` (`dd5bd44`), not pushed** (the user has not asked
 for a push): `07bcd4e` D060 docs · `1dd161a` Phase 1a libs · `6161c13` fixtures + renderer ·
 `ef5f4ce` Phase 2 infra · `de1c8f9` crawler seeds + `<base href>` · `4b1909e` LLM half · `6f649a0`
 dry-run checkpoint · then this docs commit. Run `git log --oneline -10` and `git status` to confirm.
@@ -47,7 +47,16 @@ every resource kind routed (`placeResources`, invariant-tested), concept spacing
 pricing cards, curated add-on categories, single-select calculator extras, `path_ids` honored, tier axis
 only on distinct names, grouped What's Included. Nits landed (`9bea7d8`) and the extractor tool schema +
 assembler + scorer learned the new fields (`01fde35`, SPINE_TOOL ≈ 12k tokens, PRICING_TOOL ≈ 3.2k).
-614 tests. Working tree clean; nothing building. `apps/web/app/components/venue/*` (`VenueDetailsView`, `FactSource`
+614 tests. **Round 4 (2026-09-19, user's six-venue review) landed as `d88f49f` (extractor: rental terms +
+sided food/bar notes), `7478ca6` (fixtures: notes for all six, Greenhouse terms/seasons, Diamond Garden
+concept path names, trimmed Marchetti note, Geraghty nonprofit fee moved into the bar note), `a6bfef1`
+(renderer/calculator: guest range from the venue's own max, calendar day order + chronological seasons
+with months, terms lines, standard resource labels, single-space resources in the card, a Venue rental
+line on every space card incl. "on request" + Ask about pricing, two-column F&B with sided notes and
+tables in their column, fixed pill order, F&B minimum line, money in calculator pills, Live band axis,
+extras collapsed by category, add-ons as category tables, uniform inclusion rows, concept-shaped pricing
+cards). 704 tests. Pushbacks kept (Field Museum 1,500 not "1,000+"; LondonHouse range not 60–190; all 13
+policy rows; LondonHouse ceremony stays an add-on with a Yes/No toggle). `apps/web/app/components/venue/*` (`VenueDetailsView`, `FactSource`
 popover, `CostEstimate`, `PoliciesList`, `FaqList`, `ResourceMenuButton`, `format.ts`) and
 `apps/web/app/lab/venue/page.tsx` (`?golden=<slug>`, `?u=<username>`, `?compare=1`, noindex). All six
 goldens render at desktop and phone width; screenshots reviewed by Claude (user review still open).
@@ -109,7 +118,38 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
      local cache, so this re-fetch is cheap and polite).
    - `extractVenueDetails.ts --golden --max-cost-usd 5` — the first OpenRouter spend, Haiku, ~$1-2.
      Then validate → repair → `scoreAgainstGolden.ts --source runs --mustnot` and iterate the prompt.
-4. Carried over: Apify credits (coverage items), re-anchor human queue (17 weddings) — see D055/D056.
+4. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
+
+## Second mission (parallel window, 2026-09-19) — D061 Acquisition loop, commit 1 built, $0 spent
+
+Plan of record `~/.claude/plans/on-1-what-do-joyful-church.md` (rev 2, approved after two Cursor
+rounds); README `docs/engineering/acquisition-loop/README.md` kept in line with it. Apify credits are
+live (Starter, $28.86 of $29 left, cycle 09-17 → 10-16). **Commit 1 is code-complete and committed:**
+`apps/web/scripts/acquire/` (schema script, Apify client, two-phase ingest with R2 images,
+`runTick`, funnel report; 37 tests), the pure `v_ig_posts` view + structural universe CTE re-sourced
+with shortcode precedence and the month-1 public-row gate, unconditional documented-post guard in
+clustering, `fetchPostsFromPublic`, `--acquisition-batch` on parser / clustering / reconciliation /
+reader / creation (reconciliation rule: ≥ 0.7 → WOULD_ATTACH skip, 0.5–0.7 → CREATE_WEAK_MATCH),
+`--retire-verdicts` on revert, `ops.creation_decisions`. Typecheck clean; 244 tests green in the
+touched suites. Pilot dry-run prints one run, 10 venues × 25, $0.575.
+
+**Blocked on the user (in order):**
+1. Apply schema (DDL, run with `!` from `apps/web`): `bun run scripts/acquire/applyAcquisitionSchema.ts`
+   then `bun run scripts/graph/applyStructuralEvidenceSchema.ts --apply` (re-creates the structural
+   view on the new source). Dry proof after: `structural_post_vendor_evidence` counts must equal the
+   pre-apply baseline: **49,383 rows / 20,459 distinct posts** (2026-09-19).
+2. Say "go" for the pilot: `bun run scripts/acquire/runTick.ts --tick pilot --feed tagged
+   --account-ids 520,551,522,534,540,595,477,524,515,521 --results-limit 25 --tier pilot --max-cost-usd 0.7`
+   (≈$0.58), then parse → cluster → reconcile → reader (~$1 Haiku) → creation dry-run → creation →
+   funnel → rollback round trip = Gate 0.
+3. After Gate 0: label the blind spot-check (≤ 100 posts) in `/label/candidates`; then ticks 2–5.
+
+**Findings today worth keeping:** Ben's hop-0 seeds included 99 non-venue vendors (Places returned
+caterers/planners/DJs for "wedding venue"); their tagged feeds yield 0.37 weddings/post vs 0.14 for
+venues and landed 164 weddings at 145 thin venues — now tick 3b. Two `graphStrengthening.test.ts`
+invariants (`wedding_vendors` untouched 51,168 → live 52,618; galleriamarchetti 100 → 104) fail on
+`main` **before** any D061 change (last re-pinned 09-10; D059 attire split moved them) — the D059
+owner should re-pin them.
 
 ## Next actions (Claude, when unblocked)
 

@@ -1396,11 +1396,9 @@ describe("D055 batch provenance/reversibility (DB)", () => {
 // real `vendors` rows from both populations rather than a hand-picked fixture.
 describe("decideStructuralCandidateCreation x vendors.discovery_source (D055 regression, DB)", () => {
   const pool = getPool();
-  // Exactly one closePool() call for the whole file, in this LAST describe block (see the
-  // D023 block's and "vendor feed count invariant" block's own comments above).
-  afterAll(async () => {
-    await closePool();
-  });
+  // No afterAll(closePool) here -- this is no longer the last describe block in the file (D061's
+  // acquisition-invariants block below now is). Moved there, same "exactly one closePool() call
+  // for the whole file" rule as the D023/vendor-feed-count blocks' own comments above establish.
 
   it("SKIPs chicago_unconfirmed when the only Chicago signal is a vendors.city='Chicago' row with a non-Places discovery_source", async () => {
     // A real vendor row whose city='Chicago' is the schema default (discovery_source is
@@ -1485,4 +1483,63 @@ describe("decideStructuralCandidateCreation x vendors.discovery_source (D055 reg
     });
     expect(result).toEqual({ action: "CREATE", venueAccountId: 999999101 });
   });
+});
+
+// D061 (2026-09-19, "acquisition loop"): invariants for the pure v_ig_posts normalization view
+// and the structural universe CTE's re-sourcing onto it (applyStructuralEvidenceSchema.ts). The
+// acquisition schema (v_ig_posts, ops.crawl_runs, etc.) is applied by a human separately from
+// this commit -- every test here checks to_regclass first and skips with a clear message rather
+// than failing when the schema isn't live yet, per this workstream's own hard rule.
+describe("D061 acquisition invariants (DB)", () => {
+  const pool = getPool();
+  // Exactly one closePool() call for the whole file, in THIS (now last) describe block -- see
+  // the D023/vendor-feed-count/D055-regression blocks' own comments above for the convention.
+  afterAll(async () => {
+    await closePool();
+  });
+
+  it("no post in structural_post_vendor_evidence has a wedding_posts row (documented-post guard, matched by shortcode)", async (ctx) => {
+    const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
+    ctx.skip(!viewGuard[0].ok, "v_ig_posts does not exist yet (D061 acquisition schema not applied)");
+
+    const { rows } = await pool.query(`
+      select count(*)::int as n
+      from structural_post_vendor_evidence e
+      join posts p on p.shortcode = (regexp_match(e.source_post_url, '/p/([^/]+)'))[1]
+      join wedding_posts wp on wp.post_id = p.id
+    `);
+    expect(rows[0].n).toBe(0);
+  }, 120000);
+
+  it("every 'public' row reachable from the structural universe was scraped after the first acquisition run (month-1 exclusion, decision 5)", async (ctx) => {
+    const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
+    ctx.skip(!viewGuard[0].ok, "v_ig_posts does not exist yet (D061 acquisition schema not applied)");
+    const { rows: runsGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('ops.crawl_runs')::text as ok`);
+    ctx.skip(!runsGuard[0].ok, "ops.crawl_runs does not exist yet (D061 acquisition schema not applied)");
+
+    // Matches the universe CTE's own rule exactly: a public row only ever enters when scraped_at
+    // is after the first acquisition run ever; with ops.crawl_runs empty, NOTHING public should
+    // be reachable at all (coalesce(...,'infinity') makes the bound unreachable).
+    const { rows } = await pool.query(`
+      select count(*)::int as n
+      from structural_post_vendor_evidence e
+      join v_ig_posts v on v.shortcode = (regexp_match(e.source_post_url, '/p/([^/]+)'))[1]
+      where v.corpus_source = 'public'
+        and v.scraped_at <= coalesce((select min(started_at) from ops.crawl_runs), 'infinity'::timestamptz)
+    `);
+    expect(rows[0].n).toBe(0);
+  }, 120000);
+
+  it("v_ig_posts never carries a jeremy_evidence-sourced row (that source is CREATE-time only, never part of the pure corpus union)", async (ctx) => {
+    const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
+    ctx.skip(!viewGuard[0].ok, "v_ig_posts does not exist yet (D061 acquisition schema not applied)");
+
+    const { rows } = await pool.query(`
+      select count(*)::int as n
+      from v_ig_posts v
+      join posts p on p.id = v.post_id
+      where p.source = 'jeremy_evidence'
+    `);
+    expect(rows[0].n).toBe(0);
+  }, 120000);
 });

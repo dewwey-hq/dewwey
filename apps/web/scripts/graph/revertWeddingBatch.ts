@@ -29,8 +29,33 @@
  *   bun run scripts/graph/revertWeddingBatch.ts --batch-id <id>              # dry run (default)
  *   bun run scripts/graph/revertWeddingBatch.ts --batch-id <id> --dry-run    # same, explicit
  *   bun run scripts/graph/revertWeddingBatch.ts --batch-id <id> --execute    # real write, human only
+ *
+ * `--retire-verdicts` (D061, 2026-09-19): after the wedding revert above, for every post_url that
+ * was attached (via wedding_posts) to a reverted wedding, look at its CURRENT verdict
+ * (post_venue_verdicts_current). A model verdict (reviewed_by not 'jeremy' and not starting with
+ * 'human' -- see isHumanReviewer) gets a superseding post_venue_verdicts row (verdict='SKIP',
+ * reviewed_by='revert:<batch_id>') so candidate_review_derived stops reporting CONFIRM for a
+ * wedding that no longer exists. A human verdict (reviewed_by='jeremy') is NEVER superseded --
+ * printed as "human-confirmed, left in place" instead. Also, when the creation batch_id has the
+ * `<acquisition-batch>-create-<n>` shape, sets `ops.crawl_runs.status='reverted'` for every run
+ * whose batch_id equals the acquisition-batch prefix (a no-op, via to_regclass, when the ops
+ * schema doesn't exist yet). Dry-run by default like the rest of this script; a "mixed" candidate
+ * (its reverted wedding has both a post first-observed by this tick AND a pre-existing
+ * staging-origin post) is printed in its own block, because reverting the tick retires a wedding
+ * that staging evidence ALONE might eventually have created too.
+ *
+ * Usage:
+ *   bun run scripts/graph/revertWeddingBatch.ts --batch-id <id> --retire-verdicts
+ *   bun run scripts/graph/revertWeddingBatch.ts --batch-id <id> --retire-verdicts --execute
  */
 import { getPool, closePool } from "../classify/db";
+
+/** D061: 'jeremy' or anything 'human'-prefixed is a real human review, never superseded by
+ * --retire-verdicts. Every other reviewed_by (haiku-extract-v1, fable-structured, ...) is a
+ * model verdict. */
+export function isHumanReviewer(reviewedBy: string): boolean {
+  return reviewedBy === "jeremy" || reviewedBy.startsWith("human");
+}
 
 interface WeddingToRevert {
   candidate_id: number;
@@ -47,6 +72,7 @@ async function main() {
   const batchIdFlagIndex = process.argv.indexOf("--batch-id");
   const batchId = batchIdFlagIndex !== -1 ? process.argv[batchIdFlagIndex + 1] : undefined;
   const execute = process.argv.includes("--execute");
+  const retireVerdicts = process.argv.includes("--retire-verdicts");
 
   if (!batchId || batchId.startsWith("--")) {
     console.error(
@@ -169,6 +195,77 @@ async function main() {
       orphanedIds = new Set(allPostIds.filter((id) => !survivorIds.has(id) && jeremyPostIds.has(id)));
     }
 
+    // D061: which creation batches were touched (jeremy_weddings_created.batch_id may itself be
+    // acquisition-tagged, e.g. acq-20260920-pilot-create-1), and, if so, the acquisition-tick
+    // prefix (batch_id minus the trailing -create-<n>) whose ops.crawl_runs should be marked
+    // reverted.
+    const acquisitionBatchPrefix = batchId.match(/^(.*)-create-\d+$/)?.[1] ?? null;
+
+    // D061 --retire-verdicts: post_urls attached to a reverted wedding, split into human-
+    // confirmed (never touched) and model verdicts (superseded on --execute). Also detects
+    // "mixed" candidates (a post first-observed by this acquisition tick alongside a
+    // pre-existing staging-origin post on the SAME reverted wedding) -- both features are
+    // no-ops when the relevant tables/columns don't exist yet (to_regclass-guarded).
+    interface VerdictToSupersede {
+      post_url: string;
+      candidate_id: number;
+      venue_account_id: number | null;
+      reviewed_by: string;
+    }
+    let verdictsToSupersede: VerdictToSupersede[] = [];
+    let humanConfirmedUrls: string[] = [];
+    let postUrlById = new Map<number, string>();
+    if ((retireVerdicts || acquisitionBatchPrefix) && allPostIds.length > 0) {
+      const { rows: urlRows } = await client.query<{ id: number; url: string }>(
+        `select id, url from posts where id = any($1::bigint[])`,
+        [allPostIds]
+      );
+      postUrlById = new Map(urlRows.map((r) => [r.id, r.url]));
+    }
+    if (retireVerdicts && postUrlById.size > 0) {
+      const allUrls = [...postUrlById.values()];
+      const { rows: verdictRows } = await client.query<{
+        post_url: string;
+        candidate_id: number;
+        venue_account_id: number | null;
+        reviewed_by: string;
+      }>(
+        `select post_url, candidate_id, venue_account_id, reviewed_by
+         from post_venue_verdicts_current
+         where post_url = any($1::text[])`,
+        [allUrls]
+      );
+      for (const v of verdictRows) {
+        if (isHumanReviewer(v.reviewed_by)) humanConfirmedUrls.push(v.post_url);
+        else verdictsToSupersede.push(v);
+      }
+    }
+
+    const mixedCandidateIds = new Set<number>();
+    if (acquisitionBatchPrefix && allPostIds.length > 0) {
+      const { rows: opsGuard } = await client.query<{ ok: string | null }>(`select to_regclass('ops.post_observations')::text as ok`);
+      if (opsGuard[0].ok) {
+        const { rows: tickPosts } = await client.query<{ post_id: number }>(
+          `select o.post_id
+           from ops.post_observations o
+           join ops.crawl_runs r on r.id = o.run_id
+           where r.batch_id = $1 and o.post_id = any($2::bigint[])`,
+          [acquisitionBatchPrefix, allPostIds]
+        );
+        const tickPostIds = new Set(tickPosts.map((r) => r.post_id));
+        const { rows: stagingOriginPosts } = await client.query<{ id: number }>(
+          `select id from posts where id = any($1::bigint[]) and source = 'jeremy_evidence'`,
+          [allPostIds]
+        );
+        const stagingOriginIds = new Set(stagingOriginPosts.map((r) => r.id));
+        for (const w of weddingsToRevert) {
+          const hasTick = w.post_ids.some((id) => tickPostIds.has(id));
+          const hasStaging = w.post_ids.some((id) => stagingOriginIds.has(id));
+          if (hasTick && hasStaging) mixedCandidateIds.add(w.candidate_id);
+        }
+      }
+    }
+
     console.log("\n[revert-wedding-batch] per-wedding plan:");
     for (const w of weddingsToRevert) {
       const orphanedForThis = w.post_ids.filter((id) => orphanedIds.has(id));
@@ -177,7 +274,8 @@ async function main() {
         `  candidate=${w.candidate_id} wedding=${w.wedding_id} venue_id=${w.venue_id} ` +
           `event_date_est=${w.event_date_est} is_chicago=${w.is_chicago} ` +
           `wedding_posts=${w.post_ids.length} wedding_vendors=${w.vendor_account_ids.length} ` +
-          `posts_to_delete=${orphanedForThis.length} (${JSON.stringify(orphanedForThis)})`
+          `posts_to_delete=${orphanedForThis.length} (${JSON.stringify(orphanedForThis)})` +
+          `${mixedCandidateIds.has(w.candidate_id) ? " [MIXED: tick post + staging post]" : ""}`
       );
     }
 
@@ -185,6 +283,44 @@ async function main() {
       `wedding_posts_rows=${weddingsToRevert.reduce((n, w) => n + w.post_ids.length, 0)} ` +
       `wedding_vendors_rows=${weddingsToRevert.reduce((n, w) => n + w.vendor_account_ids.length, 0)} ` +
       `posts_deleted=${totalPostsOrphaned}`);
+
+    if (mixedCandidateIds.size > 0) {
+      console.log(
+        `\n[revert-wedding-batch] MIXED candidates (tick post + staging post -- reverting the tick ` +
+          `retires a wedding staging evidence alone might eventually have created too): ` +
+          `${[...mixedCandidateIds].join(", ")}`
+      );
+    }
+
+    if (retireVerdicts) {
+      console.log(
+        `\n[revert-wedding-batch] --retire-verdicts: ${verdictsToSupersede.length} model verdict(s) to supersede, ` +
+          `${humanConfirmedUrls.length} human-confirmed (left in place)`
+      );
+      for (const v of verdictsToSupersede) {
+        console.log(`  supersede: ${v.post_url} (was reviewed_by=${v.reviewed_by}) -> SKIP reviewed_by=revert:${batchId}`);
+      }
+      for (const u of humanConfirmedUrls) {
+        console.log(`  human-confirmed, left in place: ${u}`);
+      }
+    }
+
+    if (acquisitionBatchPrefix) {
+      const { rows: crawlRunsGuard } = await client.query<{ ok: string | null }>(`select to_regclass('ops.crawl_runs')::text as ok`);
+      if (crawlRunsGuard[0].ok) {
+        const { rows: matchingRuns } = await client.query<{ id: number }>(
+          `select id from ops.crawl_runs where batch_id = $1`,
+          [acquisitionBatchPrefix]
+        );
+        console.log(
+          `\n[revert-wedding-batch] acquisition-batch prefix '${acquisitionBatchPrefix}': ${matchingRuns.length} ops.crawl_runs row(s) to mark status='reverted'`
+        );
+      } else {
+        console.log(
+          `\n[revert-wedding-batch] acquisition-batch prefix '${acquisitionBatchPrefix}' derived, but ops.crawl_runs doesn't exist yet -- no-op`
+        );
+      }
+    }
 
     if (execute) {
       for (const w of weddingsToRevert) {
@@ -222,6 +358,38 @@ async function main() {
         await client.query(`delete from weddings where id = $1`, [w.wedding_id]);
       }
 
+      // D061 --retire-verdicts: superseding SKIP rows, written AFTER the wedding rows above are
+      // gone (post_venue_verdicts has no FK to weddings, so ordering here is for narrative
+      // clarity, not correctness).
+      if (retireVerdicts) {
+        for (const v of verdictsToSupersede) {
+          await client.query(
+            `insert into post_venue_verdicts (post_url, candidate_id, venue_account_id, verdict, reviewed_by, notes)
+             values ($1, $2, $3, 'SKIP', $4, $5)`,
+            [
+              v.post_url,
+              v.candidate_id,
+              v.venue_account_id,
+              `revert:${batchId}`,
+              `superseded by revertWeddingBatch.ts --batch-id ${batchId} --retire-verdicts (was reviewed_by=${v.reviewed_by})`,
+            ]
+          );
+        }
+        console.log(`[revert-wedding-batch] --retire-verdicts: superseded ${verdictsToSupersede.length} model verdict(s)`);
+      }
+
+      // D061: mark this tick's runs reverted, when derivable and the ops schema exists.
+      if (acquisitionBatchPrefix) {
+        const { rows: crawlRunsGuard } = await client.query<{ ok: string | null }>(`select to_regclass('ops.crawl_runs')::text as ok`);
+        if (crawlRunsGuard[0].ok) {
+          const { rows: updated } = await client.query<{ id: number }>(
+            `update ops.crawl_runs set status = 'reverted' where batch_id = $1 returning id`,
+            [acquisitionBatchPrefix]
+          );
+          console.log(`[revert-wedding-batch] marked ${updated.length} ops.crawl_runs row(s) status='reverted' (batch_id='${acquisitionBatchPrefix}')`);
+        }
+      }
+
       await client.query("refresh materialized view edges");
       console.log("\n[revert-wedding-batch] refreshed materialized view edges");
 
@@ -241,7 +409,13 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Guarded (D061) so isHumanReviewer can be imported (e.g. by
+// scripts/graph/acquisitionPlumbing.test.ts) without re-triggering a live revert run as a side
+// effect of the import -- same convention as runJeremyWeddingClustering.ts/
+// runJeremyWeddingReconciliation.ts's own guard.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

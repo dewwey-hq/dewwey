@@ -22,6 +22,16 @@
  * (inline_at, venue_hashtag) alongside the original credit_line lines, each entry tagged with its
  * `source`. venue_hashtag needs a lookup list of known venue account usernames, loaded once here
  * (not per-caption) and passed to every parseCaption() call.
+ *
+ * --acquisition-batch <batch_id> (D061, 2026-09-19): parse one acquisition tick's first-observed
+ * posts only, sourced from v_ig_posts (pure union of staging + acquisition-fed public posts,
+ * distinct on shortcode with staging precedence) instead of staging.instagram_posts, scoped to
+ * `select p.shortcode from ops.post_observations o join ops.crawl_runs r on r.id = o.run_id join
+ * posts p on p.id = o.post_id where r.batch_id = $1 and o.is_first`. Same not-already-parsed guard
+ * as --ungated (skip a post already under this stack_parser_version), same version key, same
+ * persisted tables, same parse+persist path. Refused together with --ungated (mutually exclusive
+ * worklists) -- --ungated over the full view is never run anyway (it would re-touch ~53k
+ * already-parsed rows).
  */
 import { getPool, closePool } from "../classify/db";
 import { parseCaption, STACK_PARSER_VERSION } from "./stackParser";
@@ -29,6 +39,11 @@ import { parseCaption, STACK_PARSER_VERSION } from "./stackParser";
 async function main() {
   const ungated = process.argv.includes("--ungated");
   const dryRun = process.argv.includes("--dry-run");
+  const acquisitionBatchIdx = process.argv.indexOf("--acquisition-batch");
+  const acquisitionBatch = acquisitionBatchIdx >= 0 ? process.argv[acquisitionBatchIdx + 1] : null;
+  if (acquisitionBatch && ungated) {
+    throw new Error("--acquisition-batch and --ungated are mutually exclusive worklists");
+  }
   const pool = getPool();
 
   // v8 (D055): known venue account usernames (lowercased), for the venue_hashtag pattern. Built
@@ -43,13 +58,53 @@ async function main() {
   const venueHandles = new Set(venueHandleRows.map((r) => r.username));
   console.log(`[stack-baseline] loaded ${venueHandles.size} known venue handles for venue_hashtag`);
 
+  let acquisitionShortcodes: string[] | null = null;
+  if (acquisitionBatch) {
+    const { rows: guard } = await pool.query<{ ok: string | null }>(`select to_regclass('ops.post_observations')::text as ok`);
+    if (!guard[0].ok) {
+      throw new Error("--acquisition-batch requires ops.post_observations to exist (acquisition schema not applied yet)");
+    }
+    const { rows: scoped } = await pool.query<{ shortcode: string }>(
+      `select p.shortcode
+       from ops.post_observations o
+       join ops.crawl_runs r on r.id = o.run_id
+       join posts p on p.id = o.post_id
+       where r.batch_id = $1 and o.is_first`,
+      [acquisitionBatch]
+    );
+    acquisitionShortcodes = scoped.map((r) => r.shortcode);
+    console.log(`[stack-baseline] --acquisition-batch ${acquisitionBatch}: scoping to ${acquisitionShortcodes.length} first-observed post(s)`);
+  }
+
   const { rows } = await pool.query<{
     post_url: string;
     caption_raw: string | null;
     decision: string;
     candidate_score: number | null;
   }>(
-    ungated
+    acquisitionBatch
+      ? `select v.post_url, v.caption_raw,
+           coalesce(
+             (select pc.decision::text from post_classification_runs pc
+              where pc.post_url = v.post_url and pc.classifier_version = 'v3'
+              order by pc.classified_at desc limit 1),
+             'UNCLASSIFIED'
+           ) as decision,
+           cs.score as candidate_score
+         from (
+           select distinct on (shortcode) *
+           from v_ig_posts
+           where shortcode = any($2::text[])
+           order by shortcode, (corpus_source = 'staging') desc
+         ) v
+         left join candidate_scores cs on cs.post_url = v.post_url
+           and cs.candidate_generation_version = 'candidate-score-v1'
+         where v.caption_raw is not null and v.caption_raw <> ''
+           and not exists (
+             select 1 from stack_extraction_runs sr
+             where sr.post_url = v.post_url and sr.stack_parser_version = $1
+           )`
+      : ungated
       ? `select sp.post_url, sp.caption_raw,
            coalesce(
              (select pc.decision::text from post_classification_runs pc
@@ -78,9 +133,13 @@ async function main() {
          join candidate_scores cs on cs.post_url = sp.post_url
            and cs.candidate_generation_version = 'candidate-score-v1' and cs.score >= 12
            and $1 = $1`,
-    [STACK_PARSER_VERSION]
+    [STACK_PARSER_VERSION, acquisitionShortcodes ?? []]
   );
-  console.log(`[stack-baseline] version=${STACK_PARSER_VERSION} mode=${ungated ? "ungated" : "score>=12"} ${dryRun ? "DRY RUN " : ""}posts=${rows.length}`);
+  console.log(
+    `[stack-baseline] version=${STACK_PARSER_VERSION} mode=${
+      acquisitionBatch ? `acquisition-batch=${acquisitionBatch}` : ungated ? "ungated" : "score>=12"
+    } ${dryRun ? "DRY RUN " : ""}posts=${rows.length}`
+  );
 
   let processed = 0;
   let withStack = 0;

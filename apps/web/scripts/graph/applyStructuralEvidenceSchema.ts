@@ -33,10 +33,22 @@ const STATEMENTS: string[] = [
      order by post_url, line_no, handle, extracted_at desc
    ),
    universe as (
+     -- D061 (2026-09-19): re-sourced from the pure v_ig_posts view (owned by the acquisition
+     -- schema script) instead of staging.instagram_posts directly, so tagged-feed acquisition
+     -- posts join the same structural chain staging always has. Precedence by shortcode: staging
+     -- always wins; a public (venue_tagged/own_profile) row only enters the universe once it was
+     -- scraped after the first acquisition run ever (decision 5 -- with ops.crawl_runs empty,
+     -- NOTHING public enters, so Ben's pre-existing ~6,370 crawl posts stay out in month 1).
      select sp.post_url, sp.caption_raw, sp.post_timestamp, sp.location_tag, sp.owner_username
-     from staging.instagram_posts sp
+     from (
+       select distinct on (shortcode) *
+       from v_ig_posts
+       where corpus_source = 'staging'
+          or scraped_at > coalesce((select min(started_at) from ops.crawl_runs), 'infinity'::timestamptz)
+       order by shortcode, (corpus_source = 'staging') desc
+     ) sp
      where not exists (
-         select 1 from wedding_posts wp join posts p on p.id = wp.post_id where p.url = sp.post_url
+         select 1 from wedding_posts wp join posts p on p.id = wp.post_id where p.shortcode = sp.shortcode
        )
        and not exists (
          select 1 from golden_set gs where gs.post_url = sp.post_url and gs.expected_decision = 'EXCLUDE'
@@ -240,7 +252,7 @@ const STATEMENTS: string[] = [
    from combined c
    join universe u on u.post_url = c.source_post_url
    join couple_extract ce on ce.post_url = c.source_post_url;`,
-  `comment on view structural_post_vendor_evidence is 'DERIVED (D055 "squeeze the 47k" Phase 0, precision fixes for structural-v2 2026-09-08; extracted_venue_anchors 5th anchor source added 2026-09-09): venue-anchors a post from credit-line, author-is-known-venue, IG location-tag, inline @mention, venue-branded hashtag, or (lowest priority, last resort) the Haiku pool-b reader''s own extraction (priority order, alias-resolved, conflict-flagged), plus the post''s own non-venue stack credits. has_couple_signal/couple_guess veto business-word false matches (e.g. "Lido Banquets & Events"). Eligibility (venue anchor + supporting evidence, anchor-source-dependent) and the couple-guess merge veto are enforced in runJeremyWeddingClustering.ts --evidence-source structural, not here. See docs/decisions.md D055.';`,
+  `comment on view structural_post_vendor_evidence is 'DERIVED (D055 "squeeze the 47k" Phase 0, precision fixes for structural-v2 2026-09-08; extracted_venue_anchors 5th anchor source added 2026-09-09; D061 2026-09-19: universe re-sourced from v_ig_posts, shortcode precedence, public rows gated on scraped_at > first acquisition run): venue-anchors a post from credit-line, author-is-known-venue, IG location-tag, inline @mention, venue-branded hashtag, or (lowest priority, last resort) the Haiku pool-b reader''s own extraction (priority order, alias-resolved, conflict-flagged), plus the post''s own non-venue stack credits. has_couple_signal/couple_guess veto business-word false matches (e.g. "Lido Banquets & Events"). Eligibility (venue anchor + supporting evidence, anchor-source-dependent) and the couple-guess merge veto are enforced in runJeremyWeddingClustering.ts --evidence-source structural, not here. See docs/decisions.md D055, D061.';`,
   `alter table jeremy_wedding_candidates add column if not exists venue_anchor_source text;`,
   `alter table jeremy_wedding_candidates add column if not exists venue_anchor_conflict boolean;`,
 ];

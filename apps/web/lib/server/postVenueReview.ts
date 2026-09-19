@@ -433,6 +433,20 @@ export async function getPostReviewQueue(
   const reviewedBy = opts.reviewedBy ?? LABELED_BY;
   const pool = getPool();
 
+  // D061: v_ig_posts (pure union of staging + acquisition-fed public posts) replaces the direct
+  // staging.instagram_posts join, distinct on shortcode with staging precedence, so a public post
+  // -- and the 629 overlaps that exist in both corpora today -- appears exactly once, never
+  // doubled. Guarded with to_regclass and falling back to the old staging-only join when the view
+  // doesn't exist yet (schema not applied), so this page can never 500 over it.
+  const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
+  const candidatePostsJoin = viewGuard[0].ok
+    ? `join (
+         select distinct on (shortcode) *
+         from v_ig_posts
+         order by shortcode, (corpus_source = 'staging') desc
+       ) sp on sp.post_url = cp.source_post_url`
+    : `join staging.instagram_posts sp on sp.post_url = cp.source_post_url`;
+
   const { rows } = await pool.query(
     `with venue_counts as (
        select coalesce(al.canonical_account_id, wv.account_id) as venue_account_id,
@@ -464,7 +478,7 @@ export async function getPostReviewQueue(
          ${styledSignalSql("sp.caption_raw")} as styled_signal_raw
        from jeremy_wedding_candidate_posts cp
        join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
-       join staging.instagram_posts sp on sp.post_url = cp.source_post_url
+       ${candidatePostsJoin}
        where jwc.clustering_version = $1
      ),
      ${LATEST_EXTRACTION_CTE}
