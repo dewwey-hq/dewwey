@@ -117,16 +117,18 @@ describe("mergeRepairReply -- field-path isolation", () => {
         archetype: "rental_plus_fb_minimum",
         paths: [],
         rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, taxes_included_in_rental: null, cc_fee_pct: null, quote: null, source_url: null },
-        add_ons: [{ id: "a1", name: "Chairs", category: "rentals", variant: null, group: "rental", price: 5, price_max: null, unit: "per_unit", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: null, note: null, quote: "q", source_url: "u" }],
+        add_ons: [{ id: "a1", name: "Chairs", category: "rentals", variant: null, group: "rental", price: 5, price_max: null, unit: "per_unit", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: null, note: null, selection_group: null, quote: "q", source_url: "u" }],
+        add_on_categories: [],
         food_beverage: { food_pills: [], bar_pills: [], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
         required_third_party: [],
         faqs: [],
+        seasons: null,
         notes: null,
       },
       document_chars: 100,
       pages: [],
     };
-    const reply = { pricing: { add_ons: [{ id: "a1", name: "Chairs", category: "rentals", variant: null, group: "rental", price: 6, price_max: null, unit: "per_unit", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: null, note: null, quote: "q2", source_url: "u2" }] } };
+    const reply = { pricing: { add_ons: [{ id: "a1", name: "Chairs", category: "rentals", variant: null, group: "rental", price: 6, price_max: null, unit: "per_unit", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: null, note: null, selection_group: null, quote: "q2", source_url: "u2" }] } };
     const merged = mergeRepairReply(parent, ["/pricing/add_ons"], reply);
     expect(merged.pricing_call?.add_ons[0].price).toBe(6);
     expect(merged.pricing_call?.archetype).toBe("rental_plus_fb_minimum"); // untouched

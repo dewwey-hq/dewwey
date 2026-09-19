@@ -264,6 +264,29 @@ export function scorePricingScalars(candidate: VenueDetailsV3, golden: VenueDeta
     }
   }
 
+  // seasons: the venue's own peak/off month wording. No per-field source_url is stored (it's not
+  // quote-grounded), so the eval-tag gate runs with a null goldenSourceUrl (same "nothing to check
+  // against the crawled set" treatment as a not_stated tri-field).
+  if (golden.pricing.seasons && passesEvalAndCrawlFilter(golden, "/pricing/seasons", null, candidate.sources.pages, options)) {
+    total++;
+    const g = golden.pricing.seasons;
+    const c = candidate.pricing.seasons;
+    if (c && g.peak === c.peak && g.off === c.off) matches++;
+    else misses.push("/pricing/seasons");
+  }
+
+  // includes: the golden default path's path-wide inclusions, verbatim-item-set equality.
+  if (goldenPath?.includes && goldenPath.includes.length > 0) {
+    const includesPath = `/pricing/paths/${goldenPath.id}/includes`;
+    if (passesEvalAndCrawlFilter(golden, includesPath, null, candidate.sources.pages, options)) {
+      total++;
+      const goldenSet = JSON.stringify([...goldenPath.includes].sort());
+      const candidateSet = JSON.stringify([...(candidatePath?.includes ?? [])].sort());
+      if (goldenSet === candidateSet) matches++;
+      else misses.push(includesPath);
+    }
+  }
+
   return { matches, total, accuracy: total === 0 ? 1 : matches / total, misses };
 }
 

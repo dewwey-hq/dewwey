@@ -66,6 +66,24 @@ export function normalizeConflictingSingleCandidate(field: RawTriField): RawTriF
 }
 
 // ---------------------------------------------------------------------------
+// selection_group slug normalization
+// ---------------------------------------------------------------------------
+
+/** Normalizes an add-on's `selection_group` to a stable slug (lowercased, non-alnum runs
+ * collapsed to a single underscore, trimmed) so two venues' equivalent groups (or a model's own
+ * inconsistent casing/spacing across add-ons in the same group) compare equal. Null/empty stays
+ * null -- independent extras are never assigned a group. */
+export function normalizeSelectionGroupSlug(group: string | null | undefined): string | null {
+  if (!group) return null;
+  const slug = group
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug.length > 0 ? slug : null;
+}
+
+// ---------------------------------------------------------------------------
 // corkage_implies_byo
 // ---------------------------------------------------------------------------
 

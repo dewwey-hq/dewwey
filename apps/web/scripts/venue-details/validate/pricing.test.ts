@@ -11,6 +11,7 @@ import {
   inRange,
   isAdrQuote,
   normalizeConflictingSingleCandidate,
+  normalizeSelectionGroupSlug,
   normalizeStatedWithoutQuote,
   sanitizeAddOns,
   sanitizeFixedFees,
@@ -197,6 +198,24 @@ describe("sanitizeAddOns", () => {
   it("keeps an unpriceable add-on (price null) untouched", () => {
     const result = sanitizeAddOns([addOn({ price: null, priceable: false, as_stated_price: "No published rate" })]);
     expect(result.addOns).toHaveLength(1);
+  });
+});
+
+describe("normalizeSelectionGroupSlug", () => {
+  it("returns null for null/undefined/empty input", () => {
+    expect(normalizeSelectionGroupSlug(null)).toBeNull();
+    expect(normalizeSelectionGroupSlug(undefined)).toBeNull();
+    expect(normalizeSelectionGroupSlug("")).toBeNull();
+    expect(normalizeSelectionGroupSlug("   ")).toBeNull();
+  });
+
+  it("lowercases and collapses non-alnum runs to a single underscore", () => {
+    expect(normalizeSelectionGroupSlug("Food Package")).toBe("food_package");
+    expect(normalizeSelectionGroupSlug("Bar  Tier!!")).toBe("bar_tier");
+  });
+
+  it("makes two differently-cased/spaced venue labels for the same group compare equal", () => {
+    expect(normalizeSelectionGroupSlug("Extra Hour")).toBe(normalizeSelectionGroupSlug("extra-hour"));
   });
 });
 

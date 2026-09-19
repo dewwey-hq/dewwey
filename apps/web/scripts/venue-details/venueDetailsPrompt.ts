@@ -333,20 +333,22 @@ const DIFFERENTIATOR_SCHEMA = nullable(
 
 const SPACE_SCHEMA = strictObject(
   {
-    id: { type: "string", description: "Stable slug, e.g. 'grand-ballroom' -- the join key for this call and the pricing call." },
+    id: { type: "string", description: "Stable slug -- the join key for this call and the pricing call." },
     name: { type: "string" },
-    structure_label: nullable({ type: "string", description: "e.g. 'Ballroom', 'Garden', 'Loft'." }),
+    structure_label: nullable({ type: "string", description: "e.g. 'Ballroom', 'Loft'." }),
     sq_ft: nullable({ type: "number" }),
+    sq_ft_label: nullable({ type: "string" }),
     sq_ft_outdoor: nullable({ type: "number" }),
     ceiling_ft: nullable({ type: "number" }),
+    ceiling_label: nullable({ type: "string" }),
     setting: nullable(enumSchema(SETTINGS)),
-    bookable_separately: { type: "boolean", description: "False for a sub-room only bookable as part of a larger whole-venue booking." },
+    bookable_separately: { type: "boolean", description: "False if only bookable as part of a larger whole-venue booking." },
     description: nullable(strictObject({ text: { type: "string" }, quote: { type: "string" }, source_url: { type: "string" } }, "Only if verbatim-quotable.")),
     includes_summary: nullable({ type: "string" }),
     source_url: { type: "string" },
   },
-  "Wedding/event rooms only, never private dining/meeting rooms/packages. Hotels: only rooms under Weddings. Same area on two pages = ONE space. " +
-    "Never invent an amalgam space unless the site prices that combo as its own product. One undifferentiated space = one entry, named after the venue."
+  "Wedding/event rooms only (hotels: rooms under Weddings only). Same area on two pages = ONE space; never amalgamate unless priced as its own combo. " +
+    "One undifferentiated space = one entry named after the venue."
 );
 
 const CAPACITY_SCHEMA = strictObject(
@@ -518,6 +520,7 @@ const PATH_SCHEMA = strictObject(
     rental_hours: nullable({ type: "number" }),
     year_surcharges: strictArray(YEAR_SURCHARGE_SCHEMA),
     promotions: strictArray(PROMOTION_SCHEMA),
+    includes: strictArray({ type: "string" }, "What the base rental of THIS path bundles, verbatim short items -- distinct from a space's own includes_summary. Empty array if not stated."),
     quote: { type: "string" },
     source_url: { type: "string" },
   },
@@ -560,10 +563,35 @@ const ADD_ON_SCHEMA = strictObject(
     min_guests: nullable({ type: "number" }),
     as_stated_price: nullable({ type: "string", description: "The venue's own price wording when priceable=false or the number is qualitative." }),
     note: nullable({ type: "string" }),
+    selection_group: nullable({
+      type: "string",
+      description: "Set the same short slug on items a couple picks ONE of (e.g. food package tiers, bar tiers, dinnerware, extra hour); null for independent extras.",
+    }),
     quote: { type: "string" },
     source_url: { type: "string" },
   },
   "Purchasable extras only -- never insurance, never the credit-card surcharge (that's rates.cc_fee_pct)."
+);
+
+const ADD_ON_CATEGORY_SCHEMA = strictObject(
+  {
+    category: { type: "string", description: "Must match the `category` on at least one add_ons[] entry." },
+    blurb: nullable({ type: "string", description: "The category's own intro sentence, verbatim or close to it." }),
+    examples: { type: "array", items: { type: "string" }, description: "Example items the venue calls out under this category, verbatim short items." },
+    source_url: { type: "string" },
+  },
+  "The venue's own grouping of purchasable extras with its intro sentence and example items -- only when the site presents add-ons by category. Omit entirely when it doesn't."
+);
+
+const SEASONS_SCHEMA = nullable(
+  strictObject(
+    {
+      peak: nullable({ type: "string", description: "The venue's own definition of peak-season months, verbatim (e.g. 'Apr-Oct, Dec')." }),
+      off: nullable({ type: "string", description: "The venue's own definition of off-season months, verbatim (e.g. 'Jan, Feb, Mar, Nov')." }),
+      source_url: { type: "string" },
+    },
+    "The venue's own peak/off-season month definitions, verbatim. Null when not stated -- never inferred."
+  )
 );
 
 const FB_PILL_SCHEMA = strictObject({ value: enumSchema(FB_PILLS), quote: { type: "string" }, source_url: { type: "string" } });
@@ -618,8 +646,10 @@ const PRICING_SUB_SCHEMAS = {
   paths: strictArray(PATH_SCHEMA),
   rates: RATES_SCHEMA,
   add_ons: strictArray(ADD_ON_SCHEMA),
+  add_on_categories: strictArray(ADD_ON_CATEGORY_SCHEMA),
   food_beverage: FOOD_BEVERAGE_SCHEMA,
   required_third_party: strictArray(REQUIRED_THIRD_PARTY_SCHEMA),
+  seasons: SEASONS_SCHEMA,
 } as const;
 
 /** Declared once, before PRICING_TOOL, so both PRICING_TOOL.parameters.faqs and
@@ -634,9 +664,11 @@ export const PRICING_TOOL = {
     paths: PRICING_SUB_SCHEMAS.paths,
     rates: PRICING_SUB_SCHEMAS.rates,
     add_ons: PRICING_SUB_SCHEMAS.add_ons,
+    add_on_categories: PRICING_SUB_SCHEMAS.add_on_categories,
     food_beverage: PRICING_SUB_SCHEMAS.food_beverage,
     required_third_party: PRICING_SUB_SCHEMAS.required_third_party,
     faqs: FAQS_SCHEMA,
+    seasons: PRICING_SUB_SCHEMAS.seasons,
     notes: nullable({ type: "string" }),
   }),
 };
@@ -662,6 +694,7 @@ RULES THAT APPLY EVERYWHERE:
 - about is Sourced (not quote-grounded): keep it under 600 chars, no em dashes, and never state a number that doesn't appear somewhere in the crawled pages.
 - resources[] URLs must come from the ASSET CANDIDATES block or a PAGE header -- cap at 15; a single consolidated wedding brochure beats many thin resources.
 - vendor_lists[] needs >= 2 real business names or should be omitted entirely.
+- spaces[].sq_ft_label/ceiling_label: only set when the site states size as a range or approximate string rather than a plain number; sq_ft/ceiling_ft still carry the first integer found in it.
 
 Work only from the text given. Temperature is 0 -- be decisive, but genuinely prefer not_stated over a confident guess when the document gives you nothing solid.`;
 
@@ -681,6 +714,10 @@ RULES:
 - tax_pct_override is set ONLY when the venue's own page breaks that specific add-on's tax out as its own separately-computed line, even if the percentage happens to match the general sales tax.
 - food_beverage: research food_pills/bar_pills against BOTH the FAQ and the packages -- check for byo / a_la_carte / all_inclusive and include EVERY one that is genuinely true (they are additive, not exclusive).
 - faqs: the venue's OWN wedding/event Q&A, verbatim (the answer text IS the quote), deduped. EXCLUDE hotel-guest FAQs entirely: check-in/out, guest-room parking rates, loyalty points, gift cards, wifi price, fitness/pool hours, breakfast times -- those describe lodging, not this venue's event product.
+- paths[].includes lists what the base rental of THAT path bundles, verbatim short items -- leave it empty when the site doesn't state path-wide inclusions.
+- add_on_categories is filled ONLY when the site presents add-ons by category (its own intro sentence + example items); most venues: empty array. Every category named here must also appear on at least one add_ons[] entry.
+- seasons is the venue's own verbatim peak/off-season month definitions, only when pricing actually varies by season -- null/empty when not stated, never inferred from typical wedding-industry seasonality.
+- add_ons[].selection_group: set the same short slug on items a couple picks ONE of (food package tiers, bar tiers, dinnerware, an extra hour) so they render as one choice group; leave null for independent extras.
 
 Temperature is 0 -- be decisive, but genuinely prefer leaving a field not stated / null over inventing a plausible-sounding number.`;
 

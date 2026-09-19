@@ -46,7 +46,16 @@ import {
 import type { Issue, RawCapacityTuple, RawFaq, RawPricingResult, RawResource, RawSpace, RawSpineResult, RawTriField, RawVendorList, Repair } from "../contract";
 import { checkGrounding, normalizeUrl, type GroundingPage } from "./grounding";
 import { sanitizeSpacesAndCapacities } from "./spaces";
-import { checkCorkageImpliesByo, checkMinimumKindSanity, normalizeConflictingSingleCandidate, normalizeStatedWithoutQuote, sanitizeAddOns, sanitizeFixedFees, sanitizeRates } from "./pricing";
+import {
+  checkCorkageImpliesByo,
+  checkMinimumKindSanity,
+  normalizeConflictingSingleCandidate,
+  normalizeSelectionGroupSlug,
+  normalizeStatedWithoutQuote,
+  sanitizeAddOns,
+  sanitizeFixedFees,
+  sanitizeRates,
+} from "./pricing";
 import { checkEnums } from "./enums";
 
 // ---------------------------------------------------------------------------
@@ -127,6 +136,23 @@ function weakOrElsewhereIssue(g: GroundResult, path: string, tier: SpineTier | n
   if (g.weak) return { code: "weak_quote", path, severity: "warning", tier, message: "Quote coverage was weak but plausibly the right page -- kept." };
   if (g.elsewhere) return { code: "grounded_elsewhere", path, severity: "warning", tier, message: `Quote actually grounds on ${g.sourceUrl}, not the stated source_url -- rewritten.` };
   return null;
+}
+
+/** Keeps only the items that appear verbatim (case-insensitive) somewhere in `pageText` --
+ * numeric-hygiene-style substring check (no per-item quote/source_url is collected for these, so
+ * this substitutes for a full grounding check) for short venue-stated strings like
+ * `PricingPath.includes[]` and `Pricing.seasons`. Every dropped item gets its own issue. */
+function filterVerbatimItems(items: string[], pageText: string | undefined, path: string, code: string, issues: Issue[]): string[] {
+  const lowerPage = pageText?.toLowerCase();
+  const kept: string[] = [];
+  for (const item of items) {
+    if (lowerPage && lowerPage.includes(item.toLowerCase())) {
+      kept.push(item);
+    } else {
+      issues.push({ code, path, severity: "warning", tier: null, message: `Dropped "${item}" -- not found verbatim in the cited page.` });
+    }
+  }
+  return kept;
 }
 
 // ---------------------------------------------------------------------------
@@ -333,8 +359,10 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
       name: s.name,
       structure_label: s.structure_label,
       sq_ft: s.sq_ft,
+      sq_ft_label: s.sq_ft_label,
       sq_ft_outdoor: s.sq_ft_outdoor,
       ceiling_ft: s.ceiling_ft,
+      ceiling_label: s.ceiling_label,
       setting: (s.setting as Setting | null) ?? null,
       bookable_separately: s.bookable_separately,
       description,
@@ -388,6 +416,8 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   let foodBeverage: FoodBeverage = { food_pills: [], bar_pills: [], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] };
   const faqs: Faq[] = [];
   const pricingArchetype = pricingRaw?.archetype ?? null;
+  const addOnCategories: NonNullable<Pricing["add_on_categories"]> = [];
+  let seasons: Pricing["seasons"] = undefined;
 
   if (pricingRaw) {
     pricingRaw.paths.forEach((rawPath, pathIndex) => {
@@ -439,6 +469,9 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
       }
 
       const pathGround = ground(rawPath.quote, rawPath.source_url, pagesMap, stats);
+      const pathPageText = pagesMap.get(normalizeUrl(rawPath.source_url))?.text;
+      const groundedIncludes =
+        rawPath.includes.length > 0 ? filterVerbatimItems(rawPath.includes, pathPageText, `/pricing/paths/${rawPath.id}/includes`, "unsupported_includes_item", issues) : [];
       paths.push({
         id: rawPath.id,
         name: rawPath.name,
@@ -451,6 +484,7 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
         rental_hours: rawPath.rental_hours,
         year_surcharges: rawPath.year_surcharges,
         promotions: rawPath.promotions,
+        ...(groundedIncludes.length > 0 ? { includes: groundedIncludes } : {}),
         quote: rawPath.quote,
         source_url: pathGround.keep ? pathGround.sourceUrl : normalizeUrl(rawPath.source_url),
         snapshot_id: pathGround.keep ? pathGround.snapshotId : null,
@@ -473,7 +507,8 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     rates = sanitizedRates;
     issues.push(...rateIssues);
 
-    for (const a of pricingRaw.add_ons) {
+    for (const a0 of pricingRaw.add_ons) {
+      const a = { ...a0, selection_group: normalizeSelectionGroupSlug(a0.selection_group) };
       const g = ground(a.quote, a.source_url, pagesMap, stats);
       if (g.keep) {
         addOns.push({ ...a, unit: a.unit as AddOn["unit"], group: a.group as AddOn["group"], source_url: g.sourceUrl, snapshot_id: g.snapshotId });
@@ -491,6 +526,40 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     addOns.length = 0;
     addOns.push(...sanitizedAddOns);
     issues.push(...addOnIssues);
+
+    // add_on_categories: kept only when >=1 add-on (post-sanitization) references the category.
+    for (const c of pricingRaw.add_on_categories) {
+      if (!addOns.some((a) => a.category === c.category)) {
+        issues.push({ code: "add_on_category_unreferenced", path: `/pricing/add_on_categories/${c.category}`, severity: "warning", tier: null, message: `Dropped add-on category "${c.category}" -- no add-on references it.` });
+        continue;
+      }
+      const sourceNorm = normalizeUrl(c.source_url);
+      const page = pagesMap.get(sourceNorm);
+      if (!page) {
+        issues.push({ code: "add_on_category_not_crawled", path: `/pricing/add_on_categories/${c.category}`, severity: "warning", tier: null, message: `add_on_categories source_url ${c.source_url} not crawled -- dropped.` });
+        continue;
+      }
+      addOnCategories.push({ category: c.category, blurb: c.blurb, examples: c.examples, evidence: { source_url: sourceNorm, snapshot_id: page.snapshotId } });
+    }
+
+    // seasons: the venue's own peak/off month wording, numeric-hygiene-checked against the cited page.
+    if (pricingRaw.seasons) {
+      const s = pricingRaw.seasons;
+      const sourceNorm = normalizeUrl(s.source_url);
+      const page = pagesMap.get(sourceNorm);
+      const pageText = page?.text;
+      let peak = s.peak;
+      let off = s.off;
+      if (peak != null && !(pageText && pageText.toLowerCase().includes(peak.toLowerCase()))) {
+        issues.push({ code: "unsupported_season_text", path: "/pricing/seasons/peak", severity: "warning", tier: null, message: `Dropped peak season text "${peak}" -- not found verbatim in the cited page.` });
+        peak = null;
+      }
+      if (off != null && !(pageText && pageText.toLowerCase().includes(off.toLowerCase()))) {
+        issues.push({ code: "unsupported_season_text", path: "/pricing/seasons/off", severity: "warning", tier: null, message: `Dropped off season text "${off}" -- not found verbatim in the cited page.` });
+        off = null;
+      }
+      if (peak != null || off != null) seasons = { peak, off };
+    }
 
     for (const rtp of pricingRaw.required_third_party) {
       const g = ground(rtp.quote, rtp.source_url, pagesMap, stats);
@@ -707,7 +776,16 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     differentiator,
     spaces,
     capacities,
-    pricing: { archetype: pricingArchetype as Pricing["archetype"], paths, rates, add_ons: addOns, required_third_party: requiredThirdParty, notes: [] },
+    pricing: {
+      archetype: pricingArchetype as Pricing["archetype"],
+      paths,
+      rates,
+      add_ons: addOns,
+      required_third_party: requiredThirdParty,
+      notes: [],
+      ...(addOnCategories.length > 0 ? { add_on_categories: addOnCategories } : {}),
+      ...(seasons ? { seasons } : {}),
+    },
     food_beverage: foodBeverage,
     inclusions,
     faqs,

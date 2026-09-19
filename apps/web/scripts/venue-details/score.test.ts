@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { getGolden } from "../../lib/venueDetails/golden";
 import { criticalFieldPaths } from "../../lib/venueDetails/tiers";
-import { fact, makeVenue, spineWith } from "../../lib/venueDetails/testHelpers";
-import { scoreCapacities, scoreSpaces, scoreSpineTiers, scoreVenue } from "./score";
+import { emptyRates, fact, makeVenue, spineWith } from "../../lib/venueDetails/testHelpers";
+import { scoreCapacities, scorePricingScalars, scoreSpaces, scoreSpineTiers, scoreVenue } from "./score";
 
 describe("scoreVenue: golden vs itself", () => {
   it("scores 100% on every tier and 0 cost delta for every golden fixture", () => {
@@ -74,6 +74,47 @@ describe("human_only-tagged fields are ignored unless --all-fields", () => {
 
     const allFieldsScore = scoreSpineTiers(candidateMissingBoth, golden, { allFields: true });
     expect(allFieldsScore.secondary.total).toBeGreaterThan(0);
+  });
+});
+
+describe("scorePricingScalars: seasons and includes (round 3 scalars)", () => {
+  const samePath = { id: "standard", name: "Standard", description: null, applies_to_spaces: "all" as const, fixed_fees: [], per_guest_tiers: [], minimums: [], required_staffing: null, rental_hours: null, year_surcharges: [], promotions: [], quote: "q", source_url: "https://example.com", snapshot_id: null };
+
+  it("counts a seasons match/mismatch only when eval-tagged", () => {
+    const golden = makeVenue({
+      pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [], seasons: { peak: "Apr-Oct, Dec", off: "Jan, Feb, Mar, Nov" } },
+      eval: { "/pricing/seasons": "extractor" },
+    });
+    const candidateMatch = makeVenue({ pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [], seasons: { peak: "Apr-Oct, Dec", off: "Jan, Feb, Mar, Nov" } } });
+    const candidateMiss = makeVenue({ pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [], seasons: { peak: "different", off: null } } });
+    const candidateUntagged = makeVenue({ pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+
+    const matchResult = scorePricingScalars(candidateMatch, golden);
+    expect(matchResult.total).toBeGreaterThan(0);
+    expect(matchResult.matches).toBe(matchResult.total);
+
+    const missResult = scorePricingScalars(candidateMiss, golden);
+    expect(missResult.misses).toContain("/pricing/seasons");
+
+    // No eval tag on an untagged golden -> not in scope at all.
+    const untaggedGolden = makeVenue({ pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [], seasons: { peak: "Apr-Oct, Dec", off: null } } });
+    const result = scorePricingScalars(candidateUntagged, untaggedGolden);
+    expect(result.misses).not.toContain("/pricing/seasons");
+  });
+
+  it("counts an includes[] match/mismatch on the default path only when eval-tagged", () => {
+    const golden = makeVenue({
+      pricing: { archetype: null, paths: [{ ...samePath, includes: ["tables", "chairs"] }], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+      eval: { "/pricing/paths/standard/includes": "extractor" },
+    });
+    const candidateMatch = makeVenue({ pricing: { archetype: null, paths: [{ ...samePath, includes: ["chairs", "tables"] }], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+    const candidateMiss = makeVenue({ pricing: { archetype: null, paths: [{ ...samePath, includes: ["tables"] }], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+
+    const matchResult = scorePricingScalars(candidateMatch, golden);
+    expect(matchResult.matches).toBe(matchResult.total);
+
+    const missResult = scorePricingScalars(candidateMiss, golden);
+    expect(missResult.misses).toContain("/pricing/paths/standard/includes");
   });
 });
 

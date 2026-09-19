@@ -147,6 +147,15 @@ describe("SPINE_TOOL", () => {
     const chars = JSON.stringify(SPINE_TOOL.parameters).length;
     expect(chars / 4).toBeLessThan(12_000);
   });
+
+  it("carries sq_ft_label/ceiling_label on spaces, nullable strings with complete required lists", () => {
+    const spaceSchema = (SPINE_TOOL.parameters as any).properties.spaces.items as JsonSchema;
+    expect(Object.keys(spaceSchema.properties as JsonSchema)).toContain("sq_ft_label");
+    expect(Object.keys(spaceSchema.properties as JsonSchema)).toContain("ceiling_label");
+    expect((spaceSchema.properties as any).sq_ft_label.type).toEqual(["string", "null"]);
+    expect((spaceSchema.properties as any).ceiling_label.type).toEqual(["string", "null"]);
+    expect(collectRequiredViolations(spaceSchema)).toEqual([]);
+  });
 });
 
 describe("PRICING_TOOL", () => {
@@ -188,6 +197,40 @@ describe("PRICING_TOOL", () => {
   it("stays within the ~12,000-token (48,000 char) per-tool schema-size budget", () => {
     const chars = JSON.stringify(PRICING_TOOL.parameters).length;
     expect(chars / 4).toBeLessThan(12_000);
+  });
+
+  it("carries paths[].includes as a plain string array", () => {
+    const pathItem = (PRICING_TOOL.parameters as any).properties.paths.items as JsonSchema;
+    expect((pathItem.properties as any).includes.type).toBe("array");
+    expect((pathItem.properties as any).includes.items.type).toBe("string");
+    expect(collectRequiredViolations(pathItem)).toEqual([]);
+  });
+
+  it("carries add_ons[].selection_group as a nullable string", () => {
+    const addOnItem = (PRICING_TOOL.parameters as any).properties.add_ons.items as JsonSchema;
+    expect((addOnItem.properties as any).selection_group.type).toEqual(["string", "null"]);
+    expect(collectRequiredViolations(addOnItem)).toEqual([]);
+  });
+
+  it("carries add_on_categories[] with category/blurb/examples/source_url, required list complete", () => {
+    const props = (PRICING_TOOL.parameters as any).properties;
+    expect(Object.keys(props)).toContain("add_on_categories");
+    const item = props.add_on_categories.items as JsonSchema;
+    expect(Object.keys(item.properties as JsonSchema).sort()).toEqual(["blurb", "category", "examples", "source_url"]);
+    expect(collectRequiredViolations(props.add_on_categories)).toEqual([]);
+  });
+
+  it("carries a nullable seasons {peak, off, source_url}, required list complete", () => {
+    const props = (PRICING_TOOL.parameters as any).properties;
+    expect(Object.keys(props)).toContain("seasons");
+    expect(props.seasons.type).toEqual(["object", "null"]);
+    expect(Object.keys(props.seasons.properties as JsonSchema).sort()).toEqual(["off", "peak", "source_url"]);
+    expect(collectRequiredViolations(props.seasons)).toEqual([]);
+  });
+
+  it("buildRepairTool accepts the new pricing sub-roots", () => {
+    const tool = buildRepairTool(["/pricing/add_on_categories", "/pricing/seasons"]);
+    expect(Object.keys((tool.parameters as any).properties.pricing.properties).sort()).toEqual(["add_on_categories", "seasons"]);
   });
 });
 

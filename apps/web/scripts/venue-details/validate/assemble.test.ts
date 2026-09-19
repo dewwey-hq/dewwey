@@ -10,9 +10,11 @@ function emptyPricing(): RawPricingResult {
     paths: [],
     rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, taxes_included_in_rental: null, cc_fee_pct: null, quote: null, source_url: null },
     add_ons: [],
+    add_on_categories: [],
     food_beverage: { food_pills: [], bar_pills: [], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
     required_third_party: [],
     faqs: [],
+    seasons: null,
     notes: null,
   };
 }
@@ -47,7 +49,21 @@ function miniVenueSpine(): RawSpineResult {
   s.spine.bar = { status: "stated", value: "in_house", quote: "Bar service is in-house only", source_url: PAGE1.url };
   s.spine.pricing_archetype = { status: "stated", value: "rental_plus_fb_minimum", quote: "Saturday rental is $6,000 for the Grand Ballroom", source_url: PAGE2.url };
   s.spaces = [
-    { id: "ballroom", name: "Grand Ballroom", structure_label: null, sq_ft: null, sq_ft_outdoor: null, ceiling_ft: null, setting: "indoor", bookable_separately: true, description: null, includes_summary: null, source_url: PAGE1.url },
+    {
+      id: "ballroom",
+      name: "Grand Ballroom",
+      structure_label: null,
+      sq_ft: null,
+      sq_ft_label: null,
+      sq_ft_outdoor: null,
+      ceiling_ft: null,
+      ceiling_label: null,
+      setting: "indoor",
+      bookable_separately: true,
+      description: null,
+      includes_summary: null,
+      source_url: PAGE1.url,
+    },
   ];
   s.capacities = [
     { space_id: "ballroom", layout: "seated_dinner", min: null, max: 200, as_stated_label: "Seated dinner", condition: null, quote: "Grand Ballroom seats up to 200 guests for a seated dinner", source_url: PAGE1.url },
@@ -71,6 +87,7 @@ function miniVenuePricing(): RawPricingResult {
       rental_hours: null,
       year_surcharges: [],
       promotions: [],
+      includes: [],
       quote: "Saturday rental is $6,000 for the Grand Ballroom",
       source_url: PAGE2.url,
     },
@@ -223,6 +240,7 @@ describe("assembleDocument -- corkage_implies_byo", () => {
         quote: "Corkage fee $25/guest for outside wine",
         source_url: PAGE2.url,
         note: null,
+        selection_group: null,
       },
     ];
     const pages = [PAGE1, { url: PAGE2.url, text: `${PAGE2.text} Corkage fee $25/guest for outside wine.`, snapshot_id: 2 }, PAGE3];
@@ -232,6 +250,120 @@ describe("assembleDocument -- corkage_implies_byo", () => {
     if (bar.status === "stated") expect(bar.value).toBe("byo_with_corkage");
     expect(result.document.food_beverage.bar_pills.some((p) => p.value === "byo")).toBe(true);
     expect(result.issues.some((i) => i.code === "corkage_implies_byo")).toBe(true);
+  });
+});
+
+describe("assembleDocument -- round 3 fields", () => {
+  it("carries sq_ft_label/ceiling_label through onto the assembled space", () => {
+    const spine = miniVenueSpine();
+    spine.spaces[0].sq_ft_label = "~21,000 (main floor)";
+    spine.spaces[0].sq_ft = 21000;
+    spine.spaces[0].ceiling_label = "8-14 ft";
+    spine.spaces[0].ceiling_ft = 8;
+    const result = assembleMiniVenue({ spine });
+    const ballroom = result.document.spaces.find((s) => s.id === "ballroom");
+    expect(ballroom?.sq_ft_label).toBe("~21,000 (main floor)");
+    expect(ballroom?.ceiling_label).toBe("8-14 ft");
+  });
+
+  it("keeps a path's includes[] item that appears verbatim on the path's cited page", () => {
+    const pricing = miniVenuePricing();
+    pricing.paths[0].includes = ["tables and chairs"];
+    const pages = [PAGE1, { url: PAGE2.url, text: `${PAGE2.text} Includes tables and chairs.`, snapshot_id: 2 }, PAGE3];
+    const result = assembleMiniVenue({ pricing, pages });
+    expect(result.document.pricing.paths[0].includes).toEqual(["tables and chairs"]);
+  });
+
+  it("drops a path's includes[] item not found on the cited page, with an issue, and omits an empty includes", () => {
+    const pricing = miniVenuePricing();
+    pricing.paths[0].includes = ["a totally unsupported item"];
+    const result = assembleMiniVenue({ pricing });
+    expect(result.document.pricing.paths[0].includes).toBeUndefined();
+    expect(result.issues.some((i) => i.code === "unsupported_includes_item")).toBe(true);
+  });
+
+  it("normalizes an add-on's selection_group to a stable slug", () => {
+    const pricing = miniVenuePricing();
+    pricing.add_ons = [
+      {
+        id: "food-a",
+        name: "Chicken package",
+        category: "food",
+        variant: null,
+        group: "fb",
+        price: 60,
+        price_max: null,
+        unit: "per_guest",
+        per_space_prices: null,
+        applies_to: "all",
+        path_ids: null,
+        condition: null,
+        priceable: true,
+        tax_pct_override: null,
+        min_guests: null,
+        as_stated_price: null,
+        note: null,
+        selection_group: "Food Package",
+        quote: "Chicken package $60/guest",
+        source_url: PAGE2.url,
+      },
+    ];
+    const pages = [PAGE1, { url: PAGE2.url, text: `${PAGE2.text} Chicken package $60/guest.`, snapshot_id: 2 }, PAGE3];
+    const result = assembleMiniVenue({ pricing, pages });
+    expect(result.document.pricing.add_ons[0].selection_group).toBe("food_package");
+  });
+
+  it("keeps an add_on_categories entry referenced by an add-on, dropping one that isn't", () => {
+    const pricing = miniVenuePricing();
+    pricing.add_ons = [
+      {
+        id: "swag-a",
+        name: "Welcome swag",
+        category: "guest favors",
+        variant: null,
+        group: "other",
+        price: 25,
+        price_max: null,
+        unit: "per_guest",
+        per_space_prices: null,
+        applies_to: "all",
+        path_ids: null,
+        condition: null,
+        priceable: true,
+        tax_pct_override: null,
+        min_guests: null,
+        as_stated_price: null,
+        note: null,
+        selection_group: null,
+        quote: "Welcome swag $25/guest",
+        source_url: PAGE2.url,
+      },
+    ];
+    pricing.add_on_categories = [
+      { category: "guest favors", blurb: "Give your guests something to remember.", examples: ["candles", "koozies"], source_url: PAGE2.url },
+      { category: "unreferenced category", blurb: null, examples: [], source_url: PAGE2.url },
+    ];
+    const pages = [PAGE1, { url: PAGE2.url, text: `${PAGE2.text} Welcome swag $25/guest.`, snapshot_id: 2 }, PAGE3];
+    const result = assembleMiniVenue({ pricing, pages });
+    expect(result.document.pricing.add_on_categories).toHaveLength(1);
+    expect(result.document.pricing.add_on_categories?.[0]).toMatchObject({ category: "guest favors", blurb: "Give your guests something to remember.", examples: ["candles", "koozies"] });
+    expect(result.issues.some((i) => i.code === "add_on_category_unreferenced")).toBe(true);
+  });
+
+  it("keeps seasons text found on the cited page and drops the half that isn't found", () => {
+    const pricing = miniVenuePricing();
+    pricing.seasons = { peak: "Apr-Oct, Dec", off: "a made-up off season nowhere in the crawl", source_url: PAGE2.url };
+    const pages = [PAGE1, { url: PAGE2.url, text: `${PAGE2.text} Peak season is Apr-Oct, Dec.`, snapshot_id: 2 }, PAGE3];
+    const result = assembleMiniVenue({ pricing, pages });
+    expect(result.document.pricing.seasons).toEqual({ peak: "Apr-Oct, Dec", off: null });
+    expect(result.issues.some((i) => i.code === "unsupported_season_text" && i.path === "/pricing/seasons/off")).toBe(true);
+  });
+
+  it("omits seasons entirely when neither half is supported", () => {
+    const pricing = miniVenuePricing();
+    pricing.seasons = { peak: "nowhere in the crawl", off: "also nowhere", source_url: PAGE2.url };
+    const result = assembleMiniVenue({ pricing });
+    expect(result.document.pricing.seasons).toBeUndefined();
   });
 });
 

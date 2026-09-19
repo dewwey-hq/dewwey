@@ -63,8 +63,14 @@ export interface RawSpace {
   name: string;
   structure_label: string | null;
   sq_ft: number | null;
+  /** The venue's own wording when size is a range or approximate ("~21,000 (main floor)",
+   * "11,376-35,997"); `sq_ft` still carries the first integer found in it. Null when the venue
+   * states a plain single number (or nothing). */
+  sq_ft_label: string | null;
   sq_ft_outdoor: number | null;
   ceiling_ft: number | null;
+  /** Same verbatim-string treatment as `sq_ft_label`, for ceiling height ("8-14 ft"). */
+  ceiling_label: string | null;
   setting: string | null;
   bookable_separately: boolean;
   description: RawSpaceDescription | null;
@@ -210,6 +216,9 @@ export interface RawPricingPath {
   rental_hours: number | null;
   year_surcharges: RawYearSurcharge[];
   promotions: RawPromotion[];
+  /** What the base rental of THIS path bundles, verbatim short items -- distinct from a space's
+   * own includes_summary. Empty when the site doesn't state path-wide inclusions. */
+  includes: string[];
   quote: string;
   source_url: string;
 }
@@ -245,6 +254,9 @@ export interface RawAddOn {
   min_guests: number | null;
   as_stated_price: string | null;
   note: string | null;
+  /** Set the same short slug on items a couple picks ONE of (e.g. food package tiers, bar tiers,
+   * dinnerware, extra hour); null for independent extras. */
+  selection_group: string | null;
   quote: string;
   source_url: string;
 }
@@ -296,15 +308,34 @@ export interface RawFaq {
   source_url: string;
 }
 
+/** The venue's own grouping of purchasable extras with its intro sentence and example items --
+ * only when the site presents add-ons by category. */
+export interface RawAddOnCategory {
+  category: string;
+  blurb: string | null;
+  examples: string[];
+  source_url: string;
+}
+
+/** The venue's own definition of peak/off-season months, verbatim. Either half may be null when
+ * only one side is stated. */
+export interface RawSeasons {
+  peak: string | null;
+  off: string | null;
+  source_url: string;
+}
+
 /** `submit_venue_pricing` tool-call args, exactly. */
 export interface RawPricingResult {
   archetype: string | null;
   paths: RawPricingPath[];
   rates: RawRates;
   add_ons: RawAddOn[];
+  add_on_categories: RawAddOnCategory[];
   food_beverage: RawFoodBeverage;
   required_third_party: RawRequiredThirdParty[];
   faqs: RawFaq[];
+  seasons: RawSeasons | null;
   notes: string | null;
 }
 
