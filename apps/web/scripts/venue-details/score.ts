@@ -287,6 +287,19 @@ export function scorePricingScalars(candidate: VenueDetailsV3, golden: VenueDeta
     }
   }
 
+  // terms: the golden default path's labeled rental terms, set equality on labels (secondary-tier
+  // scalar -- the label is the stable, comparable part; term prose itself isn't scored).
+  if (goldenPath?.terms && goldenPath.terms.length > 0) {
+    const termsPath = `/pricing/paths/${goldenPath.id}/terms`;
+    if (passesEvalAndCrawlFilter(golden, termsPath, null, candidate.sources.pages, options)) {
+      total++;
+      const goldenLabels = JSON.stringify([...goldenPath.terms.map((t) => t.label)].sort());
+      const candidateLabels = JSON.stringify([...(candidatePath?.terms ?? []).map((t) => t.label)].sort());
+      if (goldenLabels === candidateLabels) matches++;
+      else misses.push(termsPath);
+    }
+  }
+
   return { matches, total, accuracy: total === 0 ? 1 : matches / total, misses };
 }
 

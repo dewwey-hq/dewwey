@@ -116,6 +116,28 @@ describe("scorePricingScalars: seasons and includes (round 3 scalars)", () => {
     const missResult = scorePricingScalars(candidateMiss, golden);
     expect(missResult.misses).toContain("/pricing/paths/standard/includes");
   });
+
+  it("counts a paths[].terms match/mismatch on the default path (set equality on labels) only when eval-tagged", () => {
+    const term = (label: string) => ({ label, text: `${label} text`, evidence: { source_url: "https://example.com", snapshot_id: null } });
+    const golden = makeVenue({
+      pricing: { archetype: null, paths: [{ ...samePath, terms: [term("Access"), term("Overtime")] }], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+      eval: { "/pricing/paths/standard/terms": "extractor" },
+    });
+    const candidateMatch = makeVenue({ pricing: { archetype: null, paths: [{ ...samePath, terms: [term("Overtime"), term("Access")] }], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+    const candidateMiss = makeVenue({ pricing: { archetype: null, paths: [{ ...samePath, terms: [term("Access")] }], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+    const candidateUntagged = makeVenue({ pricing: { archetype: null, paths: [{ ...samePath, terms: [term("Access")] }], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+
+    const matchResult = scorePricingScalars(candidateMatch, golden);
+    expect(matchResult.matches).toBe(matchResult.total);
+
+    const missResult = scorePricingScalars(candidateMiss, golden);
+    expect(missResult.misses).toContain("/pricing/paths/standard/terms");
+
+    // No eval tag on an untagged golden -> not in scope at all.
+    const untaggedGolden = makeVenue({ pricing: { archetype: null, paths: [{ ...samePath, terms: [term("Access"), term("Overtime")] }], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] } });
+    const result = scorePricingScalars(candidateUntagged, untaggedGolden);
+    expect(result.misses).not.toContain("/pricing/paths/standard/terms");
+  });
 });
 
 describe("capacity headline exact / mismatch", () => {

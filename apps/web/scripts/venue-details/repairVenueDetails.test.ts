@@ -119,7 +119,7 @@ describe("mergeRepairReply -- field-path isolation", () => {
         rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, taxes_included_in_rental: null, cc_fee_pct: null, quote: null, source_url: null },
         add_ons: [{ id: "a1", name: "Chairs", category: "rentals", variant: null, group: "rental", price: 5, price_max: null, unit: "per_unit", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: null, note: null, selection_group: null, quote: "q", source_url: "u" }],
         add_on_categories: [],
-        food_beverage: { food_pills: [], bar_pills: [], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+        food_beverage: { food_pills: [], bar_pills: [], caption: null, food_note: null, bar_note: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
         required_third_party: [],
         faqs: [],
         seasons: null,

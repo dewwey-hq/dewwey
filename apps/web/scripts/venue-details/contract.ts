@@ -219,6 +219,18 @@ export interface RawPricingPath {
   /** What the base rental of THIS path bundles, verbatim short items -- distinct from a space's
    * own includes_summary. Empty when the site doesn't state path-wide inclusions. */
   includes: string[];
+  /** Short labeled rental terms the venue states next to its rates (access window, event hours by
+   * day, holiday pricing, overtime), label in the venue's own words. Empty when the site doesn't
+   * state any. */
+  terms: RawPathTerm[];
+  quote: string;
+  source_url: string;
+}
+
+/** One labeled rental term on a `RawPricingPath` (e.g. "Access" -> "Access begins at 10am"). */
+export interface RawPathTerm {
+  label: string;
+  text: string;
   quote: string;
   source_url: string;
 }
@@ -288,6 +300,11 @@ export interface RawFoodBeverage {
   food_pills: RawFbPill[];
   bar_pills: RawFbPill[];
   caption: { value: string; quote: string; source_url: string } | null;
+  /** One or two sentences the venue itself states about how food works here, verbatim or lightly
+   * trimmed. Null if the site says nothing specific. */
+  food_note: { text: string; quote: string; source_url: string } | null;
+  /** Same for the bar side. */
+  bar_note: { text: string; quote: string; source_url: string } | null;
   menus: RawMenu[];
   bar_ladders: RawBarLadder[];
   bar_min_guests: number | null;

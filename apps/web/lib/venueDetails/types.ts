@@ -503,6 +503,10 @@ export interface PricingPath {
    * space's own `includes_summary` (Marchetti's per-space inclusions). Optional: only paths that
    * carry a real, path-wide inclusion list set this. */
   includes?: string[];
+  /** Short labeled rental terms the venue states next to its rates, in the venue's own labels
+   * ("Access", "Event hours", "Holiday rates", "Overtime"). Rendered as `Label: text` under the
+   * rate grid (round 4). */
+  terms?: { label: string; text: string; evidence: Sourced }[];
 }
 
 export interface Rates {
@@ -580,6 +584,9 @@ export interface EstimateInput {
   tier_id?: string;
   space_id?: string;
   ceremonyOnSite: boolean;
+  /** Live band vs DJ, when capacity tuples for the chosen space differ by `condition`; switches the
+   * over-capacity check to the band tuple. Round 4. */
+  band?: boolean;
   payment?: "cash_check" | "credit_card";
   extras: EstimateExtra[];
 }
@@ -611,6 +618,11 @@ export interface FoodBeverage {
   bar_pills: Fact<FbPill>[];
   /** A narrow exception caption, e.g. a corkage carve-out. */
   caption: Fact<string> | null;
+  /** One or two sentences the venue states about how food works here (explicitly sided, unlike
+   * `notes[]`, which is routed by keyword). Round 4. */
+  food_note?: Fact<string> | null;
+  /** Same for the bar side. */
+  bar_note?: Fact<string> | null;
   menus: {
     name: string;
     cuisine: string | null;

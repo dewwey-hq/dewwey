@@ -11,7 +11,7 @@ function emptyPricing(): RawPricingResult {
     rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, taxes_included_in_rental: null, cc_fee_pct: null, quote: null, source_url: null },
     add_ons: [],
     add_on_categories: [],
-    food_beverage: { food_pills: [], bar_pills: [], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+    food_beverage: { food_pills: [], bar_pills: [], caption: null, food_note: null, bar_note: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
     required_third_party: [],
     faqs: [],
     seasons: null,
@@ -88,6 +88,7 @@ function miniVenuePricing(): RawPricingResult {
       year_surcharges: [],
       promotions: [],
       includes: [],
+      terms: [],
       quote: "Saturday rental is $6,000 for the Grand Ballroom",
       source_url: PAGE2.url,
     },
@@ -364,6 +365,54 @@ describe("assembleDocument -- round 3 fields", () => {
     pricing.seasons = { peak: "nowhere in the crawl", off: "also nowhere", source_url: PAGE2.url };
     const result = assembleMiniVenue({ pricing });
     expect(result.document.pricing.seasons).toBeUndefined();
+  });
+});
+
+describe("assembleDocument -- round 4 fields", () => {
+  it("keeps a path term whose text appears verbatim on the term's own cited page", () => {
+    const pricing = miniVenuePricing();
+    pricing.paths[0].terms = [{ label: "Access", text: "Access begins at 10am", quote: "Access begins at 10am on the day of your event", source_url: PAGE2.url }];
+    const pages = [PAGE1, { url: PAGE2.url, text: `${PAGE2.text} Access begins at 10am on the day of your event.`, snapshot_id: 2 }, PAGE3];
+    const result = assembleMiniVenue({ pricing, pages });
+    expect(result.document.pricing.paths[0].terms).toEqual([{ label: "Access", text: "Access begins at 10am", evidence: { source_url: "example.com/pricing", snapshot_id: 2 } }]);
+  });
+
+  it("drops a path term not found on its cited page, with an issue, and omits an empty terms", () => {
+    const pricing = miniVenuePricing();
+    pricing.paths[0].terms = [{ label: "Access", text: "a totally unsupported term", quote: "a totally unsupported term", source_url: PAGE2.url }];
+    const result = assembleMiniVenue({ pricing });
+    expect(result.document.pricing.paths[0].terms).toBeUndefined();
+    expect(result.issues.some((i) => i.code === "unsupported_term_text")).toBe(true);
+  });
+
+  it("keeps food_note/bar_note when digit-safe and their source is crawled", () => {
+    const pricing = miniVenuePricing();
+    pricing.food_beverage.food_note = { text: "All food must come from our exclusive in-house caterer.", quote: "All food must come from our exclusive in-house caterer.", source_url: PAGE1.url };
+    pricing.food_beverage.bar_note = { text: "Outside wine is welcome with a corkage fee.", quote: "Outside wine is welcome with a corkage fee.", source_url: PAGE1.url };
+    const result = assembleMiniVenue({ pricing });
+    expect(result.document.food_beverage.food_note).toEqual({
+      value: "All food must come from our exclusive in-house caterer.",
+      quote: "All food must come from our exclusive in-house caterer.",
+      source_url: "example.com/weddings",
+      snapshot_id: 1,
+    });
+    expect(result.document.food_beverage.bar_note?.value).toBe("Outside wine is welcome with a corkage fee.");
+  });
+
+  it("drops food_note with an unsupported number, code note_numeric_hygiene", () => {
+    const pricing = miniVenuePricing();
+    pricing.food_beverage.food_note = { text: "A minimum of $500 applies to all food orders.", quote: "A minimum of $500 applies to all food orders.", source_url: PAGE1.url };
+    const result = assembleMiniVenue({ pricing });
+    expect(result.document.food_beverage.food_note).toBeNull();
+    expect(result.issues.some((i) => i.code === "note_numeric_hygiene" && i.path === "/food_beverage/food_note")).toBe(true);
+  });
+
+  it("drops bar_note whose source_url was never crawled", () => {
+    const pricing = miniVenuePricing();
+    pricing.food_beverage.bar_note = { text: "The bar closes at midnight.", quote: "The bar closes at midnight.", source_url: "https://example.com/never-crawled" };
+    const result = assembleMiniVenue({ pricing });
+    expect(result.document.food_beverage.bar_note).toBeNull();
+    expect(result.issues.some((i) => i.code === "note_numeric_hygiene" && i.path === "/food_beverage/bar_note")).toBe(true);
   });
 });
 

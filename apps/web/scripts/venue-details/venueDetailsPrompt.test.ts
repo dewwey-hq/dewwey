@@ -232,6 +232,32 @@ describe("PRICING_TOOL", () => {
     const tool = buildRepairTool(["/pricing/add_on_categories", "/pricing/seasons"]);
     expect(Object.keys((tool.parameters as any).properties.pricing.properties).sort()).toEqual(["add_on_categories", "seasons"]);
   });
+
+  it("carries paths[].terms as an array of {label, text, quote, source_url}, required list complete", () => {
+    const pathItem = (PRICING_TOOL.parameters as any).properties.paths.items as JsonSchema;
+    expect((pathItem.properties as any).terms.type).toBe("array");
+    const termItem = (pathItem.properties as any).terms.items as JsonSchema;
+    expect(Object.keys(termItem.properties as JsonSchema).sort()).toEqual(["label", "quote", "source_url", "text"]);
+    expect(collectRequiredViolations(pathItem)).toEqual([]);
+  });
+
+  it("carries food_beverage.food_note/bar_note as nullable {text, quote, source_url}, required list complete", () => {
+    const fb = (PRICING_TOOL.parameters as any).properties.food_beverage.properties;
+    for (const key of ["food_note", "bar_note"]) {
+      expect(fb[key].type).toEqual(["object", "null"]);
+      expect(Object.keys(fb[key].properties as JsonSchema).sort()).toEqual(["quote", "source_url", "text"]);
+    }
+    expect(collectRequiredViolations((PRICING_TOOL.parameters as any).properties.food_beverage)).toEqual([]);
+  });
+
+  it("buildRepairTool still handles pricing.paths (now including terms) as one whole sub-root", () => {
+    const tool = buildRepairTool(["/pricing/paths/standard/fixed_fees/rental"]);
+    expect(Object.keys((tool.parameters as any).properties.pricing.properties)).toEqual(["paths"]);
+    const pathsSchema = (tool.parameters as any).properties.pricing.properties.paths as JsonSchema;
+    const pathItem = pathsSchema.items as JsonSchema;
+    expect(Object.keys(pathItem.properties as JsonSchema)).toContain("terms");
+    expect(collectRequiredViolations(tool.parameters)).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------

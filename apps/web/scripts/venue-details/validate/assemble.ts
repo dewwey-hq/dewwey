@@ -407,13 +407,25 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     reviewReasons.push("ungrounded_headline_capacity");
   }
 
+  // Digit-sequence hygiene, shared by about/differentiator (below) and food_beverage.food_note /
+  // bar_note (in the pricing block): every digit sequence in the candidate text must appear
+  // somewhere in the crawled pages, substituting for a full quote-grounding check on prose the
+  // model may have lightly trimmed from the venue's own wording.
+  const allPageText = input.pages.map((p) => p.text).join(" ");
+  const allDigitSequences = new Set((allPageText.match(/\d+/g) ?? []).map((d) => d.replace(/^0+(?=\d)/, "")));
+
+  function digitSequenceMissing(text: string): boolean {
+    const seqs = text.match(/\d+/g) ?? [];
+    return seqs.some((s) => !allDigitSequences.has(s.replace(/^0+(?=\d)/, "")));
+  }
+
   // --- pricing -----------------------------------------------------------------
   const pricingRaw = input.pricingRaw;
   const paths: PricingPath[] = [];
   const addOns: AddOn[] = [];
   let rates: Rates = { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, sales_tax_source: "unknown", cc_fee_pct: null, quote: null, source_url: null, snapshot_id: null };
   const requiredThirdParty: RequiredThirdPartyCost[] = [];
-  let foodBeverage: FoodBeverage = { food_pills: [], bar_pills: [], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] };
+  let foodBeverage: FoodBeverage = { food_pills: [], bar_pills: [], caption: null, food_note: null, bar_note: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] };
   const faqs: Faq[] = [];
   const pricingArchetype = pricingRaw?.archetype ?? null;
   const addOnCategories: NonNullable<Pricing["add_on_categories"]> = [];
@@ -472,6 +484,25 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
       const pathPageText = pagesMap.get(normalizeUrl(rawPath.source_url))?.text;
       const groundedIncludes =
         rawPath.includes.length > 0 ? filterVerbatimItems(rawPath.includes, pathPageText, `/pricing/paths/${rawPath.id}/includes`, "unsupported_includes_item", issues) : [];
+
+      const groundedTerms: NonNullable<PricingPath["terms"]> = [];
+      for (const term of rawPath.terms) {
+        const sourceNorm = normalizeUrl(term.source_url);
+        const page = pagesMap.get(sourceNorm);
+        const lowerPage = page?.text.toLowerCase();
+        if (lowerPage && lowerPage.includes(term.text.toLowerCase())) {
+          groundedTerms.push({ label: term.label, text: term.text, evidence: { source_url: sourceNorm, snapshot_id: page!.snapshotId } });
+        } else {
+          issues.push({
+            code: "unsupported_term_text",
+            path: `/pricing/paths/${rawPath.id}/terms`,
+            severity: "warning",
+            tier: null,
+            message: `Dropped term "${term.label}: ${term.text}" -- not found verbatim in the cited page.`,
+          });
+        }
+      }
+
       paths.push({
         id: rawPath.id,
         name: rawPath.name,
@@ -485,6 +516,7 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
         year_surcharges: rawPath.year_surcharges,
         promotions: rawPath.promotions,
         ...(groundedIncludes.length > 0 ? { includes: groundedIncludes } : {}),
+        ...(groundedTerms.length > 0 ? { terms: groundedTerms } : {}),
         quote: rawPath.quote,
         source_url: pathGround.keep ? pathGround.sourceUrl : normalizeUrl(rawPath.source_url),
         snapshot_id: pathGround.keep ? pathGround.snapshotId : null,
@@ -584,6 +616,26 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
       const g = ground(c.quote, c.source_url, pagesMap, stats);
       if (g.keep) caption = { value: c.value, quote: c.quote, source_url: g.sourceUrl, snapshot_id: g.snapshotId };
     }
+
+    // food_note / bar_note: numeric hygiene only (like about/differentiator above) -- the model may
+    // lightly trim the venue's own wording, so a full quote-grounding check would be too strict.
+    function assembleFbNote(raw: { text: string; quote: string; source_url: string } | null, path: string): Fact<string> | null {
+      if (!raw) return null;
+      const sourceNorm = normalizeUrl(raw.source_url);
+      const page = pagesMap.get(sourceNorm);
+      if (!page) {
+        issues.push({ code: "note_numeric_hygiene", path, severity: "warning", tier: null, message: `${path} source_url ${raw.source_url} not crawled -- dropped.` });
+        return null;
+      }
+      if (digitSequenceMissing(raw.text)) {
+        issues.push({ code: "note_numeric_hygiene", path, severity: "warning", tier: null, message: `Dropped ${path} -- contains an unsupported number: "${raw.text}"` });
+        return null;
+      }
+      return { value: raw.text, quote: raw.quote, source_url: sourceNorm, snapshot_id: page.snapshotId };
+    }
+    const foodNote = assembleFbNote(pricingRaw.food_beverage.food_note, "/food_beverage/food_note");
+    const barNote = assembleFbNote(pricingRaw.food_beverage.bar_note, "/food_beverage/bar_note");
+
     const menus = pricingRaw.food_beverage.menus
       .filter((m) => pagesMap.has(normalizeUrl(m.source_url)))
       .map((m) => ({ name: m.name, cuisine: m.cuisine, includes: m.includes, cost: m.cost, extras: m.extras, evidence: { source_url: normalizeUrl(m.source_url), snapshot_id: pagesMap.get(normalizeUrl(m.source_url))!.snapshotId } }));
@@ -595,7 +647,7 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
       const g = ground(n.quote, n.source_url, pagesMap, stats);
       if (g.keep) fbNotes.push({ value: n.value, quote: n.quote, source_url: g.sourceUrl, snapshot_id: g.snapshotId });
     }
-    foodBeverage = { food_pills: foodPills, bar_pills: barPills, caption, menus, bar_ladders: barLadders, bar_min_guests: pricingRaw.food_beverage.bar_min_guests, notes: fbNotes };
+    foodBeverage = { food_pills: foodPills, bar_pills: barPills, caption, food_note: foodNote, bar_note: barNote, menus, bar_ladders: barLadders, bar_min_guests: pricingRaw.food_beverage.bar_min_guests, notes: fbNotes };
 
     // faqs (verbatim; answer is the quote) + hotel-guest off-topic gate.
     const groundedFaqs: Faq[] = [];
@@ -710,14 +762,6 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   }
 
   // --- about / differentiator (Sourced + numeric hygiene) -----------------------------
-  const allPageText = input.pages.map((p) => p.text).join(" ");
-  const allDigitSequences = new Set((allPageText.match(/\d+/g) ?? []).map((d) => d.replace(/^0+(?=\d)/, "")));
-
-  function digitSequenceMissing(text: string): boolean {
-    const seqs = text.match(/\d+/g) ?? [];
-    return seqs.some((s) => !allDigitSequences.has(s.replace(/^0+(?=\d)/, "")));
-  }
-
   let about: VenueDetailsV3["about"] = null;
   if (input.spineRaw.about) {
     const a = input.spineRaw.about;

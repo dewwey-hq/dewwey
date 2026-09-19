@@ -41,7 +41,7 @@ describe("checkEnums", () => {
       rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, taxes_included_in_rental: null, cc_fee_pct: null, quote: null, source_url: null },
       add_ons: [],
       add_on_categories: [],
-      food_beverage: { food_pills: [], bar_pills: [], caption: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
+      food_beverage: { food_pills: [], bar_pills: [], caption: null, food_note: null, bar_note: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] },
       required_third_party: [],
       faqs: [],
       seasons: null,

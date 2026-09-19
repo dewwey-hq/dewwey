@@ -507,6 +507,16 @@ const PROMOTION_SCHEMA = strictObject(
   "Display-only -- never applied automatically by the calculator."
 );
 
+const PATH_TERM_SCHEMA = strictObject(
+  {
+    label: { type: "string", description: "The venue's own label, e.g. 'Access', 'Event hours', 'Holiday rates'." },
+    text: { type: "string" },
+    quote: { type: "string" },
+    source_url: { type: "string" },
+  },
+  "Short labeled rental terms the venue states next to its rates: access window, event hours by day, holiday pricing, overtime; label in the venue's own words. [] when none."
+);
+
 const PATH_SCHEMA = strictObject(
   {
     id: { type: "string", description: "Stable slug; you assign this (the assembler does not renumber it)." },
@@ -521,6 +531,7 @@ const PATH_SCHEMA = strictObject(
     year_surcharges: strictArray(YEAR_SURCHARGE_SCHEMA),
     promotions: strictArray(PROMOTION_SCHEMA),
     includes: strictArray({ type: "string" }, "What the base rental of THIS path bundles, verbatim short items -- distinct from a space's own includes_summary. Empty array if not stated."),
+    terms: strictArray(PATH_TERM_SCHEMA),
     quote: { type: "string" },
     source_url: { type: "string" },
   },
@@ -622,6 +633,18 @@ const FOOD_BEVERAGE_SCHEMA = strictObject({
   caption: nullable(
     strictObject({ value: { type: "string" }, quote: { type: "string" }, source_url: { type: "string" } }, "A narrow exception caption, e.g. a corkage carve-out.")
   ),
+  food_note: nullable(
+    strictObject(
+      { text: { type: "string" }, quote: { type: "string" }, source_url: { type: "string" } },
+      "One or two sentences the venue itself states about how food works here, verbatim or lightly trimmed, no marketing adjectives; null if the site says nothing specific."
+    )
+  ),
+  bar_note: nullable(
+    strictObject(
+      { text: { type: "string" }, quote: { type: "string" }, source_url: { type: "string" } },
+      "One or two sentences the venue itself states about how the bar works here, verbatim or lightly trimmed, no marketing adjectives; null if the site says nothing specific."
+    )
+  ),
   menus: strictArray(MENU_SCHEMA),
   bar_ladders: strictArray(BAR_LADDER_SCHEMA),
   bar_min_guests: nullable({ type: "number" }),
@@ -713,8 +736,10 @@ RULES:
 - add_ons: purchasable extras only -- never insurance, never the credit-card processing surcharge (that's rates.cc_fee_pct). No published number means priceable=false with as_stated_price capturing whatever the site DOES say (or null). A conditional fee names its trigger in condition. "7 swags" vs "13 swags" are two separate add-on rows via variant, each with its own price.
 - tax_pct_override is set ONLY when the venue's own page breaks that specific add-on's tax out as its own separately-computed line, even if the percentage happens to match the general sales tax.
 - food_beverage: research food_pills/bar_pills against BOTH the FAQ and the packages -- check for byo / a_la_carte / all_inclusive and include EVERY one that is genuinely true (they are additive, not exclusive).
+- food_beverage.food_note/bar_note: one or two sentences the venue itself states about how food (resp. the bar) works here, verbatim or lightly trimmed, no marketing adjectives -- null if the site says nothing specific.
 - faqs: the venue's OWN wedding/event Q&A, verbatim (the answer text IS the quote), deduped. EXCLUDE hotel-guest FAQs entirely: check-in/out, guest-room parking rates, loyalty points, gift cards, wifi price, fitness/pool hours, breakfast times -- those describe lodging, not this venue's event product.
 - paths[].includes lists what the base rental of THAT path bundles, verbatim short items -- leave it empty when the site doesn't state path-wide inclusions.
+- paths[].terms are short labeled rental terms stated next to the rates (access window, event hours by day, holiday pricing, overtime) -- label in the venue's own words ("Access", "Event hours", "Holiday rates"); [] when none.
 - add_on_categories is filled ONLY when the site presents add-ons by category (its own intro sentence + example items); most venues: empty array. Every category named here must also appear on at least one add_ons[] entry.
 - seasons is the venue's own verbatim peak/off-season month definitions, only when pricing actually varies by season -- null/empty when not stated, never inferred from typical wedding-industry seasonality.
 - add_ons[].selection_group: set the same short slug on items a couple picks ONE of (food package tiers, bar tiers, dinnerware, an extra hour) so they render as one choice group; leave null for independent extras.
