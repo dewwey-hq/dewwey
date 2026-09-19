@@ -470,7 +470,33 @@
         "promotions": [],
         "quote": "",
         "source_url": "https://www.greenhouseloft.com/",
-        "snapshot_id": null
+        "snapshot_id": null,
+        "terms": [
+          {
+            "label": "Access",
+            "text": "Noon–12am, Fri/Sat/Sun (hard stop at midnight).",
+            "evidence": {
+              "source_url": "https://www.greenhouseloft.com/faq",
+              "snapshot_id": null
+            }
+          },
+          {
+            "label": "Event hours",
+            "text": "Sat/Sun events run up to 7 hrs; Friday starts 6pm or later. Weekdays are case-by-case.",
+            "evidence": {
+              "source_url": "https://www.greenhouseloft.com/faq",
+              "snapshot_id": null
+            }
+          },
+          {
+            "label": "Holiday rates",
+            "text": "NYE and Memorial/Labor Day weekend Sundays are priced at the Saturday rate.",
+            "evidence": {
+              "source_url": "https://www.greenhouseloft.com/faq",
+              "snapshot_id": null
+            }
+          }
+        ]
       }
     ],
     "rates": {
@@ -568,6 +594,10 @@
       "day": "sat",
       "season": "peak",
       "ceremonyOnSite": false
+    },
+    "seasons": {
+      "off": "Jan – Mar",
+      "peak": "Apr – Dec"
     }
   },
   "food_beverage": {
@@ -588,6 +618,18 @@
       }
     ],
     "caption": null,
+    "food_note": {
+      "value": "Any licensed & insured caterer, following the catering guidelines (PDF above).",
+      "quote": "Any licensed & insured caterer, following the catering guidelines (PDF above).",
+      "source_url": "https://www.greenhouseloft.com/s/Greenhouse-Loft-Catering-and-Composting-Guidelines.pdf",
+      "snapshot_id": null
+    },
+    "bar_note": {
+      "value": "Greenhouse Loft provides the bar itself, not alcohol or bartending.",
+      "quote": "Greenhouse Loft provides the bar itself, not alcohol or bartending.",
+      "source_url": "https://www.greenhouseloft.com/faq",
+      "snapshot_id": null
+    },
     "menus": [],
     "bar_ladders": [],
     "bar_min_guests": null,
@@ -1048,6 +1090,9 @@
     "/pricing/add_ons/rehearsal": "extractor",
     "/pricing/add_ons/cleaning-fee": "human_only",
     "/pricing/rates": "extractor",
-    "/food_beverage": "human_only"
+    "/pricing/paths/default/terms": "extractor",
+    "/food_beverage": "human_only",
+    "/food_beverage/food_note": "human_only",
+    "/food_beverage/bar_note": "extractor"
   }
 }

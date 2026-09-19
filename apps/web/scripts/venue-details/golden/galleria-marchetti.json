@@ -633,7 +633,7 @@
         "tax_pct_override": null,
         "min_guests": null,
         "as_stated_price": "$1,000 (La Pergola) / $2,000 (The Pavilion)",
-        "note": "On top of the venue rental fee, only if your ceremony is held on-site. Includes white garden chairs and a dedicated ceremony arbor; The Pavilion's fee also covers a matching indoor arbor for weather backup.",
+        "note": "Only if your ceremony is on-site; includes white garden chairs and a ceremony arbor (Pavilion: matching indoor arbor for weather backup).",
         "quote": "$1,000 (La Pergola) / $2,000 (The Pavilion)",
         "source_url": "https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf",
         "snapshot_id": null
@@ -919,6 +919,18 @@
       }
     ],
     "caption": null,
+    "food_note": {
+      "value": "No outside caterer option. Food comes from the venue's own kitchen.",
+      "quote": "No outside caterer option. Food comes from the venue's own kitchen.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
+    "bar_note": {
+      "value": "Bar service is in-house only.",
+      "quote": "Bar service is in-house only.",
+      "source_url": "https://www.galleriamarchetti.com/",
+      "snapshot_id": null
+    },
     "menus": [],
     "bar_ladders": [],
     "bar_min_guests": null,
@@ -1193,6 +1205,8 @@
     "/pricing/add_ons/aperitivo-hour": "extractor",
     "/pricing/add_ons/chef-experiences": "extractor",
     "/pricing/add_ons/late-night": "extractor",
-    "/pricing/rates": "extractor"
+    "/pricing/rates": "extractor",
+    "/food_beverage/food_note": "extractor",
+    "/food_beverage/bar_note": "extractor"
   }
 }

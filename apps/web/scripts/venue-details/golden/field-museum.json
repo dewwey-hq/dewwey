@@ -438,7 +438,14 @@
       }
     ],
     "required_third_party": [],
-    "notes": []
+    "notes": [
+      {
+        "value": "Field Museum doesn't publish rental fees for any space. Pricing comes from a custom proposal.",
+        "quote": "Field Museum doesn't publish rental fees for any space. Pricing comes from a custom proposal.",
+        "source_url": "https://www.fieldmuseum.org/page/weddings",
+        "snapshot_id": null
+      }
+    ]
   },
   "food_beverage": {
     "food_pills": [
@@ -458,6 +465,18 @@
       }
     ],
     "caption": null,
+    "food_note": {
+      "value": "Catering comes from one of the museum's four approved caterers: Blue Plate, Levy Catering, Food for Thought, or Nicole Jordan Catering (see Vendors below).",
+      "quote": "Catering comes from one of the museum's four approved caterers: Blue Plate, Levy Catering, Food for Thought, or Nicole Jordan Catering (see Vendors below).",
+      "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
+      "snapshot_id": null
+    },
+    "bar_note": {
+      "value": "The museum provides all alcohol for events here. You can't bring your own alcohol, and consumption bars aren't allowed.",
+      "quote": "The museum provides all alcohol for events here. You can't bring your own alcohol, and consumption bars aren't allowed.",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
+      "snapshot_id": null
+    },
     "menus": [],
     "bar_ladders": [],
     "bar_min_guests": null,
@@ -751,6 +770,7 @@
     "/capacities/rice-gallery:seated_dinner": "extractor",
     "/capacities/rice-gallery:cocktail_standing": "extractor",
     "/pricing/add_ons/photo-session-daytime": "extractor",
-    "/pricing/add_ons/photo-session-evening": "extractor"
+    "/pricing/add_ons/photo-session-evening": "extractor",
+    "/pricing/notes/0": "extractor"
   }
 }

@@ -61,12 +61,14 @@ function resolves(d: VenueDetailsV3, path: string): boolean {
   if (root === "vendor_lists") return d.vendor_lists.some((vl) => slugify(vl.label) === id);
   if (root === "pricing" && id === "rates") return d.pricing.rates != null;
   if (root === "pricing" && id === "add_ons") return d.pricing.add_ons.some((a) => a.id === sub);
+  if (root === "pricing" && id === "notes") return d.pricing.notes[Number(sub)] != null;
   if (root === "pricing" && id === "paths") {
     const path_ = d.pricing.paths.find((p) => p.id === sub);
     if (!path_) return false;
     if (rest[0] === "fixed_fees") return path_.fixed_fees.some((fee) => fee.key === rest[1]);
     if (rest[0] === "per_guest_tiers") return path_.per_guest_tiers.some((t) => t.id === rest[1]);
     if (rest[0] === "minimums") return path_.minimums.some((m) => `${m.kind}:${m.day}:${m.season}` === rest[1]);
+    if (rest[0] === "terms") return (path_.terms?.length ?? 0) > 0;
     return true;
   }
   if (root === "food_beverage") {
@@ -74,6 +76,8 @@ function resolves(d: VenueDetailsV3, path: string): boolean {
     if (id === "menus") return d.food_beverage.menus.some((m) => slugify(m.name) === sub);
     if (id === "bar_ladders") return d.food_beverage.bar_ladders.some((b) => slugify(b.name) === sub);
     if (id === "notes") return d.food_beverage.notes[Number(sub)] != null;
+    if (id === "food_note") return d.food_beverage.food_note != null;
+    if (id === "bar_note") return d.food_beverage.bar_note != null;
     return false;
   }
   if (root === "inclusions") return d.inclusions.some((i) => slugify(i.label_raw) === id);
@@ -369,5 +373,77 @@ describe("isGoldenSlug", () => {
   it("accepts only the six real slugs", () => {
     for (const slug of GOLDEN_SLUGS) expect(isGoldenSlug(slug)).toBe(true);
     expect(isGoldenSlug("not-a-real-venue")).toBe(false);
+  });
+});
+
+describe("golden fixtures — round 4 (user feedback 2026-09-19), part B fixture fixes", () => {
+  for (const slug of GOLDEN_SLUGS) {
+    it(`${slug}: has a non-null food_beverage.food_note and bar_note`, () => {
+      const d = getGolden(slug)!;
+      expect(d.food_beverage.food_note, "food_note").toBeTruthy();
+      expect(d.food_beverage.bar_note, "bar_note").toBeTruthy();
+      expect(d.food_beverage.food_note!.value.length).toBeGreaterThan(0);
+      expect(d.food_beverage.bar_note!.value.length).toBeGreaterThan(0);
+    });
+  }
+
+  it("Greenhouse: has 3 rental terms (Access, Event hours, Holiday rates) and a seasons definition", () => {
+    const d = getGolden("greenhouse-loft")!;
+    const defaultPath = d.pricing.paths.find((p) => p.id === "default")!;
+    expect(defaultPath.terms?.map((t) => t.label)).toEqual(["Access", "Event hours", "Holiday rates"]);
+    for (const t of defaultPath.terms!) expect(t.text.length).toBeGreaterThan(0);
+    expect(d.pricing.seasons).toEqual({ off: "Jan – Mar", peak: "Apr – Dec" });
+  });
+
+  it("Diamond Garden: seasons still set (round 3, verified unchanged)", () => {
+    const d = getGolden("diamond-garden-banquet-hall")!;
+    expect(d.pricing.seasons).toEqual({ peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" });
+  });
+
+  it("Geraghty: no add-on matching /nonprofit|donation/i (not a couple-facing wedding fee)", () => {
+    const d = getGolden("geraghty")!;
+    for (const a of d.pricing.add_ons) {
+      expect(a.name).not.toMatch(/nonprofit|donation/i);
+      expect(a.id).not.toMatch(/nonprofit|donation/i);
+    }
+    // The exception is still mentioned honestly, in prose, on the Bar side.
+    expect(d.food_beverage.bar_note?.value).toMatch(/nonprofit/i);
+  });
+
+  it("Geraghty: pricing has no paths and a quoted pricing.notes fact ('Pricing: on request' has a quote)", () => {
+    const d = getGolden("geraghty")!;
+    expect(d.pricing.paths).toEqual([]);
+    expect(d.pricing.notes.length).toBeGreaterThan(0);
+    expect(d.pricing.notes[0].value.length).toBeGreaterThan(0);
+  });
+
+  it("Field Museum: keeps the real 1,500 headline and a conflicting capacity_min_guests (10 vs 20)", () => {
+    const d = getGolden("field-museum")!;
+    const stanley = d.capacities.find((c) => c.space_id === "stanley-field-hall-balcony" && c.layout === "seated_dinner");
+    expect(stanley?.max).toBe(1500);
+    expect(d.spine.capacity_min_guests.status).toBe("conflicting");
+    if (d.spine.capacity_min_guests.status === "conflicting") {
+      expect(d.spine.capacity_min_guests.candidates.map((c) => c.value).sort()).toEqual([10, 20]);
+    }
+    expect(d.pricing.notes.length).toBeGreaterThan(0);
+    expect(d.pricing.notes[0].value.toLowerCase()).toContain("proposal");
+  });
+
+  it("Marchetti: ceremony add-on note is trimmed (round 4)", () => {
+    const d = getGolden("galleria-marchetti")!;
+    const ceremony = d.pricing.add_ons.find((a) => a.id === "ceremony-onsite")!;
+    expect(ceremony.note).toBe(
+      "Only if your ceremony is on-site; includes white garden chairs and a ceremony arbor (Pavilion: matching indoor arbor for weather backup).",
+    );
+  });
+
+  it("every eval field_path still resolves after the round-4 fixture edits", () => {
+    for (const slug of GOLDEN_SLUGS) {
+      const d = getGolden(slug)!;
+      const evalMap = d.eval ?? {};
+      for (const path of Object.keys(evalMap)) {
+        expect(resolves(d, path), `${slug}: path ${path} did not resolve`).toBe(true);
+      }
+    }
   });
 });

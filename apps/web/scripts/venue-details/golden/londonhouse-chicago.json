@@ -526,6 +526,18 @@
       "source_url": "https://londonhousechicago.com/weddings",
       "snapshot_id": null
     },
+    "food_note": {
+      "value": "In-house only. LondonHouse's own catering team handles all food & beverage.",
+      "quote": "In-house only. LondonHouse's own catering team handles all food & beverage.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
+    "bar_note": {
+      "value": "LondonHouse's own bar service is included in every package.",
+      "quote": "LondonHouse's own bar service is included in every package.",
+      "source_url": "https://londonhousechicago.com/weddings",
+      "snapshot_id": null
+    },
     "menus": [],
     "bar_ladders": [],
     "bar_min_guests": null,
@@ -770,6 +782,8 @@
     "/pricing/add_ons/corkage": "extractor",
     "/pricing/add_ons/ceremony": "human_only",
     "/pricing/rates": "extractor",
-    "/food_beverage/notes/0": "human_only"
+    "/food_beverage/notes/0": "human_only",
+    "/food_beverage/food_note": "extractor",
+    "/food_beverage/bar_note": "extractor"
   }
 }

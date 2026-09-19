@@ -276,8 +276,8 @@
     "paths": [
       {
         "id": "hall-rental-only",
-        "name": "Hall Rental Only",
-        "description": "Flat fee, bring-your-own-everything, plus required staffing.",
+        "name": "Venue only",
+        "description": "Hall Rental Only: flat fee, bring your own everything, plus required staffing.",
         "applies_to_spaces": "all",
         "fixed_fees": [
           {
@@ -431,8 +431,8 @@
       },
       {
         "id": "hall-plus-a-la-carte",
-        "name": "Hall + À La Carte",
-        "description": "Same flat hall rental, plus your own picks from the food, bar, and add-on menus below.",
+        "name": "Venue + à la carte",
+        "description": "Start from the Venue-only rental, then pick your own food packages, bar packages, and add-ons individually.",
         "applies_to_spaces": "all",
         "fixed_fees": [
           {
@@ -599,15 +599,15 @@
             "season": "peak",
             "inherits_from": null,
             "inclusions": [
-              "Buffet or plated service",
-              "Wedding or quinceañera cake",
-              "Coffee, decaf & tea",
-              "Open bar for 4.5 hours",
-              "Champagne toast for the bridal party",
-              "Elegant centerpieces",
-              "Silverware, glassware, china & linen",
-              "Head table, cake table & gift table setup",
-              "Professional wait staff, bartenders, door usher & event manager"
+              "Food: Buffet or plated service",
+              "Food: Wedding or quinceañera cake",
+              "Food: Coffee, decaf & tea",
+              "Bar: Open bar for 4.5 hours",
+              "Bar: Champagne toast for the bridal party",
+              "Setup: Elegant centerpieces",
+              "Setup: Silverware, glassware, china & linen",
+              "Setup: Head table, cake table & gift table setup",
+              "Setup: Professional wait staff, bartenders, door usher & event manager"
             ],
             "bar_tier": {
               "name": "Standard Bar",
@@ -631,15 +631,15 @@
             "season": "peak",
             "inherits_from": null,
             "inclusions": [
-              "Buffet or plated service",
-              "Wedding or quinceañera cake",
-              "Coffee, decaf & tea",
-              "Open bar for 4.5 hours",
-              "Champagne toast for the bridal party",
-              "Elegant centerpieces",
-              "Silverware, glassware, china & linen",
-              "Head table, cake table & gift table setup",
-              "Professional wait staff, bartenders, door usher & event manager"
+              "Food: Buffet or plated service",
+              "Food: Wedding or quinceañera cake",
+              "Food: Coffee, decaf & tea",
+              "Bar: Open bar for 4.5 hours",
+              "Bar: Champagne toast for the bridal party",
+              "Setup: Elegant centerpieces",
+              "Setup: Silverware, glassware, china & linen",
+              "Setup: Head table, cake table & gift table setup",
+              "Setup: Professional wait staff, bartenders, door usher & event manager"
             ],
             "bar_tier": {
               "name": "Standard Bar",
@@ -663,15 +663,15 @@
             "season": "peak",
             "inherits_from": null,
             "inclusions": [
-              "Buffet or plated service",
-              "Wedding or quinceañera cake",
-              "Coffee, decaf & tea",
-              "Open bar for 4.5 hours",
-              "Champagne toast for the bridal party",
-              "Elegant centerpieces",
-              "Silverware, glassware, china & linen",
-              "Head table, cake table & gift table setup",
-              "Professional wait staff, bartenders, door usher & event manager"
+              "Food: Buffet or plated service",
+              "Food: Wedding or quinceañera cake",
+              "Food: Coffee, decaf & tea",
+              "Bar: Open bar for 4.5 hours",
+              "Bar: Champagne toast for the bridal party",
+              "Setup: Elegant centerpieces",
+              "Setup: Silverware, glassware, china & linen",
+              "Setup: Head table, cake table & gift table setup",
+              "Setup: Professional wait staff, bartenders, door usher & event manager"
             ],
             "bar_tier": {
               "name": "Standard Bar",
@@ -695,15 +695,15 @@
             "season": "peak",
             "inherits_from": null,
             "inclusions": [
-              "Buffet or plated service",
-              "Wedding or quinceañera cake",
-              "Coffee, decaf & tea",
-              "Open bar for 4.5 hours",
-              "Champagne toast for the bridal party",
-              "Elegant centerpieces",
-              "Silverware, glassware, china & linen",
-              "Head table, cake table & gift table setup",
-              "Professional wait staff, bartenders, door usher & event manager"
+              "Food: Buffet or plated service",
+              "Food: Wedding or quinceañera cake",
+              "Food: Coffee, decaf & tea",
+              "Bar: Open bar for 4.5 hours",
+              "Bar: Champagne toast for the bridal party",
+              "Setup: Elegant centerpieces",
+              "Setup: Silverware, glassware, china & linen",
+              "Setup: Head table, cake table & gift table setup",
+              "Setup: Professional wait staff, bartenders, door usher & event manager"
             ],
             "bar_tier": {
               "name": "Standard Bar",
@@ -727,15 +727,15 @@
             "season": "off",
             "inherits_from": null,
             "inclusions": [
-              "Buffet or plated service",
-              "Wedding or quinceañera cake",
-              "Coffee, decaf & tea",
-              "Open bar for 4.5 hours",
-              "Champagne toast for the bridal party",
-              "Elegant centerpieces",
-              "Silverware, glassware, china & linen",
-              "Head table, cake table & gift table setup",
-              "Professional wait staff, bartenders, door usher & event manager"
+              "Food: Buffet or plated service",
+              "Food: Wedding or quinceañera cake",
+              "Food: Coffee, decaf & tea",
+              "Bar: Open bar for 4.5 hours",
+              "Bar: Champagne toast for the bridal party",
+              "Setup: Elegant centerpieces",
+              "Setup: Silverware, glassware, china & linen",
+              "Setup: Head table, cake table & gift table setup",
+              "Setup: Professional wait staff, bartenders, door usher & event manager"
             ],
             "bar_tier": {
               "name": "Standard Bar",
@@ -759,15 +759,15 @@
             "season": "off",
             "inherits_from": null,
             "inclusions": [
-              "Buffet or plated service",
-              "Wedding or quinceañera cake",
-              "Coffee, decaf & tea",
-              "Open bar for 4.5 hours",
-              "Champagne toast for the bridal party",
-              "Elegant centerpieces",
-              "Silverware, glassware, china & linen",
-              "Head table, cake table & gift table setup",
-              "Professional wait staff, bartenders, door usher & event manager"
+              "Food: Buffet or plated service",
+              "Food: Wedding or quinceañera cake",
+              "Food: Coffee, decaf & tea",
+              "Bar: Open bar for 4.5 hours",
+              "Bar: Champagne toast for the bridal party",
+              "Setup: Elegant centerpieces",
+              "Setup: Silverware, glassware, china & linen",
+              "Setup: Head table, cake table & gift table setup",
+              "Setup: Professional wait staff, bartenders, door usher & event manager"
             ],
             "bar_tier": {
               "name": "Standard Bar",
@@ -791,15 +791,15 @@
             "season": "off",
             "inherits_from": null,
             "inclusions": [
-              "Buffet or plated service",
-              "Wedding or quinceañera cake",
-              "Coffee, decaf & tea",
-              "Open bar for 4.5 hours",
-              "Champagne toast for the bridal party",
-              "Elegant centerpieces",
-              "Silverware, glassware, china & linen",
-              "Head table, cake table & gift table setup",
-              "Professional wait staff, bartenders, door usher & event manager"
+              "Food: Buffet or plated service",
+              "Food: Wedding or quinceañera cake",
+              "Food: Coffee, decaf & tea",
+              "Bar: Open bar for 4.5 hours",
+              "Bar: Champagne toast for the bridal party",
+              "Setup: Elegant centerpieces",
+              "Setup: Silverware, glassware, china & linen",
+              "Setup: Head table, cake table & gift table setup",
+              "Setup: Professional wait staff, bartenders, door usher & event manager"
             ],
             "bar_tier": {
               "name": "Standard Bar",
@@ -823,15 +823,15 @@
             "season": "off",
             "inherits_from": null,
             "inclusions": [
-              "Buffet or plated service",
-              "Wedding or quinceañera cake",
-              "Coffee, decaf & tea",
-              "Open bar for 4.5 hours",
-              "Champagne toast for the bridal party",
-              "Elegant centerpieces",
-              "Silverware, glassware, china & linen",
-              "Head table, cake table & gift table setup",
-              "Professional wait staff, bartenders, door usher & event manager"
+              "Food: Buffet or plated service",
+              "Food: Wedding or quinceañera cake",
+              "Food: Coffee, decaf & tea",
+              "Bar: Open bar for 4.5 hours",
+              "Bar: Champagne toast for the bridal party",
+              "Setup: Elegant centerpieces",
+              "Setup: Silverware, glassware, china & linen",
+              "Setup: Head table, cake table & gift table setup",
+              "Setup: Professional wait staff, bartenders, door usher & event manager"
             ],
             "bar_tier": {
               "name": "Standard Bar",
@@ -1861,6 +1861,18 @@
       }
     ],
     "caption": null,
+    "food_note": {
+      "value": "This venue offers tiered food packages across three cuisines: American & Italian, Mexican, and Puerto Rican. With All-Inclusive, you'll receive buffet or plated service, wedding cake, and coffee service. For BYO, the venue provides a kitchen area with food warmers, a refrigerator, and a microwave.",
+      "quote": "This venue offers tiered food packages across three cuisines: American & Italian, Mexican, and Puerto Rican. With All-Inclusive, you'll receive buffet or plated service, wedding cake, and coffee service. For BYO, the venue provides a kitchen area with food warmers, a refrigerator, and a microwave.",
+      "source_url": "https://www.diamondgardenhall.com/_files/ugd/4b61b7_f1d49b9401ac4b0eb329e97bc9be023f.pdf",
+      "snapshot_id": null
+    },
+    "bar_note": {
+      "value": "Bar packages allow either open bar, where you cover the cost upfront so guests drink free, or cash bar, where guests pay for their own drinks. All-Inclusive includes Standard Bar for 4.5 hours and a champagne toast for the bridal party. For BYO, you're responsible for servicing your guests.",
+      "quote": "Bar packages allow either open bar, where you cover the cost upfront so guests drink free, or cash bar, where guests pay for their own drinks. All-Inclusive includes Standard Bar for 4.5 hours and a champagne toast for the bridal party. For BYO, you're responsible for servicing your guests.",
+      "source_url": "https://www.diamondgardenhall.com/_files/ugd/4b61b7_8936fd994cb84f448c9830099c37fa78.pdf",
+      "snapshot_id": null
+    },
     "menus": [
       {
         "name": "American & Italian",
@@ -2409,6 +2421,8 @@
     "/pricing/add_ons/extra-hour-peak-no-servers": "extractor",
     "/pricing/add_ons/extra-hour-peak-with-servers": "extractor",
     "/pricing/rates": "extractor",
-    "/food_beverage": "human_only"
+    "/food_beverage": "human_only",
+    "/food_beverage/food_note": "human_only",
+    "/food_beverage/bar_note": "human_only"
   }
 }

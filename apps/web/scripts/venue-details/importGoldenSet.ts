@@ -431,7 +431,10 @@ function buildMarchetti(): VenueDetailsV3 {
     tax_pct_override: null,
     min_guests: null,
     as_stated_price: "$1,000 (La Pergola) / $2,000 (The Pavilion)",
-    note: m.enhancements[0].note!,
+    // Round 4 (user feedback 2026-09-19): trimmed from the fuller brochure paraphrase — this
+    // is the display note in a table/card, kept short; the fuller text stays as the spine
+    // ceremony_on_site/ceremony_fee quote above.
+    note: "Only if your ceremony is on-site; includes white garden chairs and a ceremony arbor (Pavilion: matching indoor arbor for weather backup).",
     quote: "$1,000 (La Pergola) / $2,000 (The Pavilion)",
     source_url: brochure,
     snapshot_id: null,
@@ -583,11 +586,16 @@ function buildMarchetti(): VenueDetailsV3 {
     food_pills: [fact("all_inclusive", "No outside caterer option. Food comes from the venue's own kitchen.", site)],
     bar_pills: [fact("all_inclusive", "Bar in-house", site)],
     caption: null,
+    // Round 4 (user feedback 2026-09-19): sided Food/Bar prose, distinct from the pills above.
+    food_note: fact("No outside caterer option. Food comes from the venue's own kitchen.", "No outside caterer option. Food comes from the venue's own kitchen.", site),
+    bar_note: fact("Bar service is in-house only.", "Bar service is in-house only.", site),
     menus: [],
     bar_ladders: [],
     bar_min_guests: null,
     notes: [fact(m.barCollectionsNote, m.barCollectionsNote, brochure)],
   };
+  tag(doc, "/food_beverage/food_note");
+  tag(doc, "/food_beverage/bar_note");
 
   doc.inclusions = m.sharedIncludes.map((item) => ({
     label: (item.label as any) === "Heating & A/C" ? "Heating & A/C" : (item.label as any),
@@ -731,12 +739,21 @@ function buildGreenhouseLoft(): VenueDetailsV3 {
     quote: "",
     source_url: site,
     snapshot_id: null,
+    // Round 4 (user feedback 2026-09-19): the venue's own labeled rental terms, next to its
+    // rates on the FAQ page (`greenhouseLoft.pricing.access/eventHours/holidayRates`, verbatim).
+    terms: [
+      { label: "Access", text: g.pricing.access, evidence: { source_url: faqUrl, snapshot_id: null } },
+      { label: "Event hours", text: g.pricing.eventHours, evidence: { source_url: faqUrl, snapshot_id: null } },
+      { label: "Holiday rates", text: g.pricing.holidayRates, evidence: { source_url: faqUrl, snapshot_id: null } },
+    ],
   };
 
   doc.pricing = emptyPricing({
     archetype: "raw_space_byo",
     default_axes: { path_id: "default", day: "sat", season: "peak", ceremonyOnSite: false },
     paths: [defaultPath],
+    // Round 4: off/peak season month definitions, rendered once under the rate grid.
+    seasons: { off: g.pricing.offSeason.months, peak: g.pricing.peakSeason.months },
     rates: {
       service_charge_pct: 0,
       service_charge_base: null,
@@ -823,11 +840,17 @@ function buildGreenhouseLoft(): VenueDetailsV3 {
   tagAddOns(doc);
   tag(doc, "/pricing/add_ons/cleaning-fee", "human_only");
   tag(doc, "/pricing/rates");
+  tag(doc, "/pricing/paths/default/terms");
 
   doc.food_beverage = {
     food_pills: [fact("byo", g.quickFacts[2].note!, faqUrl)],
     bar_pills: [fact("byo", g.quickFacts[3].note!, faqUrl)],
     caption: null,
+    // Round 4: sided Food/Bar prose (the venue's own catering-guidelines PDF has no text layer —
+    // human_only, same treatment as `/pricing/add_ons/cleaning-fee` above; the bar sentence is a
+    // plain FAQ page, extractor).
+    food_note: fact(g.policies[0].detail!, g.policies[0].detail!, cateringPdf),
+    bar_note: fact(g.policies[1].detail!, g.policies[1].detail!, faqUrl),
     menus: [],
     bar_ladders: [],
     bar_min_guests: null,
@@ -840,6 +863,8 @@ function buildGreenhouseLoft(): VenueDetailsV3 {
     ],
   };
   tag(doc, "/food_beverage", "human_only");
+  tag(doc, "/food_beverage/food_note", "human_only");
+  tag(doc, "/food_beverage/bar_note");
 
   const categoryFor: Record<string, string> = { Space: "Space", Furniture: "Furniture", Entertainment: "Entertainment", Services: "Services", Ambiance: "Ambiance" };
   doc.inclusions = g.sharedIncludes.flatMap((group) =>
@@ -968,8 +993,11 @@ function buildDiamondGarden(): VenueDetailsV3 {
 
   const hallOnlyPath: PricingPath = {
     id: "hall-rental-only",
-    name: d.packages.hallOnly.name,
-    description: "Flat fee, bring-your-own-everything, plus required staffing.",
+    // Round 4 (coordinator addition, 2026-09-19): renamed to the concept page's own path names
+    // (`name` shown to couples; the FAQ's "Hall Rental Only" wording stays in the description and
+    // everywhere else in the fixture that quotes the venue directly).
+    name: "Venue only",
+    description: "Hall Rental Only: flat fee, bring your own everything, plus required staffing.",
     applies_to_spaces: "all",
     fixed_fees: [...hallFeesForSeason("off"), ...hallFeesForSeason("peak")],
     per_guest_tiers: [],
@@ -1003,15 +1031,22 @@ function buildDiamondGarden(): VenueDetailsV3 {
   const hallPlusALaCartePath: PricingPath = {
     ...hallOnlyPath,
     id: "hall-plus-a-la-carte",
-    name: "Hall + À La Carte",
-    description: "Same flat hall rental, plus your own picks from the food, bar, and add-on menus below.",
+    name: "Venue + à la carte",
+    description: "Start from the Venue-only rental, then pick your own food packages, bar packages, and add-ons individually.",
   };
 
   // Every tier shares the same name ("All-Inclusive") and the same real inclusion list (food +
   // bar + setup, from the venue's own package page) -- the tiers differ ONLY by day/season
   // price, so the renderer collapses them into one card with a price range instead of 8 empty
   // near-duplicate cards.
-  const allInclusiveInclusions = [...d.packages.complete.inclusionGroups.food, ...d.packages.complete.inclusionGroups.bar, ...d.packages.complete.inclusionGroups.setup];
+  // Round 4 (coordinator addition, 2026-09-19): each inclusion prefixed with its concept group
+  // ("Food:"/"Bar:"/"Setup:") so the renderer can group What's Included-style without a second
+  // lookup back into `inclusionGroups`.
+  const allInclusiveInclusions = [
+    ...d.packages.complete.inclusionGroups.food.map((s) => `Food: ${s}`),
+    ...d.packages.complete.inclusionGroups.bar.map((s) => `Bar: ${s}`),
+    ...d.packages.complete.inclusionGroups.setup.map((s) => `Setup: ${s}`),
+  ];
   const perGuestTier = (id: string, perGuest: number, day: PerGuestTier["day"], season: PerGuestTier["season"]): PerGuestTier => ({
     id,
     name: d.packages.complete.name,
@@ -1351,6 +1386,19 @@ function buildDiamondGarden(): VenueDetailsV3 {
     food_pills: [fact("all_inclusive", "Buffet or plated service", packagesUrl), fact("byo", "you can bring the food of your choice and we'll take care of everything else", faqUrl), fact("a_la_carte", "Food package (Bronze/Silver/Gold)", d.addOnsResources[0].url)],
     bar_pills: [fact("all_inclusive", "Open bar for 4.5 hours", packagesUrl), fact("a_la_carte", "Open Bar, Cash Bar", faqUrl), fact("byo", "you can also bring in your own alcohol", faqUrl)],
     caption: null,
+    // Round 4: the concept page's two Food paragraphs / two Bar paragraphs, joined (both sides
+    // are genuinely two-paragraph write-ups here, not one sentence) — sourced to the venue's
+    // own food/beverage menu PDFs, same treatment as the tables below (human_only).
+    food_note: fact(
+      `This venue offers tiered food packages across three cuisines: American & Italian, Mexican, and Puerto Rican. With ${d.packages.complete.name}, you'll receive buffet or plated service, wedding cake, and coffee service. For BYO, the venue provides a kitchen area with food warmers, a refrigerator, and a microwave.`,
+      `This venue offers tiered food packages across three cuisines: American & Italian, Mexican, and Puerto Rican. With ${d.packages.complete.name}, you'll receive buffet or plated service, wedding cake, and coffee service. For BYO, the venue provides a kitchen area with food warmers, a refrigerator, and a microwave.`,
+      d.menuResources.filter((m) => m.type === "food")[0]?.url ?? packagesUrl,
+    ),
+    bar_note: fact(
+      `Bar packages allow either open bar, where you cover the cost upfront so guests drink free, or cash bar, where guests pay for their own drinks. ${d.packages.complete.name} includes Standard Bar for 4.5 hours and a champagne toast for the bridal party. For BYO, you're responsible for servicing your guests.`,
+      `Bar packages allow either open bar, where you cover the cost upfront so guests drink free, or cash bar, where guests pay for their own drinks. ${d.packages.complete.name} includes Standard Bar for 4.5 hours and a champagne toast for the bridal party. For BYO, you're responsible for servicing your guests.`,
+      d.menuResources.find((m) => m.type === "beverage")!.url,
+    ),
     menus: d.foodMenus.map((menu, i) => ({
       name: menu.cuisine,
       cuisine: menu.cuisine,
@@ -1373,6 +1421,8 @@ function buildDiamondGarden(): VenueDetailsV3 {
     notes: [fact(`Bar packages do not include: ${d.barPackagesNote.toLowerCase()}`, d.barPackagesNote, d.menuResources.find((m) => m.type === "beverage")!.url)],
   };
   tag(doc, "/food_beverage", "human_only");
+  tag(doc, "/food_beverage/food_note", "human_only");
+  tag(doc, "/food_beverage/bar_note", "human_only");
 
   const inclusionMap: { raw: string; label: any; category: any }[] = [
     { raw: "Private bridal suite", label: "Bridal suite", category: "Space" },
@@ -1542,12 +1592,18 @@ function buildLondonHouse(): VenueDetailsV3 {
     // `fbPills()` (derive.ts), same mechanism the plan calls "the LondonHouse fix".
     bar_pills: [fact("all_inclusive", "LondonHouse's own bar service is included in every package.", site)],
     caption: fact(CORKAGE_NOTE_LH, CORKAGE_NOTE_LH, site),
+    // Round 4: sided Food/Bar prose. Bar is the package-bar sentence, distinct from the corkage
+    // `caption` above (the narrow BYO-wine exception), which stays as its own field per plan.
+    food_note: fact("In-house only. LondonHouse's own catering team handles all food & beverage.", "In-house only. LondonHouse's own catering team handles all food & beverage.", weddingsUrl),
+    bar_note: fact("LondonHouse's own bar service is included in every package.", "LondonHouse's own bar service is included in every package.", site),
     menus: [],
     bar_ladders: [],
     bar_min_guests: null,
     notes: [fact(l.horsDoeuvresNote, l.horsDoeuvresNote, l.weddingMenuUrl)],
   };
   tag(doc, "/food_beverage/notes/0", "human_only");
+  tag(doc, "/food_beverage/food_note");
+  tag(doc, "/food_beverage/bar_note");
 
   const inclusionCategoryOf: Record<string, any> = { Furniture: "Furniture", Catering: "Catering", Services: "Services", Lodging: "Lodging" };
   doc.inclusions = l.sharedIncludes.flatMap((group) =>
@@ -1662,14 +1718,23 @@ function buildFieldMuseum(): VenueDetailsV3 {
       { id: "photo-session-evening", name: "In-museum photography session (evening)", category: "Photography", variant: "Evening", group: "other", price: 1200, price_max: null, unit: "flat", per_space_prices: null, applies_to: "all", path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: "$1,200 evening", note: fm.addOns[0].blurb, quote: fm.addOns[0].price, source_url: site, snapshot_id: null },
     ],
     required_third_party: [],
-    notes: [],
+    // Round 4: the venue's own "reach out for a proposal" wording, so the renderer's "Pricing:
+    // on request" line (rule 6) has a quote to point to.
+    notes: [fact(
+      "Field Museum doesn't publish rental fees for any space. Pricing comes from a custom proposal.",
+      "Field Museum doesn't publish rental fees for any space. Pricing comes from a custom proposal.",
+      site,
+    )],
   });
   tagAddOns(doc);
+  tag(doc, "/pricing/notes/0");
 
   doc.food_beverage = {
     food_pills: [fact("a_la_carte", fm.foodAndBeverage.food, vendorsUrl)],
     bar_pills: [fact("all_inclusive", fm.foodAndBeverage.beverage, site)],
     caption: null,
+    food_note: fact(fm.foodAndBeverage.food, fm.foodAndBeverage.food, vendorsUrl),
+    bar_note: fact(fm.foodAndBeverage.beverage, fm.foodAndBeverage.beverage, site),
     menus: [],
     bar_ladders: [],
     bar_min_guests: null,
@@ -1758,44 +1823,43 @@ function buildGeraghty(): VenueDetailsV3 {
     archetype: "inquire_only",
     paths: [],
     rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, sales_tax_source: "unknown", cc_fee_pct: null, quote: null, source_url: null, snapshot_id: null },
-    add_ons: [
-      {
-        id: "nonprofit-alcohol-donation",
-        name: "Nonprofit alcohol donation fee",
-        category: "Bar",
-        variant: null,
-        group: "fb",
-        price: 10,
-        price_max: null,
-        unit: "per_guest",
-        per_space_prices: null,
-        applies_to: "all",
-        path_ids: null,
-        condition: "nonprofit_501c3_donated_alcohol",
-        priceable: true,
-        tax_pct_override: null,
-        min_guests: null,
-        as_stated_price: "$10/person (or beverage minimum, whichever is greater)",
-        note: "501(c)(3)/(4) nonprofits only, donating alcohol for their own event.",
-        quote: "The corkage fee is $10 per person or beverage minimum (whichever is greater).",
-        source_url: faqUrl,
-        snapshot_id: null,
-      },
-    ],
+    // Round 4 pushback C, per the plan: the nonprofit alcohol-donation fee (501(c)(3)/(4)
+    // organizations donating alcohol for their own event) is not a couple-facing wedding
+    // add-on, so it's dropped here entirely and mentioned instead, in plain words, as the one
+    // exception in `food_beverage.bar_note` below.
+    add_ons: [],
     required_third_party: [],
-    notes: [],
+    // Round 4: the venue's own FAQ answer, verbatim, so the renderer's "Pricing: on request"
+    // line (rule 6) has a quote to point to.
+    notes: [fact("Rental prices are quoted upon request.", "Rental prices are quoted upon request.", faqUrl)],
   });
   tagAddOns(doc);
+  tag(doc, "/pricing/notes/0");
 
   doc.food_beverage = {
     food_pills: [fact("a_la_carte", g.foodAndBeverage.food, "https://thegeraghty.com/caterers-partners/")],
     bar_pills: [fact("all_inclusive", g.foodAndBeverage.beverage, faqUrl)],
     caption: null,
+    food_note: fact(
+      "Catering comes from the venue's preferred caterer list.",
+      "Catering comes from the venue's preferred caterer list.",
+      "https://thegeraghty.com/caterers-partners/",
+    ),
+    // Round 4: in-house bar sentence plus the concept's longer beverage write-up, with the
+    // nonprofit alcohol-donation exception reworded (per the plan) to make plain that it does
+    // not apply to a wedding couple, now that the fee itself is no longer a priced add-on above.
+    bar_note: fact(
+      "Bar service is in-house only. The Geraghty holds the liquor license and sells all spirits, wine, and beer for your event; it is not a BYOB venue. The only exception is a nonprofit donation arrangement for 501(c)(3)/(4) organizations, which does not apply to weddings.",
+      "Bar service is in-house only. The Geraghty holds the liquor license and sells all spirits, wine, and beer for your event; it is not a BYOB venue. The only exception is a nonprofit donation arrangement for 501(c)(3)/(4) organizations, which does not apply to weddings.",
+      faqUrl,
+    ),
     menus: [],
     bar_ladders: [],
     bar_min_guests: null,
     notes: [],
   };
+  tag(doc, "/food_beverage/food_note");
+  tag(doc, "/food_beverage/bar_note");
 
   const inclusionCategoryOf: Record<string, any> = { Space: "Space", Furniture: "Furniture", "Entertainment & AV": "Entertainment", Services: "Services", Ambiance: "Ambiance" };
   const canonicalLabel: Record<string, string> = { Sound: "Sound & AV", Staging: "Stage" };
