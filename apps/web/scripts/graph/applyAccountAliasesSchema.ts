@@ -21,10 +21,38 @@ const CREATE_TABLE = `
     check (alias_account_id <> canonical_account_id)
   );`;
 
+/** D062 (2026-09-20): provenance columns. A merge rewrites which venue a wedding belongs to and
+ * therefore what a couple sees on /venues, so every row needs to say where it came from and be
+ * undoable as a unit -- the same discipline weddings_retired_batches (D055) and
+ * account_alias_remaps already carry. Idempotent ALTERs rather than a numbered migration because
+ * that is this repo's pattern post-merge (21 apply*Schema.ts scripts; the constitution's
+ * scripts/migrations/ rule describes the deleted Lambda/RDS stack).
+ *
+ * The 66 rows that predate this are left with a null batch_id on purpose -- backfilling a batch
+ * they were never part of would be inventing provenance, which is worse than admitting none. */
+const ADD_PROVENANCE_COLUMNS = [
+  `alter table account_aliases add column if not exists batch_id text`,
+  `alter table account_aliases add column if not exists source text`,
+  `alter table account_aliases add column if not exists evidence text`,
+  `alter table account_aliases add column if not exists verified_by text`,
+  `create index if not exists idx_account_aliases_batch on account_aliases (batch_id)`,
+  `comment on column account_aliases.batch_id is 'D062: identity batch id (idn-YYYYMMDD-alias-N). Null on the 66 rows applied before the mechanism existed. revertIdentityBatch.ts undoes one batch as a unit.'`,
+  `comment on column account_aliases.source is 'D062: which signal or dataset proposed this pair -- alias-finder | jeremy-social-links | places | websearch | hand.'`,
+  `comment on column account_aliases.evidence is 'D062: the specific evidence a human verified, quoted. A row with no evidence should never have landed.'`,
+];
+
+/** The identity batch this run stamps on any row it inserts. Bump the counter for a second run
+ * on the same day so each is separately revertable. */
+const BATCH_ID = "idn-20260920-alias-1";
+
 interface AliasRow {
   aliasUsername: string;
   canonicalUsername: string;
   note: string;
+  /** D062: where the pair came from. Older rounds predate this and default to 'hand'. */
+  source?: string;
+  /** D062: the verified evidence, quoted -- what a reviewer actually checked. */
+  evidence?: string;
 }
 
 // canonical = the main/general-purpose handle; alias = the dedicated events-booking or
@@ -142,7 +170,28 @@ const ALIASES: AliasRow[] = [
   { aliasUsername: "weddingsatdunhamwoods", canonicalUsername: "dunhamwoodsridingclub", note: "round 9 (D061): Dunham Woods Riding Club (Wayne, IL) runs @weddingsatdunhamwoods as its dedicated wedding account -- same pattern as uccweddings/universityclubofchicago" },
   { aliasUsername: "vicloriainthepark", canonicalUsername: "victoriainthepark", note: "round 9 (D061): l-for-t typo of victoriainthepark in a photographer's credit; no such Instagram profile. Canonical confirmed as 'Wedding & Event Venue near Chicago, Illinois' (Mount Prospect). Deliberately NOT merged with @victoriavenues, which is the parent operator, not the venue" },
   { aliasUsername: "thestonegate", canonicalUsername: "thestonegatebanquet", note: "round 9 (D061): a REAL second handle, not a typo -- Instagram lists both '@thestonegate' and '@thestonegatebanquet' as The Stonegate Banquet & Conference Center (Hoffman Estates, 2401 W Higgins Rd). Canonical is thestonegatebanquet: more followers, matches thestonegatebanquet.com, and already carries the venue's weddings" },
-];
+  // round 10 (D062, 2026-09-20): the first batch under the identity-batch mechanism -- every row
+  // below carries batch_id, source and the evidence a human actually checked. Proposed by the
+  // rebuilt finder (S3b website-host grouping, facility-suffix stemming, corroborated S6) and
+  // each one verified by hand before landing.
+  //
+  // NOT applied from the same run, each for a stated reason:
+  //   @shorebyclub/@shoreby_club and @peartreeestate/@pear_tree_estate -- certainly the same
+  //     entity (punctuation variants), but BOTH sides are empty shells: 0 followers, 0 weddings,
+  //     no full_name between them. The merge would improve no attribution and the row would carry
+  //     no evidence. Same call as svf_parish in round 9.
+  //   @luc_conferences/@loyola_cuneomansion -- shares luc.edu, but Loyola Conference Services
+  //     books three campuses and Cuneo Mansion is one property 40 miles north in Vernon Hills.
+  //     Umbrella, not identity; now caught by isUmbrellaBrandUsername.
+  //   @treditarestaurant/@stregischicago -- a restaurant inside the hotel, not the same venue.
+  //   @interconchicago/@intercontinental, @chicagoforte/@chicagosymphony,
+  //     @totlspecialevents/@thompsonchicago -- different venues; chain or coincidence.
+  { aliasUsername: "lshireweddings", canonicalUsername: "lshiremarriott", note: "round 10 (D062): Marriott Lincolnshire Resort's weddings handle", source: "alias-finder", evidence: "S2 identical full_name 'Marriott Lincolnshire Resort' on both; S5 co-credited on the same venue credit line in 3 posts. 4 weddings on the alias + 26 on the canonical." },
+  { aliasUsername: "lshirewedding", canonicalUsername: "lshiremarriott", note: "round 10 (D062): singular-form typo of lshireweddings; pointed at the real canonical, never at another alias (no chains)", source: "alias-finder", evidence: "Bare shell: 0 followers, 0 weddings, no full_name, never profile-scraped. S1+S6 against lshireweddings, which is itself an alias of lshiremarriott." },
+  { aliasUsername: "wrigleyfieldevents", canonicalUsername: "officialwrigleyfield", note: "round 10 (D062): Wrigley Field's private-events arm", source: "websearch", evidence: "WebSearch: wrigleyfieldevents.com is the official events brand of Wrigley Field / the Chicago Cubs, booking 20 spaces across the ballpark and campus. full_names 'Wrigley Field Events' and 'Wrigley Field'." },
+  { aliasUsername: "rreventschicago", canonicalUsername: "riverroastchi", note: "round 10 (D062): River Roast's events handle -- the one the canonical's own bio names", source: "alias-finder", evidence: "S4: riverroastchi's bio names @rreventschicago as its events account (this is why riverroastchi/riverroastchicago sits on the round-3 false-positive list -- the bio points HERE instead). S5 co-credited. full_names 'RR Events Chicago' / 'River Roast Chicago'." },
+  { aliasUsername: "tigerlillyevents", canonicalUsername: "tigerlilyevents", note: "round 10 (D062): double-L typo shell. Identity merge only -- makes no claim that the canonical is a venue; it is the management company for Cafe Brauer (D061 Tigerlily landmine)", source: "alias-finder", evidence: "Bare shell: 0 followers, 0 weddings. Corroborated S6 (stems differ by one edit over 10+ chars). Canonical full_name 'Cafe Brauer & Lincoln Park Zoo'." },
+  { aliasUsername: "floatingworldevents", canonicalUsername: "floatingworldgallery", note: "round 10 (D062): the gallery's events arm", source: "alias-finder", evidence: "S5 co-credited on the same venue credit line. full_names 'FloatingWorldEvents' / 'Floating World Gallery'; 4 weddings on the alias + 2 on the canonical." },];
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
@@ -151,6 +200,7 @@ async function main() {
   try {
     await client.query("begin");
     await client.query(CREATE_TABLE);
+    for (const stmt of ADD_PROVENANCE_COLUMNS) await client.query(stmt);
 
     let inserted = 0;
     for (const row of ALIASES) {
@@ -167,11 +217,22 @@ async function main() {
         continue;
       }
       const { rows: insertedRows } = await client.query(
-        `insert into account_aliases (alias_account_id, canonical_account_id, note)
-         values ($1, $2, $3)
+        `insert into account_aliases
+           (alias_account_id, canonical_account_id, note, batch_id, source, evidence, verified_by)
+         values ($1, $2, $3, $4, $5, $6, $7)
          on conflict (alias_account_id) do nothing
          returning alias_account_id`,
-        [aliasRows[0].id, canonicalRows[0].id, row.note]
+        [
+          aliasRows[0].id,
+          canonicalRows[0].id,
+          row.note,
+          // Only stamp the batch on rows this run actually introduces; a re-run of an older
+          // round is a no-op via ON CONFLICT and must not claim to belong to today's batch.
+          row.source ? BATCH_ID : null,
+          row.source ?? "hand",
+          row.evidence ?? null,
+          row.source ? "claude+websearch, user-approved" : null,
+        ]
       );
       if (insertedRows.length > 0) {
         inserted++;

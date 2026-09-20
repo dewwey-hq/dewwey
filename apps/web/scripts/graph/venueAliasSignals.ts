@@ -389,6 +389,27 @@ export function isNonVenueUsername(username: string | null | undefined): boolean
   return !!username && NON_VENUE_USERNAME_RE.test(username);
 }
 
+/** D062: a handle that names an UMBRELLA rather than a single bookable venue -- a hotel chain, a
+ * club group, a university's conference office, a multi-venue operator.
+ *
+ * This is the third false-positive class S3b surfaced, and the subtlest, because the shared domain
+ * is completely genuine. Measured cases:
+ *   @luc_conferences ~ @loyola_cuneomansion   both on luc.edu -- but Loyola Conference Services
+ *     books three campuses and Cuneo Mansion is one property, 40 miles north in Vernon Hills.
+ *   @venuelogic ~ @amazingspacechicago        management company and a venue it operates.
+ *   @victoriavenues ~ @victoriainthepark      operator and property.
+ * Jeremy's Places social links carry the same shape from the other direction: JW Marriott Chicago
+ * mapped to @marriottbonvoy, Four Seasons Hotel Chicago to @fourseasons.
+ *
+ * A couple books the property, not the umbrella, so these must never merge -- merging would hide
+ * the venue behind its operator. Plural nouns are the tell: "hotels", "venues", "clubs". */
+const UMBRELLA_BRAND_RE =
+  /(hotels|resorts|clubs|venues|properties|collection|hospitality|\bgroup\b|conferences?|bonvoy|management|portfolio|destinations)/i;
+
+export function isUmbrellaBrandUsername(username: string | null | undefined): boolean {
+  return !!username && UMBRELLA_BRAND_RE.test(username);
+}
+
 export function isNonVenueBio(text: string | null | undefined): boolean {
   if (!text) return false;
   if (!NON_VENUE_BIO_RE.test(text)) return false;

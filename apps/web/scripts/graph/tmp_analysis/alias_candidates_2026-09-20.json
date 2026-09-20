@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-20T22:56:49.975Z",
+  "generatedAt": "2026-09-20T23:10:48.371Z",
   "universeSize": 1936,
   "minStemLen": 4,
   "tierCounts": {
-    "T3": 94,
-    "T2": 12,
+    "T3": 95,
+    "T2": 11,
     "T1": 3
   },
   "signalCounts": {
@@ -123,18 +123,6 @@
         "[S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DYKObfIFeL2/)"
       ],
       "suggested_note": "@riverroastchi has more followers (13458 vs 330)"
-    },
-    {
-      "alias": "luc_conferences",
-      "canonical": "loyola_cuneomansion",
-      "tier": "T2",
-      "signals": [
-        "S3b"
-      ],
-      "evidence": [
-        "[S3b] same website host \"luc.edu\""
-      ],
-      "suggested_note": "@loyola_cuneomansion has more followers (1182 vs 553)"
     },
     {
       "alias": "chicagoforte",
@@ -612,6 +600,18 @@
         "[S1] @haleymansion ~ @thehaleymansion (stem \"haleymansion\")"
       ],
       "suggested_note": "@haleymansion has a scraped profile, @thehaleymansion does not"
+    },
+    {
+      "alias": "luc_conferences",
+      "canonical": "loyola_cuneomansion",
+      "tier": "T3",
+      "signals": [
+        "S3b"
+      ],
+      "evidence": [
+        "[S3b] same website host \"luc.edu\""
+      ],
+      "suggested_note": "@loyola_cuneomansion has more followers (1182 vs 553)"
     },
     {
       "alias": "ihchicago",

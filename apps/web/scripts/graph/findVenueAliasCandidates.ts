@@ -54,6 +54,7 @@ import {
   isAggregatorHost,
   isS6Trustworthy,
   isNonVenueUsername,
+  isUmbrellaBrandUsername,
   extractBioMentionSnippet,
   classifyBioMentionPhrase,
   levenshtein,
@@ -680,7 +681,11 @@ async function main() {
       s3bFired:
         distinctCodes.includes("S3b") &&
         !isNonVenueUsername(a.username) &&
-        !isNonVenueUsername(b.username),
+        !isNonVenueUsername(b.username) &&
+        // An umbrella and one of its properties share a domain legitimately; that is a
+        // parent-child relationship, not a shared identity. See isUmbrellaBrandUsername.
+        !isUmbrellaBrandUsername(a.username) &&
+        !isUmbrellaBrandUsername(b.username),
       s7MaxPostCount: s7PostCountByPair.get(key) ?? 0,
     });
 

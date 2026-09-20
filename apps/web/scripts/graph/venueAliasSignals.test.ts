@@ -14,6 +14,7 @@ import {
   isChurchLike,
   isChurchLikeUsername,
   isNonVenueBio,
+  isUmbrellaBrandUsername,
   registrableHost,
   isAggregatorHost,
   sharesRegistrableHost,
@@ -433,5 +434,25 @@ describe("decideTier with S3b and corroborated S6 (D062)", () => {
 
   it("two distinct signals still reach T2 even when S6 is one of them", () => {
     expect(decideTier({ ...base, signalCodes: ["S6", "S1"], s6Fired: true })).toBe("T2");
+  });
+});
+
+describe("isUmbrellaBrandUsername (S3b guard, D062)", () => {
+  // A shared domain between an umbrella and one of its properties is genuine but is NOT identity.
+  it("flags operators, chains and conference offices", () => {
+    expect(isUmbrellaBrandUsername("luc_conferences")).toBe(true);
+    expect(isUmbrellaBrandUsername("victoriavenues")).toBe(true);
+    expect(isUmbrellaBrandUsername("marriottbonvoy")).toBe(true);
+    expect(isUmbrellaBrandUsername("pendryhotels")).toBe(true);
+    expect(isUmbrellaBrandUsername("invitedclubs")).toBe(true);
+    expect(isUmbrellaBrandUsername("episcope.hospitality")).toBe(true);
+  });
+
+  it("does not flag a single bookable venue", () => {
+    expect(isUmbrellaBrandUsername("loyola_cuneomansion")).toBe(false);
+    expect(isUmbrellaBrandUsername("victoriainthepark")).toBe(false);
+    expect(isUmbrellaBrandUsername("officialwrigleyfield")).toBe(false);
+    expect(isUmbrellaBrandUsername("salvageone")).toBe(false);
+    expect(isUmbrellaBrandUsername(null)).toBe(false);
   });
 });

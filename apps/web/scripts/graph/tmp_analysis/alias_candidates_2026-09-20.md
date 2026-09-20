@@ -5,8 +5,8 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 | Tier | Count |
 |---|---|
 | T1 (auto-safe) | 3 |
-| T2 (verify) | 12 |
-| T3 (list) | 94 |
+| T2 (verify) | 11 |
+| T3 (list) | 95 |
 | related, not the same venue | 45 |
 
 ## T1 -- auto-safe (3)
@@ -47,7 +47,7 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
   - [S1] @pear_tree_estate ~ @peartreeestate (stem "peartreeeste")
   - [S1b] scrape/parse artifact ('.'/'_' variant)
 
-## T2 -- verify (12)
+## T2 -- verify (11)
 
 ### @universityclubofchicago ~ @uclubashley
 
@@ -107,17 +107,6 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 🥂Home to @rreventschicago 
 ☕️Home to Corner R..." (unclassified)
   - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DYKObfIFeL2/)
-
-### @luc_conferences ~ @loyola_cuneomansion
-
-- suggested: **canonical** = @loyola_cuneomansion, **alias** = @luc_conferences -- @loyola_cuneomansion has more followers (1182 vs 553)
-- signals: S3b
-- weddings (venue-role, alias-resolved): @luc_conferences 0 / @loyola_cuneomansion 24
-- candidates (structural): @luc_conferences 0 / @loyola_cuneomansion 26
-- followers: @luc_conferences 553 / @loyola_cuneomansion 1182
-- full_name: @luc_conferences "LUC Conference Services" / @loyola_cuneomansion "Cuneo Mansion & Gardens"
-- evidence:
-  - [S3b] same website host "luc.edu"
 
 ### @chicagosymphony ~ @chicagoforte
 
@@ -191,7 +180,7 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
   - [S1] @officialwrigleyfield ~ @wrigleyfieldevents (stem "wrigleyfield")
   - [S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/DceHsaFiBne/)
 
-## T3 -- list (94)
+## T3 -- list (95)
 
 ### @the.arbory ~ @ovationchicago
 
@@ -560,6 +549,17 @@ Also @thelytleauditorium..." (unclassified)
 - full_name: @haleymansion "The Haley Mansion" / @thehaleymansion ""
 - evidence:
   - [S1] @haleymansion ~ @thehaleymansion (stem "haleymansion")
+
+### @luc_conferences ~ @loyola_cuneomansion
+
+- suggested: **canonical** = @loyola_cuneomansion, **alias** = @luc_conferences -- @loyola_cuneomansion has more followers (1182 vs 553)
+- signals: S3b
+- weddings (venue-role, alias-resolved): @luc_conferences 0 / @loyola_cuneomansion 24
+- candidates (structural): @luc_conferences 0 / @loyola_cuneomansion 26
+- followers: @luc_conferences 553 / @loyola_cuneomansion 1182
+- full_name: @luc_conferences "LUC Conference Services" / @loyola_cuneomansion "Cuneo Mansion & Gardens"
+- evidence:
+  - [S3b] same website host "luc.edu"
 
 ### @lhchicago ~ @ihchicago
 
