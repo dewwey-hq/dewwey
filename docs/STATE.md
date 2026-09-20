@@ -157,6 +157,11 @@ and re-created as the rollback rehearsal). Weddings **6,017**. Funnel:
   after a revert, replay verdicts from history (`tmp_analysis/d061_replay_verdicts_after_rollback.sql`).
 - The creation script's `--from-confirmed-candidates` did not consult reconciliation before D061;
   under `--acquisition-batch` it now does (≥ 0.7 → WOULD_ATTACH skip).
+- Multi-day weddings (sangeet / mehndi / rehearsal dinner / welcome party at a different venue than
+  the `Venue:` credit): the seed venue hosted an *event*, not the wedding. The reader inverts toward
+  the narrative venue (pilot: OTHER_VENUE = thewellsley on a Dalcy-anchored candidate at 0.95). Human
+  verdict: **W** when the page's venue is the `Venue:` credit, **V** + `Venue:` handle when it is the
+  side-event venue; reader rule + event-context credit is a backlog item (plan file, README). Sized: 231 South-Asian-event captions (87 with a venue credit line) + 975 other side events.
 - Non-venue hop-0 seeds (caterers/planners/DJs) out-yield venues 0.37 vs 0.14 weddings per tagged
   post and fill thin venues 3.5× faster per post — vendor tagged feeds are tick 3b.
 

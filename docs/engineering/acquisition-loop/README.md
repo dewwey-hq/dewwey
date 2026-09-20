@@ -283,3 +283,25 @@ mining as a standing step — its image-only residue is what `post_images` unblo
 items 2–3 (the $50 crawl this replaces with a measured loop), D060 (website discovery shares the
 profile scrape's `external_url`; its frozen discovery counts move when profiles refresh),
 `docs/pipeline-plan.md` (the original frontier design and $29 budget math this recalibrates).
+
+## Backlog (user-caught during the pilot spot-check, 2026-09-19)
+
+- **Multi-day / multi-venue weddings (South Asian pre-events, rehearsal dinners, welcome parties).**
+  Example: "For Alexa and Kunal, the night before the wedding... Set inside @thewellsley, their
+  sangeet..." with a stack `Venue @thedalcy ... Sangeet @thewellsley`. The seed venue (tagged feed)
+  hosted the *sangeet*, the wedding's anchor venue is the Dalcy. House rule: the wedding is anchored
+  to its ceremony/reception venue (D050 already stops a labeled "Sangeet Venue" from winning the
+  anchor; D056 gives the credit `event_context = sangeet_mehndi`; the candidate here was correctly
+  anchored to the Dalcy). What failed: the **reader inverted toward the narrative venue** -- on the
+  Dalcy-anchored candidate it answered OTHER_VENUE = thewellsley at 0.95 because the caption says
+  "set inside @thewellsley", so the sangeet post was left off the (correctly created) Dalcy wedding.
+  Rule to teach: the wedding's venue is the `Venue:`/reception credit; a sangeet / mehndi / rehearsal
+  / welcome-party location is an event-context credit even when the post is "set inside" it.
+  Human label on such a post: **This venue (W)** when the page's venue is the `Venue:` credit;
+  **Other venue (V)** with the `Venue:` handle when the page's venue is the side-event venue. Sized 2026-09-19 over `v_ig_posts`: 231 captions name a South Asian
+  pre-event (208 staging, 23 public), 87 of them with an explicit venue credit line; 975 more name a
+  rehearsal dinner / welcome party / after-party / brunch. Fix in one pass, not per example: (1)
+  reader prompt `extract-v1.3` rule + 10 golden examples from these captions; (2) the creation path
+  writes the seed venue's credit with `event_context` from the caption's event word when the anchor
+  is a different `Venue:` credit; (3) `/label/candidates` labeling guidance: label these
+  **Other venue** with the `Venue:` handle. Per `feedback-batch-failure-paths`.
