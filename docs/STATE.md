@@ -213,10 +213,21 @@ and this creation pass). (Spot-check follow-up: wedding 12804 Chicago Forte prom
 verdict flipped under `jeremy`, `tmp_analysis/d061_spotcheck2_keep_one.sql`; 5 more probes A weddings created
 from the user's confirmations. Weddings **6,450**.)
 
+**The zero bucket, measured (2026-09-20 evening) — read this before proposing a fix for it.** Of the 165 listed
+metro venues at 0 weddings: **84 are measured `dead`** (2,086 posts pulled off their tagged feeds → 0 stacks,
+0 candidates), 27 `promising` (709 posts), 28 `ambiguous` (85 posts — barely crawled), 26 never crawled. The only
+untried lever is crawling those 54 barely-or-never-crawled ones, ≈ $3.10 against ≈ $2.8 left; probesB's measured
+prior for zero-wedding venues (0.015 w/post, 3 of 60 venues moved 0 → 1) says expect **2-3 venues leaving zero**.
+Two dead ends already checked, do not re-run them: (1) the 51 zero-wedding venues behind the undecided
+`CHICAGO_AMBIGUOUS` posts are typo handles, out-of-metro venues and non-venue brands, and are not in this 165 at
+all (alias round 9, D061); (2) legacy-clustered evidence at the 27 promising ones is 126 posts of which **102 are
+already attached to weddings elsewhere**, leaving 24 posts across 6 venues. The zero bucket is a month-2 item with
+fresh credit, not a loose end.
+
 **Next (Claude):** month 2 planning once the Apify cycle resets (10-16) or credit is added: monthly recency at
 promising targets with `--only-newer-than`, alias-family feeds, deepen the 47 + 17 newly promising venues (measured
 priors in `ops.crawl_targets`); the 1-5 bucket (266) is what is left of the coverage problem and its own feeds are
-now crawled — the next lever there is vendor tagged feeds at those venues' credited vendors. Then: typo-handle alias rule;
+now crawled — the next lever there is vendor tagged feeds at those venues’ credited vendors. Then: the `findVenueAliasCandidates.ts` catering-substring exclusion bug (alias round 9) and the typo-handle alias rule;
 `event_context` credit for side-event posts at creation; re-pin the two pre-D061 `graphStrengthening`
 invariants (D059 owner); the user's 164-post human queue (`/label/candidates?batch=…`).
 

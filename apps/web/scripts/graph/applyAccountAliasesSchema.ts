@@ -131,6 +131,17 @@ const ALIASES: AliasRow[] = [
   { aliasUsername: "acquavivawineryweddings", canonicalUsername: "acquavivawinery", note: "round 8 (D061): Acquaviva Winery's dedicated weddings account (profile scrape: same website, bio 'Acquaviva Weddings')" },
   { aliasUsername: "aquavivawinery", canonicalUsername: "acquavivawinery", note: "round 8 (D061): missing-c typo of acquavivawinery in a photographer's credit; no such Instagram profile" },
   { aliasUsername: "aquavivawineryweddings", canonicalUsername: "acquavivawinery", note: "round 8 (D061): missing-c typo of acquavivawineryweddings; no such Instagram profile" },
+
+  // round 9 (D061, 2026-09-20): five bare accounts minted from `Venue:` credit lines during the
+  // month-1 acquisition ticks, each holding exactly one real wedding recap, each pointing at an
+  // established Chicago-area venue. WebSearch-verified individually per this file's rule. NOT
+  // added: svf_parish/svfparish (both sides are empty shells -- 0 followers, 0 weddings, 0 posts
+  // between them, so the merge improves no attribution and the row would carry no evidence).
+  { aliasUsername: "catignypark", canonicalUsername: "cantignypark", note: "round 9 (D061): missing-n typo of cantignypark in a photographer's credit; no such Instagram profile. Canonical is the PARK (its garden venue Le Jardin, matching the post's 'Meet me in the garden'), deliberately not @cantignygolf -- Cantigny Golf's Tribune Hall/Woodside Pavilion are separate bookable venues on the same estate" },
+  { aliasUsername: "ravisloeccweddings", canonicalUsername: "ravisloeweddings", note: "round 9 (D061): Ravisloe Country Club's wedding brand is ravisloeweddings.com ('Ravisloe Weddings And Events'); the 'cc' variant is a florist's credit-line spelling" },
+  { aliasUsername: "weddingsatdunhamwoods", canonicalUsername: "dunhamwoodsridingclub", note: "round 9 (D061): Dunham Woods Riding Club (Wayne, IL) runs @weddingsatdunhamwoods as its dedicated wedding account -- same pattern as uccweddings/universityclubofchicago" },
+  { aliasUsername: "vicloriainthepark", canonicalUsername: "victoriainthepark", note: "round 9 (D061): l-for-t typo of victoriainthepark in a photographer's credit; no such Instagram profile. Canonical confirmed as 'Wedding & Event Venue near Chicago, Illinois' (Mount Prospect). Deliberately NOT merged with @victoriavenues, which is the parent operator, not the venue" },
+  { aliasUsername: "thestonegate", canonicalUsername: "thestonegatebanquet", note: "round 9 (D061): a REAL second handle, not a typo -- Instagram lists both '@thestonegate' and '@thestonegatebanquet' as The Stonegate Banquet & Conference Center (Hoffman Estates, 2401 W Higgins Rd). Canonical is thestonegatebanquet: more followers, matches thestonegatebanquet.com, and already carries the venue's weddings" },
 ];
 
 async function main() {

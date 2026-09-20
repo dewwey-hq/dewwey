@@ -173,6 +173,29 @@ Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-
   weddings 5,972 → 6,939 (969 created by the loop), Apify $25.69 of $29, OpenRouter ≈ $8**; coverage 0: 165 · 1-5: 270 ·
   6-15: 93 · 16-49: 78 · 50+: 34. Wedding 725 (@thelogantheatre, a "vintage cinema shoot we produced" from 2026-08-20)
   retired on the user's word (`acq-20260920-styled-retire-1`); credited vendor pitches stay a human call (user's call).
+- *Alias round 9 (2026-09-20 evening, no spend).* Chasing the "74 undecided posts at zero-wedding venues" tier
+  found that those 51 venues are **not** unlocated Chicago venues: 49 of 51 were never profile-scraped because
+  they are bare accounts minted from `Venue:` credit lines. They split into non-venues (@hilton, @patelbrothers,
+  @herecomestheguide, @modernluxury), out-of-metro venues (@hyattmauiweddings, @korosunresort, @zemibeachhouse,
+  @wythehotel, @bellevuesyrene) and typo/sibling handles of venues we already hold. **None of them is in the
+  165-venue zero bucket** — that bucket requires `in_metro`, which is exactly what they lack — so resolving them
+  moves the coverage table by zero. The earlier framing of this as "the lever on the 0 bucket" was wrong.
+  Five typo/sibling handles were WebSearch-verified and added to `account_aliases` (61 → 66 rows):
+  `catignypark`→`cantignypark` (missing n; the PARK, not @cantignygolf — separate bookable venues on one estate),
+  `ravisloeccweddings`→`ravisloeweddings`, `weddingsatdunhamwoods`→`dunhamwoodsridingclub` (the club's own
+  wedding account, the uccweddings pattern), `vicloriainthepark`→`victoriainthepark` (l-for-t typo; deliberately
+  NOT merged into @victoriavenues, the parent operator), `thestonegate`→`thestonegatebanquet` (a real second
+  handle — Instagram lists both for The Stonegate Banquet & Conference Center, Hoffman Estates). All five
+  canonicals carry `in_metro=true`, and the creation path's Chicago gate resolves through `account_aliases`
+  (the Acquaviva fix), so those five posts will now anchor to the real venue instead of minting a phantom.
+  **Not added: `svf_parish`/`svfparish`** — both sides are empty shells (0 followers, 0 weddings, 0 posts
+  between them), so the merge would improve no attribution and the row would carry no evidence.
+  **Bug found in `findVenueAliasCandidates.ts`:** its "catering/management-type bio" hard exclusion fires on the
+  word *catering* inside an all-inclusive VENUE's own bio, which pushed `vicloriainthepark`→`victoriainthepark`
+  into "Related, not the same venue — never propose" even though the canonical has 15 weddings and calls itself
+  "Wedding & Event Venue near Chicago, Illinois". Every all-inclusive venue that mentions catering is currently
+  unaliasable. Overridden by hand this round; the rule needs the exclusion to require a catering/management
+  identity, not the substring. Backlog, not fixed.
 - *First blind spot-check of `extract-v1.3` (2026-09-20 evening, user labeled 40 + 41 posts).* Until this point
   v1.3 had only a retrospective 79-post eval built from the v1.2 spot-checks — no blind test, while 602 weddings
   in five unchecked batches (probe6, discovered, deepen, vendor, probesB) had been auto-created by it. Results:
