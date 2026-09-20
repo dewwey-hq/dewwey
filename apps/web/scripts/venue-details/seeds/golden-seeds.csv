@@ -1,3 +1,4 @@
 account_id,url,note
 31,https://framerusercontent.com/assets/t5zh6XzrzAPCFcL4XEKWnAd5E.pdf,"wedding brochure; link is client-rendered on galleriamarchetti.com, confirmed 2026-09-13"
 1131,https://www.datocms-assets.com/44232/1726173269-field-museum-wine-list-09122024.pdf,"wine list; anchor is an icon-only download link with no href/anchor-text keyword match (descriptive text ""Wine List"" lives in a sibling <h4>, not the <a>), so isOffsitePdfAllowed never sees it -- confirmed 2026-09-13 (the sibling PDF on the same page, field-museum-bar-packages-1.pdf, IS discovered organically because its heading is ""Beverage Packages"")"
+27389,https://www.diamondgardenhall.com/_files/ugd/4b61b7_f01ea5c904234124ba1c8f33636a145a.pdf,"Rental Add-Ons 2024 sheet (text layer, 6,014 chars); 63 golden facts cite it; the c0 crawl found only the four image-only menu PDFs, not this one -- added 2026-09-19"

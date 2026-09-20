@@ -71,7 +71,10 @@ function allNumericTokensPresent(quote: string, pageText: string): boolean {
 /** Scheme/`www.`/trailing-slash/hash-insensitive URL key so a quote's `source_url` matches the
  * crawled page regardless of http vs https or a redirect's exact form (same discipline as
  * `crawlVenue.ts`'s `normalizeUrlKey`). */
-export function normalizeUrl(url: string): string {
+export function normalizeUrl(url: string | null | undefined): string {
+  // The model can omit `source_url` on a fact (tick c1, 2026-09-19: one run crashed validation
+  // here). A missing URL is an ungrounded fact, never a crash.
+  if (typeof url !== "string" || url.length === 0) return "";
   try {
     const u = new URL(url);
     const host = u.hostname.replace(/^www\./i, "").toLowerCase();
@@ -121,7 +124,8 @@ function isCleanPass(quote: string, page: GroundingPage, cov: number, quoteToken
  * page) is caught as `grounded_elsewhere` even when the stated `source_url` itself was crawled --
  * only when the stated page was never crawled at all, and nothing else grounds the quote either,
  * does this fall through to `source_not_crawled`. */
-export function checkGrounding(quote: string, sourceUrl: string, pages: Map<string, GroundingPage>): GroundingOutcome {
+export function checkGrounding(quote: string | null | undefined, sourceUrl: string | null | undefined, pages: Map<string, GroundingPage>): GroundingOutcome {
+  quote = typeof quote === "string" ? quote : "";
   const normSource = normalizeUrl(sourceUrl);
   const statedPage = pages.get(normSource);
   const quoteTokenCount = tokens(quote).length;

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isCompareReady } from "../../../lib/venueDetails/tiers";
 import { headlineCapacity } from "../../../lib/venueDetails/derive";
 import type { RawPricingResult, RawSpineResult } from "../contract";
-import { assembleDocument, computeSalesTaxSource, tileFor, type AssemblePage } from "./assemble";
+import { assembleDocument, computeSalesTaxSource, tileFor, type AssemblePage, coerceRawArrays } from "./assemble";
 
 function emptyPricing(): RawPricingResult {
   return {
@@ -143,6 +143,27 @@ describe("computeSalesTaxSource", () => {
   });
   it("is unknown otherwise", () => {
     expect(computeSalesTaxSource({ sales_tax_pct: null, quote: null, taxes_included_in_rental: null }, false)).toBe("unknown");
+  });
+});
+
+describe("coerceRawArrays", () => {
+  it("turns a string where an array was expected into [] with one malformed_array issue, fills missing arrays silently", () => {
+    const spineRaw = { spaces: "Grand Hall, Terrace", capacities: undefined } as unknown as Parameters<typeof coerceRawArrays>[0];
+    const pricingRaw = { paths: [{ fixed_fees: "n/a" }], add_ons: null, faqs: "Q: Is parking free? A: yes", food_beverage: { food_pills: "byo" } } as unknown as Parameters<typeof coerceRawArrays>[1];
+    const issues = coerceRawArrays(spineRaw, pricingRaw);
+    expect((spineRaw as unknown as { spaces: unknown[] }).spaces).toEqual([]);
+    expect((spineRaw as unknown as { capacities: unknown[] }).capacities).toEqual([]);
+    expect((pricingRaw as unknown as { faqs: unknown[] }).faqs).toEqual([]);
+    expect((pricingRaw as unknown as { add_ons: unknown[] }).add_ons).toEqual([]);
+    expect((pricingRaw as unknown as { paths: { fixed_fees: unknown[] }[] }).paths[0].fixed_fees).toEqual([]);
+    expect((pricingRaw as unknown as { food_beverage: { food_pills: unknown[]; menus: unknown[] } }).food_beverage.food_pills).toEqual([]);
+    expect((pricingRaw as unknown as { food_beverage: { menus: unknown[] } }).food_beverage.menus).toEqual([]);
+    const paths = issues.filter((i) => i.code === "malformed_array").map((i) => i.path).sort();
+    expect(paths).toEqual(["/food_beverage/food_pills", "/pricing/faqs", "/pricing/paths/0/fixed_fees", "/spaces"]);
+  });
+  it("is a no-op on a null pricing result", () => {
+    const spineRaw = { spaces: [] } as unknown as Parameters<typeof coerceRawArrays>[0];
+    expect(coerceRawArrays(spineRaw, null)).toEqual([]);
   });
 });
 

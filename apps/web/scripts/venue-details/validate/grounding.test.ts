@@ -40,6 +40,15 @@ describe("normalizeUrl", () => {
   it("falls back to lowercasing an unparsable URL", () => {
     expect(normalizeUrl("Not A Url")).toBe("not a url");
   });
+
+  it("treats a missing source_url as empty, and checkGrounding reports it as source_not_crawled instead of throwing", () => {
+    expect(normalizeUrl(undefined)).toBe("");
+    expect(normalizeUrl(null)).toBe("");
+    const pages = new Map<string, GroundingPage>();
+    expect(() => checkGrounding("some quote", undefined, pages)).not.toThrow();
+    expect(checkGrounding("some quote", undefined, pages).status).toBe("source_not_crawled");
+    expect(() => checkGrounding(undefined, undefined, pages)).not.toThrow();
+  });
 });
 
 describe("coverage", () => {

@@ -40,10 +40,19 @@ its batch id; `rollbackVenueDetails.ts --undo-batch vd-serve-<tick>` reverts a t
   Museum's wine list reached through `seeds/golden-seeds.csv`; every must-not venue crawled or recorded as
   shell/unreachable; a second run creates 0 new snapshots.
 - **C1…Cn — calibration, per prompt version.** On extractor-tagged golden fields: critical accuracy ≥ 95%,
-  critical numeric grounding 100%, important ≥ 85%, headline capacity exact ≥ 5/6, estimateCost within 2%
-  on the four calculator venues, zero must-not assertion failures. Each prompt bump is a commit naming the
-  failure classes it targets; the scorecard before/after is in `reports/<tick>/scorecard.md`. Stop at 6
-  prompt versions or $10 and hand the failure classes to the user.
+  critical numeric grounding 100%, **important_core ≥ 85%** (important spine facts, non-headline
+  capacities, non-default fees/tiers/minimums — the numbers a couple budgets with), headline capacity
+  exact ≥ 5/6, estimateCost within 2% on the four calculator venues, zero must-not assertion failures.
+  **Inventory recall/precision** (add-ons, inclusions, FAQs, resources, vendor entries) is reported, not
+  gated: the fixtures grew long line-item lists after 09-13 and a missing linen row is an honest gap, not
+  a wrong fact (decided 2026-09-19 with the user). The scorecard also prints, per venue, every golden fact
+  it did NOT score and why (`human_only`, source not crawled + the URL, no text layer) so exclusions are
+  never silent — Diamond Garden's 63 add-on facts cited a PDF the crawler had missed. Each prompt bump is a
+  commit naming the failure classes it targets; the scorecard before/after is in `reports/<tick>/
+  scorecard.md`. Iterate for free first (validator/assembler rules, re-score), bump the prompt only when
+  the raw model output is wrong, and re-run only the six goldens on iterations (the must-not slate is
+  checked once on the final candidate prompt). Stop at 6 prompt versions or $10 and hand the failure
+  classes to the user.
 - **F — every fill tick.** 0 critical grounding failures on the runs about to be served; the six universal
   must-not assertions green on every served venue; only `validation.ok` runs served (never
   `--allow-needs-review` inside the loop); tick spend ≤ cap; served and compare-ready counts reported beside
@@ -75,6 +84,10 @@ commit is missing, re-run that tick's command: crawl dedupes by content hash (un
 not a snapshot), extract skips runs whose `input_hash` exists, repair selects only runs with remaining
 `validation.repairs`, serve is a dry-run unless `--apply-serve`, and a second `--apply-serve` on the same
 run writes a new version equal to the previous one (visible in the funnel, harmless).
+
+Landmine (2026-09-19): never chain a tick behind `until ! pgrep -f runTick|crawlVenue`. `pgrep -f` matches
+its own shell and the D061 window's `scripts/acquire/runTick.ts`, so the wait never releases. Run ticks as
+plain background commands and act on their completion.
 
 ## Naming and files
 

@@ -164,7 +164,22 @@ export async function callTool<T>(opts: {
     if (!call) {
       throw new Error(`no tool call in response: ${bodyText.slice(0, 500)}`);
     }
-    const args = JSON.parse(call.function.arguments) as T;
+    let args: T;
+    try {
+      args = JSON.parse(call.function.arguments) as T;
+    } catch (e) {
+      // Malformed tool JSON. The usual cause is output truncation (finish_reason "length"): say
+      // so explicitly, with the token count and the tail of the payload, instead of a bare
+      // "Expected '}'" (tick c1, 2026-09-19: two of sixteen venues).
+      const finish = data.choices?.[0]?.finish_reason ?? data.choices?.[0]?.native_finish_reason ?? "unknown";
+      const argText = String(call.function.arguments ?? "");
+      const err = new Error(
+        `tool arguments are not valid JSON (finish_reason=${finish}, completion_tokens=${data.usage?.completion_tokens ?? "?"}, ${argText.length} chars; tail: ${JSON.stringify(argText.slice(-120))}): ${(e as Error).message}`,
+      );
+      (err as Error & { finishReason?: string; truncated?: boolean }).finishReason = String(finish);
+      (err as Error & { finishReason?: string; truncated?: boolean }).truncated = String(finish) === "length";
+      throw err;
+    }
 
     const usage = data.usage || {};
     const inputTokens = usage.prompt_tokens ?? 0;

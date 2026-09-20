@@ -287,6 +287,49 @@ function buildRepairFor(issue: Issue, pages: AssemblePage[]): Repair {
 // Main assembler
 // ---------------------------------------------------------------------------
 
+
+const SPINE_ARRAY_FIELDS = ["spaces", "capacities", "inclusions", "resources", "vendor_lists", "press_features"] as const;
+const PRICING_ARRAY_FIELDS = ["paths", "add_ons", "add_on_categories", "required_third_party", "faqs"] as const;
+const PATH_ARRAY_FIELDS = ["fixed_fees", "per_guest_tiers", "minimums", "year_surcharges", "promotions", "includes", "terms"] as const;
+const FB_ARRAY_FIELDS = ["food_pills", "bar_pills", "menus", "bar_ladders", "notes"] as const;
+
+function coerceArrayField(obj: Record<string, unknown> | null | undefined, key: string, path: string, issues: Issue[]): void {
+  if (!obj) return;
+  const v = obj[key];
+  if (Array.isArray(v)) return;
+  if (v === undefined || v === null) {
+    obj[key] = [];
+    return;
+  }
+  const desc = typeof v === "string" ? `string of ${v.length} chars` : typeof v;
+  issues.push({ code: "malformed_array", path, severity: "warning", tier: null, message: `Expected an array, got ${desc} -- treated as empty.` });
+  obj[key] = [];
+}
+
+/** Exported for tests. Mutates the raw results in place (they are the model's payload, already
+ * persisted verbatim on the run row -- this only shapes the working copy). */
+export function coerceRawArrays(spineRaw: RawSpineResult, pricingRaw: RawPricingResult | null): Issue[] {
+  const issues: Issue[] = [];
+  const sp = spineRaw as unknown as Record<string, unknown>;
+  for (const k of SPINE_ARRAY_FIELDS) coerceArrayField(sp, k, `/${k}`, issues);
+  if (!pricingRaw) return issues;
+  const pr = pricingRaw as unknown as Record<string, unknown>;
+  for (const k of PRICING_ARRAY_FIELDS) coerceArrayField(pr, k, `/pricing/${k}`, issues);
+  const paths = pr.paths as unknown[];
+  paths.forEach((p, i) => {
+    if (!p || typeof p !== "object") return;
+    for (const k of PATH_ARRAY_FIELDS) coerceArrayField(p as Record<string, unknown>, k, `/pricing/paths/${i}/${k}`, issues);
+  });
+  if (!pr.food_beverage || typeof pr.food_beverage !== "object") {
+    if (pr.food_beverage !== undefined && pr.food_beverage !== null) {
+      issues.push({ code: "malformed_array", path: "/food_beverage", severity: "warning", tier: null, message: `Expected an object, got ${typeof pr.food_beverage} -- treated as empty.` });
+    }
+    pr.food_beverage = { food_pills: [], bar_pills: [], caption: null, food_note: null, bar_note: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] };
+  }
+  for (const k of FB_ARRAY_FIELDS) coerceArrayField(pr.food_beverage as Record<string, unknown>, k, `/food_beverage/${k}`, issues);
+  return issues;
+}
+
 export function assembleDocument(input: AssembleInput): AssembleOutput {
   const pagesMap = new Map<string, GroundingPage>();
   for (const p of input.pages) pagesMap.set(normalizeUrl(p.url), { text: p.text, snapshotId: p.snapshot_id });
@@ -295,6 +338,12 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   const reviewReasons: string[] = [];
   const stats: GroundStats = { checked: 0, passed: 0, failed: 0, coverages: [] };
   let criticalFailures = 0;
+
+  // Shape hygiene first: the model occasionally returns a string (or null) where the tool schema
+  // says array. Iterating a string walks its characters -- tick c1 (2026-09-19) produced 2,244
+  // "FAQ undefined failed grounding" issues from one Adler run that way. Coerce every known array
+  // field to [] with ONE `malformed_array` issue naming the field, before anything iterates.
+  issues.push(...coerceRawArrays(input.spineRaw, input.pricingRaw));
 
   // Enum-invalid is a hard fail regardless of grounding -- checked up front.
   issues.push(...checkEnums(input.spineRaw, input.pricingRaw));
