@@ -120,6 +120,15 @@ describe("deriveStandardFaqs", () => {
 // ---------------------------------------------------------------------------
 
 describe("headlineCapacity", () => {
+  it("conditioned tuples (gala, live band) never set the headline", () => {
+    const base = makeVenue();
+    const t = (layout: "seated_dinner" | "seated_with_dance", max: number, condition: string | null) => ({ space_id: "whole_venue", layout, min: null, max, as_stated_label: null, tile: "seated" as const, condition, quote: "q", source_url: "u", snapshot_id: null });
+    const v = { ...base, spaces: [{ ...base.spaces[0], id: "whole_venue", bookable_separately: false }], capacities: [t("seated_dinner", 1000, "gala"), t("seated_with_dance", 300, null)] };
+    expect(headlineCapacity(v).headline).toBe(300);
+    // setup constraints (band / DJ) stay eligible: Greenhouse's only seated-with-dance rows are conditioned
+    const w = { ...v, capacities: [t("seated_with_dance", 175, "DJ"), t("seated_with_dance", 150, "live band")] };
+    expect(headlineCapacity(w).headline).toBe(175);
+  });
   it("single-space venue: the only room counts even when marked not bookable_separately, and whole_venue tuples count", () => {
     const base = makeVenue();
     const v = { ...base, spaces: [{ ...base.spaces[0], id: "hall", bookable_separately: false }], capacities: [

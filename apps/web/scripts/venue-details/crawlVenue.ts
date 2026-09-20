@@ -467,7 +467,7 @@ async function crawlOneVenue(
       ];
       for (const link of allLinks) {
         if (visited.has(normalizeUrlKey(link.href))) continue;
-        const score = scoreUrl(link.href, { fromNav: link.fromNav, anchorText: link.text });
+        const score = scoreUrl(link.href, { fromNav: link.fromNav, anchorText: link.text, parentScore: item.score });
         if (score === null) continue;
         const linkIsPdf = link.isPdfLink || isPdfUrl(link.href);
         const linkOffsite = !sameRegistrableHost(link.href, homepage);

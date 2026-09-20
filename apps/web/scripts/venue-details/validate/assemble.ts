@@ -907,6 +907,25 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
       }
     }
   }
+  // (1b) Event-type labels on capacity rows: when the venue lists capacities per event type and
+  // at least one row is labeled as a wedding, the non-wedding rows (gala, corporate, meeting,
+  // conference, theater-style program) carry that type as their `condition`, so the headline
+  // (which ignores conditioned rows) is the wedding figure -- Geraghty's "Gala - 1,000 Seated"
+  // must not beat its "Wedding - Ceremony & Reception: 300". Never guessed from numbers alone.
+  const EVENT_TYPE_RE = /\b(gala|corporate|meeting|meetings|conference|business|banquet|program|town hall|general session)\b/i;
+  // Only an explicit "wedding" marks a wedding row: Geraghty's "Gala - Cocktail Reception & Seated
+  // Dinner: 400" contains "reception" and is still a gala figure.
+  const WEDDING_LABEL_RE = /\bwedding/i;
+  const labelOf = (c: CapacityTuple) => `${c.as_stated_label ?? ""} ${c.quote ?? ""}`;
+  if (capacities.some((c) => WEDDING_LABEL_RE.test(labelOf(c)))) {
+    for (const c of capacities) {
+      const label = labelOf(c);
+      if (c.condition == null && !WEDDING_LABEL_RE.test(label) && EVENT_TYPE_RE.test(label)) {
+        c.condition = (label.match(EVENT_TYPE_RE)?.[1] ?? "other event").toLowerCase();
+        issues.push({ code: "capacity_other_event_type", path: `/capacities/${c.space_id}:${c.layout}`, severity: "warning", tier: null, message: `Capacity row labeled "${c.as_stated_label ?? ""}" is a ${c.condition} figure -- conditioned, not the wedding headline.` });
+      }
+    }
+  }
   // (2) A bookable space with no capacity row is a repair request (critical: the headline may
   // depend on it), never silently a page without a capacity headline.
   const spacesWithCaps = new Set(capacities.map((c) => c.space_id));

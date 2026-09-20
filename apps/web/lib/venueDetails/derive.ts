@@ -188,6 +188,10 @@ function maxBy<T>(items: T[], value: (t: T) => number): T | null {
   return items.reduce((a, b) => (value(b) > value(a) ? b : a));
 }
 
+/** Capacity conditions that name a different event type than a wedding. Kept in sync with the
+ * assembler's event-type tagging (scripts/venue-details/validate/assemble.ts). */
+export const OTHER_EVENT_TYPE_RE = /\b(gala|corporate|meeting|meetings|conference|business|banquet|program|town hall|general session|other event)\b/i;
+
 export function headlineCapacity(d: VenueDetailsV3): HeadlineCapacity {
   const caps = d.capacities;
   const spaceById = new Map(d.spaces.map((s) => [s.id, s]));
@@ -200,6 +204,11 @@ export function headlineCapacity(d: VenueDetailsV3): HeadlineCapacity {
   const singleSpaceVenue = d.spaces.length <= 1;
   const hasSpaceScopedTuples = caps.some((c) => c.space_id !== "whole_venue");
   const isSingleBookable = (c: CapacityTuple) => {
+    // A tuple conditioned on ANOTHER EVENT TYPE ("gala", "corporate", "meeting") is never the
+    // wedding headline (tick c3: Geraghty's "Gala - 1,000 Seated" beat its "Wedding - 300").
+    // Setup constraints ("with a live band", "DJ") stay eligible -- Greenhouse's only
+    // seated-with-dance figures are both conditioned that way and 175 is its real headline.
+    if (c.condition && OTHER_EVENT_TYPE_RE.test(c.condition)) return false;
     // A whole-venue number is a combination figure (Marchetti "up to 900" across both rooms) and
     // never the headline while any room-level tuple exists; it counts only when it is all we have.
     if (c.space_id === "whole_venue") return !hasSpaceScopedTuples;

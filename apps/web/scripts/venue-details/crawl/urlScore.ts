@@ -9,7 +9,17 @@ export interface ScoreUrlOptions {
   fromNav?: boolean;
   /** Visible anchor text for the link, used only for the PDF wedding-relevance check. */
   anchorText?: string;
+  /** Score of the page the link was found on. A link from a wedding/event/policy page (>= 5)
+   * inherits +3: Field Museum's four space pages are linked only from /page/weddings and lost
+   * the 30-page budget to staff profiles and legal statements (tick c3, 2026-09-20). */
+  parentScore?: number | null;
 }
+
+/** Space-page names in the path ("/stanley-field-hall-balcony", "/east-atrium-pavilion",
+ * "/rooftop", "/the-loft"): +4. Lodging words stay penalized by LODGING_RE. */
+const SPACE_NAME_RE =
+  /\b(hall|ballroom|terrace|terraces|atrium|gallery|pavilion|garden|gardens|loft|rooftop|salon|lounge|courtyard|conservatory|chapel|barn|greenhouse|patio|deck|theater|theatre|library|parlor|solarium|veranda|winery|mezzanine|penthouse)\b/i;
+
 
 /** Non-html/pdf file extensions the crawler must never fetch as a page. */
 const SKIP_EXTENSIONS =
@@ -35,7 +45,7 @@ const LODGING_RE =
   /\/rooms?(?!.*(event|wedding))|\/accommodations?\b|\/stay\b|\/suites?\b|\/reservations?\b|\/book(ing)?\b|\/offers?\b|\/spa\b|\/dining(?!.*private)/i;
 
 const NOISE_RE =
-  /\/blog\b|\/news\b|\/press\b|\/careers?\b|\/jobs?\b|\/shop\b|\/cart\b|\/login\b|\/account\b|\/wp-json\b|\/feed\b|\/tag\/|\/category\/|\/author\/|\/page\/\d+|\/calendar\b|\/exhibit\b|\/visit\b|\/tickets?\b|\/membership\b|\/education\b|\/donate\b|\/mitzvah\b|\/corporate\b|\/meetings?\b|\?replytocom|\?utm_|\?s=|#/;
+  /\/blog\b|\/news\b|\/press\b|\/careers?\b|\/jobs?\b|\/shop\b|\/cart\b|\/login\b|\/account\b|\/wp-json\b|\/feed\b|\/tag\/|\/category\/|\/author\/|\/page\/\d+|\/calendar\b|\/exhibit\b|\/visit\b|\/tickets?\b|\/membership\b|\/education\b|\/donate\b|\/mitzvah\b|\/corporate\b|\/meetings?\b|\?replytocom|\?utm_|\?s=|#|\/staff\b|\/people\b|\/team\b|\/leadership\b|\/profile\/|\/internships?\b|\/volunteer|\/donate\b|\/member(ship)?\b|\/history\b|\/licensing\b|\/copyright|\/privacy|\/non-discrimination|\/land-acknowledg|\/statement\b|\/website-terms|\/traveling-|\/workplace\b|\/business-services\b|\/centers-and-offices\b|\/education\b|\/research\b|\/collections?\b|\/science\b|\/learn\b|\/exhibitions?\b|\/annual-report/;
 
 /** Returns the registrable host (lowercased, `www.` stripped), or null if unparsable. */
 function registrableHost(url: string): string | null {
@@ -96,6 +106,8 @@ export function scoreUrl(url: string, options: ScoreUrlOptions = {}): number | n
   if (NETWORK_RE.test(path)) score += 3;
   if (INFO_RE.test(path)) score += 2;
   if (options.fromNav) score += 2;
+  if (SPACE_NAME_RE.test(path.replace(/[-_/]+/g, " "))) score += 4;
+  if ((options.parentScore ?? 0) >= 5) score += 3;
 
   if (isPdf) {
     score += isOffsitePdfAllowed(url, options.anchorText) ? 5 : -5;

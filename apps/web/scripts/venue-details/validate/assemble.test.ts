@@ -196,6 +196,20 @@ describe("assembleDocument post-passes (tick c3)", () => {
   });
 });
 
+describe("capacity event-type conditions (tick c3)", () => {
+  it("tags gala/corporate-labeled rows with a condition when a wedding-labeled row exists", () => {
+    const pages = [{ url: "https://g.com/space", text: "Gala - Maximum Capacity: 1,000 Seated Guests. Wedding - Ceremony & Reception: 300 Guests. Corporate - Town Hall Meeting: 250 Guests.", snapshot_id: 1 }];
+    const spineRaw = { ...miniVenueSpine(), spine: {}, spaces: [{ id: "whole_venue", name: "The Space", bookable_separately: false, source_url: "https://g.com/space" }], capacities: [
+      { space_id: "whole_venue", layout: "seated_dinner", min: null, max: 1000, as_stated_label: "Gala - Maximum Capacity", condition: null, quote: "Gala - Maximum Capacity: 1,000 Seated Guests", source_url: "https://g.com/space" },
+      { space_id: "whole_venue", layout: "seated_with_dance", min: null, max: 300, as_stated_label: "Wedding - Ceremony & Reception", condition: null, quote: "Wedding - Ceremony & Reception: 300 Guests", source_url: "https://g.com/space" },
+      { space_id: "whole_venue", layout: "theater", min: null, max: 250, as_stated_label: "Corporate - Town Hall Meeting", condition: null, quote: "Corporate - Town Hall Meeting: 250 Guests", source_url: "https://g.com/space" },
+    ] } as unknown as RawSpineResult;
+    const out = assembleMiniVenue({ spine: spineRaw, pricing: null, pages });
+    const conds = out.document.capacities.map((c) => `${c.max}:${c.condition ?? "-"}`).sort();
+    expect(conds).toEqual(["1000:gala", "250:corporate", "300:-"]);
+  });
+});
+
 describe("assembleDocument -- end to end on a mini venue", () => {
   it("produces a compare-ready document", () => {
     const result = assembleMiniVenue();

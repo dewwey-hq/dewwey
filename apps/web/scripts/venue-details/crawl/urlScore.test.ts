@@ -1,7 +1,15 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, it } from "vitest";
 import { isOffsitePdfAllowed, sameRegistrableHost, scoreUrl } from "./urlScore";
 
 describe("scoreUrl", () => {
+  it("boosts space-name pages and links found on wedding/event pages; penalizes staff/legal/museum noise (tick c3)", () => {
+    expect(scoreUrl("https://www.fieldmuseum.org/stanley-field-hall-balcony", { parentScore: 1_000_000 })).toBeGreaterThanOrEqual(7);
+    expect(scoreUrl("https://www.fieldmuseum.org/east-atrium-pavilion")).toBeGreaterThanOrEqual(4);
+    expect(scoreUrl("https://www.fieldmuseum.org/about/staff/profile/adam-aizenberg")).toBeLessThan(0);
+    expect(scoreUrl("https://www.fieldmuseum.org/website-terms-use")).toBeLessThan(0);
+    expect(scoreUrl("https://www.fieldmuseum.org/landing/internships")).toBeLessThan(0);
+    expect(scoreUrl("https://hotel.com/rooms/deluxe-suite")).toBeLessThan(0);
+  });
   test("weddings and policy pages score equally high", () => {
     const wedding = scoreUrl("https://venue.com/weddings");
     const policy = scoreUrl("https://venue.com/policies");
