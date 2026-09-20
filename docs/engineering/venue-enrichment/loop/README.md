@@ -42,7 +42,8 @@ its batch id; `rollbackVenueDetails.ts --undo-batch vd-serve-<tick>` reverts a t
 - **C1…Cn — calibration, per prompt version.** On extractor-tagged golden fields: critical accuracy ≥ 95%,
   critical numeric grounding 100%, **important_core ≥ 85%** (important spine facts, non-headline
   capacities, non-default fees/tiers/minimums — the numbers a couple budgets with), headline capacity
-  exact ≥ 5/6, estimateCost within 2% on the four calculator venues, zero must-not assertion failures.
+  exact ≥ 5/6, estimateCost within 2% on the four calculator venues, zero must-not assertion failures,
+  **resources recall ≥ 80%** (brochures, menus, floor plans, tours, videos — decided 2026-09-20 after c4).
   **Inventory recall/precision** (add-ons, inclusions, FAQs, resources, vendor entries) is reported, not
   gated: the fixtures grew long line-item lists after 09-13 and a missing linen row is an honest gap, not
   a wrong fact (decided 2026-09-19 with the user). The scorecard also prints, per venue, every golden fact
@@ -62,6 +63,10 @@ its batch id; `rollbackVenueDetails.ts --undo-batch vd-serve-<tick>` reverts a t
   mismatch ≤ 5%, human spot-check of 10 (`/lab/venue?u=<username>`), one `--undo-batch` rollback rehearsed.
 
 ## Budget
+
+**Count spend from the OpenRouter key, not the DB.** `venue_details_runs.cost_usd` misses failed and
+retried calls (a JSON-truncated call writes no row; a forced re-run overwrites the row). The tick row
+carries both numbers; the key's `usage_daily` is the truth (`GET /api/v1/auth/key`).
 
 Calibration ≤ $10 total. Phase 3 ≤ $40 total (`--max-cost-usd 10` per tick). At the expected $0.10–0.30
 per venue that covers the 20+ and 6–19 bands (~176 verified venues); the 1–5 band is a second approval.

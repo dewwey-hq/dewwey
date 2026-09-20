@@ -350,6 +350,51 @@ acquisition loop's profile scrapes filled `accounts.external_url`; Phase 3's pop
 ~258, not 146, and the $40 cap is expected to cover the 20+ and 6–19 bands (~176 venues) with the 1–5 band
 a second approval. New small scripts: `runTick.ts`, `targets.ts`, `mustnot/checkUniversal.ts`.
 
+**Addendum 2026-09-20 (calibration ticks c0–c4; the loop's first night).** Crawl checkpoint passed
+(every golden ≥ 9 usable pages, both manual seeds reached, re-crawl of the six made 0 new snapshots).
+Four extraction passes (prompt v3.0 → v3.3) on the six goldens, ~$8–11 of Haiku (the DB's
+`cost_usd` sum says $6.57; failed and retried calls are not rows, the key's daily usage says $12.24
+including the D061 window — the calibration cap is treated as reached). What the passes taught, in
+order of importance:
+- *Most "misses" were ours, not the model's.* The extractor recorded snapshot ids from the cache
+  manifest (redirected PDFs and re-crawled pages dropped out, so the validator could not see text
+  the model quoted); one 595k-char page starved nine others out of the document budget; the scorer
+  compared space ids / fee keys / prose by exact string; source URLs differed by a trailing slash
+  (46 LondonHouse facts silently excluded); Field Museum's four space pages were never crawled
+  while staff profiles and legal statements filled the 30-page budget; model arrays sometimes arrive
+  as strings (a 24k-char `paths`; Adler's FAQs as 2,244 per-character issues); two tool payloads
+  exceeded 16k output tokens. All fixed deterministically (loader from the DB snapshot set, per-page
+  cap, aligned scorer with visible exclusions, normalized URLs, crawl targeting with parent-page
+  inheritance and a noise list, array coercion/recovery, 48k output ceiling + 30-FAQ cap, Anthropic
+  provider preference for repeatability).
+- *Rules beat prompt bumps.* Single-space venues keep a headline; gala/corporate-labeled capacity
+  rows become conditioned so the wedding figure is the headline (Geraghty 1,000 → 300); a bookable
+  space without a capacity row is a critical repair request; `inquire_only` is derived when the
+  pricing call found no priced paths (Field Museum, Geraghty); a named room over 1,000 in a
+  multi-space venue is noted, not reviewed. Each pass costs ~$1.30; each rule costs nothing.
+- *Critical accuracy 84.8% (c3) → 89.4% (c4)* on 66 extractor-tagged critical facts; Marchetti and
+  Field Museum 100%. The seven remaining misses are taxonomy, not extraction: `setting: both` when a
+  venue has any outdoor option; a hotel selling per-person packages (`hotel_package` vs
+  `all_inclusive_per_guest`); Diamond Garden's bar (in-house packages AND free BYO — no enum value);
+  its `mixed` archetype; a lunch-special per-guest floor; Greenhouse's service charge 0 read from
+  "no hidden fees". Two goldens were corrected because they contradicted their own quotes (Field
+  Museum parking, day-of coordinator) and one reconciled across goldens (Marchetti
+  `rental_charge_type` → `flat_plus_per_guest`, consistent with Diamond Garden).
+- *Run-to-run variance is real at temperature 0*: the same venue produced 8k, 22k and 67k chars of
+  tool JSON from different providers; v3.3 regressed Greenhouse (string `paths`) and LondonHouse
+  (cocktail figures tagged `seated_dinner`) while improving the prompt-level classes. A shape retry
+  and a label-based layout relabel are queued; the F2 repeatability check stays in the plan.
+- *Resources were the real gap* (user, 2026-09-20: "a 3D tour or brochure… very important"): golden
+  resources found 1/8, 5/5, 1/7, 3/3, 2/6, 1/3. Causes are mechanical — iframes skipped, image floor
+  plans skipped by extension, PDF anchor text not persisted (Diamond Garden's menus are hashed
+  filenames). Decision: the crawler captures embeds and floor-plan images with labels into an
+  ASSETS block on each snapshot, PDF titles fall back to anchor text, the validator adds resources
+  from assets and obvious page URLs (never removing model-cited ones), and **resources recall ≥ 80%
+  is a calibration gate**; secondary-tier accuracy is reported, not gated.
+- The gate is not met; the six are compare-ready on their runs but NOT served. Decisions for the
+  user before c5: the four taxonomy conventions above and whether to serve the six at ~90% critical
+  for lab review. Spend resumes only with a fresh cap.
+
 ## D059 — 2026-09-13 — Attire split: dress/suit/bridesmaid/veil/shoes broken out of generic "Attire"
 
 **Context.** Every dress shop, suit shop, bridesmaid-dress brand, veil seller, and shoe vendor

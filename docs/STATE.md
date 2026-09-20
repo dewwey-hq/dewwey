@@ -5,71 +5,57 @@ session; history lives in `decisions.md`, preferences in Claude's memory, in-fli
 If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-19 ~21:00 CT** (D060 window; golden-render round 7 landed as `36295c5`). Two
-windows are committing to local `main` in parallel (this one = D060 VenueDetails; the other = D061
-acquisition loop, see "Second mission"); **local `main` is ~54 commits ahead of `origin/main`
-(`dd5bd44`), not pushed** (the user has not asked for a push). Run `git log --oneline -15` and
-`git status` to confirm; the `apps/web/scripts/graph/tmp_analysis/*` untracked files belong to the D061
-window — leave them.
+Last rewritten: **2026-09-20 ~01:30 (machine clock)** by the D060 window after calibration ticks c0–c4.
+Two windows commit to local `main` in parallel (this one = D060 VenueDetails; the other = D061
+acquisition loop, see "Second mission"). **`origin/main` was pushed by the user at `f145277` (2026-09-20);
+everything after that is local only** — run `git log --oneline origin/main..HEAD` to see how many. The
+`apps/web/scripts/graph/tmp_analysis/*` untracked files belong to the D061 window — leave them.
 
 ## How to resume (5 minutes)
 
-1. `git log --oneline -15` and `git status` from the repo root. Everything through add-ons round 7
-   (`36295c5`) is committed; no builder was running at hand-off. Dev server may still be up on :3000
-   (`nohup bun run dev` from `apps/web` if not).
-2. Re-check one live number: `bun run scripts/venue-details/importGoldenSet.ts --check` from `apps/web`
-   prints six `[OK]` lines, and `bunx --bun vitest run lib/venueDetails app/components/venue
-   scripts/venue-details` is 765 green.
-3. Then work the "Blocked on the user" list below, top to bottom. Nothing in the D060 pipeline has
-   written to the database, R2, or OpenRouter yet, so there is nothing to undo.
+1. `git log --oneline -15`, `git status`, `git log --oneline origin/main..HEAD | wc -l`.
+2. `docs/engineering/venue-enrichment/loop/ticks.md` — the last row is where the loop stopped (c4) and why.
+3. Re-check one live number: `bun run scripts/venue-details/reportVenueDetailsFunnel.ts` from `apps/web`
+   (runs, validated, served = 0) and the OpenRouter key's `usage_daily`.
+4. Then the "Blocked on the user" list. **No model spend until the user sets a fresh calibration cap**
+   (the $10 cap is treated as reached; see the c4 row).
 
-## Mission in flight — D060 VenueDetails v3 (2026-09-13 →)
+## Mission in flight — D060 VenueDetails v3 (2026-09-13 →): calibration loop, gate not yet met
 
 The venue Details tab becomes one typed schema (comparison spine + detail layer) filled by a
 provenance-first loop for every listed venue, rendered by one generic component. Plan of record:
-`~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md` (approved after three review rounds;
-its "Build log / follow-ups" section is the running punch list). Decision: `docs/decisions.md` D060.
-Product doc: `docs/product/venue-details.md`. Research: `docs/engineering/venue-enrichment/
-industry-research-2026-09-13.md`.
+`~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md` ("Execution loop for Phases 2–3"); loop
+protocol `docs/engineering/venue-enrichment/loop/README.md`; tick log `loop/ticks.md`; per-tick reports
+`loop/reports/<tick>/`; narrative `docs/decisions.md` D060 + addenda (the 2026-09-20 addendum is the
+calibration story).
 
-**Phase 0 — done, committed.** D060, product doc, research, docs index.
+**Done:** Phases 0–2 code; seven golden-render rounds; schema applied (user, 09-19); discovery applied
+(421 listed → 307 candidates → 257 verified, batch `vd-discovery-1`); calibration crawl c0 (16 venues,
+gate passed); four extraction passes c1–c4 (prompt v3.0 → v3.3) with the fixes listed in the D060
+addendum; 820+ tests.
 
-**Phase 1a — done, committed.** `apps/web/lib/venueDetails/` (types, derive, diff, merge, inputHash,
-tiers, golden registry) + six golden fixtures `apps/web/scripts/venue-details/golden/<slug>.json`
-(from `importGoldenSet.ts`, `--check` clean, fields tagged `eval: extractor|human_only`). Calculator
-totals pinned to the concept calculators: Marchetti 55,240 / 57,475; Greenhouse 12,420; LondonHouse
-44,451 / 44,675; Diamond Garden 12,742.50 / 7,495. Golden account ids (hard map, the concept
-`vendorId`s are wrong): galleriamarchetti 31, greenhouseloft 477, thegeraghty 507, fieldmuseum 1131
-(alias 5172), lhchicago 2785, diamondgardenbanquet 27389.
+**Where the gate stands (c4, prompt v3.3, aligned scorer):**
 
-**Phase 1b — done, committed; SEVEN review rounds landed 2026-09-18 → 09-19 (narrative: D060 addendum
-in `decisions.md`; per-round spec: the plan file's "Round 2…7" sections).** Latest commits: `65fd615`
-(decor / lighting_av split), `36295c5` (round 7: `AddOn.day/season`, extra-hours grid, Diamond Garden
-fixture completed against the venue's 2024 add-ons sheet, 34 → 59 add-ons; example folding dedupes
-across the whole card; importer money() shows cents). 765 tests. Schema fields added by the rounds
-(all optional, all in the extractor tool schema): `add_on_categories`, `PricingPath.includes/terms/
-subtitle`, `Pricing.seasons`, `AddOn.selection_group/category_std/day/season`, `food_note/bar_note`,
-`capacity_max_guests`, `EstimateInput.band`. Pushbacks kept (Field Museum 1,500 not "1,000+";
-LondonHouse range not 60–190; all 13 policy rows; LondonHouse ceremony stays an add-on with a Yes/No
-toggle). Open: Top Shelf bar $35 (add-ons sheet) vs $30/$40 (bar PDF) — verify against the bar PDF
-before it matters. `apps/web/app/components/venue/*` (`VenueDetailsView`, `FactSource` popover,
-`CostEstimate`, `PoliciesList`, `FaqList`, `ResourceMenuButton`, `format.ts`, `icons.ts`) and
-`apps/web/app/lab/venue/page.tsx` (`?golden=<slug>`, `?u=<username>`, `?compare=1`, noindex). Headless
-screenshots: chrome at `~/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome` (full page) or the
-playwright install at `/tmp/bunx-1000-playwright@latest/node_modules/playwright/index.mjs` for
-element-scoped shots (`locator(sel).screenshot`), imported by absolute path.
+| venue | critical | important_core | headline | cost delta | resources found |
+|---|---|---|---|---|---|
+| Galleria Marchetti | 14/14 | 22/27 | 450 vs 425 (homepage vs brochure) | 0% | 1/8 |
+| Field Museum | 8/8 | 8/10 | 1,500 exact | n/a (inquire-only) | 2/6 |
+| Geraghty | 7/8 | 5/6 | 300 exact | n/a | 1/3 |
+| Greenhouse Loft | 10/11 | 11/23 (paths came back as a string) | 175 exact | none (same cause) | 5/5 |
+| LondonHouse | 10/12 | 13/16 | 275 vs 190 (cocktail rows tagged seated) | 0% | 3/3 |
+| Diamond Garden | 10/13 | 8/39 | 268 exact | path alignment (scorer) | 1/7 |
 
-**Phase 2 — code complete and committed (`ef5f4ce`, `de1c8f9`, `4b1909e`); nothing applied to the DB
-or R2, zero OpenRouter calls.** `apps/web/scripts/venue-details/`: `applyVenueDetailsSchema.ts` (DDL,
-transcribed into `pipeline/schema.sql`), `universe.ts`, `discoverWebsites.ts`, `crawl/*` (Bun
-HTMLRewriter, robots, `unpdf`, `Bun.S3Client`, cache) + `crawlVenue.ts --seed-urls` +
-`seeds/golden-seeds.csv`, `reportCrawlCoverage.ts`, `contract.ts`, `venueDetailsPrompt.ts` (two tools,
-≈12k + 2.7k tokens), `extractVenueDetails.ts`, `validateVenueDetails.ts` + `validate/*`,
-`repairVenueDetails.ts`, `serveVenueDetails.ts`, `rollbackVenueDetails.ts`, `addCorrection.ts`,
-`score.ts` + `scoreAgainstGolden.ts`, `mustnot/*` (rubric's 15 as assertions; `account-map.csv`
-resolves them to accounts), `reportVenueDetailsFunnel.ts`. 445 tests (`bunx --bun vitest run
-lib/venueDetails app/components/venue scripts/venue-details`). Dry-runs done: discovery over the
-universe and the 16-venue calibration crawl (tables below).
+Critical 59/66 = 89.4% (gate 95%). All six are `compare_ready` on their latest runs; **nothing is served**.
+
+**In flight at hand-off (builders, no spend):** (1) resources capture + augmentation (iframes/embeds,
+image floor plans, PDF anchor titles, ASSETS block on snapshots, deterministic resource augmentation)
++ pricing-call shape retry + label-based layout relabel; (2) scorer pricing-path alignment by name.
+Check `git status` for their uncommitted files; run the suites; commit if green.
+
+**Next tick (c5) needs, in order:** the user's taxonomy decisions (below) → a re-crawl of the six
+(`runTick.ts --tick c5 --account-ids <golden 6 + must-not 10> --crawl-only`; new snapshots because of
+the ASSETS block) → prompt v3.4 (the taxonomy rules + the ASSETS mention) → extraction under a fresh cap
+(~$1.50 for the six, $2.50 with the must-nots) → scorecard.
 
 ## Numbers (live DB, unchanged by this mission so far)
 
@@ -101,20 +87,17 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
 | Image-only PDFs | Diamond Garden 4 (its menus, expected), CAA 5, Langham 1 |
 | Seeded off-site docs reached | Marchetti brochure (text layer), Field Museum ×2 |
 
-## Blocked on the user (all Phase 2 code is committed; these are the three approvals it waits on)
+## Blocked on the user
 
-1. **Review `/lab/venue?golden=<slug>` for all six goldens** on localhost (desktop + phone). Lost facts
-   fail; lost flourishes go on the punch list in the plan. Phase 4 (production promotion) depends on this.
-2. **Apply the v3 schema**: from `apps/web`, `bun run scripts/venue-details/applyVenueDetailsSchema.ts`
-   (idempotent; `--print` shows the DDL). Creates 6 empty tables + 1 view; no existing table is touched.
-   The classifier usually blocks DDL from Claude; run it with `!` if so.
-3. **Say "go" for the first real writes**, in this order, each a dry-run first:
-   - `discoverWebsites.ts --batch-id vd-discovery-1 --probe --apply` (writes the 166 candidate rows).
-   - `crawlVenue.ts --account-ids <golden 6 + must-not 10> --crawl-batch vd-cal-crawl-1 --seed-urls
-     seeds/golden-seeds.csv` (writes snapshots to R2 + fetch rows; the same pages already sit in the
-     local cache, so this re-fetch is cheap and polite).
-   - `extractVenueDetails.ts --golden --max-cost-usd 5` — the first OpenRouter spend, Haiku, ~$1-2.
-     Then validate → repair → `scoreAgainstGolden.ts --source runs --mustnot` and iterate the prompt.
+1. **Taxonomy decisions** (each is one line in the prompt + possibly one golden): (a) `setting: both`
+   only for a real outdoor ceremony/reception space, or for any outdoor option (Geraghty's parking-lot
+   events, LondonHouse's terrace)? (b) a hotel selling per-person wedding packages = `hotel_package`
+   (goldens say yes; the model keeps saying `all_inclusive_per_guest`); (c) add a bar value
+   `in_house_or_byo` for venues with in-house packages AND free BYO (Diamond Garden)? (d) Greenhouse
+   service charge: keep golden 0 (from "no hidden fees") and tag it human_only, or not_stated?
+2. **Fresh calibration cap** for c5 (the first $10 is spent; the resources fix needs one more pass).
+3. **Serve the six for lab review at ~90% critical?** `/lab/venue?u=<username>` renders served rows;
+   nothing is served today. Say "serve the six" and it is one dry-run + apply (`vd-serve-c5`).
 4. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
 
 ## Second mission (parallel window) — D061 Acquisition loop: month-1 ticks through probes A + low-types DONE (2026-09-20 05:45 UTC)
@@ -183,16 +166,11 @@ alias-candidate rule for typo handles; re-pin the two pre-D061 `graphStrengtheni
 
 ## Next actions (Claude, when unblocked)
 
-1. After approval 2 (schema) and 3 (writes): discovery apply → calibration crawl → coverage table →
-   `extractVenueDetails.ts --golden --max-cost-usd 5` → validate → repair → `scoreAgainstGolden.ts
-   --source runs --mustnot`; iterate the prompt until critical accuracy ≥ 95% and critical numeric
-   grounding = 100% on extractor-tagged fields; then Phase 3 (the 146) behind the crawl-only checkpoint.
-2. Fixture/render punch list (plan "Build log" + rounds): lightbox (new-tab links until
-   `checkResourceEmbeddability.ts`), Photos slot (production only), Marchetti real-wedding decks,
-   version `created_at` in the footer once versions exist, Top Shelf bar price check, the Field Museum
-   1,400-with-stage capacity as a tuple, the Cupola non-bookable spot.
-3. Extractor schema is ahead of any run: re-measure SPINE_TOOL/PRICING_TOOL token counts before the
-   first extraction (`venueDetailsPrompt.test.ts` pins them).
+1. Land the two in-flight builds (resources; scorer path alignment), suites green, commit.
+2. c5: re-crawl the 16 (ASSETS block) → prompt v3.4 with the user's taxonomy rules → extract the six
+   under the new cap → score (critical, important_core, resources recall) → if green, serve the six
+   (`--apply-serve`) and hand the lab URLs to the user; must-not slate extracted once on the final prompt.
+3. F2 repeatability check (10 venues × `--force`) before any fill tick; then `targets.ts --band 20+`.
 
 ## Landmines (things that bit us; check before repeating)
 
@@ -216,6 +194,16 @@ alias-candidate rule for typo handles; re-pin the two pre-D061 `graphStrengtheni
   carry `day`/`season` per row; the calculator filters by the chosen axes.
 - The importer has its own `money()`; keep it identical to the renderer's (cents when fractional) or
   fixtures print "$1.5/guest".
+- **Never chain a tick behind `until ! pgrep -f …`**: it matches its own shell and the D061 window's
+  `scripts/acquire/runTick.ts`. Run ticks as plain background commands.
+- **The DB `cost_usd` sum under-counts spend**: failed/truncated calls write no run row and a forced
+  re-run overwrites the row. Read the OpenRouter key's `usage_daily` for the truth.
+- **Haiku sometimes returns a tool array as a JSON string** (Adler FAQs, Greenhouse/Diamond Garden
+  pricing paths); the assembler coerces/recovers, a shape retry is queued in the extractor.
+- **Score selection = latest `validation.ok` run for the prompt version**, so a repair run's document
+  can be the one scored; that is intended (repair child preferred) but remember it when reading numbers.
+- **Golden facts are excluded from scoring when their source URL was not crawled** — the scorecard now
+  prints every exclusion with its URL; read that block before believing a tier number.
 - Everything from the 2026-09-13 19:00 rewrite still applies (D059 migration invariant, IG embed rules,
   `/venues` listing bar, verify-logged-inserts, enum casts, `!` for bulk writes, `--limit` semantics,
   pgrep self-match, `vendors.city` default, brand handles, promo-only venues, wedding counting, hashtag
