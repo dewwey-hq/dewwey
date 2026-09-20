@@ -178,9 +178,8 @@ Probes B and the vendor tick are **released to auto-create**.
 v1.3 on data it had not been tuned on.** probe6: agreement 35/40 = 87.5%, THIS_VENUE precision **26/28 = 92.9%**.
 deepen: agreement 34/41 = 82.9%, precision **31/34 = 91.2%**. Combined **57/62 = 91.9%**, vs probes A's 97% under
 v1.2. Both below the coded `THIS_VENUE_PASS_BAR_PCT = 95` → the reports print FAIL. **The user's call
-(2026-09-20): ~85% precision is the standard for this use case; results accepted, no revert, month 2 runs
-hands-off.** The 95 constant in `scripts/acquire/reportSpotCheck.ts` is unchanged, so reports will keep printing
-FAIL until it is moved — a decision the user has not made yet.
+(2026-09-20): the 95% bar STAYS — this batch is accepted as a one-off exception, not a lowered standard.
+Nothing reverted, month 2 runs hands-off, and the next spot-check is still measured against 95.**
 Reading the 12 disagreements caption-by-caption, **6 look like labeling slips rather than model errors** (3 marked
 NOT_WEDDING that name the wedding and credit the anchored venue — `DZVIwxJuoeC` Ivy Room, `DZp8Fd9lCZO` "Connie
 and Rajeev" at the @fieldmuseumspecialevents alias, `DdKMptwlpe3` a Venue:-credited decor showcase; 3 marked

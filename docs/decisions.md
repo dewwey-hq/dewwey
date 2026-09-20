@@ -178,9 +178,8 @@ Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-
   in five unchecked batches (probe6, discovered, deepen, vendor, probesB) had been auto-created by it. Results:
   probe6 agreement 35/40 = 87.5%, THIS_VENUE precision **26/28 = 92.9%**; deepen agreement 34/41 = 82.9%,
   precision **31/34 = 91.2%**; combined **57/62 = 91.9%** vs probes A's 97% under v1.2. Both FAIL the coded
-  `THIS_VENUE_PASS_BAR_PCT = 95`. **Decision (the user, 2026-09-20): ~85% precision is the right standard for
-  this use case — results accepted, nothing reverted, month 2 runs hands-off.** The 95 constant is left as-is
-  for now, so the reports keep printing FAIL; moving it is an open call.
+  `THIS_VENUE_PASS_BAR_PCT = 95`. **Decision (the user, 2026-09-20): the 95% bar STAYS — this batch is accepted as a one-off exception, not a
+  lowered standard.** Nothing reverted, month 2 runs hands-off; the next spot-check is measured against 95 again.
   Caveat recorded deliberately: reading all 12 disagreements caption-by-caption, **6 read as labeling slips, not
   model errors** — 3 NOT_WEDDING labels on posts that name the wedding and credit the anchored venue (Ivy Room;
   "Connie and Rajeev" at the @fieldmuseumspecialevents alias of @fieldmuseum; a Venue:-credited decor showcase),
