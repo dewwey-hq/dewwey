@@ -120,6 +120,15 @@ describe("deriveStandardFaqs", () => {
 // ---------------------------------------------------------------------------
 
 describe("headlineCapacity", () => {
+  it("single-space venue: the only room counts even when marked not bookable_separately, and whole_venue tuples count", () => {
+    const base = makeVenue();
+    const v = { ...base, spaces: [{ ...base.spaces[0], id: "hall", bookable_separately: false }], capacities: [
+      { space_id: "hall", layout: "seated_dinner" as const, min: null, max: 268, as_stated_label: null, tile: "seated" as const, condition: null, quote: "q", source_url: "u", snapshot_id: null },
+    ] };
+    expect(headlineCapacity(v).headline).toBe(268);
+    const w = { ...v, capacities: [{ ...v.capacities[0], space_id: "whole_venue", max: 300 }] };
+    expect(headlineCapacity(w).headline).toBe(300);
+  });
   it("never sums rooms: takes the max of two single bookable spaces (425 + 180 -> 425)", () => {
     const venue = makeVenue({
       spaces: [space({ id: "pavilion" }), space({ id: "la-pergola" })],

@@ -192,7 +192,19 @@ export function headlineCapacity(d: VenueDetailsV3): HeadlineCapacity {
   const caps = d.capacities;
   const spaceById = new Map(d.spaces.map((s) => [s.id, s]));
 
-  const isSingleBookable = (c: CapacityTuple) => c.space_id !== "whole_venue" && spaceById.get(c.space_id)?.bookable_separately !== false;
+  // A venue with one space (or none listed) IS its own bookable unit: the extractor marks the
+  // only room `bookable_separately: false` (nothing to book it separately from) and cites
+  // `whole_venue`, and the headline must still exist (tick c3, 2026-09-20: Diamond Garden and
+  // Geraghty had no headline and were not compare-ready). Multi-space venues keep the strict
+  // rule: never a whole-venue or non-bookable tuple, never a sum.
+  const singleSpaceVenue = d.spaces.length <= 1;
+  const hasSpaceScopedTuples = caps.some((c) => c.space_id !== "whole_venue");
+  const isSingleBookable = (c: CapacityTuple) => {
+    // A whole-venue number is a combination figure (Marchetti "up to 900" across both rooms) and
+    // never the headline while any room-level tuple exists; it counts only when it is all we have.
+    if (c.space_id === "whole_venue") return !hasSpaceScopedTuples;
+    return singleSpaceVenue || spaceById.get(c.space_id)?.bookable_separately !== false;
+  };
 
   const tileFor = (tile: "seated" | "seated_dance" | "cocktail"): CapacityTile => {
     const best = maxBy(

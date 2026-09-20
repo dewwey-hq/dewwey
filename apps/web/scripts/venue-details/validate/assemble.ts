@@ -224,7 +224,7 @@ const SLUGGY_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+){2,}$/i;
 // Repair generation
 // ---------------------------------------------------------------------------
 
-const ALWAYS_REPAIRABLE_CODES = new Set(["capacity_gt_1000"]);
+const ALWAYS_REPAIRABLE_CODES = new Set(["capacity_gt_1000", "space_without_capacity"]);
 const TIERED_REPAIRABLE_CODES = new Set(["ungrounded_spine", "ungrounded_item", "enum_invalid", "stated_without_quote", "corkage_implies_byo"]);
 
 function isRepairable(issue: Issue): boolean {
@@ -262,6 +262,8 @@ function instructionFor(issue: Issue): string {
       return "A corkage fee was found -- bar should be byo_with_corkage, not in_house.";
     case "capacity_gt_1000":
       return "This capacity figure exceeds 1000 guests -- confirm it is a real per-space number, not a combined/whole-venue total.";
+    case "space_without_capacity":
+      return "This bookable space has no capacity row. Re-read the linked pages for its seated / seated-with-dance / cocktail numbers and add one capacities[] row per labeled style, each with a verbatim quote; return nothing for it only if the site states no figure.";
     default:
       return issue.message;
   }
@@ -887,6 +889,31 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   for (const key of SPINE_KEYS) {
     const s = spine[key] as Tri<unknown>;
     if (s.status === "stated" || s.status === "conflicting") spineStatedCount++;
+  }
+
+  // --- post-passes (tick c3, 2026-09-20) --------------------------------------
+  // (1) inquire_only is the ABSENCE of published numbers, so it may be derived: when the pricing
+  // call concluded inquire_only and produced no paths, the spine's pricing_archetype and
+  // rental_charge_type become inquire_only rather than not_stated (Field Museum's spine call said
+  // not_stated while its own pricing call said inquire_only). Quote is empty by construction --
+  // there is nothing to quote -- and the fact is marked so the UI can say "no prices published".
+  const noPaths = paths.length === 0 && addOns.every((a) => a.price == null);
+  if (pricingArchetype === "inquire_only" && noPaths) {
+    const firstPage = input.pages[0];
+    for (const key of ["pricing_archetype", "rental_charge_type"] as const) {
+      if (spine[key]?.status === "not_stated") {
+        spine[key] = { status: "stated", value: "inquire_only", quote: "", source_url: firstPage ? normalizeUrl(firstPage.url) : (input.websiteUrl ?? ""), snapshot_id: firstPage?.snapshot_id ?? null };
+        issues.push({ code: "derived_inquire_only", path: `/spine/${key}`, severity: "info", tier: null, message: "Pricing call found no published prices -- set to inquire_only." });
+      }
+    }
+  }
+  // (2) A bookable space with no capacity row is a repair request (critical: the headline may
+  // depend on it), never silently a page without a capacity headline.
+  const spacesWithCaps = new Set(capacities.map((c) => c.space_id));
+  for (const sp of spaces) {
+    if (sp.bookable_separately === false && spaces.length > 1) continue;
+    if (spacesWithCaps.has(sp.id)) continue;
+    issues.push({ code: "space_without_capacity", path: `/capacities/${sp.id}`, severity: "warning", tier: "critical", message: `Space "${sp.name}" has no capacity row.` });
   }
 
   const needsReview = criticalFailures > 0 || gt30pct || reviewReasons.length > 0;

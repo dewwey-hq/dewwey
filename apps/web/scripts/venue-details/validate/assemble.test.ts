@@ -174,6 +174,28 @@ describe("coerceRawArrays", () => {
   });
 });
 
+describe("assembleDocument post-passes (tick c3)", () => {
+  it("derives inquire_only for pricing_archetype and rental_charge_type when the pricing call found no prices, and requests a capacity repair for a bookable space without a row", () => {
+    const pages = [{ url: "https://v.com/weddings", text: "Weddings at V. Contact us for a proposal. The Grand Hall is our largest room.", snapshot_id: 1 }];
+    const spineRaw = {
+      ...miniVenueSpine(),
+      spine: {},
+      spaces: [{ id: "grand_hall", name: "Grand Hall", bookable_separately: true, source_url: "https://v.com/weddings" }],
+      capacities: [], inclusions: [], resources: [], vendor_lists: [], press_features: [], about: null, differentiator: null,
+    } as unknown as Parameters<typeof assembleDocument>[0]["spineRaw"];
+    const pricingRaw = { archetype: "inquire_only", paths: [], add_ons: [], add_on_categories: [], required_third_party: [], faqs: [], rates: {}, food_beverage: {} } as unknown as Parameters<typeof assembleDocument>[0]["pricingRaw"];
+    const out = assembleMiniVenue({ spine: spineRaw as unknown as RawSpineResult, pricing: pricingRaw as unknown as RawPricingResult, pages });
+    const spine = out.document.spine as unknown as Record<string, { status: string; value?: unknown }>;
+    expect(spine.pricing_archetype.status).toBe("stated");
+    expect(spine.pricing_archetype.value).toBe("inquire_only");
+    expect(spine.rental_charge_type.value).toBe("inquire_only");
+    expect(out.issues.filter((i) => i.code === "derived_inquire_only")).toHaveLength(2);
+    const cap = out.issues.find((i) => i.code === "space_without_capacity");
+    expect(cap?.path).toBe("/capacities/grand_hall");
+    expect(out.repairs.some((r) => r.field_path === "/capacities/grand_hall")).toBe(true);
+  });
+});
+
 describe("assembleDocument -- end to end on a mini venue", () => {
   it("produces a compare-ready document", () => {
     const result = assembleMiniVenue();
