@@ -26,7 +26,11 @@ import type { SpineTier, VenueDetailsV3 } from "../../lib/venueDetails/types";
 // venue's own per-guest packages = flat_plus_per_guest; flat_fee only when no per-guest packages
 // exist); hotel + per-guest packages = hotel_package; per_guest_from excludes lunch/daytime specials;
 // wedding-page capacity beats a homepage figure for the same space+layout.
-export const VENUE_DETAILS_PROMPT_VERSION = "venue-details-v3.3";
+// v3.4 (2026-09-20, tick c5, user decisions after c4): setting 'both' only for a real outdoor event
+// space; hotel + per-person packages = hotel_package (pricing style, not room rates); new bar value
+// in_house_or_byo; ASSET CANDIDATES now carry kinds (video / virtual_tour / floor_plan images, PDF
+// anchor titles) and the document's ASSETS blocks.
+export const VENUE_DETAILS_PROMPT_VERSION = "venue-details-v3.4";
 
 // ---------------------------------------------------------------------------
 // Raw tool-call output shapes (pre-validation; SPINE_TOOL / PRICING_TOOL args)

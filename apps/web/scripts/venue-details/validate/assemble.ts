@@ -36,6 +36,7 @@ import {
   type Rates,
   type RequiredThirdPartyCost,
   type Resource,
+  type ResourceKind,
   type Season,
   type Setting,
   type Space,
@@ -46,6 +47,7 @@ import {
   type VenueSpine,
 } from "../../../lib/venueDetails/types";
 import type { Issue, RawCapacityTuple, RawFaq, RawPricingResult, RawResource, RawSpace, RawSpineResult, RawTriField, RawVendorList, Repair } from "../contract";
+import { parseAssetsBlock } from "../crawl/htmlText";
 import { checkGrounding, normalizeUrl, type GroundingPage } from "./grounding";
 import { sanitizeSpacesAndCapacities } from "./spaces";
 import {
@@ -68,6 +70,14 @@ export interface AssemblePage {
   url: string;
   text: string;
   snapshot_id: number | null;
+  /** `venue_source_snapshots.title` -- for a PDF, the anchor-text fallback (task D061) when no
+   * PDF metadata title exists. Optional/undefined for callers that don't load it (resource
+   * augmentation then falls back to the URL's own filename for keyword matching). */
+  title?: string | null;
+  /** `venue_source_snapshots.has_text_layer` -- only meaningful for a PDF page; undefined/null
+   * means "unknown," which resource augmentation treats as false (never derives an unlabeled PDF
+   * as kind `other` without positive confirmation it has real extractable text). */
+  has_text_layer?: boolean | null;
 }
 
 export interface AssembleInput {
@@ -174,6 +184,42 @@ function filterVerbatimItems(items: string[], pageText: string | undefined, path
     }
   }
   return kept;
+}
+
+// ---------------------------------------------------------------------------
+// Capacity layout relabel (tick c4 LondonHouse): the model classifies EVERY row as seated_dinner
+// regardless of what its own label/quote says, so a venue's larger "Reception/Cocktail" figure
+// wins the seated-dinner headline over its real (smaller) seated number. Deterministic,
+// label-driven, and only fires when the row's own words clearly contradict the layout the model
+// gave it -- never when the label already agrees with the current layout.
+// ---------------------------------------------------------------------------
+
+const RELABEL_COCKTAIL_RE = /cocktail|standing|strolling|reception-style/i;
+const RELABEL_THEATER_RE = /theater|theatre|auditorium/i;
+const RELABEL_DANCE_RE = /dance|dancing|band|dj/i;
+const RELABEL_CEREMONY_RE = /ceremony/i;
+
+export interface LayoutRelabelResult {
+  layout: Layout;
+  changed: boolean;
+}
+
+/** Pure: given the model's `layout` plus the row's own `as_stated_label`/`quote`, returns the
+ * corrected layout (or the same one, unchanged) per the rules above. First matching rule wins;
+ * never relabels when the label already matches the layout it's already on. */
+export function relabelCapacityLayout(layout: Layout, asStatedLabel: string, quote: string): LayoutRelabelResult {
+  const hay = `${asStatedLabel} ${quote}`;
+  let next: Layout = layout;
+  if (layout === "seated_dinner" && RELABEL_COCKTAIL_RE.test(hay)) {
+    next = "cocktail_standing";
+  } else if (layout !== "theater" && RELABEL_THEATER_RE.test(hay)) {
+    next = "theater";
+  } else if (layout === "seated_dinner" && RELABEL_DANCE_RE.test(hay)) {
+    next = "seated_with_dance";
+  } else if (layout !== "ceremony_seated" && RELABEL_CEREMONY_RE.test(hay)) {
+    next = "ceremony_seated";
+  }
+  return { layout: next, changed: next !== layout };
 }
 
 // ---------------------------------------------------------------------------
@@ -358,6 +404,17 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   const pagesMap = new Map<string, GroundingPage>();
   for (const p of input.pages) pagesMap.set(normalizeUrl(p.url), { text: p.text, snapshotId: p.snapshot_id });
 
+  // D061 resources fix: every page's own "--- ASSETS ---" block (crawl/htmlText.ts), parsed once
+  // up front so both (1) grounding a model-cited resource against it and (2) deriving resources
+  // the model omitted can reuse it without re-parsing page text repeatedly.
+  const pageAssetsByPage = new Map<string, { page: AssemblePage; assets: ReturnType<typeof parseAssetsBlock> }>();
+  const allPageAssetUrls = new Set<string>();
+  for (const p of input.pages) {
+    const assets = parseAssetsBlock(p.text);
+    pageAssetsByPage.set(normalizeUrl(p.url), { page: p, assets });
+    for (const a of assets) allPageAssetUrls.add(normalizeUrl(a.url));
+  }
+
   const issues: Issue[] = [];
   const reviewReasons: string[] = [];
   const stats: GroundStats = { checked: 0, passed: 0, failed: 0, coverages: [] };
@@ -477,13 +534,23 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     }
     const extra = weakOrElsewhereIssue(g, `/capacities/${c.space_id}:${c.layout}`, null);
     if (extra) issues.push(extra);
+    const relabel = relabelCapacityLayout(c.layout as Layout, c.as_stated_label, c.quote);
+    if (relabel.changed) {
+      issues.push({
+        code: "capacity_layout_relabeled",
+        path: `/capacities/${c.space_id}:${relabel.layout}`,
+        severity: "warning",
+        tier: null,
+        message: `Relabeled "${c.as_stated_label}" from ${c.layout} to ${relabel.layout} -- its own label/quote contradicted the model's layout.`,
+      });
+    }
     groundedCapacities.push({
       space_id: c.space_id,
-      layout: c.layout as Layout,
+      layout: relabel.layout,
       min: c.min,
       max: c.max,
       as_stated_label: c.as_stated_label,
-      tile: tileFor(c.layout as Layout, c.as_stated_label),
+      tile: tileFor(relabel.layout, c.as_stated_label),
       condition: c.condition,
       quote: c.quote,
       source_url: g.sourceUrl,
@@ -792,8 +859,11 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   }
 
   // --- resources -----------------------------------------------------------------
+  const RESOURCES_CAP = 15;
   const rawResources: RawResource[] = input.spineRaw.resources ?? [];
-  const crawledAndAssetUrls = new Set<string>([...pagesMap.keys(), ...input.assetCandidateUrls.map(normalizeUrl)]);
+  // A model-cited resource whose URL appears in ANY page's ASSETS block is grounded even when its
+  // stated source_url wasn't itself crawled -- the block IS the evidence that the URL is real.
+  const crawledAndAssetUrls = new Set<string>([...pagesMap.keys(), ...input.assetCandidateUrls.map(normalizeUrl), ...allPageAssetUrls]);
   const resources: Resource[] = [];
   for (const r of rawResources) {
     if (JUNK_ASSET_RE.test(r.label) || JUNK_ASSET_RE.test(r.url)) {
@@ -819,7 +889,84 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
       source_url: sourceNorm,
       snapshot_id: page?.snapshotId ?? null,
     });
-    if (resources.length >= 15) break;
+    if (resources.length >= RESOURCES_CAP) break;
+  }
+
+  // --- resource augmentation (D061 golden-resources-recall fix) --------------------------
+  // Deterministic, additive-only: the model badly under-cites resources (golden recall as low as
+  // 1/8) because whole categories of real assets -- embeds behind an iframe/YouTube/Matterport
+  // link, floor-plan images, hashed-filename PDF menus -- were previously invisible to it or easy
+  // to skip. Everything added here is a real, crawled/asset-candidate URL; nothing the model
+  // itself cited is ever removed or replaced.
+  const citedResourceUrls = new Set(resources.map((r) => normalizeUrl(r.url)));
+
+  function addDerivedResource(candidate: { kind: ResourceKind; label: string; url: string; scope: Resource["scope"]; sourceUrl: string; snapshotId: number | null }, sourceDescription: string): void {
+    if (resources.length >= RESOURCES_CAP) return;
+    if (JUNK_ASSET_RE.test(candidate.label) || JUNK_ASSET_RE.test(candidate.url)) return;
+    const normUrl = normalizeUrl(candidate.url);
+    if (citedResourceUrls.has(normUrl)) return;
+    citedResourceUrls.add(normUrl);
+    resources.push({
+      id: `${candidate.kind}-derived-${resources.length}`,
+      kind: candidate.kind,
+      label: candidate.label,
+      url: candidate.url,
+      scope: candidate.scope,
+      embeddable: null,
+      has_text_layer: null,
+      checked_at: null,
+      source_url: candidate.sourceUrl,
+      snapshot_id: candidate.snapshotId,
+    });
+    issues.push({ code: "resource_derived", path: "/resources", severity: "warning", tier: null, message: `Added resource "${candidate.label}" from ${sourceDescription} -- the model didn't cite it.` });
+  }
+
+  // (a) every page's own ASSETS lines (video/virtual_tour/floor_plan embeds and images).
+  for (const { page, assets } of pageAssetsByPage.values()) {
+    const pageNorm = normalizeUrl(page.url);
+    for (const a of assets) {
+      addDerivedResource({ kind: a.kind, label: a.label || page.url, url: a.url, scope: "venue", sourceUrl: pageNorm, snapshotId: page.snapshot_id ?? null }, `${page.url}'s ASSETS block`);
+    }
+  }
+
+  // (b) PDF snapshots whose title (falling back to the URL's own filename) matches a known
+  // document type -- `other` only when the PDF is positively known to have a real text layer (an
+  // unlabeled, unreadable PDF is not worth surfacing as a resource).
+  const PDF_KIND_PATTERNS: [RegExp, ResourceKind][] = [
+    [/menu/i, "menu"],
+    [/bar|beverage/i, "bar_menu"],
+    [/brochure/i, "brochure"],
+    [/floor ?plan/i, "floor_plan"],
+    [/capacity/i, "capacity_sheet"],
+    [/contract|agreement/i, "contract"],
+    [/guideline|catering/i, "catering_guidelines"],
+  ];
+  const PDF_URL_RE = /\.pdf(\?|#|$)/i;
+  for (const p of input.pages) {
+    if (!PDF_URL_RE.test(p.url)) continue;
+    const fallbackLabel = p.url.split("/").pop() || p.url;
+    const label = p.title || fallbackLabel;
+    const hay = `${label} ${p.url}`;
+    const match = PDF_KIND_PATTERNS.find(([re]) => re.test(hay));
+    const kind: ResourceKind | null = match ? match[1] : p.has_text_layer ? "other" : null;
+    if (!kind) continue;
+    const pageNorm = normalizeUrl(p.url);
+    addDerivedResource({ kind, label, url: p.url, scope: "venue", sourceUrl: pageNorm, snapshotId: p.snapshot_id ?? null }, `PDF title/filename match ("${label}")`);
+  }
+
+  // (c) crawled page URLs whose own path says what they are -- the resource IS the page (a
+  // dedicated virtual-tour/gallery/floor-plans page), not an asset embedded within it.
+  const PAGE_KIND_PATTERNS: [RegExp, ResourceKind][] = [
+    [/virtual-?tour|360|tour\b/i, "virtual_tour"],
+    [/gallery|photos/i, "gallery"],
+    [/floor-?plans?/i, "floor_plan"],
+  ];
+  for (const p of input.pages) {
+    if (PDF_URL_RE.test(p.url)) continue;
+    const match = PAGE_KIND_PATTERNS.find(([re]) => re.test(p.url));
+    if (!match) continue;
+    const pageNorm = normalizeUrl(p.url);
+    addDerivedResource({ kind: match[1], label: p.title || p.url, url: p.url, scope: "venue", sourceUrl: pageNorm, snapshotId: p.snapshot_id ?? null }, `page URL pattern (${match[1]})`);
   }
 
   // --- vendor lists -----------------------------------------------------------------

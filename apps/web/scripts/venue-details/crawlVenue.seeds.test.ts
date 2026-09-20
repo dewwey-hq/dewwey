@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildSeedQueueItems, buildWeddingPageQueueItem, parseSeedsCsv, SEED_SCORE, WEDDING_PAGE_SCORE, type Seed } from "./crawlVenue";
+import { buildSeedQueueItems, buildWeddingPageQueueItem, parseSeedsCsv, pdfTitleFallback, SEED_SCORE, WEDDING_PAGE_SCORE, type Seed } from "./crawlVenue";
 
 describe("parseSeedsCsv", () => {
   test("parses account_id,url,note rows", () => {
@@ -147,5 +147,15 @@ describe("buildWeddingPageQueueItem", () => {
       "https://venue.com/brochure.pdf",
       "https://venue.com/faq",
     ]);
+  });
+});
+
+describe("pdfTitleFallback (D061: no PDF metadata title exists, so anchor text is the title)", () => {
+  test("uses the anchor text when it's non-empty (Diamond Garden's hashed-filename menus)", () => {
+    expect(pdfTitleFallback("American & Italian Menu")).toBe("American & Italian Menu");
+  });
+
+  test("falls back to null when the link had no anchor text", () => {
+    expect(pdfTitleFallback("")).toBeNull();
   });
 });

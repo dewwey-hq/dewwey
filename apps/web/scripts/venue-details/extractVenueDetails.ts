@@ -25,6 +25,7 @@ import { GOLDEN_ACCOUNT_IDS, GOLDEN_SLUGS } from "../../lib/venueDetails/golden"
 import { VENUE_DETAILS_SCHEMA_VERSION } from "../../lib/venueDetails/types";
 import { inputHash } from "../../lib/venueDetails/inputHash";
 import { readManifest, readCacheText } from "./crawl/cache";
+import { parseAssetsBlock } from "./crawl/htmlText";
 import { getSnapshotText, snapshotKey } from "./crawl/r2";
 import {
   PRICING_TOOL,
@@ -197,7 +198,29 @@ function pageScore(entry: { score: number | null; depth: number }): number {
 function assetCandidateFor(entry: { url: string; kind: "html" | "pdf"; title: string | null }): AssetCandidate | null {
   if (entry.kind !== "pdf") return null;
   const fallback = entry.url.split("/").pop() || entry.url;
-  return { url: entry.url, anchorText: entry.title ?? fallback };
+  return { url: entry.url, anchorText: entry.title ?? fallback, kind: "pdf" };
+}
+
+/** D061 resources fix: every non-PDF asset (video/virtual_tour/floor_plan) a page's own
+ * "--- ASSETS ---" block names (`crawl/htmlText.ts`'s `extractHtml`), pulled out of the FULL
+ * cached text up front so they survive `buildDocument`'s per-page truncation/drop -- the
+ * consolidated ASSET CANDIDATES block is always appended in full, regardless of which pages made
+ * the cut. */
+function pageAssetCandidates(pageUrl: string, text: string): AssetCandidate[] {
+  return parseAssetsBlock(text).map((a) => ({ url: a.url, anchorText: a.label || pageUrl, kind: a.kind }));
+}
+
+/** Dedupe by URL, keeping the first occurrence (a PDF/manifest-derived candidate, when both exist
+ * for the same URL, arrives before that page's own ASSETS-block candidates below it). */
+function dedupeAssetCandidates(candidates: AssetCandidate[]): AssetCandidate[] {
+  const seen = new Set<string>();
+  const out: AssetCandidate[] = [];
+  for (const c of candidates) {
+    if (seen.has(c.url)) continue;
+    seen.add(c.url);
+    out.push(c);
+  }
+  return out;
 }
 
 async function loadFromManifest(accountId: number): Promise<LoadedPages | null> {
@@ -214,12 +237,13 @@ async function loadFromManifest(accountId: number): Promise<LoadedPages | null> 
     snapshotShas.push(entry.sha256);
     const candidate = assetCandidateFor(entry);
     if (candidate) assetCandidates.push(candidate);
+    assetCandidates.push(...pageAssetCandidates(entry.finalUrl ?? entry.url, text));
     pages.push({ url: entry.finalUrl ?? entry.url, text, score: pageScore(entry), kind: entry.kind });
   }
 
   // Snapshot ids are resolved from the DB only when it's actually available (a plain --dry-run
   // against the local cache with no DB has none, which is fine -- dry-run never writes a run row).
-  return { pages, snapshotIds: [], snapshotShas, assetCandidates };
+  return { pages, snapshotIds: [], snapshotShas, assetCandidates: dedupeAssetCandidates(assetCandidates) };
 }
 
 async function loadFromDb(pool: Pool, accountId: number): Promise<LoadedPages> {
@@ -260,10 +284,11 @@ async function loadFromDb(pool: Pool, accountId: number): Promise<LoadedPages> {
     snapshotShas.push(r.sha256);
     const candidate = assetCandidateFor({ url: r.url, kind: r.kind, title: titleBySha.get(r.sha256) ?? null });
     if (candidate) assetCandidates.push(candidate);
+    assetCandidates.push(...pageAssetCandidates(r.url, text));
     pages.push({ url: r.url, text, score: pageScore({ score: r.score, depth: 0 }), kind: r.kind });
   }
 
-  return { pages, snapshotIds, snapshotShas, assetCandidates };
+  return { pages, snapshotIds, snapshotShas, assetCandidates: dedupeAssetCandidates(assetCandidates) };
 }
 
 /** With a DB: `venue_source_snapshots` is the source of truth (latest snapshot per URL, text from
@@ -333,6 +358,88 @@ async function callWithBackoff<T>(spec: CallSpec, maxAttempts = 4): Promise<Tool
     }
   }
   throw lastErr;
+}
+
+// ---------------------------------------------------------------------------
+// Shape retry: a tool reply whose array field came back as an unparseable STRING (tick c4,
+// 2026-09-20 -- Greenhouse's pricing `paths` was a 24,371-char string that didn't even
+// JSON.parse; Diamond Garden hit the same shape at c3 and it happened to fix itself on a retry).
+// Distinct from `callWithEnumRetry`'s enum-violation retry: this is a shape failure, not a value
+// failure, and needs a full re-issue of the SAME call rather than a corrective follow-up message.
+// ---------------------------------------------------------------------------
+
+/** Every known array field on the raw spine reply -- `assemble.ts`'s `coerceRawArrays` already
+ * recovers a JSON-encoded-array string for these once assembly runs; this list exists so a shape
+ * failure can be caught and retried BEFORE that (a genuinely malformed/truncated string, which
+ * `coerceRawArrays` can only fall back to treating as empty). */
+export const SPINE_ARRAY_FIELD_PATHS = ["spaces", "capacities", "inclusions", "resources", "vendor_lists", "press_features"];
+
+/** Same, for the pricing reply -- dotted paths reach into `food_beverage`'s own array fields. */
+export const PRICING_ARRAY_FIELD_PATHS = [
+  "paths",
+  "add_ons",
+  "add_on_categories",
+  "required_third_party",
+  "faqs",
+  "food_beverage.menus",
+  "food_beverage.bar_ladders",
+  "food_beverage.food_pills",
+  "food_beverage.bar_pills",
+  "food_beverage.notes",
+];
+
+/** Reads a dotted field path ("food_beverage.menus") off `payload`. Returns `undefined` for a
+ * missing/non-object path -- indistinguishable from "not present," which is fine: only a STRING
+ * value is ever flagged below. */
+function getByPath(payload: unknown, path: string): unknown {
+  let cur: unknown = payload;
+  for (const segment of path.split(".")) {
+    if (cur == null || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[segment];
+  }
+  return cur;
+}
+
+/** Names every field in `fieldPaths` whose value on `payload` is a STRING that does not
+ * `JSON.parse` into an array -- the shape failure a retry is worth (a string that DOES parse into
+ * an array is a recoverable encoding quirk `assemble.ts`'s `coerceRawArrays` already handles for
+ * free; an array, or a missing/null field, is never flagged). Pure -- no I/O. */
+export function findStringifiedArrayFields(payload: unknown, fieldPaths: string[]): string[] {
+  if (payload == null || typeof payload !== "object") return [];
+  const bad: string[] = [];
+  for (const path of fieldPaths) {
+    const value = getByPath(payload, path);
+    if (typeof value !== "string") continue;
+    let parsesToArray = false;
+    try {
+      parsesToArray = Array.isArray(JSON.parse(value));
+    } catch {
+      parsesToArray = false;
+    }
+    if (!parsesToArray) bad.push(path);
+  }
+  return bad;
+}
+
+/** Re-issues `spec` (same messages) exactly once when `fieldPaths` names a stringified-non-array
+ * field on the first reply, and keeps the retry's response either way -- if the retry also came
+ * back malformed, it's still preferred over the original (per spec: "prefer the retry when both
+ * fail, and let validation's malformed_array handle it" -- assemble.ts's `coerceRawArrays` turns
+ * a genuinely un-parseable field into `[]` with one issue rather than crashing). Cost/tokens from
+ * both calls are summed onto the kept result so the run's `cost_usd` reflects the retry. */
+async function callToolWithShapeRetry<T>(spec: CallSpec, fieldPaths: string[], accountId: number, label: string): Promise<ToolCallResult<T>> {
+  const first = await callWithBackoff<T>(spec);
+  const badFields = findStringifiedArrayFields(first.args, fieldPaths);
+  if (badFields.length === 0) return first;
+
+  console.log(`[extract-venue-details] account ${accountId}: shape_retry (${label}) fields=${badFields.join(", ")}`);
+  const retry = await callWithBackoff<T>(spec);
+  return {
+    ...retry,
+    costUsd: (first.costUsd ?? 0) + (retry.costUsd ?? 0),
+    inputTokens: first.inputTokens + retry.inputTokens,
+    outputTokens: first.outputTokens + retry.outputTokens,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -419,15 +526,20 @@ async function extractOneVenue(pool: Pool | null, target: VenueTarget, args: Arg
   const built = buildDocument(loaded.pages, args.maxInputChars, loaded.assetCandidates);
   const ctx: SpineUserMessageCtx = { name: target.name, websiteUrl: target.websiteUrl, documentText: built.text };
 
-  const spineCall = await callWithBackoff<RawSpineResult>({
-    model: args.model,
-    system: SYSTEM_PROMPT_SPINE,
-    user: buildSpineUserMessage(ctx),
-    toolName: SPINE_TOOL.name,
-    toolDescription: SPINE_TOOL.description,
-    parameters: SPINE_TOOL.parameters,
-    maxTokens: EXTRACT_MAX_TOKENS,
-  });
+  const spineCall = await callToolWithShapeRetry<RawSpineResult>(
+    {
+      model: args.model,
+      system: SYSTEM_PROMPT_SPINE,
+      user: buildSpineUserMessage(ctx),
+      toolName: SPINE_TOOL.name,
+      toolDescription: SPINE_TOOL.description,
+      parameters: SPINE_TOOL.parameters,
+      maxTokens: EXTRACT_MAX_TOKENS,
+    },
+    SPINE_ARRAY_FIELD_PATHS,
+    target.accountId,
+    "spine"
+  );
   let totalCost = spineCall.costUsd ?? 0;
   let totalInputTokens = spineCall.inputTokens;
   let totalOutputTokens = spineCall.outputTokens;
@@ -441,15 +553,20 @@ async function extractOneVenue(pool: Pool | null, target: VenueTarget, args: Arg
     console.log(`[extract-venue-details] account ${target.accountId}: auto-skipping pricing call (inquire_only, no "$" in document)`);
   } else {
     const spineSummary = buildSpineSpaceSummary(spineCall.args);
-    const pricingResult = await callWithBackoff<RawPricingResult>({
-      model: args.model,
-      system: SYSTEM_PROMPT_PRICING,
-      user: buildPricingUserMessage(ctx, spineSummary),
-      toolName: PRICING_TOOL.name,
-      toolDescription: PRICING_TOOL.description,
-      parameters: PRICING_TOOL.parameters,
-      maxTokens: EXTRACT_MAX_TOKENS,
-    });
+    const pricingResult = await callToolWithShapeRetry<RawPricingResult>(
+      {
+        model: args.model,
+        system: SYSTEM_PROMPT_PRICING,
+        user: buildPricingUserMessage(ctx, spineSummary),
+        toolName: PRICING_TOOL.name,
+        toolDescription: PRICING_TOOL.description,
+        parameters: PRICING_TOOL.parameters,
+        maxTokens: EXTRACT_MAX_TOKENS,
+      },
+      PRICING_ARRAY_FIELD_PATHS,
+      target.accountId,
+      "pricing"
+    );
     pricingCall = pricingResult.args;
     totalCost += pricingResult.costUsd ?? 0;
     totalInputTokens += pricingResult.inputTokens;

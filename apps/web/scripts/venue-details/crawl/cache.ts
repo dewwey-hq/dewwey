@@ -33,6 +33,11 @@ export interface CacheManifestEntry {
    * before this field existed. */
   source?: "crawl" | "manual_seed" | "wedding_page";
   seedNote?: string | null;
+  /** Non-PDF asset embeds/images found on an HTML page (`crawl/htmlText.ts`'s `extractHtml`
+   * `assets` result) -- carried on the manifest entry so the offline (`--dry-run`/no-DB) path can
+   * still build ASSET CANDIDATES from them without re-parsing the cached text. Omitted for PDFs
+   * and for entries written before this field existed. */
+  assets?: { kind: "video" | "virtual_tour" | "floor_plan"; url: string; label: string }[];
 }
 
 export interface CacheManifest {

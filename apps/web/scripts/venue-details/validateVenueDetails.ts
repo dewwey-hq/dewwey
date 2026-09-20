@@ -188,8 +188,12 @@ async function lookupName(pool: Pool, accountId: number): Promise<string> {
 
 async function loadPagesForRun(pool: Pool, accountId: number, snapshotIds: number[]): Promise<AssemblePage[]> {
   if (snapshotIds.length === 0) return [];
-  const { rows } = await pool.query<{ id: string; url: string; sha256: string }>(
-    `select id::text as id, url, sha256 from venue_source_snapshots where account_id = $1 and id = any($2::bigint[])`,
+  // title/has_text_layer feed validate/assemble.ts's resource augmentation (D061): a PDF's title
+  // (the anchor-text fallback when there's no PDF metadata title, crawlVenue.ts) is what lets a
+  // hashed-filename menu/brochure/contract be recognized by keyword; has_text_layer gates the
+  // `other` fallback for an otherwise-unlabeled PDF.
+  const { rows } = await pool.query<{ id: string; url: string; sha256: string; title: string | null; has_text_layer: boolean | null }>(
+    `select id::text as id, url, sha256, title, has_text_layer from venue_source_snapshots where account_id = $1 and id = any($2::bigint[])`,
     [accountId, snapshotIds]
   );
   const pages: AssemblePage[] = [];
@@ -202,7 +206,7 @@ async function loadPagesForRun(pool: Pool, accountId: number, snapshotIds: numbe
         continue;
       }
     }
-    pages.push({ url: r.url, text, snapshot_id: Number(r.id) });
+    pages.push({ url: r.url, text, snapshot_id: Number(r.id), title: r.title, has_text_layer: r.has_text_layer });
   }
   return pages;
 }

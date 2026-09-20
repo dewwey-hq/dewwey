@@ -147,7 +147,7 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
   },
   setting: {
     valueSchema: enumSchema(SETTINGS),
-    description: "Whether events happen indoor, outdoor, or both, based on the spaces actually described.",
+    description: "indoor / outdoor / both. 'both' ONLY when the venue holds ceremonies or receptions in a real outdoor event space it describes as such (a garden, a courtyard, a lawn, a rooftop reception). A terrace used for photos, a patio for cocktails, or a parking lot that 'can be transformed' does not make a venue 'both' -- those venues are indoor.",
   },
   one_event_per_day: {
     valueSchema: { type: "boolean" },
@@ -190,8 +190,8 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
   bar: {
     valueSchema: enumSchema(BAR_POLICIES),
     description:
-      "in_house: the venue's own bar pours and outside alcohol is not allowed ('not a BYOB venue', 'maintains a liquor license' = in_house). byob: bring your own, no in-house bar needed. byo_with_corkage: outside alcohol IS allowed for a corkage fee " +
-      "(ANY corkage fee mentioned anywhere means this; a venue that forbids outside alcohol is never byo_with_corkage). dry: no alcohol.",
+      "in_house: the venue's own bar pours and outside alcohol is not allowed ('not a BYOB venue', 'maintains a liquor license' = in_house). byob: bring your own, no in-house bar. byo_with_corkage: outside alcohol IS allowed for a corkage fee " +
+      "(ANY corkage fee mentioned anywhere means this). in_house_or_byo: the venue sells its own bar packages AND lets you bring your own alcohol with NO corkage fee ('open bar, cash bar, or bring in your own alcohol'). dry: no alcohol.",
   },
   rental_charge_type: {
     valueSchema: enumSchema(RENTAL_CHARGE_TYPES),
@@ -291,7 +291,7 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
     valueSchema: enumSchema(PRICING_ARCHETYPES),
     description:
       "all_inclusive_per_guest: one all-in per-person price at a non-hotel venue. rental_plus_fb_minimum: rental fee + separate F&B minimum. rental_plus_per_guest_packages: rental fee + named per-guest tiers. " +
-      "raw_space_byo: rental fee for the space, open catering, NO food-and-beverage minimum (rental_plus_fb_minimum requires that an F&B minimum actually applies). hotel_package: a HOTEL selling per-person wedding packages (venue_kind hotel + per-guest packages = hotel_package, never all_inclusive_per_guest). inquire_only: the site publishes no prices at all -- use it, never not_stated, when events are clearly sold without numbers. mixed: genuinely combines more than one.",
+      "raw_space_byo: rental fee for the space, open catering, NO food-and-beverage minimum (rental_plus_fb_minimum requires that an F&B minimum actually applies). hotel_package: REQUIRED whenever venue_kind is hotel and the venue prices weddings per person -- a hotel's per-guest wedding packages are hotel_package, never all_inclusive_per_guest (this is about the pricing style, not room rates). inquire_only: the site publishes no prices at all -- use it, never not_stated, when events are clearly sold without numbers. mixed: genuinely combines more than one.",
   },
   price_from_usd: {
     valueSchema: { type: "number" },
@@ -720,7 +720,7 @@ export const PRICING_TOOL = {
 
 export const SYSTEM_PROMPT_SPINE = `You extract a wedding venue's comparison SPINE and detail layer from its own website text for a wedding-planning product.
 
-Use ONLY the provided document. Each section starts with "--- PAGE: <url> ---". A trailing "--- ASSET CANDIDATES ---" block (if present) lists real PDF/asset URLs you may cite in resources[] -- never invent a URL that isn't in that block or in a PAGE header.
+Use ONLY the provided document. Each section starts with "--- PAGE: <url> ---". A trailing "--- ASSET CANDIDATES ---" block (if present) lists real asset URLs you may cite in resources[], one per line as "<kind> :: <url> :: <label>" -- kind pdf is a document (menu/brochure/floor plan/etc.), video and virtual_tour are embedded media (YouTube/Vimeo/Matterport/360 tours), floor_plan is a floor-plan/seating-chart image. Never invent a URL that isn't in that block or in a PAGE header.
 
 RULES THAT APPLY EVERYWHERE:
 - Never guess. If a field is not clearly stated, its spine status is not_stated. Unknown beats wrong.
@@ -733,7 +733,7 @@ RULES THAT APPLY EVERYWHERE:
 - Spaces: wedding/event rooms only. Hotels: only rooms listed under Weddings. Never amalgamate two named rooms into one space unless the site itself sells that combination as its own product. The same physical area described on two different pages is ONE space. A venue with exactly one undifferentiated space gets exactly one space entry, named after the venue.
 - differentiator is null for most venues -- only fill it when the site demonstrates something genuinely unique with real specifics, never from generic marketing adjectives ("stunning", "unforgettable").
 - about is Sourced (not quote-grounded): keep it under 600 chars, no em dashes, and never state a number that doesn't appear somewhere in the crawled pages.
-- resources[] URLs must come from the ASSET CANDIDATES block or a PAGE header -- cap at 15; a single consolidated wedding brochure beats many thin resources.
+- resources[] URLs must come from the ASSET CANDIDATES block or a PAGE header -- cap at 15; a single consolidated wedding brochure beats many thin resources. A YouTube/Vimeo embed listed as kind video, a Matterport/360 embed listed as kind virtual_tour, and a floor-plan/seating-chart image listed as kind floor_plan are all valid resources -- cite them with that kind, not just PDFs.
 - vendor_lists[] needs >= 2 real business names or should be omitted entirely.
 - spaces[].sq_ft_label/ceiling_label: only set when the site states size as a range or approximate string rather than a plain number; sq_ft/ceiling_ft still carry the first integer found in it.
 
@@ -779,6 +779,11 @@ export interface DocPage {
 export interface AssetCandidate {
   url: string;
   anchorText: string;
+  /** "pdf" (existing PDF-anchor candidates), or "video" / "virtual_tour" / "floor_plan" for a
+   * candidate parsed from a page's own "--- ASSETS ---" block (D061 resources fix, `crawl/
+   * htmlText.ts`'s `parseAssetsBlock`). Defaults to "pdf" when omitted, so call sites/tests written
+   * before this field existed keep compiling and rendering the same line shape. */
+  kind?: string;
 }
 
 export interface BuiltDocument {
@@ -835,7 +840,7 @@ export function buildDocument(pages: DocPage[], maxChars: number, assetCandidate
 
   let full = body;
   if (assetCandidates.length > 0) {
-    const block = `\n\n--- ASSET CANDIDATES ---\n${assetCandidates.map((c) => `${c.url} :: ${c.anchorText || "(no anchor text)"}`).join("\n")}`;
+    const block = `\n\n--- ASSET CANDIDATES ---\n${assetCandidates.map((c) => `${c.kind ?? "pdf"} :: ${c.url} :: ${c.anchorText || "(no anchor text)"}`).join("\n")}`;
     full += block;
   }
 

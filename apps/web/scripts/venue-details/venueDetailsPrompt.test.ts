@@ -317,6 +317,22 @@ describe("buildDocument", () => {
     const withoutAssets = buildDocument([pageA], 10_000);
     expect(withoutAssets.text).not.toContain("ASSET CANDIDATES");
   });
+
+  it("prefixes each ASSET CANDIDATES line with its kind, defaulting to pdf when omitted (D061)", () => {
+    const doc = buildDocument([pageA], 10_000, [
+      { url: "https://a.com/brochure.pdf", anchorText: "Wedding Brochure" },
+      { url: "https://a.com/floorplan.jpg", anchorText: "Floor Plan", kind: "floor_plan" },
+      { url: "https://vimeo.com/123", anchorText: "Tour Video", kind: "video" },
+      { url: "https://my.matterport.com/show/?m=xyz", anchorText: "", kind: "virtual_tour" },
+    ]);
+    const lines = doc.text.split("--- ASSET CANDIDATES ---\n")[1].split("\n");
+    expect(lines).toEqual([
+      "pdf :: https://a.com/brochure.pdf :: Wedding Brochure",
+      "floor_plan :: https://a.com/floorplan.jpg :: Floor Plan",
+      "video :: https://vimeo.com/123 :: Tour Video",
+      "virtual_tour :: https://my.matterport.com/show/?m=xyz :: (no anchor text)",
+    ]);
+  });
 });
 
 describe("buildSpineUserMessage / buildPricingUserMessage", () => {

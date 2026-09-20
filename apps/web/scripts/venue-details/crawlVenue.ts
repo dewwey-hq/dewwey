@@ -262,6 +262,17 @@ function isPdfUrl(url: string): boolean {
   }
 }
 
+/** No PDF metadata-title extraction exists (`crawl/pdfText.ts` never reads it), so a PDF's title
+ * is always missing at fetch time -- falls back to the anchor text the link was discovered with
+ * (already on the queue item) rather than leave it null. Diamond Garden's menus are hashed
+ * filenames (`/_files/ugd/4b61b7_….pdf`) linked as "American & Italian Menu"; without this
+ * fallback both the manifest entry and `venue_source_snapshots.title` carry `title: null`, and the
+ * extractor's ASSET CANDIDATES block says "(no anchor text)" for a real, useful PDF. Pure --
+ * exported for unit testing. */
+export function pdfTitleFallback(anchorText: string): string | null {
+  return anchorText || null;
+}
+
 /** Builds the depth-0, score-WEDDING_PAGE_SCORE queue item for a venue's own wedding page
  * (`venue_websites.wedding_url` or `--wedding-url-override`), or null when there's no
  * wedding_url or it's the same page as the homepage -- enqueuing a duplicate would just be
@@ -414,16 +425,20 @@ async function crawlOneVenue(
       if (hasTextLayer) summary.pdfsWithTextLayer++;
       else summary.pdfsWithoutTextLayer++;
 
+      const pdfTitle = pdfTitleFallback(item.anchorText);
+
       await writeCacheEntry(
         accountId,
-        { url: item.url, finalUrl: outcome.finalUrl, kind: "pdf", title: null, hasTextLayer, depth: item.depth, score: item.score, source, seedNote: item.seedNote ?? null },
+        { url: item.url, finalUrl: outcome.finalUrl, kind: "pdf", title: pdfTitle, hasTextLayer, depth: item.depth, score: item.score, source, seedNote: item.seedNote ?? null },
         text
       );
 
       // The fetch row's crawl_batch is unchanged by seeding -- it stays whatever --crawl-batch
       // says regardless of source; "manual_seed" is a summary/cache-manifest concept only.
+      // `recordSnapshotAndFetch`'s title only reaches the DB on INSERT (a brand-new snapshot row)
+      // -- an existing (unchanged-by-hash) row's title is left as whatever it already was.
       if (!args.dryRun && pool) {
-        await recordSnapshotAndFetch(pool, accountId, item, outcome, "pdf", hash, text, null, hasTextLayer, args.crawlBatch!);
+        await recordSnapshotAndFetch(pool, accountId, item, outcome, "pdf", hash, text, pdfTitle, hasTextLayer, args.crawlBatch!);
       }
 
       summary.entries.push({ url: item.url, kind: "pdf", depth: item.depth, score: item.score, outcome: "fetched", chars: text.length, hasTextLayer, offsite, source, seedNote: item.seedNote });
@@ -432,12 +447,26 @@ async function crawlOneVenue(
 
     // HTML
     const html = new TextDecoder().decode(outcome.bytes);
-    const { text, title, links, assetCandidates, isJsShell } = await extractHtml(html, outcome.finalUrl ?? item.url);
+    const { text, title, links, assetCandidates, assets, isJsShell } = await extractHtml(html, outcome.finalUrl ?? item.url);
     const hash = sha256(text);
 
     await writeCacheEntry(
       accountId,
-      { url: item.url, finalUrl: outcome.finalUrl, kind: "html", title, hasTextLayer: null, depth: item.depth, score: item.score, source, seedNote: item.seedNote ?? null },
+      {
+        url: item.url,
+        finalUrl: outcome.finalUrl,
+        kind: "html",
+        title,
+        hasTextLayer: null,
+        depth: item.depth,
+        score: item.score,
+        source,
+        seedNote: item.seedNote ?? null,
+        // Carried on the manifest entry (not just embedded in `text`'s trailing ASSETS block) so
+        // the offline path (`--dry-run` / no DB) can build ASSET CANDIDATES without re-parsing the
+        // cached text -- omitted entirely when the page has none, to keep old manifests' shape.
+        ...(assets.length > 0 ? { assets } : {}),
+      },
       text
     );
 

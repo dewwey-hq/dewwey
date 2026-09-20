@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isCompareReady } from "../../../lib/venueDetails/tiers";
 import { headlineCapacity } from "../../../lib/venueDetails/derive";
 import type { RawPricingResult, RawSpineResult } from "../contract";
-import { assembleDocument, computeSalesTaxSource, tileFor, type AssemblePage, coerceRawArrays } from "./assemble";
+import { assembleDocument, computeSalesTaxSource, relabelCapacityLayout, tileFor, type AssemblePage, coerceRawArrays } from "./assemble";
 
 function emptyPricing(): RawPricingResult {
   return {
@@ -581,5 +581,211 @@ describe("assembleDocument -- FAQ off-topic gate", () => {
     const result = assembleMiniVenue({ pricing, pages });
     expect(result.document.faqs).toHaveLength(0);
     expect(result.reviewReasons).toContain("hotel_faq_contamination");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// relabelCapacityLayout (coordinator addendum B, tick c4 LondonHouse)
+// ---------------------------------------------------------------------------
+
+describe("relabelCapacityLayout", () => {
+  it("relabels a seated_dinner row labeled cocktail/reception-style to cocktail_standing", () => {
+    expect(relabelCapacityLayout("seated_dinner", "Reception/Cocktail", "").layout).toBe("cocktail_standing");
+  });
+
+  it("leaves a plain seated_dinner row with a plain seated label unchanged", () => {
+    const r = relabelCapacityLayout("seated_dinner", "Seated", "Seated dinner for up to 190 guests");
+    expect(r).toEqual({ layout: "seated_dinner", changed: false });
+  });
+
+  it("relabels theater/auditorium wording to theater", () => {
+    expect(relabelCapacityLayout("seated_dinner", "Theater Style", "").layout).toBe("theater");
+  });
+
+  it("relabels seated + dance/band/dj wording to seated_with_dance", () => {
+    expect(relabelCapacityLayout("seated_dinner", "Seated with Live Band", "").layout).toBe("seated_with_dance");
+  });
+
+  it("relabels ceremony wording to ceremony_seated", () => {
+    expect(relabelCapacityLayout("seated_dinner", "Ceremony Seating", "").layout).toBe("ceremony_seated");
+  });
+
+  it("never relabels when the label already matches the current layout", () => {
+    expect(relabelCapacityLayout("cocktail_standing", "Cocktail Reception", "").changed).toBe(false);
+    expect(relabelCapacityLayout("theater", "Theater Style", "").changed).toBe(false);
+    expect(relabelCapacityLayout("ceremony_seated", "Ceremony", "").changed).toBe(false);
+  });
+
+  it("checks the quote too, not just as_stated_label", () => {
+    expect(relabelCapacityLayout("seated_dinner", "Standard", "A standing cocktail reception for up to 275 guests").layout).toBe("cocktail_standing");
+  });
+});
+
+describe("assembleDocument -- capacity layout relabel integration (tick c4 LondonHouse shape)", () => {
+  it("relabels the larger reception/cocktail-labeled seated_dinner row to cocktail_standing; the plain seated row stays seated_dinner", () => {
+    const page: AssemblePage = {
+      url: "https://londonhousechicago.com/weddings",
+      text: "The Juliette seats up to 190 guests for a seated dinner. The Juliette Reception/Cocktail layout holds up to 275 guests.",
+      snapshot_id: 1,
+    };
+    const spine = emptySpine();
+    spine.spaces = [
+      {
+        id: "juliette",
+        name: "Juliette",
+        structure_label: null,
+        sq_ft: null,
+        sq_ft_label: null,
+        sq_ft_outdoor: null,
+        ceiling_ft: null,
+        ceiling_label: null,
+        setting: null,
+        bookable_separately: true,
+        description: null,
+        includes_summary: null,
+        source_url: page.url,
+      },
+    ];
+    spine.capacities = [
+      { space_id: "juliette", layout: "seated_dinner", min: null, max: 190, as_stated_label: "Seated", condition: null, quote: "The Juliette seats up to 190 guests for a seated dinner", source_url: page.url },
+      {
+        space_id: "juliette",
+        layout: "seated_dinner",
+        min: null,
+        max: 275,
+        as_stated_label: "Reception/Cocktail",
+        condition: null,
+        quote: "The Juliette Reception/Cocktail layout holds up to 275 guests",
+        source_url: page.url,
+      },
+    ];
+    const result = assembleDocument({
+      accountId: 2,
+      name: "LondonHouse",
+      websiteUrl: page.url,
+      runId: 1,
+      promptVersion: "venue-details-v3.3",
+      model: "test",
+      extractedAt: "2026-09-20T00:00:00.000Z",
+      spineRaw: spine,
+      pricingRaw: null,
+      pages: [page],
+      assetCandidateUrls: [],
+    });
+
+    const capacities = result.document.capacities;
+    expect(capacities).toHaveLength(2);
+    const seated = capacities.find((c) => c.max === 190)!;
+    const cocktail = capacities.find((c) => c.max === 275)!;
+    expect(seated.layout).toBe("seated_dinner");
+    expect(seated.tile).toBe("seated");
+    expect(cocktail.layout).toBe("cocktail_standing");
+    expect(cocktail.tile).toBe("cocktail");
+    expect(result.issues.some((i) => i.code === "capacity_layout_relabeled")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Resource augmentation + ASSETS-block grounding (D061 golden-resources-recall fix)
+// ---------------------------------------------------------------------------
+
+describe("assembleDocument -- resource augmentation", () => {
+  it("adds a missing 360-tour page and a hashed-filename menu PDF the model didn't cite, without duplicating a model-cited resource, and keeps junk out", () => {
+    const homePage: AssemblePage = { url: "https://venue.com/weddings", text: "Some homepage content about weddings.", snapshot_id: 10 };
+    const tourPage: AssemblePage = {
+      url: "https://venue.com/360-tour-banquet-hall-rental",
+      text: "Take our 360 tour.\n\n--- ASSETS ---\nvirtual_tour | https://venue.com/360-tour-embed | 360 Degree Video Tour\nvideo | https://venue.com/privacy-policy-video | Privacy Policy Statement",
+      snapshot_id: 11,
+    };
+    // Diamond Garden shape: a hashed-filename PDF whose only human label is the anchor-text
+    // fallback title (D061 part 2) -- the filename alone would never match /menu/i.
+    const menuPdf: AssemblePage = { url: "https://venue.com/_files/ugd/4b61b7_abc123.pdf", text: "Menu contents.", snapshot_id: 12, title: "American & Italian Menu" };
+    const brochurePdf: AssemblePage = { url: "https://venue.com/brochure.pdf", text: "Brochure contents.", snapshot_id: 13, title: "Wedding Brochure" };
+
+    const spine = emptySpine();
+    spine.resources = [{ kind: "brochure", label: "Wedding Brochure", url: brochurePdf.url, scope: "venue", source_url: brochurePdf.url }];
+
+    const result = assembleDocument({
+      accountId: 3,
+      name: "Test Venue",
+      websiteUrl: homePage.url,
+      runId: 1,
+      promptVersion: "venue-details-v3.3",
+      model: "test",
+      extractedAt: "2026-09-20T00:00:00.000Z",
+      spineRaw: spine,
+      pricingRaw: null,
+      pages: [homePage, tourPage, menuPdf, brochurePdf],
+      assetCandidateUrls: [brochurePdf.url, menuPdf.url],
+    });
+
+    const resources = result.document.resources;
+    const byKindUrl = resources.map((r) => `${r.kind}:${r.url}`);
+    expect(byKindUrl).toContain("virtual_tour:https://venue.com/360-tour-embed");
+    expect(byKindUrl).toContain(`menu:${menuPdf.url}`);
+
+    // model-cited brochure appears exactly once, never duplicated by the PDF-pattern augmentation
+    // pass (its title also matches /brochure/i).
+    expect(resources.filter((r) => r.url === brochurePdf.url)).toHaveLength(1);
+
+    // junk (a "Privacy Policy" labeled asset, even though it's a real ASSETS-block entry) is dropped.
+    expect(resources.some((r) => r.url === "https://venue.com/privacy-policy-video")).toBe(false);
+
+    // every addition (tour + menu) is flagged, never silently merged in.
+    const derivedIssues = result.issues.filter((i) => i.code === "resource_derived");
+    expect(derivedIssues.map((i) => i.message).join(" ")).toContain("360 Degree Video Tour");
+    expect(derivedIssues.map((i) => i.message).join(" ")).toContain("American & Italian Menu");
+  });
+
+  it("adds a page whose own URL says what it is (virtual-tour/gallery/floor-plans) using the page itself as the resource", () => {
+    const homePage: AssemblePage = { url: "https://venue.com/weddings", text: "Homepage.", snapshot_id: 20 };
+    const galleryPage: AssemblePage = { url: "https://venue.com/gallery", text: "Photo gallery.", snapshot_id: 21 };
+    const floorPlansPage: AssemblePage = { url: "https://venue.com/floor-plans/", text: "Floor plans page.", snapshot_id: 22 };
+
+    const result = assembleDocument({
+      accountId: 4,
+      name: "Test Venue",
+      websiteUrl: homePage.url,
+      runId: 1,
+      promptVersion: "venue-details-v3.3",
+      model: "test",
+      extractedAt: "2026-09-20T00:00:00.000Z",
+      spineRaw: emptySpine(),
+      pricingRaw: null,
+      pages: [homePage, galleryPage, floorPlansPage],
+      assetCandidateUrls: [],
+    });
+
+    const byKindUrl = result.document.resources.map((r) => `${r.kind}:${r.url}`);
+    expect(byKindUrl).toContain(`gallery:${galleryPage.url}`);
+    expect(byKindUrl).toContain(`floor_plan:${floorPlansPage.url}`);
+  });
+
+  it("grounds a model-cited resource whose URL is only known via a page's own ASSETS block (not assetCandidateUrls)", () => {
+    const page: AssemblePage = {
+      url: "https://venue.com/weddings",
+      text: "Content about weddings.\n\n--- ASSETS ---\nvideo | https://vimeo.com/12345 | Venue Tour",
+      snapshot_id: 30,
+    };
+    const spine = emptySpine();
+    spine.resources = [{ kind: "video", label: "Venue Tour", url: "https://vimeo.com/12345", scope: "venue", source_url: page.url }];
+
+    const result = assembleDocument({
+      accountId: 5,
+      name: "Test Venue",
+      websiteUrl: page.url,
+      runId: 1,
+      promptVersion: "venue-details-v3.3",
+      model: "test",
+      extractedAt: "2026-09-20T00:00:00.000Z",
+      spineRaw: spine,
+      pricingRaw: null,
+      pages: [page],
+      assetCandidateUrls: [],
+    });
+
+    expect(result.document.resources).toHaveLength(1);
+    expect(result.document.resources[0].url).toBe("https://vimeo.com/12345");
+    expect(result.issues.some((i) => i.code === "resource_not_crawled")).toBe(false);
   });
 });
