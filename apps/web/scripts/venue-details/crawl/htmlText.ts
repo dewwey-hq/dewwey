@@ -207,7 +207,8 @@ export function parseAssetsBlock(text: string): Asset[] {
     const parts = line.split(" | ");
     if (parts.length < 2) continue;
     const kind = parts[0].trim();
-    const url = parts[1]?.trim() ?? "";
+    // An empty label leaves "url |" after the line trim: strip the dangling separator.
+    const url = (parts[1]?.trim() ?? "").replace(/\s*\|$/, "");
     const label = parts.slice(2).join(" | ").trim();
     if (!url || !(ASSET_KINDS as readonly string[]).includes(kind)) continue;
     assets.push({ kind: kind as AssetKind, url, label });

@@ -330,6 +330,10 @@ describe("canonicalVideoUrl", () => {
 });
 
 describe("parseAssetsBlock", () => {
+  it("keeps a clean URL when the label is empty (dangling separator)", () => {
+    const text = "page text\n\n--- ASSETS ---\nvideo | https://vimeo.com/325970909 | \n";
+    expect(parseAssetsBlock(text)).toEqual([{ kind: "video", url: "https://vimeo.com/325970909", label: "" }]);
+  });
   test("round-trips extractHtml's own appended block", async () => {
     const html = `<h2>Floor Plans</h2><img src="/images/plan.jpg" alt="Floor Plan"><iframe src="https://www.youtube.com/embed/abc" title="Tour Video"></iframe>`;
     const { text } = await extractHtml(html, BASE);
