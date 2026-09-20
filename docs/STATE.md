@@ -117,104 +117,66 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
      Then validate → repair → `scoreAgainstGolden.ts --source runs --mustnot` and iterate the prompt.
 4. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
 
-## Second mission (parallel window, 2026-09-19) — D061 Acquisition loop: commit 1 + pilot done, Gate 0 passed
+## Second mission (parallel window) — D061 Acquisition loop: month-1 ticks through probes A + low-types DONE (2026-09-20 05:45 UTC)
 
-Decision: `docs/decisions.md` D061. Plan of record `~/.claude/plans/on-1-what-do-joyful-church.md`
-(rev 2). README `docs/engineering/acquisition-loop/README.md`. Spend so far: **Apify $0.575**
-(cycle 09-17 → 10-16, $28.29 left), **OpenRouter $0.30**.
+Decision + narrative: `docs/decisions.md` D061 and its addenda. Plan of record
+`~/.claude/plans/on-1-what-do-joyful-church.md` (rev 2). README `docs/engineering/acquisition-loop/README.md`.
+All code committed on local `main` (not pushed). Scripts: `apps/web/scripts/acquire/{applyAcquisitionSchema,
+apifyClient,ingest,runTick,targets,measure,reportAcquisitionFunnel,reportSpotCheck}.ts`; chain runner for a
+batch: scratchpad `chain.sh <batch>` (parse → cluster v2 → cluster A1 → reconcile → reader v2 → reader A1
+→ creation dry-runs → funnel; **never `head` its output**).
 
-**State:** schema applied (`ops.crawl_targets/crawl_runs/crawl_run_seeds/post_observations/
-creation_decisions`, `post_images`, `v_ig_posts`, `structural_post_vendor_evidence` re-sourced +
-`structural_post_vendor_evidence_for_batch(batch_id)`); pilot tick `acq-20260919-pilot` fetched 249
-posts (98 new), parsed (49 full stacks), clustered (55 candidates), read (47 THIS_VENUE ≥ 0.8),
-created **53 weddings** (`-create-2` = 2 A1, `-create-3` = 43 v2, `-create-4` = 8 human-confirmed;
-`-create-1` was reverted and re-created as the rollback rehearsal). Weddings **6,025**. Funnel:
-`tmp_analysis/acquisition_funnel_acq-20260919-pilot_2026-09-19.md`. Provenance drill works
-(`tmp_analysis/d061_post_provenance.sql -v wedding_id=…`).
+**Day 1 result (2026-09-19 → 20):** weddings **5,972 → 6,446**, **474 created by the loop** (+34 Tigerlily
+re-anchored, not added). Spend: **Apify $16.19** (of $29; probes B + vendor tick in flight add ≈$4.7),
+**OpenRouter $4.24**. Posts fetched 6,063 + profiles 544; 5,522 new posts; 1,369+ images in R2.
 
-**Blind spot-check done (user, 2026-09-19 night, 55 posts via `/label/candidates?spotcheck=acq-…&n=100`):**
-model THIS_VENUE precision **45/47 = 95.7% → PASS** (bar 95%), overall agreement 45/55 = 81.8%.
-Report: `tmp_analysis/spot_check_acq-20260919-pilot_2026-09-20.md`. Resolution (user's calls): all 8
-candidates the human verdicts confirmed were created (`create-4`, incl. 3 vendor posts with a venue
-credit and no couple — the user's coverage standard, now in memory + backlog); both model-created
-weddings the human had labeled NOT_WEDDING were **kept** (superseding THIS_VENUE rows under `jeremy`,
-`tmp_analysis/d061_spotcheck_keep_two.sql`). Pilot total: **53 weddings** (2 + 43 + 8), weddings
-**6,025**. Reader recall misses (6 at 0.95) are a backlog item (future-date misread; vendor-pitch
-standard) — plan file / README.
+| Tick | Targets | $ | New posts | Weddings | w/post | thin-venue weddings | venues → 6+ |
+|---|---|---|---|---|---|---|---|
+| Pilot (proven venues) | 10 | 0.58 | 98 | 53 | 0.21 | 0 | 0 |
+| Canary vendor feeds | 5 | 0.29 | 82 | 23 | 0.18 | 5 | 0 |
+| Canary thin venues | 20 | 1.13 | 477 | 37 | 0.076 | 33 | 5 |
+| Legacy: Ben's posts at zero venues | 75 | 0 | 1,541 | 6 | 0.004 | 6 | 0 (46 venues dead) |
+| **Probes A** (thin venues + alias siblings) | 223 | 9.84 | 3,965 | **306** | 0.072 | 202 | **24** |
+| Low-types (hotels/restaurants/churches at 1-5) | 41 | 2.26 | 900 | 49 | 0.050 | 33 | 7 |
 
-**Ticks 2 and 2b ran on the user's "lets go" (2026-09-20 ~01:20–02:00 UTC):**
-- Tick 2 profiles: 541 accounts, 11 runs, $1.24; 539 profiled, 478 with followers, 110 bios naming
-  another handle (alias-candidate CSVs `tmp_analysis/acq_alias_candidates_<run>.csv`), 460 avatars.
-- Canary, vendor half (`acq-20260919-canary-vendor`, 3 tier-A planners + 2 florists × 25): $0.29,
-  125 fetched / 82 new, 33 stacks, 37 candidates, **23 weddings** (22 v2 + 1 A1), 5 at venues that had
-  < 6 ($0.06 each). 0.18 weddings per fetched post — the vendor band clears Gate 1a.
-- Canary, venue half (`acq-20260919-canary`, 20 thin venues from the top prior band × 25): $1.13,
-  489 fetched / **477 new** (never-crawled venues barely overlap), 53 stacks, 59 candidates, **34
-  weddings** (33 v2 + 1 A1), 9 thin venues gained weddings, **5 crossed into 6+**; $0.04 per new
-  wedding at a venue that had < 6. **0.069 weddings per fetched post → Gate 1a PASS** (bar 0.03).
-  22 + 3 candidates the reader would not commit to are in `/label/candidates?batch=acq-20260919-canary`
-  (vendor canary: 6, `?batch=acq-20260919-canary-vendor`).
-- **Probes A launched** (`acq-20260919-probesA`, 223 targets × 25, $12.82 projected, detached
-  `nohup`, log `scratchpad/probesA.log`; ~23 Apify runs, 80-90 min incl. image ingest). When done:
-  parse → cluster (v2, then A1) → reconcile → reader (both pools) → creation dry-run → create →
-  refresh role tags → funnel → Gate 1. **Use `tail`, never `head`, on the script output.**
-- Running totals 2026-09-20 02:30 UTC: weddings **6,082** (110 from acquisition today), Apify
-  $3.23 ingested + $12.82 in flight, OpenRouter ≈ $1.20, 657 acquisition posts, 1,369 images in R2.
+Coverage (metro venue accounts, morning → now): 0: 170 → **169** · 1-5: 302 → **268** · 6-15: 78 → **110**
+· 16-49: 64 → 62 · 50+: 27 → **32**. Listed venues 470 → 472+.
 
-- **Tigerlily Events recredit (user-caught, 2026-09-20):** a catering / venue-management company
-  credited as the venue (64 weddings). Fact-checked on tlilyevents.com: all 15 of its spaces are on
-  Lincoln Park Zoo grounds. `recreditManagementCompany.ts --handle tigerlilyevents
-  --exclude-wedding-ids 4723,5619,9744` (76 credits → other, 30 re-anchored by tag/credit), then
-  `tmp_analysis/d061_tigerlily_reanchor_remaining.sql` (user's rule: Café Brauer when the caption names
-  it, else the zoo; 10 + 24, provenance batch `d061-tigerlily-reanchor-1`). Now zoo 72, Café Brauer 26,
-  Tigerlily 0. Café Brauer's account is still bare (user declined a profile scrape for now).
+**Gates:** Gate 0 PASS (pilot), pilot spot-check **95.7% PASS**, Gate 1a PASS (canary 0.076), Gate 1 PASS
+(probes A 0.072 vs 0.03). **Probes A spot-check in progress by the user: 49 of 100 labeled** at
+`/label/candidates?spotcheck=acq-20260919-probesA&n=100`; run `reportSpotCheck.ts --batch-id
+acq-20260919-probesA` when done. It gates auto-creation for probes B and the vendor tick.
 
-- **Two plan corrections (user's call, 2026-09-20 ~03:50 UTC), after re-reading the coverage table honestly:**
-  (1) "101 zero-wedding venues crawled and found nothing" was Ben's crawl a month ago through his regex
-  only; our chain never saw those 1,545 posts. At zero-wedding venues the D031 attach risk does not
-  exist, so they are registered as a $0 legacy batch (`legacy-ben-crawl1-zero-venues`, 75 venues, 1,541
-  posts, `tmp_analysis/d061_legacy_ben_zero_venues.sql`) and the structural universe now admits a public
-  post iff the loop registered it (`ops.post_observations`) instead of by scrape date — **needs the
-  structural view re-applied**, then the chain. (2) The 41 hotels / restaurants / churches at 1-5 I had
-  excluded are being probed after all (`acq-20260919-probesA-lowtypes`, $2.36, running).
+**In flight at hand-off (detached `nohup`, logs in scratchpad):** probes B (`acq-20260920-probesB`, 60
+zero-wedding venues, ≈$3.45) then the vendor tick (`acq-20260920-vendor`, 22 tier-A vendors, ≈$1.26); a waiter
+runs `chain.sh` for each after its DONE line — **creation is NOT run for these two until the spot-check
+passes** (chain.sh only dry-runs creation). Then: `createWeddings… --acquisition-batch <b>` ×2 pools,
+`refreshAccountRoleTagsFromWeddings.ts --apply`, `measure.ts --batch-id <b> --apply`, funnel.
 
-**Blocked on the user:** nothing at the moment — Gate 1a decides probes A; the user asked to be told
-before that spend.
+**Blocked on the user:** finish the probes A spot-check (51 posts) → I report agreement → probes B / vendor
+creation. Nothing else.
 
-**Next actions (Claude):** commit 2 = `targets.ts` (priors from README §1 + vendor tier),
-`measure.ts` (yield → prior update, tri-state status, writes `pipeline_versions`),
-`spotCheckSample.ts`; then canary → Gate 1a → probes A/3b/B under the gates.
+**Next (Claude):** after the spot-check: create probes B + vendor batches, measure, coverage table; then the
+deepen calibration (8 measured-promising venues, ≈$0.5) and alias-family feeds with the remaining ≈$8;
+reader prompt `extract-v1.3` (backlog: multi-day weddings, future-date misread, user's vendor-post standard);
+alias-candidate rule for typo handles; re-pin the two pre-D061 `graphStrengthening` invariants (D059 owner).
 
-**D061 landmines (new today):**
-- The pooler is transaction-mode: only `begin; set local statement_timeout…; …; commit` lengthens
-  the 2-minute timeout. Scripts that need it must use one client + one transaction.
-- Never put a `distinct on` or an `OR` on a session setting in the structural universe CTE: the
-  planner's estimate collapses and the view goes from seconds to > 15 minutes. Batch scoping is the
-  generated function, never a filter on the view.
-- `post_extraction_runs` is unique on (post_url, prompt_version): a second reader run over another
-  clustering version overwrites the row's `candidate_id`/result for a post shared by two candidates.
-- `revertWeddingBatch.ts --retire-verdicts` supersedes THIS_VENUE model verdicts only; to re-create
-  after a revert, replay verdicts from history (`tmp_analysis/d061_replay_verdicts_after_rollback.sql`).
-- The creation script's `--from-confirmed-candidates` did not consult reconciliation before D061;
-  under `--acquisition-batch` it now does (≥ 0.7 → WOULD_ATTACH skip).
-- Multi-day weddings (sangeet / mehndi / rehearsal dinner / welcome party at a different venue than
-  the `Venue:` credit): the seed venue hosted an *event*, not the wedding. The reader inverts toward
-  the narrative venue (pilot: OTHER_VENUE = thewellsley on a Dalcy-anchored candidate at 0.95). Human
-  verdict: **W** when the page's venue is the `Venue:` credit, **V** + `Venue:` handle when it is the
-  side-event venue; reader rule + event-context credit is a backlog item (plan file, README). Sized: 231 South-Asian-event captions (87 with a venue credit line) + 975 other side events.
-- **Two ticks ingesting at once can deadlock on `accounts`** (2026-09-20: probes A and the low-types
-  probe both upserted the same mentioned handles inside their write transactions in different orders;
-  one run failed at ingest with `deadlock detected`, Apify side intact). Fix in flight: ingest
-  pre-upserts every username of a run in sorted order at the top of its transaction. Until then, run
-  one tick at a time and re-ingest a failed run with `ingest.ts --run-id <id>` after resetting its
-  status to `succeeded`.
-- **Never pipe a pipeline script through `head`.** `head -N` closes the pipe after N lines and the
-  next console.log kills the process with SIGPIPE mid-run: the venue canary's clustering wrote its 54
-  candidates but died before the chicago_status step, so the reader selected 0 posts. Use `tail` or
-  write the log to a file. Re-running the clustering for the batch repairs it (the status step covers
-  every candidate of the version).
-- Non-venue hop-0 seeds (caterers/planners/DJs) out-yield venues 0.37 vs 0.14 weddings per tagged
-  post and fill thin venues 3.5× faster per post — vendor tagged feeds are tick 3b.
+**D061 landmines (all still apply):**
+- Pooler is transaction-mode: only `begin; set local statement_timeout …` lengthens the 2-min limit.
+- Structural view: no `distinct on`/OR-on-a-setting in the universe CTE (planner collapse, > 15 min); the
+  batch-scoped FUNCTION scales badly — clustering reads the full view (~25 s) with a url filter.
+- Never pipe a script through `head` (SIGPIPE kills it mid-run). `pgrep -f` matches its own shell.
+- Two ingests at once deadlocked on `accounts` (fixed: sorted pre-upsert); still run one tick at a time.
+- `post_extraction_runs` unique key (post_url, prompt_version): a second reader run over another clustering
+  version overwrites the row for a post shared by two candidates.
+- `revertWeddingBatch.ts --retire-verdicts` supersedes THIS_VENUE model verdicts only; re-create after a
+  revert by replaying verdicts from history.
+- Multi-day weddings (sangeet/mehndi/rehearsal at a side venue): the reader inverts toward the narrative
+  venue; label W when the page's venue is the `Venue:` credit, V otherwise.
+- Typo handles in credits mint bare accounts (Acquaviva); the creation gate is now alias-aware.
+- Management companies credited as venues (Tigerlily): recredit + re-anchor, fact-check the site first.
+- `measure.ts` counts only weddings created after the run was ingested (legacy registrations carry old links).
+- Venue types are priors, not exclusions: the excluded hotels/restaurants/churches yielded 0.05 w/post.
 
 ## Next actions (Claude, when unblocked)
 

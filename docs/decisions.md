@@ -107,6 +107,28 @@ Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-
 - *Spend to this point:* Apify $3.23 ingested + $12.82 in flight (probes A), OpenRouter ≈ $1.20;
   weddings 5,972 → 6,085 (+113 from acquisition; +34 Tigerlily re-anchors moved, not added).
 
+**Addendum 2026-09-20 03:30–05:45 UTC (night run).**
+- *Two corrections after re-reading the coverage table honestly with the user:* (1) "101 zero-wedding venues
+  crawled and found nothing" was Ben's regex a month ago; our chain never saw those posts. Registered as a
+  $0 legacy batch (75 venues, 1,541 posts); the structural universe now admits a public post iff the loop
+  registered it (`ops.post_observations`) instead of by scrape date. Result: 6 weddings, all at *other*
+  venues (the zero seeds were co-tags), 46 of 75 seeds measured dead — those venues are thin, not neglected.
+  (2) The 41 hotels / restaurants / churches at 1-5 the plan excluded were probed after all: **49 weddings,
+  7 venues into 6+, 0.05 w/post** — venue types are now priors, never exclusions (`targets.ts`).
+- *Probes A (223 thin venues + alias siblings, $9.84):* 4,225 fetched / 3,965 new (94% new), 442 stacks,
+  480 candidates, **306 weddings (202 at venues that had < 6), 24 venues into 6+**, 0.072 w/post, $0.03 per
+  wedding. **Gate 1 PASS.** 169 candidates to the human queue.
+- *Found and fixed on the way:* the batch-scoped structural function scaled past the 2-minute timeout at
+  1,541 posts (clustering now reads the full view, ~25 s, with a url filter inside a local-timeout
+  transaction); two concurrent ingests deadlocked on `accounts` (ingest now pre-upserts every username in
+  sorted order); `measure.ts` credited legacy registrations with pre-existing wedding links (attribution
+  now = weddings created after the run's ingest); a `pgrep -f` waiter matched its own command line.
+- *Commit 2 complete:* `measure.ts`, `targets.ts` (priors from measured yield: probes B pool 60, vendor
+  pool 22, deepen 8), `reportSpotCheck.ts`, `/label/candidates?spotcheck=&batch=`.
+- *Day total:* weddings 5,972 → **6,446** (474 by the loop), Apify $16.19, OpenRouter $4.24. Coverage: 1-5
+  bucket 302 → 268, 6-15 bucket 78 → 110, 50+ 27 → 32. Probes B ($3.45) and the vendor tick ($1.26) fetching
+  at hand-off; their creation waits on the user's probes A spot-check (49/100 labeled, running 95%+).
+
 ---
 
 ## D060 — 2026-09-13 — VenueDetails v3: the venue Details tab becomes one typed schema (comparison spine + detail layer) filled by a provenance-first loop
