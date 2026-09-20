@@ -317,3 +317,12 @@ profile scrape's `external_url`; its frozen discovery counts move when profiles 
   junk to drive coverage"). The prompt's rubric is stricter than the user's standard; align
   `extract-v1.3` to the user's standard for THIS_VENUE on credit-line-anchored tagged posts, and
   keep the strict rule only for author-is-venue marketing (Biagio / Le Loft pattern, D055).
+
+- **Typo handles in credits mint bare accounts (found 2026-09-20, Acquaviva).** A photographer credited
+  `@aquavivawinery @aquavivawineryweddings` (missing c); ingest minted two bare `accounts` rows and the
+  candidate anchored on a handle that does not exist on Instagram, so it failed the Chicago gate and
+  sat in the human queue. The bio/co-tag alias discovery cannot see this class. Add to the alias
+  candidate builder: a credited handle whose profile scrape returns nothing AND whose edit distance to
+  a known venue handle is ≤ 2 (or that is a known handle plus/minus a `weddings`/`events` suffix) →
+  alias candidate for human confirm. Sizing query: bare accounts (no profile after tick 2) that carry a
+  venue-role credit. Fixed by hand this time (alias round 8).
