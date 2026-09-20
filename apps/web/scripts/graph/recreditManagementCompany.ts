@@ -57,19 +57,27 @@ function parseArgs() {
   const handle = handleIdx !== -1 ? argv[handleIdx + 1] : undefined;
   const batchId = batchIdx !== -1 ? argv[batchIdx + 1] : undefined;
   const apply = argv.includes("--apply");
+  // D061 (2026-09-20, Tigerlily): weddings whose credit-based re-anchor a reviewer judged wrong
+  // (a magazine credited as "venue", a ceremony church, a hotel when the caption names Cafe
+  // Brauer). Excluded ids keep their venue_id and are reported as unresolved -- the credit
+  // recredit (venue -> other) still applies to them, that part is right regardless.
+  const exclIdx = argv.indexOf("--exclude-wedding-ids");
+  const excludeWeddingIds = new Set(
+    exclIdx !== -1 ? argv[exclIdx + 1].split(",").map((x) => Number(x.trim())).filter((n) => Number.isFinite(n)) : []
+  );
   if (!handle || handle.startsWith("--") || !batchId || batchId.startsWith("--")) {
     console.error(
       "[recredit-management-company] --handle <username> and --batch-id <id> are required.\n" +
-        "Usage: bun run scripts/graph/recreditManagementCompany.ts --handle <username> --batch-id <id> [--apply]\n" +
+        "Usage: bun run scripts/graph/recreditManagementCompany.ts --handle <username> --batch-id <id> [--exclude-wedding-ids 1,2,3] [--apply]\n" +
         "Default (no --apply) is a dry run."
     );
     process.exit(1);
   }
-  return { handle, batchId, apply };
+  return { handle, batchId, apply, excludeWeddingIds };
 }
 
 async function main() {
-  const { handle, batchId, apply } = parseArgs();
+  const { handle, batchId, apply, excludeWeddingIds } = parseArgs();
   const pool = getPool();
   const client = await pool.connect();
 
@@ -154,6 +162,11 @@ async function main() {
     const newVenueIdByWedding = new Map<string, string>();
 
     for (const w of anchoredWeddings) {
+      if (excludeWeddingIds.has(Number(w.id))) {
+        unresolved.push(w.id);
+        console.log(`[recredit-management-company] wedding ${w.id}: excluded by --exclude-wedding-ids, left for the human pass`);
+        continue;
+      }
       const { rows: otherVenueCredits } = await client.query<{ account_id: string }>(
         `select distinct account_id::text from wedding_vendors
          where wedding_id = $1 and role = 'venue' and account_id <> $2`,
