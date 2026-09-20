@@ -276,6 +276,9 @@ export interface RawAddOn {
   /** Set the same short slug on items a couple picks ONE of (e.g. food package tiers, bar tiers,
    * dinnerware, extra hour); null for independent extras. */
   selection_group: string | null;
+  /** Round 7: set only when THIS add-on's price varies by day/season (extra hours). */
+  day?: string | null;
+  season?: string | null;
   quote: string;
   source_url: string;
 }

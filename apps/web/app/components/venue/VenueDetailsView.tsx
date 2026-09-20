@@ -1258,6 +1258,40 @@ function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; ro
   );
 }
 
+/** One compact grid for a day/season-priced selection group (Diamond Garden's extra-hour rows,
+ * round 6) — item label rows × season/day-range columns, built from `fmt.dayPricedGroupGrid`. */
+function DayPricedGridView({ grid }: { grid: fmt.DayPricedGrid }) {
+  if (grid.rows.length === 0) return null;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs text-gray-600">
+        <thead>
+          <tr className="text-[11px] text-gray-400">
+            <th className="pb-2 text-left font-normal"></th>
+            {grid.columns.map((c) => (
+              <th key={c} className="pb-2 text-right font-normal">
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {grid.rows.map((row) => (
+            <tr key={row.key} className="border-t border-black/[0.05]">
+              <td className="py-2">{row.label}</td>
+              {row.prices.map((price, pi) => (
+                <td key={pi} className="py-2 text-right">
+                  {price ?? "—"}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /** Round 6 rule 1: exactly two modes, decided ONLY by the venue's total add-on count, never mixed
  * within a section — the old "compact rows" mode and per-sub-group cards/table hybrid are both
  * gone. `<= 5` -> a flat, unheaded card grid (the Greenhouse concept's shape). `> 5` -> one table
@@ -1293,6 +1327,10 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
         const built = fmt.buildCategoryCardTable(g.subgroups, venue.spaces, g.label);
         const table = { columnLabels: built.columnLabels, rows: built.rows };
         const examples = [...new Set(built.leftover)];
+        // Round 6: a day/season-priced selection group (extra-hour) renders as its own compact
+        // grid, not per-item table rows — pulled out of `subgroups` upstream in
+        // `fmt.groupAddOnsByCategoryStd`.
+        const dayPricedGrid = g.dayPricedItems.length > 0 ? fmt.dayPricedGroupGrid(g.dayPricedItems) : null;
         return (
           <div key={g.category_std} className="inline-block w-full min-w-0 rounded-2xl border border-black/[0.06] p-5 align-top">
             <h3 className={`text-base text-gray-900 ${uiHeadingClassName}`}>{g.label}</h3>
@@ -1305,9 +1343,16 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
                 ))}
               </div>
             )}
-            <div className="mt-3">
-              <AddOnCategoryTableView table={table} />
-            </div>
+            {table.rows.length > 0 && (
+              <div className="mt-3">
+                <AddOnCategoryTableView table={table} />
+              </div>
+            )}
+            {dayPricedGrid && (
+              <div className={table.rows.length > 0 ? "mt-4" : "mt-3"}>
+                <DayPricedGridView grid={dayPricedGrid} />
+              </div>
+            )}
             {examples.length > 0 && (
               <ul className="mt-2 space-y-1 text-xs text-gray-600">
                 {examples.map((ex) => (

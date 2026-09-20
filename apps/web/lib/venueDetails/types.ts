@@ -555,6 +555,11 @@ export interface AddOn {
   /** e.g. "ceremony_on_site" — gates whether this add-on auto-applies given an EstimateInput
    * flag, distinct from `extras`-driven optional selection. */
   condition: string | null;
+  /** Some add-ons are priced by day and/or season (extra hours, overtime, rehearsal time). When set,
+   * the calculator keeps only the rows matching the chosen day/season and the static table shows a
+   * small season × day grid for the group. Null = same price any day. Round 6. */
+  day?: Day | null;
+  season?: Season | null;
   priceable: boolean;
   /** Set even when numerically equal to `Rates.sales_tax_pct`, whenever the venue's own page
    * breaks this add-on's tax out as its own separately-computed line (see derive.ts). */

@@ -350,7 +350,10 @@ export interface CostEstimate {
   assumptions: string[];
 }
 
-function dayMatches(tierDay: Day | null, inputDay: Day): boolean {
+/** Exported (round 6) so the calculator can scope a day/season-priced selection group's
+ * PillGroup options to the current input, and the static Add-ons view can reason about which
+ * day/season an item applies to, without duplicating this matching rule. */
+export function dayMatches(tierDay: Day | null, inputDay: Day): boolean {
   if (tierDay == null || tierDay === "any") return true;
   if (tierDay === inputDay) return true;
   // "weekday" means Mon-Thu (plan: a Fri/Sun shared price is two explicit rows), so a separate
@@ -359,7 +362,7 @@ function dayMatches(tierDay: Day | null, inputDay: Day): boolean {
   return false;
 }
 
-function seasonMatches(tierSeason: Season | null, inputSeason: Season): boolean {
+export function seasonMatches(tierSeason: Season | null, inputSeason: Season): boolean {
   if (tierSeason == null || tierSeason === "any") return true;
   return tierSeason === inputSeason;
 }
@@ -532,6 +535,12 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
     // All-Inclusive, which already bundles the equivalent) — a stale selection left over from
     // switching paths is silently dropped, not priced against the wrong path.
     if (a.path_ids && input.path_id && !a.path_ids.includes(input.path_id)) continue;
+    // Round 6: an add-on priced by day/season (Diamond Garden's extra-hour rows) is silently
+    // dropped, the same way a stale path-scoped selection already is above, once the couple
+    // changes Day/Season out from under a previously chosen variant — never double-counted or
+    // priced against the wrong day.
+    if (a.day && !dayMatches(a.day, input.day)) continue;
+    if (a.season && !seasonMatches(a.season, input.season)) continue;
     const qty = extra.quantity ?? 1;
     const amount = resolveAddOnAmount(a, chosenSpaceId, guests, qty);
     if (amount == null) {
@@ -650,11 +659,16 @@ export function defaultAxes(d: VenueDetailsV3): EstimateInput {
  * axis, not a selectable extra). Used by the calculator to decide which add-ons/PillGroups to
  * offer once a path is chosen (Diamond Garden: hides food/dinnerware/bar entirely on
  * All-Inclusive, which already bundles them). */
-export function selectableAddOns(d: VenueDetailsV3, path_id: string | undefined): AddOn[] {
+export function selectableAddOns(d: VenueDetailsV3, path_id: string | undefined, day?: Day, season?: Season): AddOn[] {
   return d.pricing.add_ons.filter((a) => {
     if (a.group === "ceremony" && a.condition === "ceremony_on_site") return false;
     if (a.priceable === false) return false;
     if (a.path_ids && path_id && !a.path_ids.includes(path_id)) return false;
+    // Round 6: a day/season-priced item (Diamond Garden's extra-hour rows) only offers itself as
+    // a PillGroup option when it actually matches the couple's current Day/Season axes — so
+    // "extra-hour" shows exactly the two variants real for e.g. peak Saturday, not all 16 rows.
+    if (a.day && day && !dayMatches(a.day, day)) return false;
+    if (a.season && season && !seasonMatches(a.season, season)) return false;
     return a.price != null || (a.per_space_prices != null && Object.keys(a.per_space_prices).length > 0);
   });
 }

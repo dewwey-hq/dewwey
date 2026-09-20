@@ -282,8 +282,13 @@ describe("golden fixtures — Diamond Garden round-3 structure", () => {
       "Extra hours",
     ]);
     const categoryNames = new Set(d.pricing.add_on_categories!.map((c) => c.category));
+    // Real leftover categories not curated: the 7 "Ceremony Upgrades" rows, and the 2026-09-19
+    // round's real sheet sub-categories (Linen, Dinnerware Rental Only, Professional Wait Staff,
+    // Lighting & Video) added straight from the venue's own PDF headings rather than folded into
+    // the 5 pre-existing curated buckets.
+    const UNCURATED_CATEGORIES = new Set(["Ceremony Upgrades", "Linen", "Dinnerware Rental Only", "Professional Wait Staff", "Lighting & Video"]);
     for (const a of d.pricing.add_ons) {
-      if (a.category === "Ceremony") continue; // the one real leftover category not curated
+      if (UNCURATED_CATEGORIES.has(a.category)) continue;
       expect(categoryNames.has(a.category), `add-on ${a.id} has an uncurated category ${a.category}`).toBe(true);
     }
   });
@@ -296,8 +301,10 @@ describe("golden fixtures — Diamond Garden round-3 structure", () => {
     const scoped = d.pricing.add_ons.filter((a) => a.category === "Food & beverage add-ons");
     expect(scoped.length).toBeGreaterThan(0);
     for (const a of scoped) expect(a.path_ids).toEqual(["hall-rental-only", "hall-plus-a-la-carte"]);
+    // 2026-09-19 round: 16 real rows (2 seasons x 2 servers options x 4 day buckets), not just
+    // Saturday's own rate.
     const extraHour = d.pricing.add_ons.filter((a) => a.selection_group === "extra-hour");
-    expect(extraHour.length).toBe(4);
+    expect(extraHour.length).toBe(16);
     for (const a of extraHour) expect(a.path_ids).toBeNull();
   });
 
@@ -306,9 +313,11 @@ describe("golden fixtures — Diamond Garden round-3 structure", () => {
     expect(groups).toEqual(new Set(["food-package", "dinnerware", "bar", "extra-hour"]));
   });
 
-  it("ceremony upgrades are individually selectable, not auto-applied (group 'other', category 'Ceremony')", () => {
-    const ceremony = d.pricing.add_ons.filter((a) => a.category === "Ceremony");
-    expect(ceremony.length).toBe(5);
+  it("ceremony upgrades are individually selectable, not auto-applied (group 'other', category 'Ceremony Upgrades')", () => {
+    // 2026-09-19 round: renamed from "Ceremony" to the source PDF's own heading, and grew from 5
+    // to 7 rows (pipe & drape on the head table + lanterns w/ rose petals added).
+    const ceremony = d.pricing.add_ons.filter((a) => a.category === "Ceremony Upgrades");
+    expect(ceremony.length).toBe(7);
     for (const a of ceremony) {
       expect(a.group).toBe("other");
       expect(a.condition).toBeNull();
@@ -330,6 +339,33 @@ describe("golden fixtures — Diamond Garden round-3 structure", () => {
 
   it("bar packages state a real guest minimum", () => {
     expect(d.food_beverage.bar_min_guests).toBe(50);
+  });
+
+  // 2026-09-19 round: the venue's own 2024 add-ons sheet ("Rental Add-Ons 2024") priced far more
+  // than the earlier curated pass carried — this suite locks in that the section actually shows
+  // what the venue sells, not just a curated sample of it.
+  it("has at least 45 real add-ons (the 2024 add-ons sheet, priced in full)", () => {
+    expect(d.pricing.add_ons.length).toBeGreaterThanOrEqual(45);
+  });
+
+  it("has a lanterns item from the Ceremony Upgrades section", () => {
+    expect(d.pricing.add_ons.some((a) => /lanterns/i.test(a.name))).toBe(true);
+  });
+
+  it("extra-hour rows carry both day and season, covering both real seasons", () => {
+    const extraHour = d.pricing.add_ons.filter((a) => a.selection_group === "extra-hour");
+    expect(extraHour.length).toBeGreaterThan(0);
+    for (const a of extraHour) {
+      expect(a.day, `${a.id} should carry a day`).not.toBeNull();
+      expect(a.season, `${a.id} should carry a season`).not.toBeNull();
+    }
+    expect(new Set(extraHour.map((a) => a.season))).toEqual(new Set(["off", "peak"]));
+    expect(new Set(extraHour.map((a) => a.day))).toEqual(new Set(["weekday", "fri", "sun", "sat"]));
+  });
+
+  it("carries the add-ons sheet's own 2025 surcharge and tax-exclusion notes", () => {
+    expect(d.pricing.notes.some((n) => /add 10% for 2025/i.test(n.value))).toBe(true);
+    expect(d.pricing.notes.some((n) => /tax and other fees are not included/i.test(n.value))).toBe(true);
   });
 
   it("the 4 per-guest add-ons that used to price as null now have a real price (decoration package + 3 food/drink extras)", () => {

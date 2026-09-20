@@ -184,7 +184,7 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   // path_ids-scoped: a path change hides add-ons that don't apply to it (Diamond Garden's
   // food/dinnerware/bar/coffee/cake add-ons never show once All-Inclusive is selected, since it
   // already bundles the equivalent).
-  const scopedAddOns = selectableAddOns(venue, currentPath.id);
+  const scopedAddOns = selectableAddOns(venue, currentPath.id, day, season);
   // Round 5 rules 7/8: the extras panel groups by category_std (same standard headers the Add-ons
   // & extras section itself uses now), each group then split into single-select PillGroups vs
   // individual chips exactly as before.

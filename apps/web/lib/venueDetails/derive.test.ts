@@ -1057,6 +1057,63 @@ describe("selectableAddOns — path_ids-aware, excludes auto-applied ceremony fe
   });
 });
 
+// Round 6: a day/season-priced selection group (Diamond Garden's extra-hour rows) only offers
+// its matching variant(s) once a real Day/Season is chosen, and estimateCost never prices a stale
+// selection left over from before the couple changed Day/Season.
+describe("selectableAddOns / estimateCost — day/season-priced add-ons", () => {
+  const extraHour = (day: "weekday" | "sat", season: "off" | "peak", variant: string, price: number) =>
+    addOn({ id: `eh-${day}-${season}-${variant}`, selection_group: "extra-hour", category_std: "time", price, day, season, variant });
+  const addOns = [
+    extraHour("weekday", "off", "no-servers", 700),
+    extraHour("sat", "off", "no-servers", 800),
+    extraHour("weekday", "peak", "no-servers", 1000),
+    extraHour("sat", "peak", "no-servers", 1200),
+    extraHour("sat", "peak", "with-servers", 1400),
+  ];
+  const venue = makeVenue({
+    pricing: { archetype: "mixed", paths: [pathWith({ id: "hall-only" })], rates: emptyRates(), add_ons: addOns, required_third_party: [], notes: [] },
+  });
+
+  it("scopes options to the current day/season (peak Saturday sees only the two peak-Saturday rows)", () => {
+    const ids = selectableAddOns(venue, "hall-only", "sat", "peak").map((a) => a.id);
+    expect(ids).toEqual(["eh-sat-peak-no-servers", "eh-sat-peak-with-servers"]);
+  });
+
+  it("scopes to a different day/season independently (off-season weekday)", () => {
+    const ids = selectableAddOns(venue, "hall-only", "weekday", "off").map((a) => a.id);
+    expect(ids).toEqual(["eh-weekday-off-no-servers"]);
+  });
+
+  it("with no day/season passed, every priced add-on is still offered (back-compat)", () => {
+    expect(selectableAddOns(venue, "hall-only").length).toBe(addOns.length);
+  });
+
+  it("estimateCost prices a day/season-matching selection", () => {
+    const est = estimateCost(venue, {
+      guests: 100,
+      day: "sat",
+      season: "peak",
+      path_id: "hall-only",
+      ceremonyOnSite: false,
+      extras: [{ add_on_id: "eh-sat-peak-with-servers", quantity: 1 }],
+    });
+    expect(est.total).toBe(1400);
+  });
+
+  it("estimateCost silently drops a stale day/season selection left over from before the axes changed", () => {
+    const est = estimateCost(venue, {
+      guests: 100,
+      day: "weekday",
+      season: "off",
+      path_id: "hall-only",
+      ceremonyOnSite: false,
+      extras: [{ add_on_id: "eh-sat-peak-with-servers", quantity: 1 }],
+    });
+    expect(est.total).toBe(0);
+    expect(est.warnings).toEqual([]);
+  });
+});
+
 describe("selectTier — a pinned tier_id that doesn't match the current day/season is ignored", () => {
   const tiers = [
     { id: "sat-peak", name: "All-Inclusive", per_guest: 84.95, day: "sat" as const, season: "peak" as const, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "q", source_url: src, snapshot_id: 1 },

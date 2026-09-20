@@ -594,6 +594,8 @@ const ADD_ON_SCHEMA = strictObject(
       type: "string",
       description: "Set the same short slug on items a couple picks ONE of (e.g. food package tiers, bar tiers, dinnerware, extra hour); null for independent extras.",
     }),
+    day: nullable(enumSchema(DAYS, "Only when THIS add-on's price depends on the day (an extra hour priced differently on Saturday): one row per day, weekday = Mon-Thu. null when the price is the same any day.")),
+    season: nullable(enumSchema(SEASONS, "Only when THIS add-on's price depends on the season: one row per season. null otherwise.")),
     quote: { type: "string" },
     source_url: { type: "string" },
   },
@@ -759,6 +761,7 @@ RULES:
 - add_on_categories is filled ONLY when the site presents add-ons by category (its own intro sentence + example items); most venues: empty array. Every category named here must also appear on at least one add_ons[] entry.
 - seasons is the venue's own verbatim peak/off-season month definitions, only when pricing actually varies by season -- null/empty when not stated, never inferred from typical wedding-industry seasonality.
 - add_ons[].selection_group: set the same short slug on items a couple picks ONE of (food package tiers, bar tiers, dinnerware, an extra hour) so they render as one choice group; leave null for independent extras.
+- add_ons[].day / season: when an add-on's price varies by day and/or season (extra hours are the common case), emit one row per (season, day) combination with the same name and selection_group and set day/season on each; a Friday/Sunday shared price is TWO rows, like per-guest tiers. Leave both null when the price is flat.
 
 Temperature is 0 -- be decisive, but genuinely prefer leaving a field not stated / null over inventing a plausible-sounding number.`;
 
@@ -1041,6 +1044,8 @@ export function validateShape(raw: unknown): string[] {
       checkEnum(`add_ons[${i}].unit`, addOn.unit, ["flat", "per_guest", "per_unit", "per_hour"]);
       checkEnum(`add_ons[${i}].group`, addOn.group, ["fb", "rental", "service", "ceremony", "other"]);
       checkEnum(`add_ons[${i}].category_std`, addOn.category_std, ADD_ON_CATEGORIES_STD);
+      if (addOn.day != null) checkEnum(`add_ons[${i}].day`, addOn.day, DAYS);
+      if (addOn.season != null) checkEnum(`add_ons[${i}].season`, addOn.season, SEASONS);
     });
     const fb = obj.food_beverage as Record<string, unknown> | undefined;
     if (fb) {

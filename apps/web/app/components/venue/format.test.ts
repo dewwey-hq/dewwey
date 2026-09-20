@@ -1507,11 +1507,36 @@ describe("resolveCategoryStd / groupAddOnsByCategoryStd (round 5 rule 7, reworke
     expect(uplighting.examples).toEqual(["Rose gold", "Amber"]);
   });
 
-  it("excludes selection_group items from the grouping (calculator-only single-select options)", () => {
-    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [addOn({ id: "s1", selection_group: "food-package" })] } });
-    expect(fmt.groupAddOnsByCategoryStd(d)).toEqual([]);
+  // Round 6 fix: a selection_group item is no longer hidden wholesale — only an `fb`-category one
+  // is, and only once the same facts already render elsewhere (the F&B card's own menus/bar
+  // ladders tables).
+  it("keeps a non-fb selection_group item in the grouping (e.g. a day/season-priced 'time' group)", () => {
+    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [addOn({ id: "s1", selection_group: "extra-hour", category_std: "time", category: "Extra hours" })] } });
+    const groups = fmt.groupAddOnsByCategoryStd(d);
+    expect(groups.map((g) => g.category_std)).toEqual(["time"]);
   });
 
+  it("hides an fb selection_group only once the venue's own menus/bar ladders already show the same facts", () => {
+    const fbSelectionGroupAddOn = addOn({ id: "s1", selection_group: "food-package", category_std: "fb", category: "Food & beverage add-ons" });
+    const withoutMenus = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [fbSelectionGroupAddOn] } });
+    expect(fmt.groupAddOnsByCategoryStd(withoutMenus)).not.toEqual([]);
+
+    const withMenus = makeVenue({
+      pricing: { ...makeVenue().pricing, add_ons: [fbSelectionGroupAddOn] },
+      food_beverage: { ...makeVenue().food_beverage, menus: [{ name: "American", cuisine: "American", includes: "x", cost: "$15/guest", extras: [], evidence: { source_url: "https://example.com", snapshot_id: null } }] },
+    });
+    expect(fmt.groupAddOnsByCategoryStd(withMenus)).toEqual([]);
+  });
+
+  it("pulls day/season-priced items out of subgroups into dayPricedItems", () => {
+    const dayPriced = addOn({ id: "eh1", selection_group: "extra-hour", category_std: "time", category: "Extra hours", day: "sat", season: "peak", variant: "no servers" });
+    const plain = addOn({ id: "eh2", category_std: "time", category: "Extra hours", name: "Cleaning service" });
+    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [dayPriced, plain] } });
+    const groups = fmt.groupAddOnsByCategoryStd(d);
+    const time = groups.find((g) => g.category_std === "time")!;
+    expect(time.dayPricedItems.map((a) => a.id)).toEqual(["eh1"]);
+    expect(time.subgroups.flatMap((sg) => sg.items).map((a) => a.id)).toEqual(["eh2"]);
+  });
 });
 
 describe("addOnCardCaption", () => {
@@ -1606,6 +1631,19 @@ describe("captionForCategoryCard / mergeExamplesIntoTable (category card cleanup
 });
 
 describe("category card tables — sub-headers and example folding", () => {
+  it("drops a summary example whose sub-category is itemized elsewhere on the card, and dedupes across sub-categories", () => {
+    const mk = (id: string, name: string, category: string): AddOn => ({ id, name, category, variant: null, group: "rental", price: 10, price_max: null, unit: "flat", per_space_prices: null, applies_to: null, path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: null, note: null, quote: "q", source_url: "u", snapshot_id: null, category_std: "decor" });
+    const subgroups: fmt.AddOnSubgroup[] = [
+      { category: "Decoration add-ons", blurb: null, examples: ["Linen: tablecloths, runners & napkins ($1-15 each)", "Centerpieces ($25-35 each)", "Backdrop or canopy ($250-$380)"], items: [mk("pd", "Pipe & drape", "Decoration add-ons")] },
+      { category: "Linen", blurb: null, examples: [], items: [mk("tc", "Guest tablecloths", "Linen"), mk("cp", "Centerpieces", "Linen")] },
+    ];
+    const out = fmt.buildCategoryCardTable(subgroups, [], "Décor");
+    const labels = out.rows.map((r) => r.itemLabel);
+    expect(labels).toContain("Backdrop or canopy");
+    expect(labels.filter((l) => /centerpieces/i.test(l))).toHaveLength(1);
+    expect(labels.some((l) => /^Linen:/i.test(l))).toBe(false);
+    expect(out.leftover).toEqual([]);
+  });
   it("parses both example forms and detects near-duplicate names", () => {
     expect(fmt.parsePricedExample("Pipe & drape ($200-$500)")).toEqual({ name: "Pipe & drape", price: "$200-$500" });
     expect(fmt.parsePricedExample("Unlimited ice: $100")).toEqual({ name: "Unlimited ice", price: "$100" });
@@ -1626,5 +1664,58 @@ describe("captionForCategoryCard — self-explanatory sub-categories", () => {
     expect(fmt.captionForCategoryCard(base, "Lighting & A/V", false)).toBeNull();
     expect(fmt.captionForCategoryCard({ ...base, category: "Decoration add-ons" }, "Décor", false)).toBeNull();
     expect(fmt.captionForCategoryCard({ ...base, category: "Extra hours" }, "Space & rentals", false)).toBe("Extra hours");
+  });
+});
+
+describe("dayPricedGroupGrid — season × day grid for a day/season-priced selection group", () => {
+  const row = (season: "off" | "peak", day: "weekday" | "fri" | "sun" | "sat", servers: "no servers" | "with servers", price: number) =>
+    addOn({ id: `${season}-${day}-${servers}`, name: `Extra hour (${servers})`, selection_group: "extra-hour", category_std: "time", category: "Extra hours", variant: servers, day, season, price, unit: "per_hour" });
+
+  const DIAMOND_GARDEN_EXTRA_HOUR = [
+    row("off", "weekday", "no servers", 700),
+    row("off", "fri", "no servers", 700),
+    row("off", "sun", "no servers", 700),
+    row("off", "sat", "no servers", 800),
+    row("off", "weekday", "with servers", 900),
+    row("off", "fri", "with servers", 900),
+    row("off", "sun", "with servers", 900),
+    row("off", "sat", "with servers", 1000),
+    row("peak", "weekday", "no servers", 1000),
+    row("peak", "fri", "no servers", 1000),
+    row("peak", "sun", "no servers", 1000),
+    row("peak", "sat", "no servers", 1200),
+    row("peak", "weekday", "with servers", 1200),
+    row("peak", "fri", "with servers", 1200),
+    row("peak", "sun", "with servers", 1200),
+    row("peak", "sat", "with servers", 1400),
+  ];
+
+  it("merges weekday/fri/sun into one 'Weekday–Sun' column per season, keeps Saturday separate", () => {
+    const grid = fmt.dayPricedGroupGrid(DIAMOND_GARDEN_EXTRA_HOUR);
+    expect(grid.columns).toEqual(["Off-season Weekday–Sun", "Off-season Sat", "Peak Weekday–Sun", "Peak Sat"]);
+  });
+
+  it("one row per variant, prices aligned to the merged columns", () => {
+    const grid = fmt.dayPricedGroupGrid(DIAMOND_GARDEN_EXTRA_HOUR);
+    expect(grid.rows.map((r) => r.label)).toEqual(["Extra hour, no servers", "Extra hour, with servers"]);
+    expect(grid.rows[0].prices).toEqual(["$700", "$800", "$1,000", "$1,200"]);
+    expect(grid.rows[1].prices).toEqual(["$900", "$1,000", "$1,200", "$1,400"]);
+  });
+
+  it("returns an empty grid for no items, and ignores items missing day/season", () => {
+    expect(fmt.dayPricedGroupGrid([])).toEqual({ columns: [], rows: [] });
+    const noDaySeason = addOn({ id: "x", selection_group: "extra-hour" });
+    expect(fmt.dayPricedGroupGrid([noDaySeason])).toEqual({ columns: [], rows: [] });
+  });
+
+  it("keeps weekday/fri/sun as separate columns when a row's prices actually differ across them", () => {
+    const nonUniform = [
+      row("off", "weekday", "no servers", 700),
+      row("off", "fri", "no servers", 750),
+      row("off", "sun", "no servers", 700),
+      row("off", "sat", "no servers", 800),
+    ];
+    const grid = fmt.dayPricedGroupGrid(nonUniform);
+    expect(grid.columns).toEqual(["Off-season Weekday", "Off-season Fri", "Off-season Sun", "Off-season Sat"]);
   });
 });

@@ -114,7 +114,9 @@ function fact<T>(value: T, quote: string, source_url: string): Fact<T> {
  * (scripts/ can't import from app/) so every `as_stated_price` the importer writes goes through
  * one real formatter instead of a hand-typed template string. */
 function money(n: number): string {
-  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  // Same rule as the renderer's money(): whole dollars stay whole, anything fractional shows cents.
+  const fractional = Math.abs(n - Math.round(n)) > 1e-9;
+  return `$${n.toLocaleString(undefined, fractional ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 })}`;
 }
 function moneyRange(low: number, high: number): string {
   return low === high ? money(low) : `${money(low)}–${money(high)}`;
@@ -1132,29 +1134,82 @@ function buildDiamondGarden(): VenueDetailsV3 {
   // auto-apply the instant the Yes/No ceremony toggle is set (Diamond Garden's ceremony itself
   // is free, `spine.ceremony_fee: "included"`; there is no `condition: "ceremony_on_site"`
   // add-on here, so `calculatorAxes` correctly omits the ceremony axis for this venue).
-  const ceremonyAddOns: AddOn[] = d.calculatorAddOns.ceremonyUpgrades.map((c) => ({
-    id: c.id,
-    name: c.label,
-    category: "Ceremony",
-    category_std: "ceremony",
-    variant: null,
-    group: "other",
-    price: c.price,
-    price_max: null,
-    unit: "flat",
-    per_space_prices: null,
-    applies_to: "all",
-    path_ids: null,
-    condition: null,
-    priceable: true,
-    tax_pct_override: null,
-    min_guests: null,
-    as_stated_price: money(c.price),
-    note: null,
-    quote: money(c.price),
-    source_url: d.addOnsResources[0].url,
-    snapshot_id: null,
-  }));
+  const ceremonyAddOns: AddOn[] = [
+    ...d.calculatorAddOns.ceremonyUpgrades.map((c) => ({
+      id: c.id,
+      name: c.label,
+      // Renamed from "Ceremony" to the source PDF's own heading ("Rental Add-Ons 2024" §"Ceremony
+      // Upgrades") so these 5 pre-existing rows share one sub-category with the 2 new ones added
+      // below, instead of splitting into two near-duplicate group headers on the same card.
+      category: "Ceremony Upgrades",
+      category_std: "ceremony",
+      variant: null,
+      group: "other",
+      price: c.price,
+      price_max: null,
+      unit: "flat",
+      per_space_prices: null,
+      applies_to: "all",
+      path_ids: null,
+      condition: null,
+      priceable: true,
+      tax_pct_override: null,
+      min_guests: null,
+      as_stated_price: money(c.price),
+      note: null,
+      quote: money(c.price),
+      source_url: d.addOnsResources[0].url,
+      snapshot_id: null,
+    })),
+    // Two more real rows from the "Ceremony Upgrades" section of the venue's own 2024 add-ons
+    // sheet that the earlier curated pass left out (2026-09-19 review).
+    {
+      id: "pipeDrapeHeadTable",
+      name: "Pipe & drape on the sides of the head table",
+      category: "Ceremony Upgrades",
+      category_std: "ceremony",
+      variant: null,
+      group: "other",
+      price: 350,
+      price_max: null,
+      unit: "flat",
+      per_space_prices: null,
+      applies_to: "all",
+      path_ids: null,
+      condition: null,
+      priceable: true,
+      tax_pct_override: null,
+      min_guests: null,
+      as_stated_price: money(350),
+      note: null,
+      quote: "Pipe and Drape: On the Sides of the Head Table. $350.00",
+      source_url: d.addOnsResources[0].url,
+      snapshot_id: null,
+    },
+    {
+      id: "lanternsRosePetals",
+      name: "Lanterns along the dance floor with rose petals",
+      category: "Ceremony Upgrades",
+      category_std: "ceremony",
+      variant: null,
+      group: "other",
+      price: 150,
+      price_max: null,
+      unit: "flat",
+      per_space_prices: null,
+      applies_to: "all",
+      path_ids: null,
+      condition: null,
+      priceable: true,
+      tax_pct_override: null,
+      min_guests: null,
+      as_stated_price: money(150),
+      note: null,
+      quote: "Lanterns along the Dance Floor with Rose petals $150",
+      source_url: d.addOnsResources[0].url,
+      snapshot_id: null,
+    },
+  ];
   // Two color variants of the same item ($25/$35) curate into one ranged line — the plan's
   // "5 curated cards, not 35 atomized ones" spirit applied to the add-on list itself, and a real
   // use of `AddOn.price_max` (round-3 schema addition) instead of two near-duplicate cards.
@@ -1206,6 +1261,90 @@ function buildDiamondGarden(): VenueDetailsV3 {
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
   };
+  // Real "Linen" section of the 2024 add-ons sheet — entirely missing before this pass (2026-09-19
+  // review): tabletop/chair linen priced separately from the Decoration Package/centerpieces
+  // above, its own real sub-category on the source PDF.
+  const linenAddOn = (over: Partial<AddOn> & Pick<AddOn, "id" | "name" | "price" | "quote">): AddOn => ({
+    category: "Linen",
+    category_std: "decor",
+    variant: null,
+    group: "other",
+    price_max: null,
+    unit: "flat",
+    per_space_prices: null,
+    applies_to: "all",
+    path_ids: null,
+    condition: null,
+    priceable: true,
+    tax_pct_override: null,
+    min_guests: null,
+    as_stated_price: money(over.price),
+    note: null,
+    source_url: d.addOnsResources[0].url,
+    snapshot_id: null,
+    ...over,
+  });
+  const linenAddOns: AddOn[] = [
+    linenAddOn({
+      id: "headTableDecoration",
+      name: "Head table decoration",
+      price: 150,
+      unit: "per_unit",
+      note: null,
+      as_stated_price: "$150 per tier",
+      quote: "Head Table Decoration (Skirt with lights, tablecloths & colored waves) $150.00 for each Tier.",
+    }),
+    linenAddOn({
+      id: "chairBowTies",
+      name: "Chair bow ties",
+      price: 3,
+      unit: "per_unit",
+      as_stated_price: "$3/chair",
+      quote: "Bow ties- $3.00 Per Chair.",
+    }),
+    linenAddOn({
+      id: "guestTablecloths",
+      name: "Guest tablecloths",
+      price: 10,
+      unit: "per_unit",
+      note: "White or black, 85\" × 85\".",
+      as_stated_price: "$10/table",
+      quote: 'Guest Tablecloths (White or Black, 85” x 85”) $10.00 for each table',
+    }),
+    linenAddOn({
+      id: "damaskTablecloths120",
+      name: '120" round white damask tablecloths',
+      price: 15,
+      unit: "per_unit",
+      as_stated_price: "$15 each",
+      quote: '120" Round White Damask tablecloths- $15.00 each.',
+    }),
+    linenAddOn({
+      id: "tableRunners",
+      name: "Table runners",
+      price: 2,
+      unit: "per_unit",
+      note: "40+ colors",
+      as_stated_price: "$2 each",
+      quote: 'Table Runners (8" x 108") - $2.00 each (more than 40 different colors).',
+    }),
+    linenAddOn({
+      id: "giftOrSweetTable",
+      name: "Gift table or sweet table",
+      price: 25,
+      as_stated_price: "$25",
+      quote: "Gift Table or Sweet Table- $25.00 for Table.",
+    }),
+    linenAddOn({
+      id: "napkins",
+      name: "Napkins (white/black or colored)",
+      price: 1,
+      price_max: 1.5,
+      unit: "per_unit",
+      as_stated_price: "$1–$1.50 each",
+      quote: "White or Black Napkins $1.00 each or Colored Napkins $1.50 each.",
+    }),
+  ];
   const lightingAddOns: AddOn[] = d.calculatorAddOns.lighting.map((l) => ({
     id: l.id,
     name: l.label,
@@ -1229,6 +1368,31 @@ function buildDiamondGarden(): VenueDetailsV3 {
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
   }));
+  // Real "Lighting & Video" sheet item, missing before this pass — the BYO-music alternative to
+  // hiring a DJ (2 speakers + wireless mic), its own sheet sub-heading.
+  const playYourOwnMusicAddOn: AddOn = {
+    id: "playYourOwnMusic",
+    name: "Play your own music: 2 speakers (1,100 W) + wireless microphone",
+    category: "Lighting & Video",
+    category_std: "lighting_av",
+    variant: null,
+    group: "other",
+    price: 175,
+    price_max: null,
+    unit: "flat",
+    per_space_prices: null,
+    applies_to: "all",
+    path_ids: null,
+    condition: null,
+    priceable: true,
+    tax_pct_override: null,
+    min_guests: null,
+    as_stated_price: money(175),
+    note: null,
+    quote: "Want to Play Your Own Music? (2 Speakers/1100 Watts & 1 Wireless Microphone) $175.00",
+    source_url: d.addOnsResources[0].url,
+    snapshot_id: null,
+  };
   const staffingAddOns: AddOn[] = d.calculatorAddOns.staffing.map((s) => ({
     id: s.id,
     name: s.label,
@@ -1252,6 +1416,33 @@ function buildDiamondGarden(): VenueDetailsV3 {
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
   }));
+  // Real "Professional Wait Staff" sheet item — the base 5-hour rate and the real server-count
+  // formula by guest count/service style, missing before this pass (2026-09-19 review). Distinct
+  // from `staffingAddOns` above (extra bartender / cleaning service), which come from other sheet
+  // lines under the generic "Staffing & service" curated bucket.
+  const professionalWaitStaffAddOn: AddOn = {
+    id: "professionalWaitStaff",
+    name: "Professional wait staff",
+    category: "Professional Wait Staff",
+    category_std: "services_staffing",
+    variant: null,
+    group: "service",
+    price: 225,
+    price_max: null,
+    unit: "per_unit",
+    per_space_prices: null,
+    applies_to: "all",
+    path_ids: null,
+    condition: null,
+    priceable: true,
+    tax_pct_override: null,
+    min_guests: null,
+    as_stated_price: "$225 each (5 hrs)",
+    note: "$30 for each additional hour; the sheet sets server counts by guest count and service style: buffet 50–100 guests 2 servers + 1 kitchen, 101–150 3 + 1, 151–250 4 + 2; plated 50–100 3 + 1, then 1 server per 50 guests + 2 kitchen; real dinnerware needs more.",
+    quote: "Professional Wait Staff-$225.00 Each for 5 Hours ($30.00 for each additional hour)",
+    source_url: d.addOnsResources[0].url,
+    snapshot_id: null,
+  };
   const foodDrinkExtraAddOns: AddOn[] = d.calculatorAddOns.foodDrinkExtras.map((it) => ({
     id: it.id,
     name: it.label,
@@ -1274,7 +1465,9 @@ function buildDiamondGarden(): VenueDetailsV3 {
     tax_pct_override: null,
     min_guests: it.id === "coffeeTea" ? 150 : it.id === "cakeTable" ? 125 : null,
     as_stated_price: "perGuest" in it ? `${money((it as any).perGuest)}/guest` : money((it as any).price),
-    note: null,
+    // Round (2026-09-19 review): the cake/sweet table's real "or $450 flat, plus $50 delivery"
+    // alternative was previously left out of the note entirely.
+    note: it.id === "cakeTable" ? "125-guest minimum or $450; plus $50 delivery" : null,
     quote: "perGuest" in it ? `${money((it as any).perGuest)}/guest` : money((it as any).price),
     source_url: d.addOnsResources[0].url,
     snapshot_id: null,
@@ -1351,38 +1544,127 @@ function buildDiamondGarden(): VenueDetailsV3 {
     snapshot_id: null,
     selection_group: "bar",
   }));
-  // Extra hour: modeled at Saturday's own rate (the default/most common wedding day); the
-  // cheaper weekday rate for the same off/peak+servers combination is real but not modeled as
-  // its own priced variant here -- see the punch list.
-  const extraHourAddOns: AddOn[] = [
-    { key: "off-no-servers", price: d.calculatorAddOns.extraHour.offSeason.saturday, label: "Extra hour (off-season, no servers)" },
-    { key: "off-with-servers", price: d.calculatorAddOns.extraHour.offSeason.saturdayWithServers, label: "Extra hour (off-season, with servers)" },
-    { key: "peak-no-servers", price: d.calculatorAddOns.extraHour.peakSeason.saturday, label: "Extra hour (peak season, no servers)" },
-    { key: "peak-with-servers", price: d.calculatorAddOns.extraHour.peakSeason.saturdayWithServers, label: "Extra hour (peak season, with servers)" },
-  ].map((e) => ({
-    id: `extra-hour-${e.key}`,
-    name: e.label,
-    category: "Extra hours",
-    category_std: "time",
-    variant: null,
-    group: "other",
-    price: e.price,
-    price_max: null,
-    unit: "flat" as const,
-    per_space_prices: null,
-    applies_to: "all" as const,
-    path_ids: null,
-    condition: null,
-    priceable: true,
-    tax_pct_override: null,
-    min_guests: null,
-    as_stated_price: money(e.price),
-    note: "Weekday rate is lower and not modeled as a separate variant.",
-    quote: money(e.price),
-    source_url: d.addOnsResources[0].url,
-    snapshot_id: null,
-    selection_group: "extra-hour",
-  }));
+  // Real "Dinnerware Rental Only" sheet items the earlier curated pass never priced individually
+  // (2026-09-19 review): chafing dishes, chargers, and the dishwasher/steward person required
+  // whenever real dinnerware is rented without hiring servers.
+  const dinnerwareRentalExtraAddOns: AddOn[] = [
+    {
+      id: "chafingDishes",
+      name: "Chafing dishes",
+      category: "Dinnerware Rental Only",
+      category_std: "fb",
+      variant: null,
+      group: "fb",
+      price: 15,
+      price_max: null,
+      unit: "per_unit",
+      per_space_prices: null,
+      applies_to: "all",
+      path_ids: HALL_PATH_IDS,
+      condition: null,
+      priceable: true,
+      tax_pct_override: null,
+      min_guests: null,
+      as_stated_price: "$15 each",
+      note: "Water pan, lid, sternos & stainless serving utensils.",
+      quote: "Stainless Steel Chafing Dishes $15.00 Each. (Water Pan, Lid, Sternos & Stainless Serving Utensils)",
+      source_url: d.addOnsResources[0].url,
+      snapshot_id: null,
+    },
+    {
+      id: "silverOrGoldChargers",
+      name: "Silver or gold chargers",
+      category: "Dinnerware Rental Only",
+      category_std: "fb",
+      variant: null,
+      group: "fb",
+      price: 2.5,
+      price_max: null,
+      unit: "per_guest",
+      per_space_prices: null,
+      applies_to: "all",
+      path_ids: HALL_PATH_IDS,
+      condition: null,
+      priceable: true,
+      tax_pct_override: null,
+      min_guests: null,
+      as_stated_price: "$2.50/guest",
+      note: null,
+      quote: "Silver or Gold Chargers- $2.50 Per Person",
+      source_url: d.addOnsResources[0].url,
+      snapshot_id: null,
+    },
+    {
+      id: "dishwasherSteward",
+      name: "Dishwasher/steward",
+      category: "Dinnerware Rental Only",
+      category_std: "fb",
+      variant: null,
+      group: "fb",
+      price: 225,
+      price_max: null,
+      unit: "flat",
+      per_space_prices: null,
+      applies_to: "all",
+      path_ids: HALL_PATH_IDS,
+      condition: null,
+      priceable: true,
+      tax_pct_override: null,
+      min_guests: null,
+      as_stated_price: money(225),
+      note: "Required when renting dinnerware without servers.",
+      quote: "If the client wants to Rent Dinnerware with NO Servers, a Dishwasher/Steward Person must be added for $225.00 ea.",
+      source_url: d.addOnsResources[0].url,
+      snapshot_id: null,
+    },
+  ];
+  // Extra hour: the venue's own real 3-bucket day pricing (weekday/Friday/Sunday share a price,
+  // Saturday is its own), crossed with season (off/peak) and whether servers are included — 16
+  // real rows total (round, 2026-09-19 review; previously only Saturday's own rate was modeled).
+  // `day`/`season` drive both the calculator's PillGroup scoping (`selectableAddOns`) and the
+  // static Add-ons card's compact season × day grid (`fmt.dayPricedGroupGrid`).
+  const EXTRA_HOUR_DAYS = ["weekday", "fri", "sun", "sat"] as const;
+  const EXTRA_HOUR_QUOTE: Record<"off" | "peak", string> = {
+    off: "Nov. Jan. Feb. Mar. Weekday/Friday/ Sunday: $700.00& ($900.00 With Servers Included) Saturdays: $800.00& ($1000.00 with Servers Included)",
+    peak: "Apr. May. Jun. Jul. Aug. Sep. Oct. Dec. Weekdays/ Friday / Sunday: $1000 or ($1200 With Servers Included) Saturdays: $1200.00 or ($1400.00 with Servers Included)",
+  };
+  const extraHourAddOns: AddOn[] = (["off", "peak"] as const).flatMap((season) => {
+    const bucket = season === "off" ? d.calculatorAddOns.extraHour.offSeason : d.calculatorAddOns.extraHour.peakSeason;
+    return (["no", "yes"] as const).flatMap((servers) => {
+      const serversLabel = servers === "no" ? "no servers" : "with servers";
+      const weekdayFriSunPrice = servers === "no" ? bucket.weekday : bucket.weekdayWithServers;
+      const satPrice = servers === "no" ? bucket.saturday : bucket.saturdayWithServers;
+      return EXTRA_HOUR_DAYS.map((day) => {
+        const price = day === "sat" ? satPrice : weekdayFriSunPrice;
+        return {
+          id: `extra-hour-${season}-${servers}servers-${day}`,
+          name: `Extra hour (${serversLabel})`,
+          category: "Extra hours",
+          category_std: "time",
+          variant: serversLabel,
+          group: "other",
+          price,
+          price_max: null,
+          unit: "per_hour" as const,
+          per_space_prices: null,
+          applies_to: "all" as const,
+          path_ids: null,
+          condition: null,
+          priceable: true,
+          tax_pct_override: null,
+          min_guests: null,
+          as_stated_price: money(price),
+          note: null,
+          quote: EXTRA_HOUR_QUOTE[season],
+          source_url: d.addOnsResources[0].url,
+          snapshot_id: null,
+          selection_group: "extra-hour",
+          day,
+          season,
+        };
+      });
+    });
+  });
 
   // Category-level copy for the Add-ons & extras section's 5 curated cards (round-3 schema
   // addition) — `category` is the join key back to the granular per-item add-ons above; the
@@ -1405,9 +1687,29 @@ function buildDiamondGarden(): VenueDetailsV3 {
     default_axes: { path_id: "hall-rental-only", guests: 150, day: "sat", season: "peak", ceremonyOnSite: false },
     paths: [hallOnlyPath, hallPlusALaCartePath, allInclusivePath],
     rates: { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, sales_tax_source: "unknown", cc_fee_pct: null, quote: null, source_url: null, snapshot_id: null },
-    add_ons: [...ceremonyAddOns, ...decorAddOns, centerpiecesAddOn, ...lightingAddOns, ...staffingAddOns, ...foodDrinkExtraAddOns, ...foodPackageAddOns, ...dinnerwareAddOns, ...barAddOns, ...extraHourAddOns],
+    add_ons: [
+      ...ceremonyAddOns,
+      ...decorAddOns,
+      centerpiecesAddOn,
+      ...linenAddOns,
+      ...lightingAddOns,
+      playYourOwnMusicAddOn,
+      ...staffingAddOns,
+      professionalWaitStaffAddOn,
+      ...foodDrinkExtraAddOns,
+      ...foodPackageAddOns,
+      ...dinnerwareAddOns,
+      ...barAddOns,
+      ...dinnerwareRentalExtraAddOns,
+      ...extraHourAddOns,
+    ],
     required_third_party: [],
-    notes: [],
+    // Two sheet-level facts stated once at the bottom of the 2024 add-ons PDF, applying to every
+    // add-on price on the sheet (round, 2026-09-19 review — previously dropped entirely).
+    notes: [
+      fact("Add-on prices: add 10% for 2025.", "*Add 10% for 2025*", d.addOnsResources[0].url),
+      fact("Tax and other fees are not included in add-on prices.", "*Tax & Other Fees Not included *", d.addOnsResources[0].url),
+    ],
     add_on_categories: addOnCategories,
     seasons: { peak: d.packages.hallOnly.pricing.peakSeason.months, off: d.packages.hallOnly.pricing.offSeason.months },
   });

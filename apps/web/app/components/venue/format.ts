@@ -981,13 +981,30 @@ export interface AddOnStdGroup {
   category_std: AddOnCategoryStd;
   label: string;
   subgroups: AddOnSubgroup[];
+  /** Round 6: a selection group whose items carry `day`/`season` (Diamond Garden's extra-hour
+   * rows) is pulled out of the normal per-item table flow entirely — the view renders it as one
+   * compact grid instead (`dayPricedGroupGrid`). Empty for every category that has none. */
+  dayPricedItems: AddOn[];
 }
 
-/** Groups every non-selection-group add-on first by `category_std` (in the fixed
- * `ADD_ON_CATEGORIES_STD` order), then by the venue's own `category` within each — curated
- * `add_on_categories` blurb/examples attach to the matching sub-group when present. */
+/** A selection-group item is no longer hidden wholesale from the static Add-ons section (round 6
+ * fix — previously EVERY `selection_group` item was dropped here). It's hidden only when the same
+ * facts it would show already render elsewhere on the page: an `fb`-category selection group
+ * (Diamond Garden's food package / dinnerware / bar tier) duplicates the F&B card's own menus/bar
+ * ladders tables once either exists, so it stays hidden; every other selection group (e.g.
+ * extra-hour, `category_std: "time"`) now renders. */
+function shouldHideSelectionGroup(d: VenueDetailsV3, categoryStd: AddOnCategoryStd): boolean {
+  if (categoryStd !== "fb") return false;
+  return d.food_beverage.bar_ladders.length > 0 || d.food_beverage.menus.length > 0;
+}
+
+/** Groups every add-on first by `category_std` (in the fixed `ADD_ON_CATEGORIES_STD` order), then
+ * by the venue's own `category` within each — curated `add_on_categories` blurb/examples attach to
+ * the matching sub-group when present. Selection-group items are included per
+ * `shouldHideSelectionGroup` above; day/season-priced items are pulled out into `dayPricedItems`
+ * instead of a subgroup (round 6). */
 export function groupAddOnsByCategoryStd(d: VenueDetailsV3): AddOnStdGroup[] {
-  const selectable = d.pricing.add_ons.filter((a) => !a.selection_group);
+  const selectable = d.pricing.add_ons.filter((a) => !a.selection_group || !shouldHideSelectionGroup(d, resolveCategoryStd(a)));
   const byStd = new Map<AddOnCategoryStd, AddOn[]>();
   for (const a of selectable) {
     const std = resolveCategoryStd(a);
@@ -996,7 +1013,9 @@ export function groupAddOnsByCategoryStd(d: VenueDetailsV3): AddOnStdGroup[] {
   }
   const curated = new Map((d.pricing.add_on_categories ?? []).map((c) => [c.category, c] as const));
   return ADD_ON_CATEGORIES_STD.filter((std) => byStd.has(std)).map((std) => {
-    const items = byStd.get(std)!;
+    const allItems = byStd.get(std)!;
+    const dayPricedItems = allItems.filter((a) => a.day != null && a.season != null);
+    const items = allItems.filter((a) => !(a.day != null && a.season != null));
     const byCategory = new Map<string, AddOn[]>();
     for (const a of items) {
       if (!byCategory.has(a.category)) byCategory.set(a.category, []);
@@ -1006,8 +1025,110 @@ export function groupAddOnsByCategoryStd(d: VenueDetailsV3): AddOnStdGroup[] {
       const c = curated.get(category);
       return { category, blurb: c?.blurb ?? null, examples: c?.examples ?? [], items: catItems };
     });
-    return { category_std: std, label: ADD_ON_CATEGORY_STD_LABELS[std], subgroups };
+    return { category_std: std, label: ADD_ON_CATEGORY_STD_LABELS[std], subgroups, dayPricedItems };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Day/season-priced selection group grid (round 6) — Diamond Garden's extra-hour rows: one row
+// per distinct `variant` (no servers / with servers), one column per season, with the
+// weekday/Friday/Sunday days merged into a single "Weekday–Sun" column whenever every row prices
+// them identically, and any other day (Saturday) broken out into its own column. Pure and
+// venue-agnostic so it's unit-testable without rendering a component.
+// ---------------------------------------------------------------------------
+
+export interface DayPricedGridRow {
+  key: string;
+  label: string;
+  /** Aligned to the grid's `columns`; null when this row has no price for that column. */
+  prices: (string | null)[];
+}
+
+export interface DayPricedGrid {
+  columns: string[];
+  rows: DayPricedGridRow[];
+}
+
+const SEASON_DISPLAY_ORDER: Season[] = ["off", "peak", "any"];
+const SEASON_LABEL: Partial<Record<Season, string>> = { off: "Off-season", peak: "Peak" };
+const DAY_LABEL: Record<Day, string> = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun", weekday: "Weekday", any: "Any day" };
+/** Days that merge into one "Weekday–Sun" column when their price agrees, per the venue's own
+ * real bucketing (a shared weekday/Friday/Sunday rate, Saturday priced separately). */
+const MERGEABLE_DAYS: Day[] = ["weekday", "fri", "sun"];
+
+function dayRangeLabel(days: Day[]): string {
+  if (days.length === 1) return DAY_LABEL[days[0]];
+  return `${DAY_LABEL[days[0]]}–${DAY_LABEL[days[days.length - 1]]}`;
+}
+
+/** Row label from an item's `name`/`variant`: "Extra hour" + "no servers" -> "Extra hour, no
+ * servers" — strips a redundant "(no servers)" parenthetical already baked into `name` (Diamond
+ * Garden's fixture sets both) so the label isn't repeated. */
+function dayPricedRowLabel(a: AddOn): string {
+  const base = a.name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  return a.variant ? `${base}, ${a.variant}` : base;
+}
+
+/** Builds a season × day price grid for a set of add-ons that share a `selection_group` and carry
+ * `day`/`season` on every item. Venue-agnostic: rows are whatever distinct `variant` values are
+ * present (fallback: `name`), columns are whatever seasons are present, and within each season the
+ * `MERGEABLE_DAYS` collapse into one "Weekday–Sun" column only when every row prices them
+ * identically (checked per row so a genuinely non-uniform sheet still renders correctly, just with
+ * more columns). Items without both `day` and `season` set are ignored. */
+export function dayPricedGroupGrid(items: AddOn[]): DayPricedGrid {
+  const priced = items.filter((a) => a.day != null && a.season != null && a.price != null);
+  if (priced.length === 0) return { columns: [], rows: [] };
+
+  const rowKeyOf = (a: AddOn) => a.variant ?? a.name;
+  const rowKeys: string[] = [];
+  const rowLabelOf = new Map<string, string>();
+  for (const a of priced) {
+    const key = rowKeyOf(a);
+    if (!rowKeys.includes(key)) {
+      rowKeys.push(key);
+      rowLabelOf.set(key, dayPricedRowLabel(a));
+    }
+  }
+
+  const seasons = SEASON_DISPLAY_ORDER.filter((s) => priced.some((a) => a.season === s));
+
+  interface ColumnDef {
+    label: string;
+    season: Season;
+    days: Day[];
+  }
+  const columns: ColumnDef[] = [];
+  for (const season of seasons) {
+    const seasonItems = priced.filter((a) => a.season === season);
+    const daysPresent: Day[] = [];
+    for (const a of seasonItems) if (a.day && !daysPresent.includes(a.day)) daysPresent.push(a.day);
+    const mergeCandidates = daysPresent.filter((d) => MERGEABLE_DAYS.includes(d));
+
+    const canMerge =
+      mergeCandidates.length > 1 &&
+      rowKeys.every((key) => {
+        const prices = mergeCandidates
+          .map((d) => seasonItems.find((a) => rowKeyOf(a) === key && a.day === d)?.price)
+          .filter((p): p is number => p != null);
+        return prices.length <= 1 || prices.every((p) => p === prices[0]);
+      });
+
+    const seasonPrefix = SEASON_LABEL[season] ? `${SEASON_LABEL[season]} ` : "";
+    const restDays = canMerge ? daysPresent.filter((d) => !mergeCandidates.includes(d)) : daysPresent;
+    if (canMerge) columns.push({ label: `${seasonPrefix}${dayRangeLabel(mergeCandidates)}`, season, days: mergeCandidates });
+    for (const d of restDays) columns.push({ label: `${seasonPrefix}${dayRangeLabel([d])}`, season, days: [d] });
+  }
+
+  const rows: DayPricedGridRow[] = rowKeys.map((key) => {
+    const rowItems = priced.filter((a) => rowKeyOf(a) === key);
+    const prices = columns.map((c) => {
+      const match = rowItems.find((a) => a.season === c.season && a.day != null && c.days.includes(a.day));
+      return match ? money(match.price!) : null;
+    });
+    return { key, label: rowLabelOf.get(key)!, prices };
+  });
+
+  return { columns: columns.map((c) => c.label), rows };
 }
 
 /** The venue's own sub-category (`AddOn.category`), shown as a small caption above the item name
@@ -1104,7 +1225,11 @@ export function buildCategoryCardTable(
   const rowsByKey = new Map(base.rows.map((r) => [r.key, r]));
   const rows: AddOnCategoryTableRow[] = [];
   const leftover: string[] = [];
-  const allLabels = () => rows.map((r) => r.itemLabel);
+  // Dedupe against the WHOLE card (every priced row, in any sub-category, plus folded examples), not
+  // just the rows seen so far: a summary bullet in one sub-category ("Linen: tablecloths, runners &
+  // napkins") must not survive when a later sub-category carries the itemized rows.
+  const allLabels = () => [...base.rows.map((r) => r.itemLabel), ...rows.filter((r) => r.key.startsWith("ex-")).map((r) => r.itemLabel)];
+  const itemizedSubcategories = new Set(subgroups.filter((g) => g.items.length > 0).map((g) => g.category.trim().toLowerCase()));
   subgroups.forEach((sg, si) => {
     for (const a of sg.items) {
       const r = rowsByKey.get(a.id);
@@ -1114,6 +1239,10 @@ export function buildCategoryCardTable(
     sg.examples.forEach((ex, i) => {
       const parsed = parsePricedExample(ex);
       const name = parsed ? parsed.name : ex;
+      // "Linen: tablecloths, runners & napkins ($1-15 each)" summarizes a sub-category that is itemized
+      // elsewhere on the card -> the rows already say it.
+      const prefix = name.split(":")[0]?.trim().toLowerCase();
+      if (prefix && name.includes(":") && itemizedSubcategories.has(prefix)) return;
       if (allLabels().some((l) => isNearDuplicateAddOnName(l, name))) return;
       if (!parsed) {
         leftover.push(ex);
