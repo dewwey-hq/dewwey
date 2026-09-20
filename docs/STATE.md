@@ -151,10 +151,18 @@ standard) — plan file / README.
 - Canary, vendor half (`acq-20260919-canary-vendor`, 3 tier-A planners + 2 florists × 25): $0.29,
   125 fetched / 82 new, 33 stacks, 37 candidates, **23 weddings** (22 v2 + 1 A1), 5 at venues that had
   < 6 ($0.06 each). 0.18 weddings per fetched post — the vendor band clears Gate 1a.
-- Canary, venue half (`acq-20260919-canary`, 20 thin venues from the top prior band × 25): $1.15,
-  running at hand-off; chain + Gate 1a read next.
-- Probes A pool ready: `tmp_analysis/d061_probesA_targets.sql` → 223 targets (183 thin listed + 40 alias
-  siblings), ~$12.80.
+- Canary, venue half (`acq-20260919-canary`, 20 thin venues from the top prior band × 25): $1.13,
+  489 fetched / **477 new** (never-crawled venues barely overlap), 53 stacks, 59 candidates, **34
+  weddings** (33 v2 + 1 A1), 9 thin venues gained weddings, **5 crossed into 6+**; $0.04 per new
+  wedding at a venue that had < 6. **0.069 weddings per fetched post → Gate 1a PASS** (bar 0.03).
+  22 + 3 candidates the reader would not commit to are in `/label/candidates?batch=acq-20260919-canary`
+  (vendor canary: 6, `?batch=acq-20260919-canary-vendor`).
+- **Probes A launched** (`acq-20260919-probesA`, 223 targets × 25, $12.82 projected, detached
+  `nohup`, log `scratchpad/probesA.log`; ~23 Apify runs, 80-90 min incl. image ingest). When done:
+  parse → cluster (v2, then A1) → reconcile → reader (both pools) → creation dry-run → create →
+  refresh role tags → funnel → Gate 1. **Use `tail`, never `head`, on the script output.**
+- Running totals 2026-09-20 02:30 UTC: weddings **6,082** (110 from acquisition today), Apify
+  $3.23 ingested + $12.82 in flight, OpenRouter ≈ $1.20, 657 acquisition posts, 1,369 images in R2.
 
 **Blocked on the user:** nothing at the moment — Gate 1a decides probes A; the user asked to be told
 before that spend.
@@ -180,6 +188,11 @@ before that spend.
   the narrative venue (pilot: OTHER_VENUE = thewellsley on a Dalcy-anchored candidate at 0.95). Human
   verdict: **W** when the page's venue is the `Venue:` credit, **V** + `Venue:` handle when it is the
   side-event venue; reader rule + event-context credit is a backlog item (plan file, README). Sized: 231 South-Asian-event captions (87 with a venue credit line) + 975 other side events.
+- **Never pipe a pipeline script through `head`.** `head -N` closes the pipe after N lines and the
+  next console.log kills the process with SIGPIPE mid-run: the venue canary's clustering wrote its 54
+  candidates but died before the chicago_status step, so the reader selected 0 posts. Use `tail` or
+  write the log to a file. Re-running the clustering for the batch repairs it (the status step covers
+  every candidate of the version).
 - Non-venue hop-0 seeds (caterers/planners/DJs) out-yield venues 0.37 vs 0.14 weddings per tagged
   post and fill thin venues 3.5× faster per post — vendor tagged feeds are tick 3b.
 
