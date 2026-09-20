@@ -143,9 +143,10 @@ Coverage (metro venue accounts, morning → now): 0: 170 → **169** · 1-5: 302
 · 16-49: 64 → 62 · 50+: 27 → **32**. Listed venues 470 → 472+.
 
 **Gates:** Gate 0 PASS (pilot), pilot spot-check **95.7% PASS**, Gate 1a PASS (canary 0.076), Gate 1 PASS
-(probes A 0.072 vs 0.03). **Probes A spot-check in progress by the user: 49 of 100 labeled** at
-`/label/candidates?spotcheck=acq-20260919-probesA&n=100`; run `reportSpotCheck.ts --batch-id
-acq-20260919-probesA` when done. It gates auto-creation for probes B and the vendor tick.
+(probes A 0.072 vs 0.03). **Probes A spot-check DONE (user, 97 posts): model THIS_VENUE precision 65/67 =
+97% → PASS**, overall 81.4% (`tmp_analysis/spot_check_acq-20260919-probesA_2026-09-20.md`). Same two miss
+patterns as the pilot (NOT_WEDDING on real recaps ×7, OTHER_VENUE inversion ×8) → `extract-v1.3` backlog.
+Probes B and the vendor tick are **released to auto-create**.
 
 **In flight at hand-off (detached `nohup`, logs in scratchpad):** probes B (`acq-20260920-probesB`, 60
 zero-wedding venues, ≈$3.45) then the vendor tick (`acq-20260920-vendor`, 22 tier-A vendors, ≈$1.26); a waiter
@@ -153,8 +154,8 @@ runs `chain.sh` for each after its DONE line — **creation is NOT run for these
 passes** (chain.sh only dry-runs creation). Then: `createWeddings… --acquisition-batch <b>` ×2 pools,
 `refreshAccountRoleTagsFromWeddings.ts --apply`, `measure.ts --batch-id <b> --apply`, funnel.
 
-**Blocked on the user:** finish the probes A spot-check (51 posts) → I report agreement → probes B / vendor
-creation. Nothing else.
+**Blocked on the user:** nothing (spot-check done). Two model-created probes A weddings the user labeled
+NOT_WEDDING are listed in chat for keep/retire.
 
 **Next (Claude):** after the spot-check: create probes B + vendor batches, measure, coverage table; then the
 deepen calibration (8 measured-promising venues, ≈$0.5) and alias-family feeds with the remaining ≈$8;
