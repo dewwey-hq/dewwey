@@ -1122,9 +1122,23 @@ async function runFromConfirmedCandidates(
     const geoTargetAccountId =
       cand.decision === "WRONG_VENUE" ? cand.corrected_venue_account_id : cand.venue_account_id;
 
+    // D061 (2026-09-20, Acquaviva): a candidate can be anchored on an ALIAS of a venue -- a sibling
+    // handle or a typo minted from a credit -- created before the account_aliases row existed. The
+    // canonical account is what carries the location row and what the wedding must anchor to, so
+    // geography and the anchor both resolve through account_aliases (same coalesce the structural
+    // view and the vendor-credit query below already use). Leaves the candidate row itself alone.
+    let canonicalGeoAccountId: number | null = geoTargetAccountId;
+    if (geoTargetAccountId != null) {
+      const { rows: canonRows } = await client.query<{ canonical_account_id: number }>(
+        `select canonical_account_id::int as canonical_account_id from account_aliases where alias_account_id = $1`,
+        [geoTargetAccountId]
+      );
+      if (canonRows.length > 0) canonicalGeoAccountId = canonRows[0].canonical_account_id;
+    }
+
     let venueCityIsChicago = false;
     let venueInMetro = false;
-    if (geoTargetAccountId != null) {
+    if (canonicalGeoAccountId != null) {
       // D055: vendors.city defaults to 'Chicago' on every row (docs/jeremy-ddl.sql) -- only
       // trust it as geography evidence when discovery_source='google_places' (a real address
       // lookup); account_locations.in_metro stays authoritative.
@@ -1132,7 +1146,7 @@ async function runFromConfirmedCandidates(
         `select
            exists(select 1 from vendors v where v.account_id = $1 and v.city = 'Chicago' and v.discovery_source = 'google_places') as city_chicago,
            coalesce((select al.in_metro from account_locations al where al.account_id = $1), false) as in_metro`,
-        [geoTargetAccountId]
+        [canonicalGeoAccountId]
       );
       venueCityIsChicago = geoRows[0].city_chicago;
       venueInMetro = geoRows[0].in_metro;
@@ -1166,7 +1180,12 @@ async function runFromConfirmedCandidates(
     }
     const acquisitionDecision = opts.acquisitionBatch ? decideAcquisitionCreation(reconMatchConfidence) : null;
 
-    const displayVenueAccountId = gate.action === "CREATE" ? gate.venueAccountId : geoTargetAccountId;
+    // Display and anchor: the canonical account when the effective venue is an alias (D061).
+    const anchorVenueAccountId =
+      gate.action === "CREATE" && gate.venueAccountId === geoTargetAccountId && canonicalGeoAccountId != null
+        ? canonicalGeoAccountId
+        : gate.venueAccountId;
+    const displayVenueAccountId = gate.action === "CREATE" ? anchorVenueAccountId : (canonicalGeoAccountId ?? geoTargetAccountId);
     let venueUsername = "?";
     if (displayVenueAccountId != null) {
       const { rows: unameRows } = await client.query<{ username: string }>(
@@ -1297,7 +1316,7 @@ async function runFromConfirmedCandidates(
       );
       bump(isWeakMatch ? "CREATE_WEAK_MATCH" : "CREATE");
 
-      const venueAccountId = gate.venueAccountId;
+      const venueAccountId = anchorVenueAccountId ?? gate.venueAccountId;
 
       const { rows: weddingRows } = await client.query<{ id: number }>(
         `insert into weddings (venue_id, event_date_est, is_chicago) values ($1, $2, $3) returning id`,
