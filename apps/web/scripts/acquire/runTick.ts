@@ -77,6 +77,8 @@ interface Args {
   resultsLimit: number;
   tier: string | null;
   maxCostUsd: number;
+  /** usernames per Apify run (default 10, the crawl-1 pace for tagged feeds; profiles tolerate 50). */
+  batchSize: number;
   onlyNewerThan: string | null;
   note: string | null;
   dryRun: boolean;
@@ -89,7 +91,7 @@ function usage(): never {
       "  bun run scripts/acquire/runTick.ts --tick <name> --feed tagged|own|profile \\\n" +
       "    (--account-ids 1,2,3 | --usernames a,b,c) [--results-limit 25] \\\n" +
       "    [--tier pilot|probe|canary|vendor|alias|deepen|recency_a|profile] \\\n" +
-      "    [--max-cost-usd 1.0] [--only-newer-than 2026-08-20] [--note \"why\"] \\\n" +
+      "    [--max-cost-usd 1.0] [--batch-size 10] [--only-newer-than 2026-08-20] [--note \"why\"] \\\n" +
       "    [--dry-run] [--resume]\n"
   );
   process.exit(1);
@@ -114,6 +116,7 @@ function parseArgs(argv: string[]): Args {
     resultsLimit: Number(get("--results-limit") ?? "25"),
     tier: get("--tier"),
     maxCostUsd: Number(get("--max-cost-usd") ?? "1.0"),
+    batchSize: Math.max(1, Number(get("--batch-size") ?? String(BATCH_SIZE))),
     onlyNewerThan: get("--only-newer-than"),
     note: get("--note"),
     dryRun: argv.includes("--dry-run"),
@@ -260,7 +263,7 @@ async function main() {
   }
 
   const accounts = await resolveAccounts(args, args.dryRun);
-  const batches = chunk(accounts, BATCH_SIZE);
+  const batches = chunk(accounts, args.batchSize);
   const tier =
     args.feed === "profile" ? "profile" : args.tier ?? (args.tick in PRIOR_BY_TIER ? args.tick : null);
   if (!tier) {
