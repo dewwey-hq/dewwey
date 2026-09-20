@@ -100,7 +100,7 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
    nothing is served today. Say "serve the six" and it is one dry-run + apply (`vd-serve-c5`).
 4. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
 
-## Second mission (parallel window) — D061 Acquisition loop: month-1 ticks through probes A + low-types DONE (2026-09-20 05:45 UTC)
+## Second mission (parallel window) — D061 Acquisition loop: ALL month-1 ticks DONE (2026-09-20 07:00 UTC)
 
 Decision + narrative: `docs/decisions.md` D061 and its addenda. Plan of record
 `~/.claude/plans/on-1-what-do-joyful-church.md` (rev 2). README `docs/engineering/acquisition-loop/README.md`.
@@ -109,9 +109,9 @@ apifyClient,ingest,runTick,targets,measure,reportAcquisitionFunnel,reportSpotChe
 batch: scratchpad `chain.sh <batch>` (parse → cluster v2 → cluster A1 → reconcile → reader v2 → reader A1
 → creation dry-runs → funnel; **never `head` its output**).
 
-**Day 1 result (2026-09-19 → 20):** weddings **5,972 → 6,446**, **474 created by the loop** (+34 Tigerlily
-re-anchored, not added). Spend: **Apify $16.19** (of $29; probes B + vendor tick in flight add ≈$4.7),
-**OpenRouter $4.24**. Posts fetched 6,063 + profiles 544; 5,522 new posts; 1,369+ images in R2.
+**Day 1 result (2026-09-19 → 20, final):** weddings **5,972 → 6,571**, **600 created by the loop** (+34 Tigerlily
+re-anchored, not added; 1 retired after spot-check). Spend: **Apify $19.48** of $29 (≈ $9.50 left this cycle),
+**OpenRouter $5.35**. 7,851 post results fetched (7,148 new) + 544 profiles; images in R2.
 
 | Tick | Targets | $ | New posts | Weddings | w/post | thin-venue weddings | venues → 6+ |
 |---|---|---|---|---|---|---|---|
@@ -121,9 +121,11 @@ re-anchored, not added). Spend: **Apify $16.19** (of $29; probes B + vendor tick
 | Legacy: Ben's posts at zero venues | 75 | 0 | 1,541 | 6 | 0.004 | 6 | 0 (46 venues dead) |
 | **Probes A** (thin venues + alias siblings) | 223 | 9.84 | 3,965 | **306** | 0.072 | 202 | **24** |
 | Low-types (hotels/restaurants/churches at 1-5) | 41 | 2.26 | 900 | 49 | 0.050 | 33 | 7 |
+| Probes B (zero-wedding venues) | 60 | 2.87 | 1,201 | 18 | 0.015 | 14 | 0 (3 venues 0 → 1; 39 dead) |
+| Vendor tick (tier-A planners/florists) | 22 | 1.27 | 425 | 103 | 0.188 | 5 | 0 |
 
-Coverage (metro venue accounts, morning → now): 0: 170 → **169** · 1-5: 302 → **268** · 6-15: 78 → **110**
-· 16-49: 64 → 62 · 50+: 27 → **32**. Listed venues 470 → 472+.
+Coverage (metro venue accounts, morning → end of night): 0: 170 → **165** · 1-5: 302 → **270** · 6-15: 78 → **108**
+· 16-49: 64 → 64 · 50+: 27 → **33**.
 
 **Gates:** Gate 0 PASS (pilot), pilot spot-check **95.7% PASS**, Gate 1a PASS (canary 0.076), Gate 1 PASS
 (probes A 0.072 vs 0.03). **Probes A spot-check DONE (user, 97 posts): model THIS_VENUE precision 65/67 =
@@ -131,20 +133,10 @@ Coverage (metro venue accounts, morning → now): 0: 170 → **169** · 1-5: 302
 patterns as the pilot (NOT_WEDDING on real recaps ×7, OTHER_VENUE inversion ×8) → `extract-v1.3` backlog.
 Probes B and the vendor tick are **released to auto-create**.
 
-**In flight at hand-off (detached `nohup`, logs in scratchpad):** probes B (`acq-20260920-probesB`, 60
-zero-wedding venues, ≈$3.45) then the vendor tick (`acq-20260920-vendor`, 22 tier-A vendors, ≈$1.26); a waiter
-runs `chain.sh` for each after its DONE line — **creation is NOT run for these two until the spot-check
-passes** (chain.sh only dry-runs creation). Then: `createWeddings… --acquisition-batch <b>` ×2 pools,
-`refreshAccountRoleTagsFromWeddings.ts --apply`, `measure.ts --batch-id <b> --apply`, funnel.
-
-**If the machine slept and the overnight processes died (they are plain `nohup` jobs):** check
-`select batch_id, status, count(*) from ops.crawl_runs where batch_id like 'acq-20260920-%' group by 1,2`.
-A run left `started`/`succeeded` → `bun run scripts/acquire/runTick.ts --tick probesB --feed tagged
---account-ids <ids> --resume` (ids from `targets.ts --tier probe --limit 60`; the tick skips accounts that
-already have a run) — same for `--tick vendor` (`targets.ts --tier vendor --limit 22`). Then, one batch at
-a time: `scripts/acquire/bin/chain.sh <batch>` (parse → cluster → reconcile → read → creation dry-run →
-funnel) and `scripts/acquire/bin/finish_batch.sh <batch>` (live create both pools → refresh role tags →
-measure → funnel). Logs: `apps/web/scripts/graph/tmp_analysis/acq_logs/`. Never `head` their output.
+**Nothing in flight.** Probes B and the vendor tick fetched, chained, created and measured overnight (rows above).
+Remaining month-1 items: deepen calibration (8 measured-promising venues, ≈$0.5), alias-family feeds, monthly
+recency at promising targets (`targets.ts --tier deepen`; `measure.ts` priors now drive the picks), with ≈$9.50
+of credit. Then `extract-v1.3` (backlog) and the styled-shoot auto-create gate.
 
 **Blocked on the user:** nothing. (Spot-check follow-up: wedding 12804 Chicago Forte promo retired via
 `retireNonWeddingPosts.ts --from-audit`, batch `acq-20260919-probesA-spotcheck-retire-1`; 12866 Sable Creek kept,

@@ -128,6 +128,12 @@ Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-
 - *Day total:* weddings 5,972 → **6,446** (474 by the loop), Apify $16.19, OpenRouter $4.24. Coverage: 1-5
   bucket 302 → 268, 6-15 bucket 78 → 110, 50+ 27 → 32. Probes B ($3.45) and the vendor tick ($1.26) fetching
   at hand-off; their creation waits on the user's probes A spot-check (49/100 labeled, running 95%+).
+- *Close-out 07:00 UTC:* probes A spot-check finished by the user: **65/67 = 97% PASS**; probes B (60
+  zero-wedding venues, $2.87) → 18 weddings, 0.015 w/post, 39 of 60 dead — the zero bucket is mostly not
+  Instagram wedding venues; vendor tick (22 tier-A vendors, $1.27) → **103 weddings, 0.19 w/post** but only 5 at
+  thin venues (volume, not coverage). **Day total: 5,972 → 6,571 weddings (600 by the loop), Apify $19.48,
+  OpenRouter $5.35, 7,851 posts fetched.** Coverage: 1-5 bucket 302 → 270, 6-15 78 → 108,
+  50+ 27 → 33, zero bucket 170 → 165. Pushed to `origin/main` on the user's word.
 
 ---
 
