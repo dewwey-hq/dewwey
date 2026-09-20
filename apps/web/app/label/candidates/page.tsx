@@ -89,6 +89,10 @@ export default async function PostVenueReviewPage({
         <>
           <div className="mx-auto max-w-3xl px-4 pt-4 text-xs font-medium text-purple-800">
             Blind spot-check · {spotcheckParam} · {items.length} remaining
+            <span className="block font-normal text-purple-700/80">
+              This sample includes the model&apos;s NOT_WEDDING and OTHER_VENUE calls on purpose. A styled
+              shoot or engagement you reject here is an agreement with the model, not a leak.
+            </span>
           </div>
           <PostVenueReviewClient
             initialItems={items}
