@@ -327,3 +327,9 @@ profile scrape's `external_url`; its frozen discovery counts move when profiles 
   alias candidate for human confirm. Sizing query: bare accounts (no profile after tick 2) that carry a
   venue-role credit. Fixed by hand this time (alias round 8).
 - Probes A spot-check (2026-09-20, 97 posts): the same two reader miss classes again -- 7 NOT_WEDDING on real recaps, 8 OTHER_VENUE inversions (two venues credited / side-event venue) -- now 13 + 10 examples across the two checks for `extract-v1.3`; precision on THIS_VENUE 97%, so the misses are recall, not safety.
+- **Styled-shoot belt-and-braces (user check, 2026-09-20 night):** D049's `post_styled_shoot_signal` fired on 10
+  of 5,342 acquired posts (1 CONFIRMED, 9 LIKELY); the reader rejected 6, the 1 THIS_VENUE slip (Chicago Forte
+  "symphony of love") was caught in the spot-check and retired; none reached a wedding. The signal is
+  non-gating by D049 design. Add to `createWeddingsFromJeremyEvidence.ts --acquisition-batch`: any included
+  post with styled signal CONFIRMED/LIKELY → HUMAN, never auto-create (would have touched 0 of today's 479).
+  The POSSIBLE band (438 posts) is mostly real weddings by the user's own labels (28 of 35) — leave it alone.
