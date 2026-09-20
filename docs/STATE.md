@@ -137,6 +137,15 @@ runs `chain.sh` for each after its DONE line — **creation is NOT run for these
 passes** (chain.sh only dry-runs creation). Then: `createWeddings… --acquisition-batch <b>` ×2 pools,
 `refreshAccountRoleTagsFromWeddings.ts --apply`, `measure.ts --batch-id <b> --apply`, funnel.
 
+**If the machine slept and the overnight processes died (they are plain `nohup` jobs):** check
+`select batch_id, status, count(*) from ops.crawl_runs where batch_id like 'acq-20260920-%' group by 1,2`.
+A run left `started`/`succeeded` → `bun run scripts/acquire/runTick.ts --tick probesB --feed tagged
+--account-ids <ids> --resume` (ids from `targets.ts --tier probe --limit 60`; the tick skips accounts that
+already have a run) — same for `--tick vendor` (`targets.ts --tier vendor --limit 22`). Then, one batch at
+a time: `scripts/acquire/bin/chain.sh <batch>` (parse → cluster → reconcile → read → creation dry-run →
+funnel) and `scripts/acquire/bin/finish_batch.sh <batch>` (live create both pools → refresh role tags →
+measure → funnel). Logs: `apps/web/scripts/graph/tmp_analysis/acq_logs/`. Never `head` their output.
+
 **Blocked on the user:** nothing. (Spot-check follow-up: wedding 12804 Chicago Forte promo retired via
 `retireNonWeddingPosts.ts --from-audit`, batch `acq-20260919-probesA-spotcheck-retire-1`; 12866 Sable Creek kept,
 verdict flipped under `jeremy`, `tmp_analysis/d061_spotcheck2_keep_one.sql`; 5 more probes A weddings created
