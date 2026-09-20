@@ -74,7 +74,7 @@ function SectionHeading({ title, subtitle, id, actions, icon }: { title: string;
           {subtitle ? <p className="mt-1 text-sm text-gray-500">{subtitle}</p> : null}
         </div>
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap justify-end gap-2">{actions}</div> : null}
+      {actions ? <div className="flex min-w-0 flex-wrap justify-end gap-2">{actions}</div> : null}
     </div>
   );
 }
@@ -464,7 +464,7 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
         {venue.sources.pages.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-3">
             {venue.sources.pages.map((url) => (
-              <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="underline decoration-gray-300 hover:text-gray-700">
+              <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="break-all underline decoration-gray-300 hover:text-gray-700">
                 {url.replace(/^https?:\/\/(www\.)?/, "")}
               </a>
             ))}
