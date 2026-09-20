@@ -478,6 +478,48 @@ green on the served runs. Spend: second cap $3.61 + $1.86 (c6) ≈ $5.5; key usa
 including the D061 window. **Next: Phase 3 fill tick f1** (30 venues, 20+ weddings, `$40` Phase 3 cap
 proposed) — waiting on the user's go.
 
+**Addendum 2026-09-20 (Phase 3 fill tick f1 — the first venues served from the loop).** The user gave the
+go with the **$40 Phase 3 cap**. f1 took the top 30 listed venues by wedding count with a verified website
+(20+ band, `bridgeportartcenter` 202 down to `post433chicago` 48). Crawl: 1,067 usable pages, 73
+text-layer PDFs, **zero shells**, 28 of 30 with ≥ 5 usable pages. Extraction: 30 of 30 for **$5.26**
+(≈ $0.18/venue, two shape-retries escalated to Sonnet), against a $10 tick cap inside the $40 Phase 3 cap
+— ≈ $34.74 left. **27 venues served** (`vd-serve-f1`); live totals 33 served, 24 compare-ready, 12
+excellent.
+
+**Gate F did its job, and the thing it caught first was the gate itself.** The universal must-not check
+failed 6 venues, all on `no_junk_vendor_names`. Reading the 8 flagged entries against their own evidence:
+5 were real one-word Chicago businesses whose own domain vouches for them (Limelight →
+limelightcatering.com, Tablescapes, Shutterbooth, Bittersweet → bittersweetpastry.com, Marryment), and
+the rule was simultaneously MISSING 4 of the 7 generic category headings Salvatore's had ingested as
+vendors, because it judged a name only by "one token, over 8 characters". The heuristic had no way to see
+the distinction; the entry's own url does. **Rule now:** a vendor-category heading with no url fails; a
+real URL-slug shape still fails; a long single-token name passes only when its own domain contains it.
+Re-run: 27 of 28 pass, and Salvatore's now fails on all 7 headings instead of 3. This is the loop
+README's "iterate for free first" applied to a CHECKER rather than the prompt — worth stating because a
+failing gate reads as a data problem by default, and here it was half a measurement problem.
+
+**Two more defects f1 surfaced, both fixed.** (1) Website discovery **verified 4 link-in-bio aggregators
+as venue websites** (`lnk.bio`, `linktr.ee`, `campsite.bio`) — they answer 200 with real HTML, so
+reachability alone said "verified", and `@thewellsley` was then crawled from `lnk.bio/thewellsley` +
+`lnk.bio/weddings` and served with **every spine field null**. Aggregators are now rejected at discovery,
+including when reached through a shortener redirect (`@terrace16chicago`'s bio link is a `bit.ly` that
+lands on linktr.ee), so the FINAL url is checked too. The 4 rows are `rejected` (batch
+`vd-agg-reject-1`); verified websites 257 → 253. Fixing the revert-printer this exposed also cleared a
+latent crash (`sqlStr` assumed a string, `pg` returns `Date` for timestamps) that fires on any `--force`
+overwrite. (2) `runTick.ts` assembled every step's command up front, so the repair budget was computed
+**before extraction had spent anything** and repair always received the full cap (`--max-cost-usd 10`
+after extraction had used $5.10 of that same $10). The budget now resolves when the repair step starts.
+
+**Decided: hold a doubtful venue out of the serve list rather than serve and undo.** There is no unserve
+path — `rollbackVenueDetails.ts` rolls back to a PRIOR version, and a bad first serve has none. So the
+tick's population file and its serve file are deliberately different lists (`vd_f1.ids` 30,
+`vd_f1_serve.ids` 27), which is also what makes Gate F's "must-nots green on every served venue"
+literally true. **3 held back:** `@salvatoreschicago` (correctly failing must-not),
+`@the.arbory` (ungrounded `rental_charge_type`/`pricing_archetype`; its repair also hit a real
+`buildRepairTool: unknown field_path` bug) and `@rockwellontheriver` (ungrounded `catering`/
+`vendor_list_policy`). `@thewellsley` was served before the aggregator finding and is the open question
+it leaves: empty rather than wrong, `compare_ready=false`, and not withdrawable by the sanctioned tooling.
+
 ## D059 — 2026-09-13 — Attire split: dress/suit/bridesmaid/veil/shoes broken out of generic "Attire"
 
 **Context.** Every dress shop, suit shop, bridesmaid-dress brand, veil seller, and shoe vendor

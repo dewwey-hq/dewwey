@@ -133,9 +133,63 @@ function checkNoHotelFaqMajority(d: VenueDetailsV3): MustNotFailure[] {
 const JUNK_VENDOR_RE =
   /\b(privacy (request|policy)|code of (business )?conduct|modern slavery|gift cards?|order online|follow us|terms (of|&) (service|conditions)|investor relations|accessibility statement|sitemap)\b/i;
 
-function isSluggyName(name: string): boolean {
+/** Generic vendor-category headings that a preferred-vendor page uses as SECTION titles. When one
+ * of these is ingested as an ENTRY name it is the page's own heading leaking into the list, not a
+ * business (f1, Salvatore's: "Florists / Photographers / Bands / DJs / Hotels / Transportation /
+ * Officiants", every one with a null url). A real business may legitimately be called "Tents" or
+ * "Beauty", so this only fires when the entry has NO url to ground it. */
+const VENDOR_CATEGORY_WORDS = new Set([
+  "accommodations", "av", "bakeries", "bakery", "bands", "band", "beauty", "cake", "cakes",
+  "caterer", "caterers", "catering", "ceremony", "coordinator", "coordinators", "decor",
+  "dj", "djs", "entertainment", "florals", "florist", "florists", "flowers", "furniture",
+  "hair", "hotel", "hotels", "invitations", "lighting", "limousines", "linens", "makeup",
+  "music", "officiant", "officiants", "photobooth", "photobooths", "photographer",
+  "photographers", "photography", "planner", "planners", "reception", "rental", "rentals",
+  "stationery", "tents", "transportation", "vendors", "videographer", "videographers",
+  "videography",
+]);
+
+/** Pure: the entry name reduced to comparable letters ("Décor" -> "decor", "DJ's" -> "djs"). */
+function normalizedWord(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+/** Pure: does this entry's own url vouch for a one-word name? "Limelight" ->
+ * limelightcatering.com, "Tablescapes" -> tablescapes.com, "Shutterbooth" -> shutterbooth.com.
+ * A one-word brand whose domain contains the brand is a real business, not a URL slug -- that is
+ * the signal the length-only heuristic had no way to see (f1: 5 of 8 failures were real Chicago
+ * vendors). */
+export function nameMatchesUrl(name: string, url: string | null | undefined): boolean {
+  if (!url) return false;
+  const word = normalizedWord(name);
+  if (word.length < 4) return false;
+  let host = url;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    /* not an absolute url -- fall back to matching the raw string */
+  }
+  return host.toLowerCase().replace(/[^a-z0-9]/g, "").includes(word);
+}
+
+/** Pure: is this vendor entry name junk rather than a business name? Three genres, in order:
+ * a generic category heading with nothing to ground it; an actual URL-slug shape (hyphen/
+ * underscore joined, or an all-lowercase run-on); and a long single mixed-case token that its own
+ * domain does NOT vouch for (the original heuristic, now grounded). Exported for unit testing. */
+export function isSluggyName(name: string, url?: string | null): boolean {
   const trimmed = name.trim();
-  return trimmed.length > 8 && !/\s/.test(trimmed) && /[a-z]/i.test(trimmed) && !/^[A-Z]+$/.test(trimmed);
+  if (trimmed.length === 0) return false;
+  if (VENDOR_CATEGORY_WORDS.has(normalizedWord(trimmed)) && !url) return true;
+  if (/^[a-z0-9]+([-_][a-z0-9]+)+$/.test(trimmed)) return true;
+  if (trimmed.length > 8 && !/\s/.test(trimmed) && /^[a-z0-9]+$/.test(trimmed)) return true;
+  if (trimmed.length > 8 && !/\s/.test(trimmed) && /[a-z]/.test(trimmed) && !/^[A-Z]+$/.test(trimmed)) {
+    return !nameMatchesUrl(trimmed, url);
+  }
+  return false;
 }
 
 function checkNoJunkVendorNames(d: VenueDetailsV3): MustNotFailure[] {
@@ -144,8 +198,11 @@ function checkNoJunkVendorNames(d: VenueDetailsV3): MustNotFailure[] {
     for (const entry of list.entries) {
       if (JUNK_VENDOR_RE.test(entry.name)) {
         failures.push({ assertion: "no_junk_vendor_names", detail: `vendor "${entry.name}" in list "${list.label}" looks like nav/legal boilerplate, not a real vendor` });
-      } else if (isSluggyName(entry.name)) {
-        failures.push({ assertion: "no_junk_vendor_names", detail: `vendor "${entry.name}" in list "${list.label}" looks like a URL slug, not a real business name` });
+      } else if (isSluggyName(entry.name, entry.url)) {
+        const why = VENDOR_CATEGORY_WORDS.has(normalizedWord(entry.name))
+          ? `is a vendor-category heading with no url, not a real business name`
+          : `looks like a URL slug, not a real business name`;
+        failures.push({ assertion: "no_junk_vendor_names", detail: `vendor "${entry.name}" in list "${list.label}" ${why}` });
       }
     }
   }

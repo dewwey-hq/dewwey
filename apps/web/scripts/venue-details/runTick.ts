@@ -272,6 +272,11 @@ function resolvePopulationIds(args: Args): number[] {
 interface Step {
   name: string;
   cmd: string[];
+  /** Resolved just before the step runs, replacing `cmd`. The repair budget needs this: the step
+   * list is assembled up front, so a budget computed then is always the full cap (extraction has
+   * not run yet). f1 (2026-09-20) ran repair with `--max-cost-usd 10` after extraction had already
+   * spent $5.10 of the same $10 tick cap. */
+  resolveCmd?: () => Promise<string[]>;
   /** File name under reportsDir to tee this step's stdout into, or null when the step already
    * writes its own report via `--out` (coverage, funnel) and a second copy would be redundant. */
   teeFile: string | null;
@@ -303,7 +308,8 @@ async function runStep(step: Step, reportsDir: string): Promise<number> {
 
 async function runSteps(steps: Step[], reportsDir: string): Promise<boolean> {
   for (const step of steps) {
-    const code = await runStep(step, reportsDir);
+    const resolved = step.resolveCmd ? { ...step, cmd: await step.resolveCmd() } : step;
+    const code = await runStep(resolved, reportsDir);
     if (code !== 0) {
       console.error(`\n[run-tick] STEP FAILED: ${step.name} (exit ${code}). Reports written so far stay in ${reportsDir}.`);
       return false;
@@ -446,9 +452,16 @@ async function main() {
   // Dry-run never touches the DB (read-only queries are only sanctioned "in --dry-run paths" per
   // this task's own guardrail, and a preview doesn't need perfect accuracy here): the printed
   // repair command uses the full cap as a stand-in for "nothing spent yet this tick".
-  const spentBeforeRepair = args.dryRun ? 0 : await spentSoFarUsd(ids, tickStartIso);
-  const repairBudget = computeRemainingBudget(args.maxCostUsd, spentBeforeRepair);
-  steps.push({ name: "repair", cmd: buildRepairCommand(ids, repairBudget), teeFile: "repair.md" });
+  // The budget is resolved when the repair step is ABOUT to run, not now -- extraction runs first
+  // and spends from the same cap, so computing it here always yields the full cap.
+  steps.push({
+    name: "repair",
+    cmd: buildRepairCommand(ids, args.maxCostUsd),
+    resolveCmd: args.dryRun
+      ? undefined
+      : async () => buildRepairCommand(ids, computeRemainingBudget(args.maxCostUsd, await spentSoFarUsd(ids, tickStartIso))),
+    teeFile: "repair.md",
+  });
   steps.push({ name: "validate-2", cmd: buildValidateCommand(ids, args.promptVersion), teeFile: "validate-2.md" });
 
   const scoreCommands = buildScoreCommands(args.kind, ids, args.promptVersion);

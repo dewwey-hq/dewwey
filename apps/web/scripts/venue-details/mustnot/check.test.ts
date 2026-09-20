@@ -195,6 +195,52 @@ describe("no_junk_vendor_names", () => {
     const d = makeVenue({ vendor_lists: [vendorList([{ name: "HMR Designs", url: null, instagram: null }, { name: "Blush Botanicals", url: null, instagram: null }])] });
     expect(runMustNot(d, [{ kind: "no_junk_vendor_names" }]).passed).toBe(true);
   });
+
+  // f1 (2026-09-20): the length-only heuristic failed 5 real one-word Chicago vendors whose own
+  // domain vouches for them, and missed 4 of the 7 category headings Salvatore's list had leaked.
+  it("passes one-word brands whose own domain vouches for them", () => {
+    const d = makeVenue({
+      vendor_lists: [
+        vendorList([
+          { name: "Limelight", url: "https://www.limelightcatering.com", instagram: null },
+          { name: "Tablescapes", url: "https://tablescapes.com", instagram: null },
+          { name: "Shutterbooth", url: "https://shutterbooth.com", instagram: null },
+          { name: "Bittersweet", url: "https://bittersweetpastry.com", instagram: null },
+          { name: "Marryment", url: "https://marryment.com", instagram: null },
+        ]),
+      ],
+    });
+    expect(runMustNot(d, [{ kind: "no_junk_vendor_names" }]).passed).toBe(true);
+  });
+
+  it("fails every vendor-category heading ingested as an entry with no url", () => {
+    const d = makeVenue({
+      vendor_lists: [
+        vendorList(
+          ["Florists", "Photographers", "Bands", "DJs", "Hotels", "Transportation", "Officiants"].map((name) => ({ name, url: null, instagram: null }))
+        ),
+      ],
+    });
+    const result = runMustNot(d, [{ kind: "no_junk_vendor_names" }]);
+    expect(result.passed).toBe(false);
+    expect(result.failed.length).toBe(7);
+    expect(result.failed[0].detail).toContain("vendor-category heading");
+  });
+
+  it("still fails a long one-word name its url does not vouch for", () => {
+    const d = makeVenue({ vendor_lists: [vendorList([{ name: "Hmrdesigns", url: "https://example.com/vendors", instagram: null }])] });
+    expect(runMustNot(d, [{ kind: "no_junk_vendor_names" }]).passed).toBe(false);
+  });
+
+  it("still fails an actual url-slug shape even when the domain matches", () => {
+    const d = makeVenue({ vendor_lists: [vendorList([{ name: "kehoe-designs", url: "https://kehoedesigns.com", instagram: null }])] });
+    expect(runMustNot(d, [{ kind: "no_junk_vendor_names" }]).passed).toBe(false);
+  });
+
+  it("passes a category word when the entry has a url (a real business may be named that)", () => {
+    const d = makeVenue({ vendor_lists: [vendorList([{ name: "Transportation", url: "https://transportationchicago.com", instagram: null }])] });
+    expect(runMustNot(d, [{ kind: "no_junk_vendor_names" }]).passed).toBe(true);
+  });
 });
 
 describe("no_gala_floor_plan_when_wedding_exists", () => {

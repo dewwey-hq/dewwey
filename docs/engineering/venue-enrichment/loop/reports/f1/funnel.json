@@ -1,0 +1,280 @@
+{
+  "funnel": {
+    "listed": 437,
+    "websiteVerified": 257,
+    "crawled": 38,
+    "extracted": 36,
+    "validatedOk": 34,
+    "repaired": 11,
+    "served": 33,
+    "compareReady": 24,
+    "excellent": 12,
+    "humanVerified": 0
+  },
+  "fieldRates": {
+    "perField": [
+      {
+        "field": "venue_kind",
+        "tier": "critical",
+        "statedRate": 0.9090909090909091
+      },
+      {
+        "field": "setting",
+        "tier": "critical",
+        "statedRate": 0.8787878787878788
+      },
+      {
+        "field": "one_event_per_day",
+        "tier": "important",
+        "statedRate": 0.15151515151515152
+      },
+      {
+        "field": "space_count_bookable",
+        "tier": "secondary",
+        "statedRate": 0.6666666666666666
+      },
+      {
+        "field": "capacity_min_guests",
+        "tier": "important",
+        "statedRate": 0.18181818181818182
+      },
+      {
+        "field": "capacity_max_guests",
+        "tier": "important",
+        "statedRate": 0.8787878787878788
+      },
+      {
+        "field": "ceremony_on_site",
+        "tier": "critical",
+        "statedRate": 0.7272727272727273
+      },
+      {
+        "field": "ceremony_fee",
+        "tier": "critical",
+        "statedRate": 0.24242424242424243
+      },
+      {
+        "field": "rental_hours_included",
+        "tier": "important",
+        "statedRate": 0.42424242424242425
+      },
+      {
+        "field": "weekday_events",
+        "tier": "secondary",
+        "statedRate": 0.2727272727272727
+      },
+      {
+        "field": "catering",
+        "tier": "critical",
+        "statedRate": 0.7878787878787878
+      },
+      {
+        "field": "bar",
+        "tier": "critical",
+        "statedRate": 0.7575757575757576
+      },
+      {
+        "field": "rental_charge_type",
+        "tier": "critical",
+        "statedRate": 0.9696969696969697
+      },
+      {
+        "field": "fb_minimum",
+        "tier": "critical",
+        "statedRate": 0.24242424242424243
+      },
+      {
+        "field": "service_charge_pct",
+        "tier": "critical",
+        "statedRate": 0.12121212121212122
+      },
+      {
+        "field": "parking",
+        "tier": "important",
+        "statedRate": 0.696969696969697
+      },
+      {
+        "field": "day_of_coordinator",
+        "tier": "important",
+        "statedRate": 0.5151515151515151
+      },
+      {
+        "field": "payment_schedule",
+        "tier": "important",
+        "statedRate": 0.30303030303030304
+      },
+      {
+        "field": "cancellation",
+        "tier": "important",
+        "statedRate": 0.12121212121212122
+      },
+      {
+        "field": "event_insurance",
+        "tier": "important",
+        "statedRate": 0.21212121212121213
+      },
+      {
+        "field": "security",
+        "tier": "important",
+        "statedRate": 0.3333333333333333
+      },
+      {
+        "field": "vendor_access",
+        "tier": "secondary",
+        "statedRate": 0.21212121212121213
+      },
+      {
+        "field": "noise_curfew",
+        "tier": "important",
+        "statedRate": 0.21212121212121213
+      },
+      {
+        "field": "sales_tax_pct",
+        "tier": "important",
+        "statedRate": 0.09090909090909091
+      },
+      {
+        "field": "cc_fee_pct",
+        "tier": "secondary",
+        "statedRate": 0.06060606060606061
+      },
+      {
+        "field": "taxes_included_in_rental",
+        "tier": "important",
+        "statedRate": 0.09090909090909091
+      },
+      {
+        "field": "vendor_list_policy",
+        "tier": "critical",
+        "statedRate": 0.696969696969697
+      },
+      {
+        "field": "pets_allowed",
+        "tier": "secondary",
+        "statedRate": 0.24242424242424243
+      },
+      {
+        "field": "hvac",
+        "tier": "secondary",
+        "statedRate": 0.3333333333333333
+      },
+      {
+        "field": "ada_accessible",
+        "tier": "secondary",
+        "statedRate": 0.5151515151515151
+      },
+      {
+        "field": "bridal_suite",
+        "tier": "secondary",
+        "statedRate": 0.6363636363636364
+      },
+      {
+        "field": "tables_chairs_included",
+        "tier": "secondary",
+        "statedRate": 0.6060606060606061
+      },
+      {
+        "field": "linens_included",
+        "tier": "secondary",
+        "statedRate": 0.2727272727272727
+      },
+      {
+        "field": "dance_floor_included",
+        "tier": "secondary",
+        "statedRate": 0.2727272727272727
+      },
+      {
+        "field": "coat_check",
+        "tier": "secondary",
+        "statedRate": 0.36363636363636365
+      },
+      {
+        "field": "pricing_archetype",
+        "tier": "critical",
+        "statedRate": 1
+      },
+      {
+        "field": "price_from_usd",
+        "tier": "critical",
+        "statedRate": 0.3939393939393939
+      },
+      {
+        "field": "per_guest_from_usd",
+        "tier": "critical",
+        "statedRate": 0.30303030303030304
+      },
+      {
+        "field": "per_guest_to_usd",
+        "tier": "critical",
+        "statedRate": 0.30303030303030304
+      }
+    ],
+    "byTier": {
+      "critical": 0.5952380952380952,
+      "important": 0.324009324009324,
+      "secondary": 0.3712121212121211
+    }
+  },
+  "reviewHistogram": {},
+  "spend": [
+    {
+      "promptVersion": "venue-details-v3.0",
+      "stage": "extract",
+      "totalCostUsd": 2.2893239,
+      "runCount": 15
+    },
+    {
+      "promptVersion": "venue-details-v3.0",
+      "stage": "repair",
+      "totalCostUsd": 0.024402,
+      "runCount": 14
+    },
+    {
+      "promptVersion": "venue-details-v3.1",
+      "stage": "extract",
+      "totalCostUsd": 1.0323815,
+      "runCount": 5
+    },
+    {
+      "promptVersion": "venue-details-v3.2",
+      "stage": "extract",
+      "totalCostUsd": 1.59096385,
+      "runCount": 7
+    },
+    {
+      "promptVersion": "venue-details-v3.2",
+      "stage": "repair",
+      "totalCostUsd": 0.038924,
+      "runCount": 4
+    },
+    {
+      "promptVersion": "venue-details-v3.3",
+      "stage": "extract",
+      "totalCostUsd": 1.6144075,
+      "runCount": 6
+    },
+    {
+      "promptVersion": "venue-details-v3.4",
+      "stage": "extract",
+      "totalCostUsd": 1.73360875,
+      "runCount": 6
+    },
+    {
+      "promptVersion": "venue-details-v3.5",
+      "stage": "extract",
+      "totalCostUsd": 6.9607124,
+      "runCount": 36
+    },
+    {
+      "promptVersion": "venue-details-v3.5",
+      "stage": "repair",
+      "totalCostUsd": 0.164992,
+      "runCount": 18
+    }
+  ],
+  "ceiling": {
+    "websitesChecked": 306,
+    "shells": 266,
+    "imageOnlyPdfOnly": 0
+  }
+}

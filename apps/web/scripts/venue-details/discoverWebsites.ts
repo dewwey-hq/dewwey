@@ -295,7 +295,39 @@ async function fetchWithTimeout(url: string, method: "HEAD" | "GET"): Promise<Re
   }
 }
 
+/** Link-in-bio aggregators. An Instagram bio link often points at one of these instead of the
+ * venue's own site, and the aggregator ALWAYS answers 200 with real HTML, so a plain reachability
+ * probe verifies it happily -- then the crawler walks the aggregator's own pages and the extractor
+ * grounds "facts" in them. f1 (2026-09-20) served @thewellsley from `lnk.bio/thewellsley` +
+ * `lnk.bio/weddings` with every spine field null; 4 of the 257 verified websites are aggregators.
+ * These hosts can never be a venue's website, so they are rejected before the probe spends a fetch. */
+const LINK_AGGREGATOR_HOSTS = [
+  "lnk.bio", "linktr.ee", "beacons.ai", "bio.link", "campsite.bio", "milkshake.app", "taplink.cc",
+  "solo.to", "linkin.bio", "allmylinks.com", "carrd.co", "msha.ke", "komi.io", "stan.store",
+  "flowcode.com", "shorby.com", "withkoji.com", "later.com", "linkpop.com", "tap.bio",
+];
+
+/** Pure: is this URL hosted on a link-in-bio aggregator rather than the venue's own domain?
+ * Matches the host exactly or as a subdomain, so `lnk.bio` and `www.lnk.bio` both hit while a
+ * venue legitimately called `mylnk.bio.com` does not. Exported for unit testing. */
+export function isLinkAggregatorUrl(url: string): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  host = host.replace(/^www\./, "");
+  return LINK_AGGREGATOR_HOSTS.some((h) => host === h || host.endsWith("." + h));
+}
+
 async function probeCandidate(candidate: Candidate): Promise<ProbeResult> {
+  // A link-in-bio aggregator answers 200 with real HTML but is never the venue's own site, so it
+  // is rejected before the probe rather than verified by reachability alone.
+  if (isLinkAggregatorUrl(candidate.url)) {
+    return { status: "rejected", httpStatus: null, finalUrl: null, note: "link-in-bio aggregator, not the venue's own website", links: null };
+  }
+
   // Try https first if the candidate is http, since a successful https probe upgrades the URL.
   const attempts = candidate.url.startsWith("http://") ? [candidate.url.replace(/^http:\/\//, "https://"), candidate.url] : [candidate.url];
 
@@ -320,6 +352,13 @@ async function probeCandidate(candidate: Candidate): Promise<ProbeResult> {
       if (!res.ok) {
         lastError = `HTTP ${res.status}`;
         continue;
+      }
+
+      // A shortener (bit.ly, t.co) is followed, not rejected -- but it can land ON an aggregator,
+      // so the FINAL url is checked too, not just the candidate (f1: @terrace16chicago's bio link
+      // is a bit.ly that redirects to linktr.ee).
+      if (isLinkAggregatorUrl(res.url)) {
+        return { status: "rejected", httpStatus: res.status, finalUrl: res.url, note: "redirects to a link-in-bio aggregator, not the venue's own website", links: null };
       }
 
       const contentType = res.headers.get("content-type") ?? "";
@@ -692,11 +731,22 @@ async function main() {
   await closePool();
 }
 
-function sqlStr(v: string | null): string {
-  return v === null ? "null" : `'${v.replace(/'/g, "''")}'`;
+/** Quotes a value for the hand-revert SQL above. `pg` hands timestamp columns back as Date
+ * objects, not strings, so this coerces rather than assuming a string -- printing the revert for a
+ * `--force` overwrite of rows that already had `checked_at` set used to throw
+ * "v.replace is not a function" AFTER the writes had landed (found 2026-09-20 by the f1
+ * link-aggregator re-probe, the first run to overwrite verified rows). */
+function sqlStr(v: unknown): string {
+  if (v === null || v === undefined) return "null";
+  const s = v instanceof Date ? v.toISOString() : String(v);
+  return `'${s.replace(/'/g, "''")}'`;
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Guarded like `targets.ts` so the pure helpers above (isLinkAggregatorUrl) can be imported by a
+// test without the script parsing argv and exiting.
+if (import.meta.main) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
