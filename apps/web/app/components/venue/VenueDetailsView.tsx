@@ -1219,12 +1219,22 @@ function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; ro
           </tr>
         </thead>
         <tbody>
-          {table.rows.map((row) => {
+          {(() => {
+            const groups = fmt.groupRowsByCaption(table.rows);
+            const showHeaders = new Set(groups.map((g) => g.caption)).size > 1;
+            return groups.flatMap((g, gi) => [
+              showHeaders && g.caption ? (
+                <tr key={`cap-${gi}`}>
+                  <td colSpan={1 + table.columnLabels.length} className={`${gi === 0 ? "pt-1" : "pt-4"} pb-1 text-[11px] font-medium uppercase tracking-wide text-gray-400`}>
+                    {g.caption}
+                  </td>
+                </tr>
+              ) : null,
+              ...g.rows.map((row) => {
             const note = row.note ? fmt.truncateNote(row.note) : null;
             return (
               <tr key={row.key} className="border-t border-black/[0.05] align-top">
                 <td className="py-2">
-                  {row.caption && <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{row.caption}</div>}
                   {row.itemLabel}
                   {note && (
                     <div className="mt-0.5 text-xs text-gray-400" title={note.truncated ? note.full : undefined}>
@@ -1239,7 +1249,9 @@ function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; ro
                 ))}
               </tr>
             );
-          })}
+              }),
+            ]);
+          })()}
         </tbody>
       </table>
     </div>
@@ -1278,11 +1290,9 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
       <div className="gap-4 sm:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
       {groups.map((g) => {
         const blurbSubgroups = g.subgroups.filter((sg) => sg.blurb);
-        const rawExamples = [...new Set(g.subgroups.flatMap((sg) => sg.examples))];
-        const { table, leftover: examples } = fmt.mergeExamplesIntoTable(
-          fmt.buildAddOnCategoryStdTable(g.subgroups, venue.spaces, g.label),
-          rawExamples,
-        );
+        const built = fmt.buildCategoryCardTable(g.subgroups, venue.spaces, g.label);
+        const table = { columnLabels: built.columnLabels, rows: built.rows };
+        const examples = [...new Set(built.leftover)];
         return (
           <div key={g.category_std} className="inline-block w-full min-w-0 rounded-2xl border border-black/[0.06] p-5 align-top">
             <h3 className={`text-base text-gray-900 ${uiHeadingClassName}`}>{g.label}</h3>

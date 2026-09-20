@@ -1042,34 +1042,104 @@ export function captionForCategoryCard(a: AddOn, stdLabel: string, singleSubcate
  * items the fixture keeps display-only ("Food package (Bronze/Silver/Gold): $15.95–$35/guest").
  * Fold every "Name: $price" example into the table as a row (no calculator effect), drop examples
  * that duplicate an existing row, and return whatever is left as plain bullets. */
+const EXAMPLE_STOPWORDS = new Set(["the", "a", "an", "of", "or", "and", "for", "with", "per", "each", "min", "minimum", "package", "add", "ons", "on"]);
+function exampleTokens(x: string): Set<string> {
+  return new Set(
+    x
+      .toLowerCase()
+      .replace(/\(.*?\)/g, " ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .split(" ")
+      .filter((t) => t.length > 1 && !EXAMPLE_STOPWORDS.has(t)),
+  );
+}
+/** Near-duplicate test between an example's name and an existing row label: prefix match on the
+ * normalized strings, or ≥ 0.6 token overlap ("Package of 12 uplights + monogram" vs
+ * "12 uplights + monogram package"). */
+export function isNearDuplicateAddOnName(a: string, b: string): boolean {
+  const norm = (x: string) => x.toLowerCase().replace(/\(.*?\)/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+  const na = norm(a);
+  const nb = norm(b);
+  if (na === nb || na.startsWith(nb) || nb.startsWith(na)) return true;
+  const ta = exampleTokens(a);
+  const tb = exampleTokens(b);
+  if (ta.size === 0 || tb.size === 0) return false;
+  let shared = 0;
+  for (const t of ta) if (tb.has(t)) shared++;
+  return shared / Math.min(ta.size, tb.size) >= 0.6;
+}
+/** "Name: $price" or "Name ($price…)" → {name, price}; anything else → null. */
+export function parsePricedExample(ex: string): { name: string; price: string } | null {
+  const colon = ex.match(/^(.+?):\s*(\$.+)$/);
+  if (colon) return { name: colon[1].trim(), price: colon[2].trim() };
+  const paren = ex.match(/^(.+?)\s*\((\$[^)]+)\)\s*$/);
+  if (paren) return { name: paren[1].trim(), price: paren[2].trim() };
+  return null;
+}
+
+/** One table for a standard-category card: rows per venue sub-category in order, each sub-category's
+ * priced examples folded in as rows (display only), near-duplicates of existing rows dropped; the
+ * remaining unpriced examples come back as bullets. Row captions carry the sub-category (suppressed
+ * per `captionForCategoryCard`) so the view can print ONE sub-header per group, not one per row. */
+export function buildCategoryCardTable(
+  subgroups: AddOnSubgroup[],
+  spaces: Space[],
+  stdLabel: string,
+): { columnLabels: string[]; rows: AddOnCategoryTableRow[]; leftover: string[] } {
+  const base = buildAddOnCategoryStdTable(subgroups, spaces, stdLabel);
+  const singleSubcategory = new Set(subgroups.map((sg) => sg.category.trim().toLowerCase())).size <= 1;
+  const rowsByKey = new Map(base.rows.map((r) => [r.key, r]));
+  const rows: AddOnCategoryTableRow[] = [];
+  const leftover: string[] = [];
+  const allLabels = () => rows.map((r) => r.itemLabel);
+  subgroups.forEach((sg, si) => {
+    for (const a of sg.items) {
+      const r = rowsByKey.get(a.id);
+      if (r) rows.push(r);
+    }
+    const caption = sg.items[0] ? captionForCategoryCard(sg.items[0], stdLabel, singleSubcategory) : singleSubcategory ? null : sg.category;
+    sg.examples.forEach((ex, i) => {
+      const parsed = parsePricedExample(ex);
+      const name = parsed ? parsed.name : ex;
+      if (allLabels().some((l) => isNearDuplicateAddOnName(l, name))) return;
+      if (!parsed) {
+        leftover.push(ex);
+        return;
+      }
+      rows.push({ key: `ex-${si}-${i}`, itemLabel: parsed.name, caption, prices: base.columnLabels.map(() => parsed.price), note: null });
+    });
+  });
+  return { columnLabels: base.columnLabels, rows, leftover };
+}
+
+/** Consecutive rows sharing a caption form one group; the view prints the caption once as a
+ * sub-header when there is more than one distinct caption. */
+export function groupRowsByCaption(rows: AddOnCategoryTableRow[]): { caption: string | null; rows: AddOnCategoryTableRow[] }[] {
+  const groups: { caption: string | null; rows: AddOnCategoryTableRow[] }[] = [];
+  for (const r of rows) {
+    const last = groups[groups.length - 1];
+    if (last && last.caption === r.caption) last.rows.push(r);
+    else groups.push({ caption: r.caption, rows: [r] });
+  }
+  return groups;
+}
+
 export function mergeExamplesIntoTable(
   table: { columnLabels: string[]; rows: AddOnCategoryTableRow[] },
   examples: string[],
 ): { table: { columnLabels: string[]; rows: AddOnCategoryTableRow[] }; leftover: string[] } {
-  const norm = (x: string) => x.toLowerCase().replace(/\(.*?\)/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
-  const existing = table.rows.map((r) => norm(r.itemLabel));
-  const isDuplicate = (name: string) => {
-    const n = norm(name);
-    return existing.some((e) => e === n || e.startsWith(n) || n.startsWith(e));
-  };
   const rows = [...table.rows];
   const leftover: string[] = [];
+  const isDuplicate = (name: string) => rows.some((r) => isNearDuplicateAddOnName(r.itemLabel, name));
   examples.forEach((ex, i) => {
-    const m = ex.match(/^(.+?):\s*(\$.+)$/);
-    if (!m) {
-      if (!isDuplicate(ex)) leftover.push(ex);
+    const parsed = parsePricedExample(ex);
+    const name = parsed ? parsed.name : ex;
+    if (isDuplicate(name)) return;
+    if (!parsed) {
+      leftover.push(ex);
       return;
     }
-    const [, name, price] = m;
-    if (isDuplicate(name)) return;
-    rows.push({
-      key: `ex-${i}`,
-      itemLabel: name.trim(),
-      caption: null,
-      prices: table.columnLabels.map(() => price.trim()),
-      note: null,
-    });
-    existing.push(norm(name));
+    rows.push({ key: `ex-${i}`, itemLabel: parsed.name, caption: null, prices: table.columnLabels.map(() => parsed.price), note: null });
   });
   return { table: { columnLabels: table.columnLabels, rows }, leftover };
 }

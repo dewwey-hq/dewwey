@@ -1604,3 +1604,18 @@ describe("captionForCategoryCard / mergeExamplesIntoTable (category card cleanup
     expect(out.leftover).toEqual(["Linens available in 30 colors"]);
   });
 });
+
+describe("category card tables — sub-headers and example folding", () => {
+  it("parses both example forms and detects near-duplicate names", () => {
+    expect(fmt.parsePricedExample("Pipe & drape ($200-$500)")).toEqual({ name: "Pipe & drape", price: "$200-$500" });
+    expect(fmt.parsePricedExample("Unlimited ice: $100")).toEqual({ name: "Unlimited ice", price: "$100" });
+    expect(fmt.parsePricedExample("Linens available in 30 colors")).toBeNull();
+    expect(fmt.isNearDuplicateAddOnName("12 uplights + monogram package", "Package of 12 uplights + monogram")).toBe(true);
+    expect(fmt.isNearDuplicateAddOnName("Gobo/monogram", "Pipe & drape")).toBe(false);
+  });
+  it("groups consecutive rows by caption", () => {
+    const row = (key: string, caption: string | null) => ({ key, itemLabel: key, caption, prices: ["$1"], note: null });
+    const groups = fmt.groupRowsByCaption([row("a", "Decoration"), row("b", "Decoration"), row("c", "Lighting")]);
+    expect(groups.map((g) => [g.caption, g.rows.length])).toEqual([["Decoration", 2], ["Lighting", 1]]);
+  });
+});
