@@ -569,7 +569,7 @@ const ADD_ON_SCHEMA = strictObject(
       ...enumSchema(ADD_ON_CATEGORIES_STD),
       description:
         "Standard cross-venue grouping, shared by the Add-ons section and the Cost Estimate. fb: food/drink (catering, bar, cake, stations). " +
-        "space_rentals: physical space/furniture (tables, chairs, dance floor, tents, parking). decor_lighting: decor and lighting (florals, uplighting, drape, centerpieces). " +
+        "space_rentals: physical space/furniture (tables, chairs, dance floor, tents, parking). decor: décor (florals, drape, centerpieces, linens, backdrops). lighting_av: lighting and audio/visual (uplighting, gobos, projectors, sound). " +
         "entertainment: guest-facing entertainment (DJ, band, photo booth, games). services_staffing: staffing/services (coordinator, security, cleaning, coat check, bartenders). " +
         "ceremony: on-site ceremony fee/setup. time: extra hours or rehearsal time. other: doesn't fit any of the above. Leave null only if genuinely unclear.",
     }),

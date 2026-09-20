@@ -959,7 +959,8 @@ export function resolveCategoryStd(a: AddOn): AddOnCategoryStd {
 export const ADD_ON_CATEGORY_STD_LABELS: Record<AddOnCategoryStd, string> = {
   fb: "Food & beverage",
   space_rentals: "Space & rentals",
-  decor_lighting: "Décor & lighting",
+  decor: "Décor",
+  lighting_av: "Lighting & A/V",
   entertainment: "Entertainment",
   services_staffing: "Services & staffing",
   ceremony: "Ceremony",

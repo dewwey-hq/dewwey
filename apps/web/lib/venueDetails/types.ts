@@ -532,7 +532,7 @@ export interface Rates {
   snapshot_id: number | null;
 }
 
-export const ADD_ON_CATEGORIES_STD = ["fb","space_rentals","decor_lighting","entertainment","services_staffing","ceremony","time","other"] as const;
+export const ADD_ON_CATEGORIES_STD = ["fb","space_rentals","decor","lighting_av","entertainment","services_staffing","ceremony","time","other"] as const;
 export type AddOnCategoryStd = (typeof ADD_ON_CATEGORIES_STD)[number];
 
 export interface AddOn {

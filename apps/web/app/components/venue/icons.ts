@@ -85,7 +85,8 @@ export const INCLUSION_ICONS: Partial<Record<InclusionLabel, LucideIcon>> = {
 export const ADD_ON_CATEGORY_ICONS: Record<AddOnCategoryStd, LucideIcon> = {
   fb: UtensilsCrossed,
   space_rentals: House,
-  decor_lighting: Lamp,
+  decor: Palette,
+  lighting_av: Lamp,
   entertainment: Music,
   services_staffing: UserCheck,
   ceremony: Church,

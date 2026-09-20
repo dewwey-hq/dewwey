@@ -1474,7 +1474,7 @@ describe("buildAddOnCategoryStdTable (round 6 rule 1 — one table per WHOLE sta
 
 describe("resolveCategoryStd / groupAddOnsByCategoryStd (round 5 rule 7, reworked by round 6 rule 1)", () => {
   it("uses the add-on's own category_std when set", () => {
-    expect(fmt.resolveCategoryStd(addOn({ group: "other", category_std: "decor_lighting" }))).toBe("decor_lighting");
+    expect(fmt.resolveCategoryStd(addOn({ group: "other", category_std: "decor" }))).toBe("decor");
   });
 
   it("derives category_std from group when missing: fb, ceremony, service->services_staffing, rental/other->space_rentals", () => {
@@ -1490,17 +1490,17 @@ describe("resolveCategoryStd / groupAddOnsByCategoryStd (round 5 rule 7, reworke
       pricing: {
         ...makeVenue().pricing,
         add_ons: [
-          addOn({ id: "u1", category: "Uplighting", group: "other", category_std: "decor_lighting" }),
-          addOn({ id: "c1", category: "Chargers", group: "other", category_std: "decor_lighting" }),
+          addOn({ id: "u1", category: "Uplighting", group: "other", category_std: "decor" }),
+          addOn({ id: "c1", category: "Chargers", group: "other", category_std: "decor" }),
           addOn({ id: "b1", category: "Bar upgrade", group: "fb" }),
         ],
         add_on_categories: [{ category: "Uplighting", blurb: "Ambient uplighting.", examples: ["Rose gold", "Amber"], evidence: { source_url: "https://example.com", snapshot_id: null } }],
       },
     });
     const groups = fmt.groupAddOnsByCategoryStd(d);
-    // fb sorts before decor_lighting per ADD_ON_CATEGORIES_STD's fixed order.
-    expect(groups.map((g) => g.category_std)).toEqual(["fb", "decor_lighting"]);
-    const decor = groups.find((g) => g.category_std === "decor_lighting")!;
+    // fb sorts before decor per ADD_ON_CATEGORIES_STD's fixed order.
+    expect(groups.map((g) => g.category_std)).toEqual(["fb", "decor"]);
+    const decor = groups.find((g) => g.category_std === "decor")!;
     expect(decor.subgroups.map((s) => s.category).sort()).toEqual(["Chargers", "Uplighting"]);
     const uplighting = decor.subgroups.find((s) => s.category === "Uplighting")!;
     expect(uplighting.blurb).toBe("Ambient uplighting.");
@@ -1528,9 +1528,9 @@ describe("addOnCardCaption", () => {
 describe("groupSelectableAddOnsByCategoryStd (round 5 rules 7/8)", () => {
   it("groups by category_std with the same labels as the Add-ons section, splitting single-select groups from individual chips", () => {
     const single = addOn({ id: "f1", group: "fb", selection_group: "food-package" });
-    const individual = addOn({ id: "u1", group: "other", category_std: "decor_lighting" });
+    const individual = addOn({ id: "u1", group: "other", category_std: "decor" });
     const groups = fmt.groupSelectableAddOnsByCategoryStd([single, individual]);
-    expect(groups.map((g) => g.category)).toEqual(["Food & beverage", "Décor & lighting"]);
+    expect(groups.map((g) => g.category)).toEqual(["Food & beverage", "Décor"]);
     expect(groups[0].groups[0].key).toBe("food-package");
     expect(groups[1].individual.map((a) => a.id)).toEqual(["u1"]);
   });
@@ -1623,8 +1623,8 @@ describe("category card tables — sub-headers and example folding", () => {
 describe("captionForCategoryCard — self-explanatory sub-categories", () => {
   const base = { id: "x", name: "Uplights", category: "Lighting & video add-ons", variant: null, group: "other" as const, price: 25, price_max: null, unit: "per_unit" as const, per_space_prices: null, applies_to: null, path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: null, note: null, quote: "q", source_url: "u", snapshot_id: null };
   it("drops captions whose words share a stem with the card title, keeps unrelated ones", () => {
-    expect(fmt.captionForCategoryCard(base, "Décor & lighting", false)).toBeNull();
-    expect(fmt.captionForCategoryCard({ ...base, category: "Decoration add-ons" }, "Décor & lighting", false)).toBeNull();
+    expect(fmt.captionForCategoryCard(base, "Lighting & A/V", false)).toBeNull();
+    expect(fmt.captionForCategoryCard({ ...base, category: "Decoration add-ons" }, "Décor", false)).toBeNull();
     expect(fmt.captionForCategoryCard({ ...base, category: "Extra hours" }, "Space & rentals", false)).toBe("Extra hours");
   });
 });
