@@ -1272,14 +1272,16 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
     <section id="add-ons">
       <SectionHeading title="Add-ons & extras" actions={actions} />
       {/* Many items: one CARD per standard category (the Diamond Garden concept shape) — title, the
-          venue's own blurb(s), the item table, example bullets — in a two-column grid. */}
-      <div className="grid gap-4 sm:grid-cols-2">
+          venue's own blurb(s), the item table, example bullets — packed by height in two columns
+          (CSS columns, not a grid) so a short card never stretches to its neighbour's height and the
+          last card is never an orphan row. */}
+      <div className="gap-4 sm:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
       {groups.map((g) => {
         const blurbSubgroups = g.subgroups.filter((sg) => sg.blurb);
         const examples = [...new Set(g.subgroups.flatMap((sg) => sg.examples))];
         const table = fmt.buildAddOnCategoryStdTable(g.subgroups, venue.spaces);
         return (
-          <div key={g.category_std} className="min-w-0 rounded-2xl border border-black/[0.06] p-5">
+          <div key={g.category_std} className="inline-block w-full min-w-0 rounded-2xl border border-black/[0.06] p-5 align-top">
             <h3 className={`text-base text-gray-900 ${uiHeadingClassName}`}>{g.label}</h3>
             {blurbSubgroups.length > 0 && (
               <div className="mt-2 space-y-1">
