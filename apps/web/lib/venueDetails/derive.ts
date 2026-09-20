@@ -51,6 +51,7 @@ const BAR_LABEL: Record<string, string> = {
   in_house: "in-house bar only",
   byob: "BYOB",
   byo_with_corkage: "in-house bar with a BYO corkage option",
+  in_house_or_byo: "in-house bar packages or bring your own, no corkage fee",
   dry: "no alcohol allowed",
 };
 
@@ -95,6 +96,8 @@ export function deriveStandardFaqs(d: VenueDetailsV3): DerivedFaq[] {
         return `Yes, ${name} is BYOB.`;
       case "byo_with_corkage":
         return `Partially: ${name}'s bar is in-house, but you can also bring your own alcohol for a corkage fee.`;
+      case "in_house_or_byo":
+        return `Yes: ${name} offers its own bar packages, and you can also bring your own alcohol with no corkage fee.`;
       case "in_house": {
         // A venue whose bar enum is `in_house` but whose own extracted F&B pills additively
         // include `byo` (Diamond Garden: open bar / cash bar / no-fee BYO) genuinely does allow
@@ -814,7 +817,7 @@ function barPillLabel(spine: VenueSpine, barHasByo: boolean): string {
   const b = spine.bar;
   if (b.status !== "stated") return "Not stated";
   if (b.value === "in_house" && barHasByo) return "In-house or BYO";
-  return { in_house: "In-house", byob: "BYOB", byo_with_corkage: "In-house + BYO", dry: "No alcohol" }[b.value];
+  return { in_house: "In-house", byob: "BYOB", byo_with_corkage: "In-house + BYO", in_house_or_byo: "In-house or BYO", dry: "No alcohol" }[b.value];
 }
 
 export function quickFacts(d: VenueDetailsV3): QuickFactPill[] {
@@ -878,7 +881,7 @@ function describePolicyValue(key: string, value: unknown, ctx?: { barHasByo?: bo
         { open: "Open", preferred_list: "Preferred list", exclusive_in_house: "In-house only", approved_list_only: "Approved list only" }[value as string] ?? String(value)
       );
     case "bar": {
-      const label = ({ in_house: "In-house only", byob: "BYOB", byo_with_corkage: "In-house + BYO (corkage)", dry: "Dry" }[value as string] ?? String(value));
+      const label = ({ in_house: "In-house only", byob: "BYOB", byo_with_corkage: "In-house + BYO (corkage)", in_house_or_byo: "In-house or BYO", dry: "Dry" }[value as string] ?? String(value));
       // A venue whose bar enum is genuinely `in_house` (it serves in-house bar packages, not a
       // BYO-with-corkage arrangement) but whose own extracted F&B pills additively include `byo`
       // (Diamond Garden: open bar / cash bar / no-fee BYO) reads wrong as bare "In-house only" —

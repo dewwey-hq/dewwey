@@ -75,7 +75,7 @@
     },
     "bar": {
       "status": "stated",
-      "value": "in_house",
+      "value": "in_house_or_byo",
       "quote": "From the venue's own FAQ: \"Open Bar, Cash Bar or even better you can also bring in your own alcohol.\"",
       "source_url": "https://www.diamondgardenhall.com/questions-and-answers",
       "snapshot_id": null

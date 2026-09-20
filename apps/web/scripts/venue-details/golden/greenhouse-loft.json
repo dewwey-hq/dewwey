@@ -1070,7 +1070,7 @@
     "/spine/bar": "extractor",
     "/spine/rental_charge_type": "extractor",
     "/spine/fb_minimum": "extractor",
-    "/spine/service_charge_pct": "extractor",
+    "/spine/service_charge_pct": "human_only",
     "/spine/parking": "extractor",
     "/spine/day_of_coordinator": "extractor",
     "/spine/payment_schedule": "extractor",

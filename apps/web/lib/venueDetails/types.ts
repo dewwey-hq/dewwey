@@ -74,7 +74,10 @@ export type Setting = (typeof SETTINGS)[number];
 export const CATERING_POLICIES = ["open", "preferred_list", "exclusive_in_house", "approved_list_only"] as const;
 export type CateringPolicy = (typeof CATERING_POLICIES)[number];
 
-export const BAR_POLICIES = ["in_house", "byob", "byo_with_corkage", "dry"] as const;
+/** `in_house_or_byo` (2026-09-20, user decision after calibration c4): the venue sells its own bar
+ * packages AND lets couples bring their own alcohol with no corkage fee (Diamond Garden). Distinct
+ * from `byo_with_corkage` (a fee) and from `in_house` (outside alcohol not allowed). */
+export const BAR_POLICIES = ["in_house", "byob", "byo_with_corkage", "in_house_or_byo", "dry"] as const;
 export type BarPolicy = (typeof BAR_POLICIES)[number];
 
 export const RENTAL_CHARGE_TYPES = ["flat_fee", "per_guest_bundled", "flat_plus_per_guest", "inquire_only", "none"] as const;

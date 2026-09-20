@@ -690,6 +690,9 @@ function buildGreenhouseLoft(): VenueDetailsV3 {
     per_guest_to_usd: NOT_STATED,
   });
   tagStatedSpine(doc);
+  // "Taxes are included in the rental rate; no hidden fees" -> service charge 0 is a human reading
+  // (user decision 2026-09-20): keep it on the page, do not score the extractor on it.
+  tag(doc, "/spine/service_charge_pct", "human_only");
   tag(doc, "/spine/cancellation", "human_only");
   tag(doc, "/spine/noise_curfew", "human_only");
 
@@ -940,13 +943,9 @@ function buildDiamondGarden(): VenueDetailsV3 {
     ceremony_fee: f("included", "Ceremony at no extra charge (within your rental hours)", site),
     rental_hours_included: f(6, "6 hours (1am latest)", packagesUrl),
     catering: f("open", d.quickFacts[2].note!, faqUrl),
-    // `in_house`, not `byo_with_corkage` (round-3 fix, D060 addendum): this venue serves its own
-    // in-house bar packages (Open Bar / Cash Bar) with no corkage fee at all, so the corkage
-    // enum would actively misstate a fee that doesn't exist here. The real, no-fee BYO option is
-    // an extracted Fact on `food_beverage.bar_pills` instead ("byo") — additive, never dropped —
-    // and `describePolicyValue`'s bar case (derive.ts) reads that pill to render "In-house or
-    // BYO" on the Policies row rather than a bare "In-house only".
-    bar: f("in_house", d.quickFacts[3].note!, faqUrl),
+    // `in_house_or_byo` (2026-09-20, user decision): in-house Open/Cash Bar packages AND no-fee BYO. The
+    // round-3 workaround (in_house + a `byo` bar pill) is superseded by the enum value itself.
+    bar: f("in_house_or_byo", d.quickFacts[3].note!, faqUrl),
     rental_charge_type: f("flat_plus_per_guest", d.policies[2].value, packagesUrl),
     fb_minimum: f({ applies: true, amount_usd: null, detail: d.policies[3].value }, d.policies[3].value, packagesUrl),
     parking: f("included", d.policies[5].value, faqUrl),

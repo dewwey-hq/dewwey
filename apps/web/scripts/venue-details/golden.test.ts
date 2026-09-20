@@ -327,8 +327,8 @@ describe("golden fixtures — Diamond Garden round-3 structure", () => {
     expect(d.pricing.add_ons.some((a) => a.group === "ceremony" && a.condition === "ceremony_on_site")).toBe(false);
   });
 
-  it("spine.bar is 'in_house' (no corkage fee exists here); the byo pill is additive", () => {
-    expect(d.spine.bar.status === "stated" && d.spine.bar.value).toBe("in_house");
+  it("spine.bar is 'in_house_or_byo' (in-house packages AND no-fee BYO -- user decision 2026-09-20); the byo pill is additive", () => {
+    expect(d.spine.bar.status === "stated" && d.spine.bar.value).toBe("in_house_or_byo");
     expect(d.food_beverage.bar_pills.some((p) => p.value === "byo")).toBe(true);
   });
 
