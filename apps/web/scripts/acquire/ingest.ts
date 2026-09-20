@@ -437,6 +437,21 @@ async function writeTaggedOrOwnPlanned(client: PoolClient, run: CrawlRunRow, pla
   const acctCache = new Map<string, number>();
   const seedCounts = new Map<string, SeedCounts>(usernames.map((u) => [u, { fetched: 0, new_posts: 0, already_had: 0 }]));
 
+  // Deadlock guard (2026-09-20): two ingests running at once (probes A + the low-types probe) each
+  // upserted overlapping `accounts` rows in dataset order inside their transactions and deadlocked
+  // on the username unique index. Upserting every username this run will touch FIRST, in sorted
+  // order, makes concurrent transactions acquire those row locks in the same order; the per-post
+  // loop below then hits the cache.
+  const allUsernames = new Set<string>();
+  for (const pw of planned) {
+    if (pw.mapped.ownerUsername) allUsernames.add(pw.mapped.ownerUsername);
+    for (const m of pw.item.mentions ?? []) {
+      const n = normalizeHandle(m);
+      if (n) allUsernames.add(n);
+    }
+  }
+  for (const u of [...allUsernames].sort()) await upsertAccountId(client, acctCache, u);
+
   for (const pw of planned) {
     const { item, mapped } = pw;
     if (mapped.seedUsername) {

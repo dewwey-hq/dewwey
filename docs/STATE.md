@@ -202,6 +202,12 @@ before that spend.
   the narrative venue (pilot: OTHER_VENUE = thewellsley on a Dalcy-anchored candidate at 0.95). Human
   verdict: **W** when the page's venue is the `Venue:` credit, **V** + `Venue:` handle when it is the
   side-event venue; reader rule + event-context credit is a backlog item (plan file, README). Sized: 231 South-Asian-event captions (87 with a venue credit line) + 975 other side events.
+- **Two ticks ingesting at once can deadlock on `accounts`** (2026-09-20: probes A and the low-types
+  probe both upserted the same mentioned handles inside their write transactions in different orders;
+  one run failed at ingest with `deadlock detected`, Apify side intact). Fix in flight: ingest
+  pre-upserts every username of a run in sorted order at the top of its transaction. Until then, run
+  one tick at a time and re-ingest a failed run with `ingest.ts --run-id <id>` after resetting its
+  status to `succeeded`.
 - **Never pipe a pipeline script through `head`.** `head -N` closes the pipe after N lines and the
   next console.log kills the process with SIGPIPE mid-run: the venue canary's clustering wrote its 54
   candidates but died before the chicago_status step, so the reader selected 0 posts. Use `tail` or
