@@ -1599,7 +1599,7 @@ describe("captionForCategoryCard / mergeExamplesIntoTable (category card cleanup
   it("folds priced examples into rows, drops duplicates, keeps unpriced leftovers", () => {
     const table = { columnLabels: ["Price"], rows: [{ key: "a", itemLabel: "Unlimited ice", caption: null, prices: ["$100"], note: null }] };
     const out = fmt.mergeExamplesIntoTable(table, ["Unlimited ice: $100", "Food package (Bronze/Silver/Gold): $15.95-$35/guest", "Linens available in 30 colors"]);
-    expect(out.table.rows.map((r) => r.itemLabel)).toEqual(["Unlimited ice", "Food package"]);
+    expect(out.table.rows.map((r) => r.itemLabel)).toEqual(["Unlimited ice", "Food package (Bronze/Silver/Gold)"]);
     expect(out.table.rows[1].prices).toEqual(["$15.95-$35/guest"]);
     expect(out.leftover).toEqual(["Linens available in 30 colors"]);
   });
