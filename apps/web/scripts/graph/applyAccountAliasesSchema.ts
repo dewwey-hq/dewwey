@@ -124,6 +124,13 @@ const ALIASES: AliasRow[] = [
   { aliasUsername: "warhouse109", canonicalUsername: "warehouse109", note: "round 7b: missing-e typo of Warehouse 109 (Plainfield)" },
   { aliasUsername: "lacunacatalystsuites", canonicalUsername: "lacunabycatalystsuites", note: "round 7b: dropped-'by' variant of the scraped Lacuna by Catalyst Suites account" },
   { aliasUsername: "harraycaraycelebrations", canonicalUsername: "harrycarays", note: "round 7b: transposition typo of harrycarayscelebrations (itself an alias of harrycarays)" },
+  // round 8 (D061 acquisition, 2026-09-20): Acquaviva Winery handle family, surfaced by the user from a
+  // canary post crediting "Venue: @aquavivawinery @aquavivawineryweddings". Verified by a profile
+  // scrape: acquavivawineryweddings exists (169 followers, "Acquaviva Weddings", acquavivawinery.com);
+  // the two spellings without the c returned no profile -- the photographer's typo, minted as bare rows.
+  { aliasUsername: "acquavivawineryweddings", canonicalUsername: "acquavivawinery", note: "round 8 (D061): Acquaviva Winery's dedicated weddings account (profile scrape: same website, bio 'Acquaviva Weddings')" },
+  { aliasUsername: "aquavivawinery", canonicalUsername: "acquavivawinery", note: "round 8 (D061): missing-c typo of acquavivawinery in a photographer's credit; no such Instagram profile" },
+  { aliasUsername: "aquavivawineryweddings", canonicalUsername: "acquavivawinery", note: "round 8 (D061): missing-c typo of acquavivawineryweddings; no such Instagram profile" },
 ];
 
 async function main() {
