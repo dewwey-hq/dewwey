@@ -30,7 +30,10 @@ import type { SpineTier, VenueDetailsV3 } from "../../lib/venueDetails/types";
 // space; hotel + per-person packages = hotel_package (pricing style, not room rates); new bar value
 // in_house_or_byo; ASSET CANDIDATES now carry kinds (video / virtual_tour / floor_plan images, PDF
 // anchor titles) and the document's ASSETS blocks.
-export const VENUE_DETAILS_PROMPT_VERSION = "venue-details-v3.4";
+// v3.5 (2026-09-20, tick c6): bar in_house_or_byo needs the venue's own priced packages; nonprofit-
+// only corkage is not a couple's option; ASSETS blocks now carry PDF anchors (kind pdf + label),
+// entity-decoded image URLs and canonical video URLs.
+export const VENUE_DETAILS_PROMPT_VERSION = "venue-details-v3.5";
 
 // ---------------------------------------------------------------------------
 // Raw tool-call output shapes (pre-validation; SPINE_TOOL / PRICING_TOOL args)

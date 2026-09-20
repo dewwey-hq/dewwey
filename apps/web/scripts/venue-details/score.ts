@@ -44,6 +44,7 @@ import { isNearDuplicateAddOnName } from "../../app/components/venue/format";
 // scoring (tick c3 evidence: LondonHouse's golden cites ".../weddings", the crawl stored
 // ".../weddings/", and raw string comparison called all 46 facts on that page source_not_crawled).
 import { normalizeUrl } from "./validate/grounding";
+import { canonicalVideoUrl } from "./crawl/htmlText";
 
 // ---------------------------------------------------------------------------
 // eval-tag / crawled-set scope filter
@@ -1025,7 +1026,8 @@ function scoreFaqsInventory(candidate: VenueDetailsV3, golden: VenueDetailsV3, o
 
 function scoreResourcesInventory(candidate: VenueDetailsV3, golden: VenueDetailsV3, options: { allFields?: boolean }, excluded?: ExcludedFact[]): InventoryKindScore {
   const inScopeGolden = scopedItems(golden, golden.resources, (r) => `/resources/${r.id}`, (r) => r.source_url, candidate.sources.pages, options, "loose", excluded);
-  return toInventoryKindScore(recallPrecision(inScopeGolden, candidate.resources, (r) => r.url));
+  // Same video cited as /embed/<id> and /watch?v=<id> (or vimeo with tracking params) is one resource.
+  return toInventoryKindScore(recallPrecision(inScopeGolden, candidate.resources, (r) => normalizeUrl(canonicalVideoUrl(r.url))));
 }
 
 function scoreVendorEntriesInventory(candidate: VenueDetailsV3, golden: VenueDetailsV3, options: { allFields?: boolean }, excluded?: ExcludedFact[]): InventoryKindScore {

@@ -930,17 +930,6 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     issues.push({ code: "resource_derived", path: "/resources", severity: "warning", tier: null, message: `Added resource "${candidate.label}" from ${sourceDescription} -- the model didn't cite it.` });
   }
 
-  // (a) every page's own ASSETS lines (video/virtual_tour/floor_plan embeds and images).
-  for (const { page, assets } of pageAssetsByPage.values()) {
-    const pageNorm = normalizeUrl(page.url);
-    for (const a of assets) {
-      addDerivedResource({ kind: a.kind, label: a.label || page.url, url: a.url, scope: "venue", sourceUrl: pageNorm, snapshotId: page.snapshot_id ?? null }, `${page.url}'s ASSETS block`);
-    }
-  }
-
-  // (b) PDF snapshots whose title (falling back to the URL's own filename) matches a known
-  // document type -- `other` only when the PDF is positively known to have a real text layer (an
-  // unlabeled, unreadable PDF is not worth surfacing as a resource).
   const PDF_KIND_PATTERNS: [RegExp, ResourceKind][] = [
     [/menu/i, "menu"],
     [/bar|beverage/i, "bar_menu"],
@@ -950,6 +939,21 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     [/contract|agreement/i, "contract"],
     [/guideline|catering/i, "catering_guidelines"],
   ];
+
+  // (a) every page's own ASSETS lines (video/virtual_tour/floor_plan embeds and images).
+  for (const { page, assets } of pageAssetsByPage.values()) {
+    const pageNorm = normalizeUrl(page.url);
+    for (const a of assets) {
+      // A `pdf` asset is typed by its anchor label (Diamond Garden's "American & Italian Menu" ->
+      // menu) -- the hashed filename says nothing and the PDF's own snapshot title may be null.
+      const kind: ResourceKind = a.kind === "pdf" ? (PDF_KIND_PATTERNS.find(([re]) => re.test(`${a.label} ${a.url}`))?.[1] ?? "other") : (a.kind as ResourceKind);
+      addDerivedResource({ kind, label: a.label || page.url, url: a.url, scope: "venue", sourceUrl: pageNorm, snapshotId: page.snapshot_id ?? null }, `${page.url}'s ASSETS block`);
+    }
+  }
+
+  // (b) PDF snapshots whose title (falling back to the URL's own filename) matches a known
+  // document type -- `other` only when the PDF is positively known to have a real text layer (an
+  // unlabeled, unreadable PDF is not worth surfacing as a resource).
   const PDF_URL_RE = /\.pdf(\?|#|$)/i;
   for (const p of input.pages) {
     if (!PDF_URL_RE.test(p.url)) continue;

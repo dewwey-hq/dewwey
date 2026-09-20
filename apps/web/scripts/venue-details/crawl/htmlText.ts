@@ -13,10 +13,12 @@ export interface HtmlLink {
   fromNav: boolean;
 }
 
-/** A non-PDF resource embed/image found on the page — D061 resources fix (see the plan note on
- * golden resources recall: iframe/video/matterport embeds and floor-plan images were previously
- * invisible to the extractor). PDFs keep going through `assetCandidates` unchanged. */
-export type AssetKind = "video" | "virtual_tour" | "floor_plan";
+/** A resource embed/image found on the page — D061 resources fix (see the plan note on golden
+ * resources recall: iframe/video/matterport embeds and floor-plan images were previously invisible
+ * to the extractor). `pdf` (tick c5 fix) is a PDF anchor mirrored into this block so its label
+ * survives even when `venue_source_snapshots.title` is null for an already-crawled PDF
+ * (insert-only) — `assetCandidates` still carries every PDF anchor independently, unchanged. */
+export type AssetKind = "video" | "virtual_tour" | "floor_plan" | "pdf";
 
 export interface Asset {
   kind: AssetKind;
@@ -33,8 +35,10 @@ export interface ExtractHtmlResult {
   links: HtmlLink[];
   /** PDF links found in the page (`crawlVenue.ts` treats these as fetchable assets). */
   assetCandidates: { href: string; text: string }[];
-  /** Non-PDF asset embeds/images (video/virtual_tour/floor_plan) — same objects appended to
-   * `text` as the trailing "--- ASSETS ---" block (`parseAssetsBlock` reads that block back out). */
+  /** Asset embeds/images (video/virtual_tour/floor_plan/pdf) — same objects appended to
+   * `text` as the trailing "--- ASSETS ---" block (`parseAssetsBlock` reads that block back out).
+   * PDFs also always appear in `assetCandidates` above (unchanged); this is a label-preserving
+   * mirror, not a replacement. */
   assets: Asset[];
   /** `text.length < 400` — a strong signal of a JS-rendered shell with no server text. */
   isJsShell: boolean;
@@ -44,10 +48,12 @@ export interface ExtractHtmlResult {
  * `parseAssetsBlock` (the reader) and `extractHtml` (the writer) can never drift apart. */
 const ASSETS_MARKER = "\n\n--- ASSETS ---\n";
 
-const ASSET_KINDS: readonly AssetKind[] = ["video", "virtual_tour", "floor_plan"];
+const ASSET_KINDS: readonly AssetKind[] = ["video", "virtual_tour", "floor_plan", "pdf"];
 
 /** Hosts whose embeds/links are a video (YouTube/Vimeo). Subdomains match via the leading
- * `(^|\.)` anchor (e.g. "player.vimeo.com"). */
+ * `(^|\.)` anchor (e.g. "player.vimeo.com"). Matching this host is necessary but not sufficient —
+ * see `extractYouTubeId`/`extractVimeoId`: a channel/user/profile page on these same hosts is not
+ * a video and must not fall through to the generic tour-keyword check below. */
 const VIDEO_HOST_RE = /(^|\.)(youtube\.com|youtu\.be|vimeo\.com)$/i;
 /** Hosts whose embeds/links are a virtual tour (Matterport/Kuula), independent of URL wording. */
 const VIRTUAL_TOUR_HOST_RE = /(^|\.)(matterport\.com|kuula\.co)$/i;
@@ -55,21 +61,124 @@ const VIRTUAL_TOUR_HOST_RE = /(^|\.)(matterport\.com|kuula\.co)$/i;
  * "my.venue.com/360-tour-banquet-hall-rental" — Diamond Garden's own-host 360 page). */
 const TOUR_KEYWORD_RE = /360|tour/i;
 
-/** Which of the two embed kinds (if any) a media URL/label pair is — used for `<iframe src>`,
+/** Extracts a YouTube video id from a `/watch?v=`, `/embed/<id>`, or `youtu.be/<id>` URL — the
+ * only YouTube URL shapes that are actually a video. A `/@handle`, `/channel/…`, `/user/…`, or
+ * `/c/…` URL (a channel/profile link, tick c5: seen in the wild alongside real embeds) returns
+ * null. Shared by `classifyMediaUrl` (is this a video asset at all) and `canonicalVideoUrl`
+ * (normalize two citations of the same video to one URL). */
+function extractYouTubeId(u: URL): string | null {
+  const host = u.hostname.toLowerCase();
+  if (/(^|\.)youtu\.be$/i.test(host)) {
+    return u.pathname.split("/").filter(Boolean)[0] ?? null;
+  }
+  if (!/(^|\.)youtube\.com$/i.test(host)) return null;
+  if (u.pathname === "/watch") return u.searchParams.get("v");
+  const embedMatch = u.pathname.match(/^\/embed\/([^/?#]+)/i);
+  return embedMatch ? embedMatch[1] : null;
+}
+
+/** Extracts a Vimeo video id (+ optional privacy hash segment) from a `vimeo.com/<digits>`,
+ * `vimeo.com/<digits>/<hash>`, or `player.vimeo.com/video/<digits>` URL — the only Vimeo shapes
+ * that are a video, as opposed to a user/channel/showcase page on the same host. */
+function extractVimeoId(u: URL): { id: string; hash: string | null } | null {
+  const host = u.hostname.toLowerCase();
+  if (/(^|\.)player\.vimeo\.com$/i.test(host)) {
+    const m = u.pathname.match(/^\/video\/(\d+)/);
+    return m ? { id: m[1], hash: u.searchParams.get("h") } : null;
+  }
+  if (!/(^|\.)vimeo\.com$/i.test(host)) return null;
+  const m = u.pathname.match(/^\/(\d+)(?:\/([a-zA-Z0-9]+))?\/?$/);
+  return m ? { id: m[1], hash: m[2] ?? null } : null;
+}
+
+/** Normalizes a YouTube/Vimeo URL to one canonical form so the same video cited two ways (an
+ * `/embed/<id>` iframe and a `/watch?v=<id>` link, or a `player.vimeo.com/video/<id>?h=<hash>`
+ * iframe and a `vimeo.com/<id>/<hash>` link) dedupes to a single asset. Any other URL (a
+ * self-hosted `<video src>`, a non-video YouTube/Vimeo page) is returned unchanged. */
+export function canonicalVideoUrl(url: string): string {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return url;
+  }
+  const ytId = extractYouTubeId(u);
+  if (ytId) return `https://www.youtube.com/watch?v=${ytId}`;
+  const vimeo = extractVimeoId(u);
+  if (vimeo) return `https://vimeo.com/${vimeo.id}${vimeo.hash ? `/${vimeo.hash}` : ""}`;
+  return url;
+}
+
+/** Which of the embed kinds (if any) a media URL/label pair is — used for `<iframe src>`,
  * `<a href>`, and any URL discovered outside a literal `<video>`/`<source>` tag (those are always
  * `video`, handled separately). Returns null when the URL isn't a recognized media embed at all
- * (an ordinary iframe — a map widget, a booking form — is not an asset). */
+ * (an ordinary iframe — a map widget, a booking form — is not an asset; nor is a YouTube/Vimeo
+ * channel/profile URL, even though it shares a host with real video embeds). */
 function classifyMediaUrl(url: string, label: string): AssetKind | null {
-  let host = "";
+  let u: URL;
   try {
-    host = new URL(url).hostname.toLowerCase();
+    u = new URL(url);
   } catch {
     return null;
   }
-  if (VIDEO_HOST_RE.test(host)) return "video";
+  if (extractYouTubeId(u) || extractVimeoId(u)) return "video";
+  const host = u.hostname.toLowerCase();
+  // A known video host but not a recognized watch/embed/player path (channel, user, profile,
+  // showcase, …) is explicitly not a video — must not fall through to the tour-keyword guess.
+  if (VIDEO_HOST_RE.test(host)) return null;
   if (VIRTUAL_TOUR_HOST_RE.test(host)) return "virtual_tour";
   if (TOUR_KEYWORD_RE.test(url) || TOUR_KEYWORD_RE.test(label)) return "virtual_tour";
   return null;
+}
+
+/** Decodes the handful of HTML entities that can show up literally inside an href/src attribute
+ * value (tick c5: Marchetti's floor-plan images came through as `…jpg?width=792&amp;height=612`).
+ * Named entities cover the common cases; numeric (`&#38;`) and hex (`&#x26;`) escapes are decoded
+ * generically via `String.fromCodePoint`. Anything that isn't a recognized entity is left as-is
+ * (no false-positive decoding of a literal "&text;" that happens to appear in a URL). */
+const NAMED_HTML_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+};
+
+export function decodeHtmlEntities(input: string): string {
+  if (!input || !input.includes("&")) return input;
+  return input.replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (match, body: string) => {
+    if (body[0] === "#") {
+      const isHex = body[1] === "x" || body[1] === "X";
+      const codePoint = isHex ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10);
+      if (!Number.isFinite(codePoint)) return match;
+      try {
+        return String.fromCodePoint(codePoint);
+      } catch {
+        return match;
+      }
+    }
+    const name = body.toLowerCase();
+    return name in NAMED_HTML_ENTITIES ? NAMED_HTML_ENTITIES[name] : match;
+  });
+}
+
+/** data:-URI assets (tick c5: the Field Museum's base64-inlined SVG/JPEG images matched
+ * `FLOOR_PLAN_RE` on their alt text but carry no fetchable URL at all) never belong in `assets` or
+ * `assetCandidates`. */
+function isDataUri(url: string): boolean {
+  return /^data:/i.test(url);
+}
+
+/** Tracking pixels / spacer GIFs (tick c5: filename says so, or the element declares itself
+ * 1x1-or-smaller) that would otherwise slip in as a "floor plan" when they sit near floor-plan
+ * copy. */
+const JUNK_IMAGE_RE = /pixel|spacer|blank/i;
+
+function isTinyDimensionAttr(value: string | null): boolean {
+  if (!value) return false;
+  const n = parseFloat(value);
+  return Number.isFinite(n) && n <= 2;
 }
 
 /** Floor plan / seating chart / capacity diagram / site map — matched against an image's own
@@ -121,6 +230,18 @@ function resolveHref(href: string, baseUrl: string): string {
   }
 }
 
+/** Last-resort PDF label when there's no anchor text and no preceding heading — the bare file
+ * name (Diamond Garden's menus are hashed filenames like `4b61b7_....pdf`, but that still beats an
+ * empty label). */
+function filenameFromUrl(url: string): string {
+  try {
+    const last = new URL(url).pathname.split("/").pop();
+    return last || url;
+  } catch {
+    return url.split("/").pop() || url;
+  }
+}
+
 /** `el.onEndTag` throws "No end tag" for void/self-closing elements (e.g. `<br>`, a
  * self-closed `<iframe/>`) — fall back to running the callback immediately for those. */
 function onEndTagSafe(el: HTMLRewriterTypes.Element, cb: () => void): void {
@@ -169,14 +290,20 @@ export async function extractHtml(html: string, baseUrl: string): Promise<Extrac
   const effectiveBase = () => (baseHref ? resolveHref(baseHref, baseUrl) : baseUrl);
 
   function addAsset(kind: AssetKind, url: string, label: string): void {
-    if (!url) return;
-    if (!assetsByUrl.has(url)) assetsByUrl.set(url, { kind, url, label: label.trim() });
+    if (!url || isDataUri(url)) return;
+    // Canonicalize before the dedupe check, not after, so the same video cited two ways (an
+    // `/embed/<id>` iframe and a `/watch?v=<id>` link) collapses to one asset.
+    const finalUrl = kind === "video" ? canonicalVideoUrl(url) : url;
+    if (!assetsByUrl.has(finalUrl)) assetsByUrl.set(finalUrl, { kind, url: finalUrl, label: label.trim() });
   }
 
   const rewriter = new HTMLRewriter()
     .on("base[href]", {
       element(el) {
-        if (baseHref === null) baseHref = el.getAttribute("href");
+        if (baseHref === null) {
+          const raw = el.getAttribute("href");
+          if (raw) baseHref = decodeHtmlEntities(raw);
+        }
       },
     })
     .on(SKIP_SELECTOR, {
@@ -224,8 +351,9 @@ export async function extractHtml(html: string, baseUrl: string): Promise<Extrac
     })
     .on("iframe[src]", {
       element(el) {
-        const src = el.getAttribute("src");
-        if (!src) return;
+        const rawSrc = el.getAttribute("src");
+        if (!rawSrc) return;
+        const src = decodeHtmlEntities(rawSrc);
         const resolved = resolveHref(src, effectiveBase());
         const label = el.getAttribute("title") ?? lastHeadingOrLinkText;
         const kind = classifyMediaUrl(resolved, label);
@@ -234,8 +362,9 @@ export async function extractHtml(html: string, baseUrl: string): Promise<Extrac
     })
     .on("video[src], source[src]", {
       element(el) {
-        const src = el.getAttribute("src");
-        if (!src) return;
+        const rawSrc = el.getAttribute("src");
+        if (!rawSrc) return;
+        const src = decodeHtmlEntities(rawSrc);
         const resolved = resolveHref(src, effectiveBase());
         const label = el.getAttribute("title") ?? lastHeadingOrLinkText;
         addAsset("video", resolved, label);
@@ -243,8 +372,11 @@ export async function extractHtml(html: string, baseUrl: string): Promise<Extrac
     })
     .on("img[src]", {
       element(el) {
-        const src = el.getAttribute("src");
-        if (!src) return;
+        const rawSrc = el.getAttribute("src");
+        if (!rawSrc) return;
+        const src = decodeHtmlEntities(rawSrc);
+        if (isDataUri(src) || JUNK_IMAGE_RE.test(src)) return;
+        if (isTinyDimensionAttr(el.getAttribute("width")) || isTinyDimensionAttr(el.getAttribute("height"))) return;
         const alt = el.getAttribute("alt") ?? "";
         const titleAttr = el.getAttribute("title") ?? "";
         const hay = `${src} ${alt} ${titleAttr} ${lastHeadingOrLinkText}`;
@@ -278,8 +410,8 @@ export async function extractHtml(html: string, baseUrl: string): Promise<Extrac
     })
     .on("a[href]", {
       element(el) {
-        const href = el.getAttribute("href") ?? "";
-        currentHref = href;
+        const rawHref = el.getAttribute("href") ?? "";
+        currentHref = rawHref ? decodeHtmlEntities(rawHref) : rawHref;
         currentLinkParts = [];
         currentLinkFromNav = navDepth > 0;
         onEndTagSafe(el, () => {
@@ -299,6 +431,11 @@ export async function extractHtml(html: string, baseUrl: string): Promise<Extrac
           const resolved = resolveHref(href2, effectiveBase());
           if (/\.pdf(\?|#|$)/i.test(resolved)) {
             assetCandidates.push({ href: resolved, text });
+            // Mirrored into the ASSETS block (tick c5) so its label survives even when
+            // `venue_source_snapshots.title` is null for an already-crawled PDF -- the label
+            // preference is anchor text, then the nearest preceding heading/link text, then the
+            // bare filename. `assetCandidates` above is untouched.
+            addAsset("pdf", resolved, text || precedingLabel || filenameFromUrl(resolved));
             return;
           }
           links.push({ href: resolved, text, fromNav: currentLinkFromNav });

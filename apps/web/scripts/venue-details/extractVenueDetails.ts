@@ -19,7 +19,7 @@
  */
 import type { Pool } from "pg";
 import { getPool, closePool } from "../classify/db";
-import { MODEL_CHEAP } from "../classify/llmClassifier";
+import { MODEL_CHEAP, MODEL_EXPENSIVE } from "../classify/llmClassifier";
 import { callTool, OpenRouterError, type ToolCallResult } from "../classify/openrouter";
 import { GOLDEN_ACCOUNT_IDS, GOLDEN_SLUGS } from "../../lib/venueDetails/golden";
 import { VENUE_DETAILS_SCHEMA_VERSION } from "../../lib/venueDetails/types";
@@ -434,11 +434,23 @@ async function callToolWithShapeRetry<T>(spec: CallSpec, fieldPaths: string[], a
 
   console.log(`[extract-venue-details] account ${accountId}: shape_retry (${label}) fields=${badFields.join(", ")}`);
   const retry = await callWithBackoff<T>(spec);
+  const stillBad = findStringifiedArrayFields(retry.args, fieldPaths);
+  let kept = retry;
+  let extraCost = 0, extraIn = 0, extraOut = 0;
+  if (stillBad.length > 0 && spec.model !== MODEL_EXPENSIVE) {
+    // Twice malformed from the cheap model (Greenhouse's pricing paths, ticks c4-c5): one call on
+    // the expensive model for THIS tool only. Plan rule "Sonnet only for a critical repair" bends
+    // here because a pricing payload that never parses fails the cost gate outright.
+    console.log(`[extract-venue-details] account ${accountId}: shape_escalate (${label}) fields=${stillBad.join(", ")} -> ${MODEL_EXPENSIVE}`);
+    const escalated = await callWithBackoff<T>({ ...spec, model: MODEL_EXPENSIVE });
+    extraCost = retry.costUsd ?? 0; extraIn = retry.inputTokens; extraOut = retry.outputTokens;
+    kept = escalated;
+  }
   return {
-    ...retry,
-    costUsd: (first.costUsd ?? 0) + (retry.costUsd ?? 0),
-    inputTokens: first.inputTokens + retry.inputTokens,
-    outputTokens: first.outputTokens + retry.outputTokens,
+    ...kept,
+    costUsd: (first.costUsd ?? 0) + (kept.costUsd ?? 0) + extraCost,
+    inputTokens: first.inputTokens + kept.inputTokens + extraIn,
+    outputTokens: first.outputTokens + kept.outputTokens + extraOut,
   };
 }
 

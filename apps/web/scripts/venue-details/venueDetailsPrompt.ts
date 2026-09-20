@@ -191,7 +191,7 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
     valueSchema: enumSchema(BAR_POLICIES),
     description:
       "in_house: the venue's own bar pours and outside alcohol is not allowed ('not a BYOB venue', 'maintains a liquor license' = in_house). byob: bring your own, no in-house bar. byo_with_corkage: outside alcohol IS allowed for a corkage fee " +
-      "(ANY corkage fee mentioned anywhere means this). in_house_or_byo: the venue sells its own bar packages AND lets you bring your own alcohol with NO corkage fee ('open bar, cash bar, or bring in your own alcohol'). dry: no alcohol.",
+      "(ANY corkage fee mentioned anywhere means this). in_house_or_byo: ONLY when the venue sells its own bar packages (priced open/cash bar) AND lets you bring your own alcohol with NO corkage fee. A corkage fee that exists only for nonprofit or donated alcohol does not count for couples. dry: no alcohol.",
   },
   rental_charge_type: {
     valueSchema: enumSchema(RENTAL_CHARGE_TYPES),

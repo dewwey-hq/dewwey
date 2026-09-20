@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { extractHtml, parseAssetsBlock } from "./htmlText";
+import { canonicalVideoUrl, decodeHtmlEntities, extractHtml, parseAssetsBlock } from "./htmlText";
 
 const BASE = "https://venue.com/weddings";
 
@@ -100,7 +100,9 @@ describe("extractHtml", () => {
     test("a youtube iframe is a video asset", async () => {
       const html = `<h2>Watch our space</h2><iframe src="https://www.youtube.com/embed/abc123" title="Venue Tour"></iframe>`;
       const { assets } = await extractHtml(html, BASE);
-      expect(assets).toEqual([{ kind: "video", url: "https://www.youtube.com/embed/abc123", label: "Venue Tour" }]);
+      // Canonicalized to the /watch form (tick c5) so this same video, cited elsewhere on the
+      // page as a /watch link, dedupes to one asset -- see canonicalVideoUrl.
+      expect(assets).toEqual([{ kind: "video", url: "https://www.youtube.com/watch?v=abc123", label: "Venue Tour" }]);
     });
 
     test("a matterport iframe is a virtual_tour asset, labeled from the preceding heading when it has no title", async () => {
@@ -174,6 +176,157 @@ describe("extractHtml", () => {
       expect(withoutAssets.text).not.toContain("ASSETS");
     });
   });
+
+  describe("tick c5 fixes: PDF anchors, entity decoding, junk filtering, video canonicalization", () => {
+    test("a PDF anchor is mirrored into the ASSETS block as kind pdf, labeled from its anchor text", async () => {
+      const html = `<a href="/_files/ugd/4b61b7_abc123.pdf">American & Italian Menu</a>`;
+      const { text, assets, assetCandidates } = await extractHtml(html, BASE);
+      expect(assets).toContainEqual({
+        kind: "pdf",
+        url: "https://venue.com/_files/ugd/4b61b7_abc123.pdf",
+        label: "American & Italian Menu",
+      });
+      expect(text).toContain("pdf | https://venue.com/_files/ugd/4b61b7_abc123.pdf | American & Italian Menu");
+      // assetCandidates (the pre-existing PDF pipeline) is untouched by the mirror.
+      expect(assetCandidates).toEqual([
+        { href: "https://venue.com/_files/ugd/4b61b7_abc123.pdf", text: "American & Italian Menu" },
+      ]);
+    });
+
+    test("a PDF anchor with no text falls back to the nearest preceding heading", async () => {
+      const html = `<h2>Bar Packages</h2><a href="/docs/bar.pdf"></a>`;
+      const { assets } = await extractHtml(html, BASE);
+      expect(assets).toContainEqual({ kind: "pdf", url: "https://venue.com/docs/bar.pdf", label: "Bar Packages" });
+    });
+
+    test("a PDF anchor with no text and no preceding heading falls back to the filename", async () => {
+      const html = `<a href="/_files/ugd/4b61b7_hashedname.pdf"></a>`;
+      const { assets } = await extractHtml(html, BASE);
+      expect(assets).toContainEqual({ kind: "pdf", url: "https://venue.com/_files/ugd/4b61b7_hashedname.pdf", label: "4b61b7_hashedname.pdf" });
+    });
+
+    test("decodes &amp; in an img src (Marchetti floor-plan shape)", async () => {
+      const html = `<h3>Floor Plans</h3><img src="/images/plan.jpg?width=792&amp;height=612">`;
+      const { assets } = await extractHtml(html, BASE);
+      expect(assets).toEqual([
+        { kind: "floor_plan", url: "https://venue.com/images/plan.jpg?width=792&height=612", label: "Floor Plans" },
+      ]);
+    });
+
+    test("a data: URI image is never an asset, even with a floor-plan alt (Field Museum shape)", async () => {
+      const html = `<img src="data:image/svg+xml;base64,PHN2ZyAvPg==" alt="Floor Plan">`;
+      const { assets } = await extractHtml(html, BASE);
+      expect(assets).toHaveLength(0);
+    });
+
+    test("a tracking pixel / 1x1 image is not an asset even with floor-plan wording nearby", async () => {
+      const html1 = `<h2>Floor Plans</h2><img src="/px/pixel.gif">`;
+      expect((await extractHtml(html1, BASE)).assets).toHaveLength(0);
+      const html2 = `<img src="/images/plan.jpg" alt="Floor Plan" width="1" height="1">`;
+      expect((await extractHtml(html2, BASE)).assets).toHaveLength(0);
+    });
+
+    test("a youtube channel/user/handle URL is not a video asset", async () => {
+      const urls = [
+        "https://www.youtube.com/@SomeVenue",
+        "https://www.youtube.com/channel/UC12345",
+        "https://www.youtube.com/user/someuser",
+        "https://www.youtube.com/c/somevenue",
+      ];
+      for (const href of urls) {
+        const html = `<a href="${href}">Follow us</a>`;
+        const { assets } = await extractHtml(html, BASE);
+        expect(assets, href).toHaveLength(0);
+      }
+    });
+
+    test("a vimeo user/channel URL (non-numeric path) is not a video asset", async () => {
+      const html = `<a href="https://vimeo.com/someuser">Our Vimeo</a>`;
+      const { assets } = await extractHtml(html, BASE);
+      expect(assets).toHaveLength(0);
+    });
+
+    test("a youtube watch URL is kept and canonicalized, matching an equivalent embed URL", async () => {
+      const watch = await extractHtml(`<a href="https://www.youtube.com/watch?v=abc123&list=xyz">Watch</a>`, BASE);
+      expect(watch.assets).toEqual([{ kind: "video", url: "https://www.youtube.com/watch?v=abc123", label: "Watch" }]);
+
+      const embed = await extractHtml(`<iframe src="https://www.youtube.com/embed/abc123" title="Watch"></iframe>`, BASE);
+      expect(embed.assets).toEqual([{ kind: "video", url: "https://www.youtube.com/watch?v=abc123", label: "Watch" }]);
+    });
+
+    test("a youtu.be short link is kept and canonicalized to the same watch URL", async () => {
+      const { assets } = await extractHtml(`<a href="https://youtu.be/abc123">Video</a>`, BASE);
+      expect(assets).toEqual([{ kind: "video", url: "https://www.youtube.com/watch?v=abc123", label: "Video" }]);
+    });
+
+    test("a vimeo URL with tracking query params is canonicalized, dropping the query", async () => {
+      const { assets } = await extractHtml(`<a href="https://vimeo.com/123456789?fl=pl&amp;fe=ti">Tour</a>`, BASE);
+      expect(assets).toEqual([{ kind: "video", url: "https://vimeo.com/123456789", label: "Tour" }]);
+    });
+
+    test("a vimeo URL with a privacy hash segment keeps the hash when canonicalized", async () => {
+      const { assets } = await extractHtml(`<a href="https://vimeo.com/123456789/abcdef1234?extra=1">Tour</a>`, BASE);
+      expect(assets).toEqual([{ kind: "video", url: "https://vimeo.com/123456789/abcdef1234", label: "Tour" }]);
+    });
+
+    test("a player.vimeo.com embed with an h= privacy hash canonicalizes to the same URL as the vimeo.com link", async () => {
+      const { assets } = await extractHtml(
+        `<iframe src="https://player.vimeo.com/video/123456789?h=abcdef1234&amp;fl=pl" title="Tour"></iframe>`,
+        BASE
+      );
+      expect(assets).toEqual([{ kind: "video", url: "https://vimeo.com/123456789/abcdef1234", label: "Tour" }]);
+    });
+  });
+});
+
+describe("decodeHtmlEntities", () => {
+  test("decodes named entities", () => {
+    expect(decodeHtmlEntities("a &amp; b")).toBe("a & b");
+    expect(decodeHtmlEntities("&quot;hi&quot;")).toBe('"hi"');
+    expect(decodeHtmlEntities("a &lt; b &gt; c")).toBe("a < b > c");
+    expect(decodeHtmlEntities("it&apos;s")).toBe("it's");
+  });
+
+  test("decodes numeric and hex entities", () => {
+    expect(decodeHtmlEntities("width=792&#38;height=612")).toBe("width=792&height=612");
+    expect(decodeHtmlEntities("width=792&#x26;height=612")).toBe("width=792&height=612");
+  });
+
+  test("leaves plain strings and unrecognized entities untouched", () => {
+    expect(decodeHtmlEntities("https://venue.com/a?b=1")).toBe("https://venue.com/a?b=1");
+    expect(decodeHtmlEntities("&notarealentity;")).toBe("&notarealentity;");
+  });
+
+  test("returns the input as-is when there is no ampersand at all", () => {
+    expect(decodeHtmlEntities("no entities here")).toBe("no entities here");
+  });
+});
+
+describe("canonicalVideoUrl", () => {
+  test("canonicalizes youtube watch/embed/short-link forms to the same URL", () => {
+    expect(canonicalVideoUrl("https://www.youtube.com/watch?v=abc123&list=xyz")).toBe("https://www.youtube.com/watch?v=abc123");
+    expect(canonicalVideoUrl("https://www.youtube.com/embed/abc123")).toBe("https://www.youtube.com/watch?v=abc123");
+    expect(canonicalVideoUrl("https://youtu.be/abc123")).toBe("https://www.youtube.com/watch?v=abc123");
+  });
+
+  test("canonicalizes vimeo forms, keeping a privacy hash and dropping query params", () => {
+    expect(canonicalVideoUrl("https://vimeo.com/123456789?fl=pl&fe=ti")).toBe("https://vimeo.com/123456789");
+    expect(canonicalVideoUrl("https://vimeo.com/123456789/abcdef1234?extra=1")).toBe("https://vimeo.com/123456789/abcdef1234");
+    expect(canonicalVideoUrl("https://player.vimeo.com/video/123456789?h=abcdef1234&fl=pl")).toBe(
+      "https://vimeo.com/123456789/abcdef1234"
+    );
+    expect(canonicalVideoUrl("https://player.vimeo.com/video/123456789")).toBe("https://vimeo.com/123456789");
+  });
+
+  test("leaves non-video URLs (including channel/user pages) unchanged", () => {
+    expect(canonicalVideoUrl("https://www.youtube.com/channel/UC12345")).toBe("https://www.youtube.com/channel/UC12345");
+    expect(canonicalVideoUrl("https://vimeo.com/someuser")).toBe("https://vimeo.com/someuser");
+    expect(canonicalVideoUrl("https://venue.com/media/reception.mp4")).toBe("https://venue.com/media/reception.mp4");
+  });
+
+  test("returns the input unchanged when it isn't a valid URL", () => {
+    expect(canonicalVideoUrl("not a url")).toBe("not a url");
+  });
 });
 
 describe("parseAssetsBlock", () => {
@@ -184,7 +337,7 @@ describe("parseAssetsBlock", () => {
     expect(assets).toEqual(
       expect.arrayContaining([
         { kind: "floor_plan", url: "https://venue.com/images/plan.jpg", label: "Floor Plan" },
-        { kind: "video", url: "https://www.youtube.com/embed/abc", label: "Tour Video" },
+        { kind: "video", url: "https://www.youtube.com/watch?v=abc", label: "Tour Video" },
       ])
     );
     expect(assets).toHaveLength(2);
