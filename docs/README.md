@@ -21,6 +21,11 @@ at the repo root with a "Now" section.
   the comparison spine + detail schema, generic Details renderer, and the provenance-first fill loop
   replacing the retired enrichment pipeline and the hand-built concept pages
 - [product/](product/) — feature docs (venue enrichment, lightbox, embeds)
+- [engineering/venue-coverage/](engineering/venue-coverage/README.md) — **adopted (D062,
+  2026-09-20)**: venue coverage is an identity problem before an acquisition one — thin venues are not
+  small (median followers are flat across every bucket) and their tagged feeds are measured dead; the
+  standing taxonomy names, per venue, which of eight remedies applies, and the alias finder gained a
+  website-host signal. Reframes D061's spend, doesn't replace it
 - [engineering/acquisition-loop/](engineering/acquisition-loop/README.md) — **proposal (D061
   candidate, 2026-09-19)**: budget-bounded Apify acquisition loop (tagged feeds of venues, own feeds of
   high-yield authors) with per-target yield priors learned from crawl nº1 and Jeremy's corpus; month-1

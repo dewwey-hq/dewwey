@@ -4,6 +4,98 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D062 — 2026-09-20 — Venue coverage is an identity problem before an acquisition problem
+
+Status: Accepted (thesis + batch 1 applied). Strategy and the standing taxonomy:
+`docs/engineering/venue-coverage/README.md`. Sits beside D061, which is the acquisition loop this
+reframes rather than replaces.
+
+**Context.** D061 month 1 spent $25.48 of Apify credit and created 1,025 weddings at $0.025 each —
+an order of magnitude cheaper per wedding than anything before it — while the thin end of the
+catalog barely moved (the zero bucket went 170 → 165, and the day's weddings landed
+disproportionately at venues that were already well covered). The working assumption was that thin
+venues need more crawling. The user pushed on that assumption; measuring it showed the assumption
+was wrong, and that a single-mechanism explanation ("venues get covered through their events
+handle") was also wrong.
+
+**Findings that changed the plan.**
+
+- *Thin venues are not small venues.* Median Instagram followers are flat across every coverage
+  bucket (0: 4,096 · 1-5: 3,350 · 6-15: **2,329** · 16-49: 4,574 · 50+: 7,906). Among venues with a
+  Places row, the **zero bucket has the highest median review count, 564**, above the 50+ bucket's
+  258. Venues of identical size sit in both the 1-5 and 50+ buckets, so the gap is our discovery.
+- *Their own tagged feeds are exhausted.* 152 thin venues are measured `dead` (≥ 20 posts fetched,
+  0 stacks, 0 candidates); 117 of 147 canonical zero venues have been crawled and 15 hold any
+  candidate posts. Re-crawling them is not the lever.
+- *Coverage fragments across sibling handles* — `drurylaneproductions` 4 + `drurylaneevents` 20;
+  `butterfieldcc_grounds` 11 + `butterfieldcountryclub` 7 — so one venue reads as two thin ones.
+- *The alias finder could not see that class,* for two mechanical reasons: `computeStem` stripped
+  `chicago` and `events` but left `center`, and S3 compared `external_url` including its path. So
+  `navypierchicago`/`navypiereventcenter` and `navypier.org`/`navypier.org/host-an-event` both
+  missed. `navypiereventcenter` (1,580 followers) and `wrigleyfieldevents` sat in `accounts`
+  unaliased and never crawled.
+- *The website is the identity key the thin end actually has*: 82% of zero-wedding listed venues
+  publish a website link against 8% carrying a Places row.
+- *Jeremy's staging data is an unused identity source* (the user's prompt — "jeremy's database had
+  more data on some of these venues like wrigleyfieldevents"): `staging.vendor_social_links` holds
+  465 Instagram links → 270 handles, **214 of them not in `accounts` at all**;
+  `staging.vendors` has 430 venue rows and **60 whose website already IS the wedding page**
+  (`fieldmuseum.org/page/weddings`, `adlerplanetarium.org/venue-rentals`). Its error mode is chain
+  contamination — JW Marriott Chicago mapped to `@marriottbonvoy` — so it is a candidate feed, never
+  an authority.
+- *No single mechanism explains it* (the user's correction, and the most important finding). Shedd
+  Aquarium's wedding venue is **Azure at Shedd**, a separately branded business with its own domain
+  and handle — merging it into `@shedd_aquarium` would hide the venue a couple actually books. Navy
+  Pier's are sub-listings. Chicago Botanic's brand handle carries its own 75. Jeremy maps properties
+  to chain accounts. Each needs a different remedy.
+
+**Decisions.**
+
+- *Adopt the taxonomy as the unit of work*, not "the thin bucket". `reportVenueIdentityTaxonomy.ts`
+  classifies every venue-ish account into `geo_blocked | mis_anchored | never_crawled | dead_feed |
+  no_identity | chain_brand | not_a_venue | merged_away` with the remedy attached, so the question
+  stops being re-derived by hand. Over 1,031 accounts: geo_blocked 117 (**144 weddings**),
+  mis_anchored 18 (28), never_crawled 41, dead_feed 80, no_identity 260, chain_brand 9,
+  not_a_venue 4. **135 accounts holding 172 weddings already clear the ≥1 bar and are invisible**
+  for want of a geography row or a correct anchor — cheaper than any crawl.
+- *The coverage bar is ≥ 1 documented wedding* (the user's call), which is already `/venues`' own
+  listing predicate — so "covered" and "listed" are one question.
+- *Add S3b, the registrable-website-host signal,* and let it reach **outside** the venue-ish
+  universe, because the accounts most needing a pair have no venue credit and cannot earn one until
+  they are linked. The aggregator deny-list is what makes it safe: un-denied, `linkin.bio` groups 21
+  unrelated accounts, `sprout.link` 15. The first run still leaked `@uchicago → @hilton` through
+  `clicklinkin.bio`, so the `.bio`/`.link` TLD family is denied wholesale.
+- *Tighten S6.* Bare Levenshtein ≤ 2 paired `@ihchicago` with five different Chicago hotels because
+  "chicago" is 7 of its 9 characters. `isS6Trustworthy` measures the stems instead (≥ 4 chars, ≤ 1
+  edit), keeping the real typo captures. Accepted false negative: `@cogweddingsandevents` /
+  `@cbgweddingsandevents` stems to "cog"/"cbg" and stays in T3.
+- *Never merge an umbrella into a property* (`isUmbrellaBrandUsername`) or a vendor into the venue
+  whose domain it uses (`isNonVenueUsername`). `@luc_conferences` books three Loyola campuses;
+  `@loyola_cuneomansion` is one property 40 miles north in Vernon Hills.
+- *Provenance is a precondition, not a follow-up* (the user's requirement). `account_aliases` gains
+  `batch_id`/`source`/`evidence`/`verified_by`; every batch dry-runs first, prints a before/after
+  diff in which **every venue that changes bucket is named**, and is revertable through
+  `account_alias_remaps`. Rows predating the mechanism keep a null `batch_id` rather than a
+  backfilled one.
+
+**Batch 1 (`idn-20260920-alias-1`).** Six verified merges; 11 weddings and 18 `wedding_vendors` rows
+re-pointed; 29 remap rows logged. Named deltas: `floatingworldgallery` 2 → 6, `lshiremarriott`
+26 → 30, `riverroastchi` 25 → 27, `officialwrigleyfield` 1 → 2. **The true zero bucket did not
+move** — merges fix fragmentation, not absence, and conflating the two is what made the earlier
+plan wrong. Effect on the finder: T2 28 → 11, the alphabet soup gone,
+`@wrigleyfieldevents → @officialwrigleyfield` arrived.
+
+**Not done / next.** Geography backfill for the 117 `geo_blocked`; re-anchoring for the 18;
+`no_identity` enrichment then re-classification; website-as-venue-truth (a venue serving
+`/weddings` with zero Instagram evidence is a confirmed venue with a known gap, not a dead one —
+D060 already has wedding pages for 97 of 166); month-2 acquisition opens with an own-feed
+calibration tick, since **the own feed has never been run** and Jeremy's 0.49 tier-A prior is
+measured on curated data (77.6% stack rate vs 21% on our raw crawls) and will not transfer.
+
+Related: D061, D060, D055, D052, D049, D031.
+
+---
+
 ## D061 — 2026-09-19 — Acquisition loop: budgeted Instagram acquisition with yield priors, coverage first; pilot through Gate 0 incl. a real rollback
 
 Status: Accepted (commit 1 + pilot). Plan of record `~/.claude/plans/on-1-what-do-joyful-church.md`
