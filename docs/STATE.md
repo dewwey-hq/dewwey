@@ -47,10 +47,7 @@ addendum; 820+ tests.
 
 Critical 59/66 = 89.4% (gate 95%). All six are `compare_ready` on their latest runs; **nothing is served**.
 
-**In flight at hand-off (builders, no spend):** (1) resources capture + augmentation (iframes/embeds,
-image floor plans, PDF anchor titles, ASSETS block on snapshots, deterministic resource augmentation)
-+ pricing-call shape retry + label-based layout relabel; (2) scorer pricing-path alignment by name.
-Check `git status` for their uncommitted files; run the suites; commit if green.
+**Nothing in flight.** Both resource builds and the scorer alignment landed and are committed.
 
 **Next tick (c5) needs, in order:** the user's taxonomy decisions (below) → a re-crawl of the six
 (`runTick.ts --tick c5 --account-ids <golden 6 + must-not 10> --crawl-only`; new snapshots because of
@@ -89,16 +86,15 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
 
 ## Blocked on the user
 
-1. **Taxonomy decisions** (each is one line in the prompt + possibly one golden): (a) `setting: both`
-   only for a real outdoor ceremony/reception space, or for any outdoor option (Geraghty's parking-lot
-   events, LondonHouse's terrace)? (b) a hotel selling per-person wedding packages = `hotel_package`
-   (goldens say yes; the model keeps saying `all_inclusive_per_guest`); (c) add a bar value
-   `in_house_or_byo` for venues with in-house packages AND free BYO (Diamond Garden)? (d) Greenhouse
-   service charge: keep golden 0 (from "no hidden fees") and tag it human_only, or not_stated?
-2. **Fresh calibration cap** for c5 (the first $10 is spent; the resources fix needs one more pass).
-3. **Serve the six for lab review at ~90% critical?** `/lab/venue?u=<username>` renders served rows;
-   nothing is served today. Say "serve the six" and it is one dry-run + apply (`vd-serve-c5`).
-4. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
+1. **Serve the six for lab review at the c6 numbers, or hold?** Calibration stopped at the plan's stop
+   rule (prompt v3.5 is the sixth version; second cap $3.61 of $10 spent): critical 61/65 = 93.8% (gate
+   95%), resources 21/32 = 65.6% (gate 80%, with a ceiling: Field Museum's wedding videos are JS-loaded
+   and two goldens cite floor-plan image URLs no longer on the pages). All six are compare-ready on their
+   v3.5 runs. Say "serve the six" → `runTick.ts --tick c6 --golden --skip-crawl --apply-serve` (dry-run
+   already printed in `loop/reports/c6/serve-dry-run.md`), then review `/lab/venue?u=<username>`.
+2. **Golden resources refresh** (small, human): re-collect the resource URLs for Marchetti, Geraghty and
+   Field Museum from the live pages so the resources gate measures the crawler, not link rot.
+3. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
 
 ## Second mission (parallel window) — D061 Acquisition loop: ALL month-1 ticks DONE (2026-09-20 07:00 UTC)
 

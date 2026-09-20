@@ -1,0 +1,268 @@
+{
+  "funnel": {
+    "listed": 437,
+    "websiteVerified": 257,
+    "crawled": 15,
+    "extracted": 6,
+    "validatedOk": 6,
+    "repaired": 0,
+    "served": 0,
+    "compareReady": 0,
+    "excellent": 0,
+    "humanVerified": 0
+  },
+  "fieldRates": {
+    "perField": [
+      {
+        "field": "venue_kind",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "setting",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "one_event_per_day",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "space_count_bookable",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "capacity_min_guests",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "capacity_max_guests",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "ceremony_on_site",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "ceremony_fee",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "rental_hours_included",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "weekday_events",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "catering",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "bar",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "rental_charge_type",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "fb_minimum",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "service_charge_pct",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "parking",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "day_of_coordinator",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "payment_schedule",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "cancellation",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "event_insurance",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "security",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "vendor_access",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "noise_curfew",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "sales_tax_pct",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "cc_fee_pct",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "taxes_included_in_rental",
+        "tier": "important",
+        "statedRate": 0
+      },
+      {
+        "field": "vendor_list_policy",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "pets_allowed",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "hvac",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "ada_accessible",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "bridal_suite",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "tables_chairs_included",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "linens_included",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "dance_floor_included",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "coat_check",
+        "tier": "secondary",
+        "statedRate": 0
+      },
+      {
+        "field": "pricing_archetype",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "price_from_usd",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "per_guest_from_usd",
+        "tier": "critical",
+        "statedRate": 0
+      },
+      {
+        "field": "per_guest_to_usd",
+        "tier": "critical",
+        "statedRate": 0
+      }
+    ],
+    "byTier": {
+      "critical": 0,
+      "important": 0,
+      "secondary": 0
+    }
+  },
+  "reviewHistogram": {},
+  "spend": [
+    {
+      "promptVersion": "venue-details-v3.0",
+      "stage": "extract",
+      "totalCostUsd": 2.2893239,
+      "runCount": 15
+    },
+    {
+      "promptVersion": "venue-details-v3.0",
+      "stage": "repair",
+      "totalCostUsd": 0.020916,
+      "runCount": 12
+    },
+    {
+      "promptVersion": "venue-details-v3.1",
+      "stage": "extract",
+      "totalCostUsd": 1.0323815,
+      "runCount": 5
+    },
+    {
+      "promptVersion": "venue-details-v3.2",
+      "stage": "extract",
+      "totalCostUsd": 1.59096385,
+      "runCount": 7
+    },
+    {
+      "promptVersion": "venue-details-v3.2",
+      "stage": "repair",
+      "totalCostUsd": 0.038924,
+      "runCount": 4
+    },
+    {
+      "promptVersion": "venue-details-v3.3",
+      "stage": "extract",
+      "totalCostUsd": 1.6144075,
+      "runCount": 6
+    },
+    {
+      "promptVersion": "venue-details-v3.4",
+      "stage": "extract",
+      "totalCostUsd": 1.73360875,
+      "runCount": 6
+    }
+  ],
+  "ceiling": {
+    "websitesChecked": 307,
+    "shells": 292,
+    "imageOnlyPdfOnly": 0
+  }
+}
