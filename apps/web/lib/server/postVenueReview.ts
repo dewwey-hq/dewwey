@@ -428,7 +428,7 @@ function guessCouple(caption: string | null): string | null {
  */
 export async function getPostReviewQueue(
   limit: number,
-  opts: { reviewedBy?: string } = {}
+  opts: { reviewedBy?: string; spotCheckBatch?: string; batch?: string } = {}
 ): Promise<PostReviewQueueItem[]> {
   const reviewedBy = opts.reviewedBy ?? LABELED_BY;
   const pool = getPool();
@@ -447,6 +447,10 @@ export async function getPostReviewQueue(
        ) sp on sp.post_url = cp.source_post_url`
     : `join staging.instagram_posts sp on sp.post_url = cp.source_post_url`;
 
+  if (opts.spotCheckBatch) {
+    return getD061BatchSpotCheckQueue(limit, opts.spotCheckBatch, viewGuard[0].ok !== null);
+  }
+
   const { rows } = await pool.query(
     `with venue_counts as (
        select coalesce(al.canonical_account_id, wv.account_id) as venue_account_id,
@@ -456,7 +460,22 @@ export async function getPostReviewQueue(
        left join account_aliases al on al.alias_account_id = wv.account_id
        where wv.role = 'venue'
        group by 1
-     ),
+     )
+     ${
+       // D061 addendum: computed ONCE (materialized) when ?batch= scopes the queue, then joined
+       // as a plain `in` below -- NOT a correlated EXISTS keyed on posts.url, which has no index
+       // and would otherwise force a per-outer-row scan (same class of perf trap the spot-check
+       // helper's own doc comment above describes, just via a different join shape).
+       opts.batch
+         ? `, batch_first_observed_urls as materialized (
+              select bp.url
+              from ops.post_observations bo
+              join ops.crawl_runs br on br.id = bo.run_id
+              join posts bp on bp.id = bo.post_id
+              where bo.is_first and br.batch_id = $4
+            )`
+         : ""
+     },
      candidate_posts as (
        select
          cp.source_post_url,
@@ -479,7 +498,14 @@ export async function getPostReviewQueue(
        from jeremy_wedding_candidate_posts cp
        join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
        ${candidatePostsJoin}
-       where jwc.clustering_version = $1
+       -- D061 addendum: ?batch= drops the clustering_version restriction entirely (same choice
+       -- getD061BatchSpotCheckQueue makes, for the same reason -- an acquisition batch's posts
+       -- can land under whichever clustering_version was current at cluster time, and a
+       -- batch-scoped queue should show ALL of that batch's undecided posts, not just the ones
+       -- under today's version). "true or ..." always short-circuits when opts.batch is set;
+       -- "false or jwc.clustering_version = $1" is exactly the old unscoped behavior otherwise.
+       -- $1 stays referenced in both branches' SQL text so the bound parameter is always valid.
+       where (${opts.batch ? "true" : "false"} or jwc.clustering_version = $1)
      ),
      ${LATEST_EXTRACTION_CTE}
      select
@@ -515,6 +541,15 @@ export async function getPostReviewQueue(
        -- eligibility; this keeps already-clustered posts out of the human's way. Posts that
        -- mention both (a venue's "weddings, galas, mitzvahs" marketing) still get reviewed.
        and not ${nonWeddingEventExclusionSql("cpz.caption")}
+       ${
+         // D061 addendum: /label/candidates?batch=<acquisition batch id> scopes the NORMAL queue
+         // (still "no current verdict from any reviewer", still this same ORDER BY) down to posts
+         // FIRST-observed by that batch -- added because the unscoped queue is ordered
+         // oldest-post-first, so a fresh acquisition batch's handful of posts sit behind
+         // hundreds of older undecided ones and never surface on their own. Mutually exclusive
+         // with spotCheckBatch at the call site (page.tsx) -- both are never set together here.
+         opts.batch ? "and cpz.source_post_url in (select url from batch_first_observed_urls)" : ""
+       }
      order by
        case cpz.chicago_status
          when 'CHICAGO_CONFIRMED' then 0
@@ -550,7 +585,150 @@ export async function getPostReviewQueue(
        cpz.posted_at asc nulls last,
        cpz.source_post_url asc
      limit $3`,
-    [STRUCTURAL_CLUSTERING_VERSION, reviewedBy, limit]
+    opts.batch
+      ? [STRUCTURAL_CLUSTERING_VERSION, reviewedBy, limit, opts.batch]
+      : [STRUCTURAL_CLUSTERING_VERSION, reviewedBy, limit]
+  );
+
+  return hydrateQueueRows(rows);
+}
+
+/**
+ * D061 blind spot-check mode (?spotcheck=<acquisition batch id>, e.g. "acq-20260919-pilot") --
+ * see the plan's "Blind spot-check" line and getPostReviewQueue's spotCheckBatch option. Separate
+ * from the D055 reviewer-scoped getSpotCheckQueue below (that one audits a NAMED reviewer's
+ * on-behalf clearing over the old structural-only candidate pool; this one audits ONE acquisition
+ * tick's model verdicts over the new ops.crawl_runs/post_observations tables).
+ *
+ * Universe: posts FIRST-observed (ops.post_observations.is_first) by a run in this batch_id.
+ * Eligible: the post's CURRENT verdict (post_venue_verdicts_current) exists and belongs to a
+ * MODEL reviewer -- reviewed_by not 'jeremy' and not like 'human%' (the same complement used
+ * below to detect a HUMAN verdict) -- and the post has NEVER carried a human verdict, at any
+ * point in post_venue_verdicts history (not just its current row): a post a human already
+ * corrected, even if a later model re-run overwrote it, is not fair game for a blind check.
+ *
+ * Deliberately does NOT reapply getPostReviewQueue's chicago_status/non-wedding-event
+ * eligibility filters -- same reasoning as getSpotCheckQueue's own doc comment: this audits
+ * whatever the model actually decided over the batch's full first-observed universe, not a
+ * narrower slice. Deliberately does NOT filter candidate_posts by clustering_version either
+ * (unlike the normal queue) -- reportAcquisitionFunnel.ts's own candidate join has no such
+ * filter, and a probe against the pilot batch found the same post count with or without it (4 of
+ * the batch's 60 joined posts sit under a newer 'structural-v3-a1' clustering_version and none of
+ * them currently carry a model verdict, so the filter would have been a no-op here, but there is
+ * no guarantee that stays true for a future batch).
+ *
+ * Ordering is random but reproducible across repeated calls for the same batch (md5(post_url)),
+ * not per-process random -- so re-loading the page mid-session doesn't reshuffle already-seen
+ * posts to the back.
+ *
+ * The returned rows never select the model's own verdict/confidence columns (no join to
+ * latest_extraction/post_extraction_runs at all), so hydrateQueueRows' `model` field is always
+ * null here -- same "the UI must stay blind" invariant as getSpotCheckQueue.
+ *
+ * Performance note (found while building this): joining candidate_posts to the SAME unfiltered
+ * "distinct on (shortcode) select * from v_ig_posts" subquery getPostReviewQueue's main path uses
+ * (candidatePostsJoin) sent this query's plan into a Nested Loop that re-ran that dedupe (a sort
+ * over the full ~54k-row staging+public union) once per candidate row -- 80-130s wall time against
+ * a batch of just ~60 posts. Fixed by pre-filtering the v_ig_posts scan to this batch's own
+ * post_urls (via batch_first_observed, ~100 rows) BEFORE the distinct-on sort, which this helper
+ * builds itself rather than reusing the shared, unfiltered candidatePostsJoin string -- brings it
+ * back under a second. venue_counts is pulled in `as materialized` for the same reason (it was
+ * being recomputed per outer row instead of once) -- the main getPostReviewQueue path is
+ * apparently never planned that way (its own row-count profile favors a hash join there), but
+ * `as materialized` costs nothing when the planner would have made the same choice anyway, so it
+ * is the safe default here regardless of what today's planner happens to pick.
+ */
+async function getD061BatchSpotCheckQueue(
+  limit: number,
+  batchId: string,
+  hasIgPostsView: boolean
+): Promise<PostReviewQueueItem[]> {
+  const pool = getPool();
+
+  const candidatePostsJoin = hasIgPostsView
+    ? `join (
+         select distinct on (shortcode) *
+         from v_ig_posts
+         where post_url in (select post_url from batch_first_observed)
+         order by shortcode, (corpus_source = 'staging') desc
+       ) sp on sp.post_url = cp.source_post_url`
+    : `join staging.instagram_posts sp on sp.post_url = cp.source_post_url`;
+
+  const { rows } = await pool.query(
+    `with venue_counts as materialized (
+       select coalesce(al.canonical_account_id, wv.account_id) as venue_account_id,
+              count(distinct wv.wedding_id) as n
+       from wedding_vendors wv
+       join weddings w on w.id = wv.wedding_id and w.is_chicago = true
+       left join account_aliases al on al.alias_account_id = wv.account_id
+       where wv.role = 'venue'
+       group by 1
+     ),
+     batch_first_observed as materialized (
+       select p.url as post_url
+       from ops.post_observations o
+       join ops.crawl_runs r on r.id = o.run_id
+       join posts p on p.id = o.post_id
+       where o.is_first and r.batch_id = $1
+     ),
+     batch_candidate_ids as (
+       select distinct cp.candidate_id
+       from jeremy_wedding_candidate_posts cp
+       join batch_first_observed bfo on bfo.post_url = cp.source_post_url
+     ),
+     candidate_posts as (
+       select
+         cp.source_post_url,
+         cp.candidate_id,
+         jwc.venue_account_id,
+         jwc.chicago_status,
+         jwc.venue_anchor_source,
+         coalesce(jwc.venue_anchor_conflict, false) as venue_anchor_conflict,
+         row_number() over (
+           partition by cp.candidate_id
+           order by sp.post_timestamp asc nulls last, cp.source_post_url asc
+         ) as group_index,
+         count(*) over (partition by cp.candidate_id) as group_size,
+         sp.caption_raw as caption,
+         sp.post_timestamp as posted_at,
+         sp.location_tag,
+         sp.owner_username,
+         sp.mentions,
+         ${styledSignalSql("sp.caption_raw")} as styled_signal_raw
+       from jeremy_wedding_candidate_posts cp
+       join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
+       ${candidatePostsJoin}
+       where cp.candidate_id in (select candidate_id from batch_candidate_ids)
+     )
+     select
+       cpz.source_post_url, cpz.candidate_id, cpz.venue_account_id, cpz.chicago_status,
+       cpz.venue_anchor_source, cpz.venue_anchor_conflict, cpz.group_index, cpz.group_size,
+       cpz.caption, cpz.posted_at, cpz.location_tag, cpz.owner_username, cpz.mentions,
+       cpz.styled_signal_raw,
+       a.username::text as venue_username,
+       a.full_name as venue_full_name,
+       (select v.name from vendors v where v.account_id = cpz.venue_account_id limit 1) as vendor_name,
+       coalesce(vc.n, 0) as current_wedding_count
+     from candidate_posts cpz
+     join batch_first_observed bfo on bfo.post_url = cpz.source_post_url
+     left join accounts a on a.id = cpz.venue_account_id
+     left join venue_counts vc on vc.venue_account_id = cpz.venue_account_id
+     where exists (
+       -- CURRENT verdict exists and is a MODEL one.
+       select 1 from post_venue_verdicts_current pvc
+       where pvc.post_url = cpz.source_post_url
+         and pvc.reviewed_by <> 'jeremy'
+         and pvc.reviewed_by not like 'human%'
+     )
+     and not exists (
+       -- No HUMAN verdict, ever, anywhere in history -- not just "no current human verdict".
+       select 1 from post_venue_verdicts pv2
+       where pv2.post_url = cpz.source_post_url
+         and (pv2.reviewed_by = 'jeremy' or pv2.reviewed_by like 'human%')
+     )
+     order by md5(cpz.source_post_url)
+     limit $2`,
+    [batchId, limit]
   );
 
   return hydrateQueueRows(rows);

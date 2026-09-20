@@ -20,14 +20,31 @@ import {
 // spot-check tally instead, and the items themselves carry no trace of the target reviewer's
 // verdict/notes.
 //
+// D061: when `spotcheck`'s value is shaped like an acquisition batch id (starts with "acq-", e.g.
+// "acq-20260919-pilot") this is instead the NEW batch-scoped blind spot-check
+// (getPostReviewQueue's spotCheckBatch option, over ops.crawl_runs/post_observations) rather than
+// the D055 reviewer-scoped one -- the two never collide since no reviewed_by value starts with
+// "acq-". The page (app/label/candidates/page.tsx) reuses the same `spotCheck.targetReviewer`
+// client prop to carry the batch id, so PostVenueReviewClient's existing top-up fetch
+// (`?spotcheck=<value>&n=5`) keeps working unmodified for this mode too.
+//
 // Phase 2 (D055): GET /api/post-venue-review?post=<shortcode>[,<shortcode>...] — direct-open mode,
 // serving exactly those post(s) (matches the page-level ?post= convention), in the order given,
 // regardless of any reviewer's existing verdict -- see getPostReviewItemsByPostUrls's doc comment.
 // No `progress` in this mode's response either, same reasoning as spotcheck.
+//
+// D061: GET /api/post-venue-review?batch=<acquisition batch id>&limit=5 — the NORMAL
+// (no-current-verdict) queue scoped to one acquisition batch (getPostReviewQueue's `batch`
+// option), matching the page-level ?batch= convention. Included here mainly for completeness/
+// direct testing -- PostVenueReviewClient's own top-up fetch does not send `batch` (out of scope
+// to change that file for this addendum), so in practice only the page's initial server-rendered
+// load uses this scoping; once the client tops itself up it falls back to the plain unscoped
+// queue below.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const spotcheckReviewer = searchParams.get("spotcheck");
   const postParam = searchParams.get("post");
+  const batchParam = searchParams.get("batch");
 
   if (postParam) {
     const shortcodes = postParam
@@ -47,7 +64,9 @@ export async function GET(req: NextRequest) {
   if (spotcheckReviewer) {
     const n = Math.min(Math.max(parseInt(searchParams.get("n") ?? "40", 10) || 40, 1), 200);
     try {
-      const items = await getSpotCheckQueue(n, { targetReviewer: spotcheckReviewer });
+      const items = spotcheckReviewer.startsWith("acq-")
+        ? await getPostReviewQueue(n, { spotCheckBatch: spotcheckReviewer })
+        : await getSpotCheckQueue(n, { targetReviewer: spotcheckReviewer });
       return NextResponse.json({ items, mode: "spotcheck", target_reviewer: spotcheckReviewer, n });
     } catch (err) {
       console.error("post-venue-review-spotcheck error:", err);
@@ -56,6 +75,16 @@ export async function GET(req: NextRequest) {
   }
 
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "5", 10) || 5, 1), 20);
+
+  if (batchParam) {
+    try {
+      const items = await getPostReviewQueue(limit, { batch: batchParam });
+      return NextResponse.json({ items, mode: "batch", batch_id: batchParam });
+    } catch (err) {
+      console.error("post-venue-review-batch error:", err);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+  }
 
   try {
     const [items, progress] = await Promise.all([getPostReviewQueue(limit), getPostReviewProgress()]);

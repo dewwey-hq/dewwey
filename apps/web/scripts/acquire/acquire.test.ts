@@ -14,6 +14,7 @@ import {
 } from "./ingest";
 import { ACTORS, PRICE_USD, buildInput, estimateCostUsd } from "./apifyClient";
 import { formatBatchId } from "./runTick";
+import { computeSpotCheckAgreement, type SpotCheckPair } from "./reportSpotCheck";
 
 const FIXTURE_DIR = new URL("./fixtures/", import.meta.url).pathname;
 function loadFixture(name: string): ApifyPostItem {
@@ -270,5 +271,79 @@ describe("mapItemToPostRow (real fixtures)", () => {
   test("video.json: Video type is always skipped regardless of displayUrl", () => {
     const item = loadFixture("video.json");
     expect(selectImageCandidates(item)).toEqual({ status: "skipped", urls: [] });
+  });
+});
+
+describe("computeSpotCheckAgreement (D061 blind spot-check)", () => {
+  test("zero pairs: n=0, both percentages null, THIS_VENUE bar fails (empty sample never passes)", () => {
+    const result = computeSpotCheckAgreement([]);
+    expect(result.n).toBe(0);
+    expect(result.agreeCount).toBe(0);
+    expect(result.agreementPct).toBeNull();
+    expect(result.disagreements).toEqual([]);
+    expect(result.thisVenue.modelCount).toBe(0);
+    expect(result.thisVenue.precisionPct).toBeNull();
+    expect(result.thisVenue.pass).toBe(false);
+  });
+
+  test("all agree, all THIS_VENUE: 100% overall and 100% THIS_VENUE precision, PASS", () => {
+    const pairs: SpotCheckPair[] = [
+      { postUrl: "a", modelVerdict: "THIS_VENUE", modelConfidence: 0.9, humanVerdict: "THIS_VENUE" },
+      { postUrl: "b", modelVerdict: "THIS_VENUE", modelConfidence: 0.95, humanVerdict: "THIS_VENUE" },
+    ];
+    const result = computeSpotCheckAgreement(pairs);
+    expect(result.n).toBe(2);
+    expect(result.agreeCount).toBe(2);
+    expect(result.agreementPct).toBe(100);
+    expect(result.disagreements).toEqual([]);
+    expect(result.thisVenue).toMatchObject({ modelCount: 2, confirmedCount: 2, precisionPct: 100, pass: true });
+  });
+
+  test("a non-THIS_VENUE disagreement does not touch the THIS_VENUE bar", () => {
+    const pairs: SpotCheckPair[] = [
+      { postUrl: "a", modelVerdict: "THIS_VENUE", modelConfidence: 0.9, humanVerdict: "THIS_VENUE" },
+      { postUrl: "b", modelVerdict: "NOT_WEDDING", modelConfidence: 0.8, humanVerdict: "OTHER_VENUE" },
+    ];
+    const result = computeSpotCheckAgreement(pairs);
+    expect(result.n).toBe(2);
+    expect(result.agreeCount).toBe(1);
+    expect(result.agreementPct).toBe(50);
+    expect(result.disagreements).toEqual([pairs[1]]);
+    // THIS_VENUE bar only looks at the one THIS_VENUE model call, which the human confirmed.
+    expect(result.thisVenue).toMatchObject({ modelCount: 1, confirmedCount: 1, precisionPct: 100, pass: true });
+  });
+
+  test("a THIS_VENUE model call the human overturns fails the 95% bar", () => {
+    // 19/20 THIS_VENUE calls confirmed = 95% exactly -> PASS; add one more miss to drop under.
+    const confirmed: SpotCheckPair[] = Array.from({ length: 18 }, (_, i) => ({
+      postUrl: `ok-${i}`,
+      modelVerdict: "THIS_VENUE",
+      modelConfidence: 0.9,
+      humanVerdict: "THIS_VENUE",
+    }));
+    const misses: SpotCheckPair[] = [
+      { postUrl: "miss-1", modelVerdict: "THIS_VENUE", modelConfidence: 0.6, humanVerdict: "OTHER_VENUE" },
+      { postUrl: "miss-2", modelVerdict: "THIS_VENUE", modelConfidence: 0.55, humanVerdict: "NOT_WEDDING" },
+    ];
+    const result = computeSpotCheckAgreement([...confirmed, ...misses]);
+    expect(result.n).toBe(20);
+    expect(result.thisVenue.modelCount).toBe(20);
+    expect(result.thisVenue.confirmedCount).toBe(18);
+    expect(result.thisVenue.precisionPct).toBe(90);
+    expect(result.thisVenue.pass).toBe(false);
+    expect(result.disagreements).toEqual(misses);
+  });
+
+  test("exactly 95% precision passes (bar is inclusive)", () => {
+    const confirmed: SpotCheckPair[] = Array.from({ length: 19 }, (_, i) => ({
+      postUrl: `ok-${i}`,
+      modelVerdict: "THIS_VENUE",
+      modelConfidence: 0.9,
+      humanVerdict: "THIS_VENUE",
+    }));
+    const miss: SpotCheckPair = { postUrl: "miss-1", modelVerdict: "THIS_VENUE", modelConfidence: 0.6, humanVerdict: "OTHER_VENUE" };
+    const result = computeSpotCheckAgreement([...confirmed, miss]);
+    expect(result.thisVenue.precisionPct).toBe(95);
+    expect(result.thisVenue.pass).toBe(true);
   });
 });

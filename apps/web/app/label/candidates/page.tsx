@@ -35,6 +35,13 @@ export default async function PostVenueReviewPage({
   const params = await searchParams;
   const spotcheckParam = typeof params.spotcheck === "string" ? params.spotcheck : null;
   const postParam = typeof params.post === "string" ? params.post : null;
+  // D061: /label/candidates?batch=<acquisition batch id> — scopes the NORMAL (still
+  // "no current verdict from any reviewer") queue to posts first-observed in that batch
+  // (getPostReviewQueue's `batch` option), so a fresh tick's handful of undecided posts don't sit
+  // behind hundreds of older ones under the queue's oldest-first ordering. Mutually exclusive
+  // with `spotcheck` (checked first below) -- spotcheck wins, per the same "explicit request beats
+  // the general queue" precedence `post` already has over both.
+  const batchParam = typeof params.batch === "string" ? params.batch : null;
 
   if (postParam) {
     const shortcodes = postParam
@@ -64,6 +71,42 @@ export default async function PostVenueReviewPage({
   if (spotcheckParam) {
     const nRaw = typeof params.n === "string" ? parseInt(params.n, 10) : NaN;
     const n = Number.isFinite(nRaw) && nRaw > 0 ? Math.min(nRaw, MAX_SPOTCHECK_N) : DEFAULT_SPOTCHECK_N;
+
+    // D061: /label/candidates?spotcheck=<acquisition batch id> (e.g. acq-20260919-pilot) — the
+    // NEW batch-scoped blind spot-check (getPostReviewQueue's spotCheckBatch option, over
+    // ops.crawl_runs/post_observations), distinct from the D055 reviewer-scoped mode below (no
+    // reviewed_by value starts with "acq-", so the two conventions never collide). No
+    // getSpotCheckAgreementReport call here -- that report is specific to the D055
+    // reviewer-vs-human comparison over the old structural-only candidate pool; the equivalent
+    // for a batch is scripts/acquire/reportSpotCheck.ts, run separately. The banner above the
+    // client component (rather than a change to PostVenueReviewClient itself) is what surfaces
+    // "Blind spot-check · <batch id> · N remaining" to the reviewer -- PostVenueReviewClient's
+    // own `spotCheck.targetReviewer` prop carries the batch id unmodified so its existing top-up
+    // fetch (`?spotcheck=<value>&n=5`, handled by the API route above) keeps working as-is.
+    if (spotcheckParam.startsWith("acq-")) {
+      const items = await getPostReviewQueue(n, { spotCheckBatch: spotcheckParam });
+      return (
+        <>
+          <div className="mx-auto max-w-3xl px-4 pt-4 text-xs font-medium text-purple-800">
+            Blind spot-check · {spotcheckParam} · {items.length} remaining
+          </div>
+          <PostVenueReviewClient
+            initialItems={items}
+            initialProgress={{
+              posts_total: n,
+              posts_reviewed: 0,
+              remaining_confirmed: 0,
+              remaining_ambiguous: 0,
+              candidates_total: 0,
+              candidates_complete: 0,
+              by_verdict: {},
+            }}
+            spotCheck={{ active: true, targetReviewer: spotcheckParam, n }}
+          />
+        </>
+      );
+    }
+
     const [items, report] = await Promise.all([
       getSpotCheckQueue(n, { targetReviewer: spotcheckParam }),
       getSpotCheckAgreementReport(spotcheckParam),
@@ -84,6 +127,39 @@ export default async function PostVenueReviewPage({
         spotCheck={{ active: true, targetReviewer: spotcheckParam, n }}
         spotCheckReport={report}
       />
+    );
+  }
+
+  if (batchParam) {
+    const nRaw = typeof params.n === "string" ? parseInt(params.n, 10) : NaN;
+    const n = Number.isFinite(nRaw) && nRaw > 0 ? Math.min(nRaw, MAX_SPOTCHECK_N) : DEFAULT_SPOTCHECK_N;
+    const items = await getPostReviewQueue(n, { batch: batchParam });
+    // Synthetic progress, same shape/reasoning as the spot-check modes above: this queue is
+    // scoped to one batch, so the global posts_total/remaining_* figures getPostReviewProgress()
+    // computes would be misleading here (they'd count the other ~469 unrelated undecided posts).
+    // Note: PostVenueReviewClient's own top-up fetch (`items.length < 3`) is NOT batch-aware --
+    // it calls the plain unscoped `/api/post-venue-review?limit=5` once this batch's own items run
+    // low, same as the ordinary queue. Out of scope to fix without touching that client component;
+    // requesting a generous `n` up front (default 40) means a batch this small (5 today) loads
+    // entirely on the first render, so it won't matter in practice for the pilot.
+    return (
+      <>
+        <div className="mx-auto max-w-3xl px-4 pt-4 text-xs font-medium text-blue-800">
+          Batch · {batchParam} · {items.length} remaining
+        </div>
+        <PostVenueReviewClient
+          initialItems={items}
+          initialProgress={{
+            posts_total: items.length,
+            posts_reviewed: 0,
+            remaining_confirmed: 0,
+            remaining_ambiguous: 0,
+            candidates_total: 0,
+            candidates_complete: 0,
+            by_verdict: {},
+          }}
+        />
+      </>
     );
   }
 
