@@ -605,3 +605,81 @@ describe("scoreCostDelta aligns space_id/path_id onto the candidate before estim
     expect(result.withinGate).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Multi-path name alignment (tick c4, Diamond Garden v3.3 evidence): golden paths
+// hall-rental-only/hall-plus-a-la-carte/all-inclusive vs candidate rental_only/complete_package --
+// ids never line up, but the meaningful words do once synonyms fold onto the same bucket.
+// ---------------------------------------------------------------------------
+
+function makePath(overrides: Partial<PricingPath>): PricingPath {
+  return { id: "path", name: "Path", description: null, applies_to_spaces: "all", fixed_fees: [], per_guest_tiers: [], minimums: [], required_staffing: null, rental_hours: null, year_surcharges: [], promotions: [], quote: "q", source_url: "https://example.com", snapshot_id: null, ...overrides };
+}
+
+describe("scoreImportantCore aligns multi-path pricing by name when ids differ (tick c4)", () => {
+  it("Diamond Garden shape: hall-rental-only -> rental_only, all-inclusive -> complete_package, the missing middle path stays a miss", () => {
+    const rentalOnlyFee = makeFee({ key: "rental-sat", day: "sat", season: null, amount: 4700 });
+    const carteFee = makeFee({ key: "carte-sat", day: "sat", season: null, amount: 9999 });
+    const tier: PerGuestTier = { id: "tier-a", name: "Package", per_guest: 68.95, day: null, season: null, inherits_from: null, inclusions: [], bar_tier: null, min_guests: null, quote: "q", source_url: "https://example.com", snapshot_id: null };
+
+    const goldenPaths = [
+      makePath({ id: "hall-rental-only", name: "Venue only", fixed_fees: [rentalOnlyFee] }),
+      makePath({ id: "hall-plus-a-la-carte", name: "Venue + à la carte", fixed_fees: [carteFee] }),
+      makePath({ id: "all-inclusive", name: "All-Inclusive", per_guest_tiers: [tier] }),
+    ];
+    const golden = makeVenue({
+      pricing: { archetype: null, paths: goldenPaths, rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+      eval: {
+        "/pricing/paths/hall-rental-only/fixed_fees/rental-sat": "extractor",
+        "/pricing/paths/hall-plus-a-la-carte/fixed_fees/carte-sat": "extractor",
+        "/pricing/paths/all-inclusive/per_guest_tiers/tier-a": "extractor",
+      },
+    });
+
+    const candidatePaths = [
+      makePath({ id: "rental_only", name: "Hall Rental Only (DIY)", fixed_fees: [{ ...rentalOnlyFee, key: "candidate-rental-sat" }] }),
+      makePath({ id: "complete_package", name: "Complete Package (All-Inclusive)", per_guest_tiers: [{ ...tier, id: "tier-x" }] }),
+    ];
+    const candidate = makeVenue({
+      pricing: { archetype: null, paths: candidatePaths, rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+      sources: CRAWLED,
+    });
+
+    const result = scoreImportantCore(candidate, golden);
+    // hall-rental-only's fee found on the name-aligned rental_only path.
+    expect(result.misses.some((m) => m.path === "/pricing/paths/hall-rental-only/fixed_fees/rental-sat")).toBe(false);
+    // all-inclusive's tier found on the name-aligned complete_package path.
+    expect(result.misses.some((m) => m.path === "/pricing/paths/all-inclusive/per_guest_tiers/tier-a")).toBe(false);
+    // hall-plus-a-la-carte has no candidate counterpart in this run -- stays a genuine miss.
+    const carteMiss = result.misses.find((m) => m.path === "/pricing/paths/hall-plus-a-la-carte/fixed_fees/carte-sat");
+    expect(carteMiss?.note).toBe("no matching candidate fee (space/day/season)");
+  });
+
+  it("no match: unrelated path names/ids and more than one fee-bearing candidate path stay unresolved", () => {
+    const fee = makeFee({ key: "fee-a", day: "sat", season: null, amount: 5000 });
+    const goldenDefault = makePath({ id: "default", name: "Zephyr Plan", fixed_fees: [fee] });
+    const golden = makeVenue({
+      pricing: { archetype: null, paths: [goldenDefault, makePath({ id: "other", name: "Nebula Plan" })], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+      eval: { "/pricing/paths/default/fixed_fees/fee-a": "extractor" },
+    });
+
+    // Two candidate paths, both fee-bearing and named with vocabulary sharing nothing (not even
+    // via the synonym map) with "Zephyr Plan"/"default" -- so neither the name-token tier nor the
+    // exactly-one-fee-bearing-path fallback can pick a winner.
+    const candidate = makeVenue({
+      pricing: {
+        archetype: null,
+        paths: [makePath({ id: "opt-a", name: "Quartz Option", fixed_fees: [{ ...fee, key: "opt-a-fee" }] }), makePath({ id: "opt-b", name: "Marble Choice", fixed_fees: [{ ...fee, key: "opt-b-fee" }] })],
+        rates: emptyRates(),
+        add_ons: [],
+        required_third_party: [],
+        notes: [],
+      },
+      sources: CRAWLED,
+    });
+
+    const result = scoreImportantCore(candidate, golden);
+    const miss = result.misses.find((m) => m.path === "/pricing/paths/default/fixed_fees/fee-a");
+    expect(miss?.note).toBe("no matching candidate fee (space/day/season)");
+  });
+});

@@ -587,18 +587,89 @@ function findAlignedMinimum(g: Minimum, candidateMins: Minimum[]): Minimum | und
   return candidateMins.find((c) => g.kind === c.kind && (g.day ?? null) === (c.day ?? null) && seasonKey(g.season) === seasonKey(c.season));
 }
 
-/** Resolves the candidate pricing path a golden path should compare against -- exact id match
- * first, else (tick c2 calibration fix, evidence from run 16/17) the candidate's own single path
- * when BOTH documents have exactly one: a model invents its own path id/name
- * ("wedding_experiences") that has no reason to match a golden fixture's ("default") even though
- * it's clearly the same one path -- the same fallback `scorePricingScalars` already uses for its
- * own (single) default-path lookup, applied here to every golden path. A multi-path venue whose
- * ids don't align is left unresolved -- conservative, no attempt to guess which candidate path
- * corresponds to which golden path when there's more than one of either. */
+// ---------------------------------------------------------------------------
+// Multi-path name alignment (tick c4, Diamond Garden v3.3 evidence): when both documents have
+// MORE than one pricing path and no id lines up, a model's own path names ("Hall Rental Only
+// (DIY)") still overlap a golden path's id+name ("hall-rental-only" / "Venue only") on the
+// meaningful words even though the exact phrasing never will -- a small synonym map folds
+// near-synonymous words ("hall"/"rental"/"venue"/"only"/"space", "inclusive"/"complete"/
+// "package"/"all", "carte"/"plus"/"add"/"ons") onto the same bucket before the Jaccard check, the
+// same >= 0.5 threshold `alignSpaces` already uses for space names.
+// ---------------------------------------------------------------------------
+
+const PATH_SYNONYM_GROUPS: string[][] = [
+  ["rental", "hall", "venue", "only", "space"],
+  ["inclusive", "complete", "package", "all"],
+  ["carte", "plus", "add", "ons"],
+];
+
+function canonicalPathToken(token: string): string {
+  for (let i = 0; i < PATH_SYNONYM_GROUPS.length; i++) {
+    if (PATH_SYNONYM_GROUPS[i].includes(token)) return `syn:${i}`;
+  }
+  return token;
+}
+
+/** Combined id+name tokens (normalized, short/noise tokens like "a"/"la" dropped, each word
+ * folded onto its synonym bucket when it has one) -- the unit `pathTokenJaccard` compares. */
+function pathNameTokens(p: PricingPath): Set<string> {
+  const raw = [...normalizeName(p.id).split(" "), ...normalizeName(p.name).split(" ")].filter((t) => t.length >= 3);
+  return new Set(raw.map(canonicalPathToken));
+}
+
+function pathTokenJaccard(a: PricingPath, b: PricingPath): number {
+  const ta = pathNameTokens(a);
+  const tb = pathNameTokens(b);
+  if (ta.size === 0 || tb.size === 0) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  const union = ta.size + tb.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+
+function bestPathByNameTokens(gp: PricingPath, candidatePaths: PricingPath[]): PricingPath | undefined {
+  let best: { p: PricingPath; score: number } | null = null;
+  for (const p of candidatePaths) {
+    const score = pathTokenJaccard(gp, p);
+    if (score >= 0.5 && (!best || score > best.score)) best = { p, score };
+  }
+  return best?.p;
+}
+
+/** Resolves the candidate pricing path a golden path should compare against:
+ * 1. exact id match.
+ * 2. (tick c2, evidence from run 16/17) the candidate's own single path when BOTH documents have
+ *    exactly one: a model invents its own path id/name ("wedding_experiences") that has no reason
+ *    to match a golden fixture's ("default") even though it's clearly the same one path -- the
+ *    same fallback `scorePricingScalars` already uses for its own (single) default-path lookup.
+ * 3. (tick c4) when BOTH documents have more than one path, the candidate path whose id+name
+ *    tokens overlap this golden path's by >= 0.5 under the synonym map above.
+ * 4. (tick c4) last resort, only for the golden's own pinned DEFAULT path when it carries fixed
+ *    fees and no tiers (a fees-shaped path, not a per-guest-tier one): the candidate's fee-bearing
+ *    path, but only when there's exactly one -- an unambiguous structural pairing when even
+ *    synonym matching found nothing (Diamond Garden's "Hall Rental Only (DIY)" already resolves at
+ *    step 3; this exists for a wording that drifts further still).
+ * A pairing that satisfies none of these is left unresolved -- conservative, no attempt to guess
+ * which candidate path corresponds to which golden path beyond what's actually evidenced. */
 function resolveCandidatePath(gp: PricingPath, golden: VenueDetailsV3, candidate: VenueDetailsV3): PricingPath | undefined {
   const exact = candidate.pricing.paths.find((p) => p.id === gp.id);
   if (exact) return exact;
-  return golden.pricing.paths.length === 1 && candidate.pricing.paths.length === 1 ? candidate.pricing.paths[0] : undefined;
+
+  if (golden.pricing.paths.length === 1 && candidate.pricing.paths.length === 1) {
+    return candidate.pricing.paths[0];
+  }
+
+  if (golden.pricing.paths.length > 1 && candidate.pricing.paths.length > 1) {
+    const byName = bestPathByNameTokens(gp, candidate.pricing.paths);
+    if (byName) return byName;
+
+    if (gp.id === defaultAxes(golden).path_id && gp.fixed_fees.length > 0 && gp.per_guest_tiers.length === 0) {
+      const feePaths = candidate.pricing.paths.filter((p) => p.fixed_fees.length > 0);
+      if (feePaths.length === 1) return feePaths[0];
+    }
+  }
+
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
