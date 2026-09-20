@@ -172,6 +172,12 @@ async function lookupNames(pool: Pool, accountIds: number[]): Promise<Map<number
 // Page loading: local cache manifest first, else DB snapshot rows + R2 text.
 // ---------------------------------------------------------------------------
 
+/** Output budget per tool call. 16k was not enough for Diamond Garden / LondonHouse at v3.1
+ * (finish_reason=length, tick c2, 2026-09-20): the spine payload for a venue with many spaces,
+ * inclusions and FAQs runs past it. Output tokens are the cost driver ($5/M on Haiku), so this is
+ * a ceiling, not a target. */
+const EXTRACT_MAX_TOKENS = 32_000;
+
 export interface LoadedPages {
   pages: DocPage[];
   snapshotIds: number[];
@@ -420,7 +426,7 @@ async function extractOneVenue(pool: Pool | null, target: VenueTarget, args: Arg
     toolName: SPINE_TOOL.name,
     toolDescription: SPINE_TOOL.description,
     parameters: SPINE_TOOL.parameters,
-    maxTokens: 16_000,
+    maxTokens: EXTRACT_MAX_TOKENS,
   });
   let totalCost = spineCall.costUsd ?? 0;
   let totalInputTokens = spineCall.inputTokens;
@@ -442,7 +448,7 @@ async function extractOneVenue(pool: Pool | null, target: VenueTarget, args: Arg
       toolName: PRICING_TOOL.name,
       toolDescription: PRICING_TOOL.description,
       parameters: PRICING_TOOL.parameters,
-      maxTokens: 16_000,
+      maxTokens: EXTRACT_MAX_TOKENS,
     });
     pricingCall = pricingResult.args;
     totalCost += pricingResult.costUsd ?? 0;
@@ -562,7 +568,7 @@ async function runPilot(pool: Pool | null, args: Args): Promise<void> {
       toolName: SPINE_TOOL.name,
       toolDescription: SPINE_TOOL.description,
       parameters: SPINE_TOOL.parameters,
-      maxTokens: 16_000,
+      maxTokens: EXTRACT_MAX_TOKENS,
     });
     const spineSummary = buildSpineSpaceSummary(spineCall.args);
     const pricingCall = await callWithBackoff<RawPricingResult>({
@@ -572,7 +578,7 @@ async function runPilot(pool: Pool | null, args: Args): Promise<void> {
       toolName: PRICING_TOOL.name,
       toolDescription: PRICING_TOOL.description,
       parameters: PRICING_TOOL.parameters,
-      maxTokens: 16_000,
+      maxTokens: EXTRACT_MAX_TOKENS,
     });
     rows.push({
       accountId: target.accountId,
@@ -594,7 +600,7 @@ async function runPilot(pool: Pool | null, args: Args): Promise<void> {
       toolName: merged.name,
       toolDescription: merged.description,
       parameters: merged.parameters,
-      maxTokens: 16_000,
+      maxTokens: EXTRACT_MAX_TOKENS,
     });
     rows.push({
       accountId: target.accountId,

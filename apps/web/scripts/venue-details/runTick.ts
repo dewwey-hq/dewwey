@@ -27,7 +27,7 @@
  *   bun run scripts/venue-details/runTick.ts --tick f1 --ids-file scripts/graph/tmp_analysis/vd_f1.ids --skip-crawl --apply-serve
  */
 import { readFileSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, appendFile } from "node:fs/promises";
 import path from "node:path";
 import { getPool, closePool } from "../classify/db";
 import { GOLDEN_ACCOUNT_IDS, GOLDEN_SLUGS, type GoldenSlug } from "../../lib/venueDetails/golden";
@@ -275,6 +275,8 @@ interface Step {
   /** File name under reportsDir to tee this step's stdout into, or null when the step already
    * writes its own report via `--out` (coverage, funnel) and a second copy would be redundant. */
   teeFile: string | null;
+  /** Append instead of overwrite (several score commands share one scorecard.md). */
+  append?: boolean;
 }
 
 async function runStep(step: Step, reportsDir: string): Promise<number> {
@@ -291,7 +293,10 @@ async function runStep(step: Step, reportsDir: string): Promise<number> {
   const code = await proc.exited;
   if (step.teeFile) {
     await mkdir(reportsDir, { recursive: true });
-    await writeFile(path.join(reportsDir, step.teeFile), Buffer.concat(chunks));
+    // Strip ANSI so the report files are plain markdown (the scorer colors its gates).
+    const plain = Buffer.from(Buffer.concat(chunks).toString("utf8").replace(/\x1b\[[0-9;]*m/g, ""));
+    if (step.append) await appendFile(path.join(reportsDir, step.teeFile), plain);
+    else await writeFile(path.join(reportsDir, step.teeFile), plain);
   }
   return code;
 }
@@ -448,7 +453,8 @@ async function main() {
 
   const scoreCommands = buildScoreCommands(args.kind, ids, args.promptVersion);
   const scoreFile = args.kind === "calibration" ? "scorecard.md" : "mustnot.md";
-  scoreCommands.forEach((cmd, i) => steps.push({ name: `score-${i + 1}`, cmd, teeFile: scoreCommands.length > 1 ? null : scoreFile }));
+  // Every score command appends to ONE scorecard file (calibration ticks run one per golden slug).
+  scoreCommands.forEach((cmd, i) => steps.push({ name: `score-${i + 1}`, cmd, teeFile: scoreFile, append: i > 0 }));
 
   steps.push({ name: "serve-dry-run", cmd: buildServeCommand(ids, args.tick, false, args.promptVersion), teeFile: "serve-dry-run.md" });
   if (args.applyServe) steps.push({ name: "serve-apply", cmd: buildServeCommand(ids, args.tick, true, args.promptVersion), teeFile: "serve-apply.md" });
@@ -466,12 +472,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Score step(s): when there's more than one (calibration, one per golden slug), concatenate
-  // their individually-buffered stdout into one scorecard.md rather than clobbering it N times --
-  // handled by teeFile above (only the single-command case tees directly); multi-command scoring
-  // is left to each command's own stdout (inherited live) since scoreAgainstGolden.ts --mustnot
-  // reports the SAME 15-venue table regardless of --slug, so concatenating N identical tables adds
-  // nothing -- read the last invocation's console output instead.
   await mkdir(args.reportsDir, { recursive: true });
 
   // --- Tick row: parse counts from the DB, not stdout (plan: "so they are facts"). ---

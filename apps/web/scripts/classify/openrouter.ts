@@ -173,8 +173,12 @@ export async function callTool<T>(opts: {
       // "Expected '}'" (tick c1, 2026-09-19: two of sixteen venues).
       const finish = data.choices?.[0]?.finish_reason ?? data.choices?.[0]?.native_finish_reason ?? "unknown";
       const argText = String(call.function.arguments ?? "");
+      const msg = data.choices?.[0]?.message ?? {};
+      const contentChars = typeof msg.content === "string" ? msg.content.length : 0;
+      const reasoningChars = typeof msg.reasoning === "string" ? msg.reasoning.length : 0;
+      const nCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls.length : 0;
       const err = new Error(
-        `tool arguments are not valid JSON (finish_reason=${finish}, completion_tokens=${data.usage?.completion_tokens ?? "?"}, ${argText.length} chars; tail: ${JSON.stringify(argText.slice(-120))}): ${(e as Error).message}`,
+        `tool arguments are not valid JSON (finish_reason=${finish}, completion_tokens=${data.usage?.completion_tokens ?? "?"}, args ${argText.length} chars, content ${contentChars} chars, reasoning ${reasoningChars} chars, tool_calls ${nCalls}; tail: ${JSON.stringify(argText.slice(-120))}): ${(e as Error).message}`,
       );
       (err as Error & { finishReason?: string; truncated?: boolean }).finishReason = String(finish);
       (err as Error & { finishReason?: string; truncated?: boolean }).truncated = String(finish) === "length";
