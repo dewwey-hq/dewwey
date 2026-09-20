@@ -169,6 +169,15 @@ standard) — plan file / README.
   it, else the zoo; 10 + 24, provenance batch `d061-tigerlily-reanchor-1`). Now zoo 72, Café Brauer 26,
   Tigerlily 0. Café Brauer's account is still bare (user declined a profile scrape for now).
 
+- **Two plan corrections (user's call, 2026-09-20 ~03:50 UTC), after re-reading the coverage table honestly:**
+  (1) "101 zero-wedding venues crawled and found nothing" was Ben's crawl a month ago through his regex
+  only; our chain never saw those 1,545 posts. At zero-wedding venues the D031 attach risk does not
+  exist, so they are registered as a $0 legacy batch (`legacy-ben-crawl1-zero-venues`, 75 venues, 1,541
+  posts, `tmp_analysis/d061_legacy_ben_zero_venues.sql`) and the structural universe now admits a public
+  post iff the loop registered it (`ops.post_observations`) instead of by scrape date — **needs the
+  structural view re-applied**, then the chain. (2) The 41 hotels / restaurants / churches at 1-5 I had
+  excluded are being probed after all (`acq-20260919-probesA-lowtypes`, $2.36, running).
+
 **Blocked on the user:** nothing at the moment — Gate 1a decides probes A; the user asked to be told
 before that spend.
 
