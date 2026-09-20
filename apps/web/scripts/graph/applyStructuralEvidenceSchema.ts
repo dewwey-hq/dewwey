@@ -262,7 +262,12 @@ const UNIVERSE_SOURCE_FULL = `
        union all
        select * from v_ig_posts v
        where v.corpus_source = 'public'
-         and v.scraped_at > coalesce((select min(started_at) from ops.crawl_runs), 'infinity'::timestamptz)
+         -- D061 (2026-09-20): a public row enters iff the acquisition loop has REGISTERED it -- an
+         -- ops.post_observations row (written by ingest, or by a provenance-logged legacy batch such
+         -- as legacy-ben-crawl1-zero-venues). Replaces the scrape-date gate: same effect for new
+         -- acquisitions, and lets Ben's pre-existing crawl posts in one explicit, revertable batch at
+         -- a time (D031 attach risk is managed per batch, e.g. zero-wedding seed venues only).
+         and exists (select 1 from ops.post_observations o where o.post_id = v.post_id)
          and not exists (select 1 from staging.instagram_posts s2
                          where (regexp_match(s2.post_url, '/p/([^/]+)'))[1] = v.shortcode)
 `;

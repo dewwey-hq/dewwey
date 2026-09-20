@@ -1511,7 +1511,7 @@ describe("D061 acquisition invariants (DB)", () => {
     expect(rows[0].n).toBe(0);
   }, 120000);
 
-  it("every 'public' row reachable from the structural universe was scraped after the first acquisition run (month-1 exclusion, decision 5)", async (ctx) => {
+  it("every 'public' row reachable from the structural universe was registered by the loop (ops.post_observations) -- unregistered Ben crawl posts stay out", async (ctx) => {
     const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
     ctx.skip(!viewGuard[0].ok, "v_ig_posts does not exist yet (D061 acquisition schema not applied)");
     const { rows: runsGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('ops.crawl_runs')::text as ok`);
@@ -1528,7 +1528,7 @@ describe("D061 acquisition invariants (DB)", () => {
       from structural_post_vendor_evidence e
       join v_ig_posts v on v.shortcode = (regexp_match(e.source_post_url, '/p/([^/]+)'))[1]
       where v.corpus_source = 'public'
-        and v.scraped_at <= coalesce((select min(started_at) from ops.crawl_runs), 'infinity'::timestamptz)
+        and not exists (select 1 from ops.post_observations o where o.post_id = v.post_id)
         and not exists (select 1 from v_ig_posts s where s.shortcode = v.shortcode and s.corpus_source = 'staging')
     `);
     expect(rows[0].n).toBe(0);

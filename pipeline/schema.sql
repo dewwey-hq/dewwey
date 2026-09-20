@@ -1378,7 +1378,9 @@ universe as (
     union all
     select * from v_ig_posts v
     where v.corpus_source = 'public'
-      and v.scraped_at > coalesce((select min(started_at) from ops.crawl_runs), 'infinity'::timestamptz)
+      -- D061 (2026-09-20): a public row enters iff the loop REGISTERED it (ops.post_observations row,
+      -- from ingest or a provenance-logged legacy batch) -- replaces the scrape-date gate.
+      and exists (select 1 from ops.post_observations o where o.post_id = v.post_id)
       and not exists (select 1 from staging.instagram_posts s2
                       where (regexp_match(s2.post_url, '/p/([^/]+)'))[1] = v.shortcode)
   ) sp
