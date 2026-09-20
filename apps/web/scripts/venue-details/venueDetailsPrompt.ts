@@ -143,7 +143,7 @@ const VENDOR_ACCESS_VALUE_SCHEMA = strictObject({
 const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> = {
   venue_kind: {
     valueSchema: enumSchema(VENUE_KINDS),
-    description: "What kind of venue this is, from the venue's own framing.",
+    description: "What kind of venue this is, from the venue's own framing. Prefer the specific kind the venue itself uses in its name or copy (a 'Loft', 'Garden', 'Museum', 'Hotel') over the generic event_space.",
   },
   setting: {
     valueSchema: enumSchema(SETTINGS),
@@ -164,7 +164,7 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
   capacity_max_guests: {
     valueSchema: { type: "number" },
     description:
-      "The max guest count the venue itself states as its capacity headline, any layout ('25-200 guests', 'up to 300 guests'); not_stated when the site only gives per-room tables.",
+      "The max guest count the venue itself states as its WEDDING capacity headline, any layout ('25-200 guests', 'up to 300 guests'). Never a gala/theater/corporate maximum when a wedding figure exists; not_stated when the site only gives per-room tables.",
   },
   ceremony_on_site: {
     valueSchema: { type: "boolean" },
@@ -177,7 +177,7 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
   },
   rental_hours_included: {
     valueSchema: { type: "number" },
-    description: "Hours of rental time included in the base package/fee, as stated (e.g. a '5-hour reception').",
+    description: "EVENT hours included in the base fee, as stated ('a 5-hour reception', 'events up to seven hours'). Not the building access window (noon to midnight access with a 7-hour event is 7, not 12).",
   },
   weekday_events: {
     valueSchema: { type: "boolean" },
@@ -190,14 +190,14 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
   bar: {
     valueSchema: enumSchema(BAR_POLICIES),
     description:
-      "in_house: only venue bar pours. byob: bring your own, no in-house bar needed. byo_with_corkage: in-house bar + outside alcohol allowed for a corkage fee " +
-      "(ANY corkage fee mentioned anywhere means this). dry: no alcohol.",
+      "in_house: the venue's own bar pours and outside alcohol is not allowed ('not a BYOB venue', 'maintains a liquor license' = in_house). byob: bring your own, no in-house bar needed. byo_with_corkage: outside alcohol IS allowed for a corkage fee " +
+      "(ANY corkage fee mentioned anywhere means this; a venue that forbids outside alcohol is never byo_with_corkage). dry: no alcohol.",
   },
   rental_charge_type: {
     valueSchema: enumSchema(RENTAL_CHARGE_TYPES),
     description:
-      "flat_fee: one flat amount regardless of guest count. per_guest_bundled: entirely per-person. flat_plus_per_guest: flat fee PLUS separate per-guest food charge. " +
-      "inquire_only: no pricing structure published -- honest, comparable info, not missing data. none: rental is free.",
+      "How the VENUE RENTAL itself is charged (food/bar are separate fields). flat_fee: the rental is one flat amount, even if food is priced per guest on top. per_guest_bundled: the rental exists only inside a per-person package. " +
+      "flat_plus_per_guest: the rental itself has a flat part AND a per-guest part. inquire_only: the site publishes NO rental numbers at all ('contact us for pricing', no rates anywhere) -- use this, never not_stated, when the site clearly sells events but gives no price. none: rental is free.",
   },
   fb_minimum: {
     valueSchema: FB_MINIMUM_VALUE_SCHEMA,
@@ -253,7 +253,7 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
   },
   vendor_list_policy: {
     valueSchema: enumSchema(VENDOR_LIST_POLICIES),
-    description: "open: any vendor. preferred_list: suggested, not mandatory. required_list: some/all categories MUST come from the venue's list.",
+    description: "open: any vendor. preferred_list: the venue recommends/curates a list but outside vendors are allowed ('preferred', 'recommended', 'works with a curated list'). required_list: ONLY when the site says vendors MUST/are required to come from its list, or lists 'exclusive'/'approved only' partners.",
   },
   pets_allowed: {
     valueSchema: { type: "boolean" },
@@ -291,12 +291,12 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
     valueSchema: enumSchema(PRICING_ARCHETYPES),
     description:
       "all_inclusive_per_guest: one all-in per-person price. rental_plus_fb_minimum: rental fee + separate F&B minimum. rental_plus_per_guest_packages: rental fee + named per-guest tiers. " +
-      "raw_space_byo: bare space, BYO everything. hotel_package: bundles room block + event space + F&B. inquire_only: no pricing published. mixed: genuinely combines more than one.",
+      "raw_space_byo: rental fee for the space, open catering, NO food-and-beverage minimum (rental_plus_fb_minimum requires that an F&B minimum actually applies). hotel_package: bundles room block + event space + F&B. inquire_only: the site publishes no prices at all -- use it, never not_stated, when events are clearly sold without numbers. mixed: genuinely combines more than one.",
   },
   price_from_usd: {
     valueSchema: { type: "number" },
     description:
-      "The lowest total starting price the site publishes for booking the venue at all (a flat rental fee, or the lowest all-inclusive per-guest price) -- never a hotel guest-room/nightly rate.",
+      "The lowest published VENUE price: the smallest flat rental fee when rental fees exist (a $1,000 Sunday room fee beats a $190/guest menu), else the lowest all-inclusive per-guest price. Never a per-guest food/bar package price when a rental fee is published, never a hotel guest-room/nightly rate.",
   },
   per_guest_from_usd: {
     valueSchema: { type: "number" },
@@ -755,7 +755,7 @@ RULES:
 - tax_pct_override is set ONLY when the venue's own page breaks that specific add-on's tax out as its own separately-computed line, even if the percentage happens to match the general sales tax.
 - food_beverage: research food_pills/bar_pills against BOTH the FAQ and the packages -- check for byo / a_la_carte / all_inclusive and include EVERY one that is genuinely true (they are additive, not exclusive).
 - food_beverage.food_note/bar_note: one or two sentences the venue itself states about how food (resp. the bar) works here, verbatim or lightly trimmed, no marketing adjectives -- null if the site says nothing specific.
-- faqs: the venue's OWN wedding/event Q&A, verbatim (the answer text IS the quote), deduped. EXCLUDE hotel-guest FAQs entirely: check-in/out, guest-room parking rates, loyalty points, gift cards, wifi price, fitness/pool hours, breakfast times -- those describe lodging, not this venue's event product.
+- faqs: the venue's OWN wedding/event Q&A, verbatim (the answer text IS the quote), deduped, AT MOST 30 entries -- pricing, capacity, catering/bar, ceremony, vendors, timing and policy questions first; drop generic ones when over the cap. EXCLUDE hotel-guest FAQs entirely: check-in/out, guest-room parking rates, loyalty points, gift cards, wifi price, fitness/pool hours, breakfast times -- those describe lodging, not this venue's event product.
 - paths[].includes lists what the base rental of THAT path bundles, verbatim short items -- leave it empty when the site doesn't state path-wide inclusions.
 - paths[].terms are short labeled rental terms stated next to the rates (access window, event hours by day, holiday pricing, overtime) -- label in the venue's own words ("Access", "Event hours", "Holiday rates"); [] when none.
 - add_on_categories is filled ONLY when the site presents add-ons by category (its own intro sentence + example items); most venues: empty array. Every category named here must also appear on at least one add_ons[] entry.

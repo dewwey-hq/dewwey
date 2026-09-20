@@ -17,7 +17,12 @@ import type { SpineTier, VenueDetailsV3 } from "../../lib/venueDetails/types";
 // extractor now reads the DB snapshot set (not the cache manifest) and `buildDocument` caps any
 // single page at max(40k chars, a third of the budget). Bumped so c1 (v3.0) and c2 runs never
 // share an input_hash and the scorer can filter by `--prompt-version`.
-export const VENUE_DETAILS_PROMPT_VERSION = "venue-details-v3.1";
+// v3.2 (2026-09-20, tick c3): field descriptions tightened from the c2 misses -- rental_charge_type
+// describes the rental only; inquire_only (not not_stated) when a site sells events with no numbers;
+// rental_hours = event hours not access window; price_from = lowest venue fee, never a per-guest
+// menu price; bar in_house when outside alcohol is forbidden; capacity_max_guests = wedding figure;
+// venue_kind specific over event_space; vendor list preferred vs required. Input budget 240k chars.
+export const VENUE_DETAILS_PROMPT_VERSION = "venue-details-v3.2";
 
 // ---------------------------------------------------------------------------
 // Raw tool-call output shapes (pre-validation; SPINE_TOOL / PRICING_TOOL args)

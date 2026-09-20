@@ -84,7 +84,7 @@ function parseArgs(): Args {
     fromWebsites: a.includes("--from-websites"),
     limit: get("--limit") ? Number(get("--limit")) : null,
     model: get("--model") ?? MODEL_CHEAP,
-    maxInputChars: Number(get("--max-input-chars") ?? 120_000),
+    maxInputChars: Number(get("--max-input-chars") ?? 240_000), // ~60k tokens; Field Museum needed 153k chars, Langham 325k
     skipPricing: a.includes("--skip-pricing"),
     maxCostUsd: Number(get("--max-cost-usd") ?? 10),
     concurrency: Number(get("--concurrency") ?? 2),
@@ -176,7 +176,7 @@ async function lookupNames(pool: Pool, accountIds: number[]): Promise<Map<number
  * (finish_reason=length, tick c2, 2026-09-20): the spine payload for a venue with many spaces,
  * inclusions and FAQs runs past it. Output tokens are the cost driver ($5/M on Haiku), so this is
  * a ceiling, not a target. */
-const EXTRACT_MAX_TOKENS = 32_000;
+const EXTRACT_MAX_TOKENS = 48_000; // Diamond Garden's pricing payload ran to 67k chars (~32k tokens) before the FAQ cap; 48k is the ceiling, the prompt's 30-FAQ cap is the fix
 
 export interface LoadedPages {
   pages: DocPage[];

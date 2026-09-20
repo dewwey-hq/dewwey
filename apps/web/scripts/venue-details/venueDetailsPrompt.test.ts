@@ -143,9 +143,9 @@ describe("SPINE_TOOL", () => {
     expect(props.inclusions.items.properties.category.enum).toEqual([...INCLUSION_CATEGORIES]);
   });
 
-  it("stays within the ~12,000-token (48,000 char) per-tool schema-size budget", () => {
+  it("stays within the ~12,500-token (50,000 char) per-tool schema-size budget", () => {
     const chars = JSON.stringify(SPINE_TOOL.parameters).length;
-    expect(chars / 4).toBeLessThan(12_000);
+    expect(chars / 4).toBeLessThan(12_500); // v3.2 (2026-09-20): +~500 tokens of field rules earned by the c2 misses
   });
 
   it("carries sq_ft_label/ceiling_label on spaces, nullable strings with complete required lists", () => {
@@ -194,9 +194,9 @@ describe("PRICING_TOOL", () => {
     expect(fb.bar_pills.items.properties.value.enum).toEqual([...FB_PILLS]);
   });
 
-  it("stays within the ~12,000-token (48,000 char) per-tool schema-size budget", () => {
+  it("stays within the ~12,500-token (50,000 char) per-tool schema-size budget", () => {
     const chars = JSON.stringify(PRICING_TOOL.parameters).length;
-    expect(chars / 4).toBeLessThan(12_000);
+    expect(chars / 4).toBeLessThan(12_500); // v3.2 (2026-09-20): +~500 tokens of field rules earned by the c2 misses
   });
 
   it("carries paths[].includes as a plain string array", () => {

@@ -116,6 +116,10 @@ export async function callTool<T>(opts: {
           messages: [systemMessage, { role: "user", content: opts.user }],
           max_tokens: opts.maxTokens ?? 1200,
           temperature: 0,
+          // Prefer Anthropic's own endpoint so temperature-0 output is repeatable across runs
+          // (2026-09-20: the same venue came back as 22k, 8k and 67k chars of tool JSON from
+          // different providers -- Amazon Bedrock on the last one). Fallbacks stay allowed.
+          provider: { order: ["anthropic"], allow_fallbacks: true },
           tools: [
             {
               type: "function",
@@ -177,8 +181,18 @@ export async function callTool<T>(opts: {
       const contentChars = typeof msg.content === "string" ? msg.content.length : 0;
       const reasoningChars = typeof msg.reasoning === "string" ? msg.reasoning.length : 0;
       const nCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls.length : 0;
+      // Keep the raw body for forensics (provider, finish reasons, the whole message) -- a
+      // 32k-token completion that yields 21 chars of arguments cannot be diagnosed from the error.
+      let dumpPath = "";
+      try {
+        const dir = process.env.OPENROUTER_FAIL_DIR || "/tmp";
+        dumpPath = `${dir}/openrouter_fail_${Date.now()}.json`;
+        await Bun.write(dumpPath, bodyText);
+      } catch {
+        dumpPath = "(dump failed)";
+      }
       const err = new Error(
-        `tool arguments are not valid JSON (finish_reason=${finish}, completion_tokens=${data.usage?.completion_tokens ?? "?"}, args ${argText.length} chars, content ${contentChars} chars, reasoning ${reasoningChars} chars, tool_calls ${nCalls}; tail: ${JSON.stringify(argText.slice(-120))}): ${(e as Error).message}`,
+        `tool arguments are not valid JSON (finish_reason=${finish}, completion_tokens=${data.usage?.completion_tokens ?? "?"}, args ${argText.length} chars, content ${contentChars} chars, reasoning ${reasoningChars} chars, tool_calls ${nCalls}, provider=${data.provider ?? "?"}, raw body saved to ${dumpPath}; tail: ${JSON.stringify(argText.slice(-120))}): ${(e as Error).message}`,
       );
       (err as Error & { finishReason?: string; truncated?: boolean }).finishReason = String(finish);
       (err as Error & { finishReason?: string; truncated?: boolean }).truncated = String(finish) === "length";
