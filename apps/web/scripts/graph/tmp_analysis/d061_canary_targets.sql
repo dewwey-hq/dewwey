@@ -24,6 +24,6 @@ from venue
 where nw between 1 and 5 and coalesce(frontier_status,'') <> 'crawled'
   and followers between 1000 and 30000
   and coalesce(venue_type,'') not in ('hotel','house_of_worship','restaurant')
-  and not exists (select 1 from ops.crawl_targets t where t.account_id=venue.id and t.feed='tagged')
+  and not exists (select 1 from ops.crawl_targets t where t.account_id=venue.id and t.feed='tagged' and t.tier <> 'profile')  -- profile-tier rows are not crawls
 order by prior_score desc, nw desc, followers desc
 limit 20;
