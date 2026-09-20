@@ -12,12 +12,22 @@
  * account_aliases-canonical before pairing -- a pair whose members already resolve to the same
  * canonical, or that's already in account_aliases in either direction, is never proposed.
  *
- * Signals (S1-S7) and the T1/T2/T3 tier decision are documented in detail in
+ * Signals (S1-S7, plus S3b added 2026-09-20 by D062) and the T1/T2/T3 tier decision are
+ * documented in detail in
  * venueAliasSignals.ts, which holds every pure function this script calls (stemming,
  * Levenshtein, phrase classification, tier decision) -- see venueAliasSignals.test.ts for
  * DB-free unit coverage of that logic, including the worked examples this script's own spec
  * calls out (the.arbory/thearbory, saltshechicago/saltshedchicago, thedrakeoakbrook/thedrake,
  * "Weddings Account @uccweddings", "Venue Management for @rockwellontheriver").
+ *
+ * D062 (2026-09-20) added S3b -- two accounts publishing the same registrable website HOST, with
+ * link-in-bio aggregators and booking platforms denied. S3 keys on the normalized url including
+ * its path, which is why a venue's brand handle and its own event arm never paired
+ * (navypier.org vs navypier.org/host-an-event). Host-only grouping is also the one identity key
+ * the thin end of the catalog actually has: 82% of zero-wedding listed venues publish a website
+ * link, against 8% carrying a Google Places row. Same change tightened S6 (a Levenshtein hit now
+ * needs a shared stem or host to corroborate) and taught computeStem to drop a trailing facility
+ * noun. Narrative: docs/engineering/venue-coverage/README.md, docs/decisions.md D062.
  *
  * A pair that hits a hard exclusion (church/parish-type name, a non-venue vendors.category or
  * catering/management-type bio, the deny-list, or a round-3 false-positive pair) or whose ONLY
@@ -40,6 +50,10 @@ import {
   computeStem,
   isPunctuationVariant,
   normalizeExternalUrl,
+  registrableHost,
+  isAggregatorHost,
+  isS6Trustworthy,
+  isNonVenueUsername,
   extractBioMentionSnippet,
   classifyBioMentionPhrase,
   levenshtein,
@@ -323,6 +337,68 @@ async function main() {
     }
   }
 
+  // ---- S3b: same registrable HOST, aggregators denied (D062, 2026-09-20) ----
+  // S3 above keys on the normalized url INCLUDING its path, so a venue's brand handle linking to
+  // "navypier.org" and its event arm linking to "navypier.org/host-an-event" are different keys.
+  // That is the gap that kept every "<venue>" / "<venue>eventcenter" pair invisible. Grouping by
+  // host alone closes it -- but only with the aggregator deny-list, without which linkin.bio
+  // alone would merge 21 unrelated accounts. isAggregatorHost carries the measured counts.
+  //
+  // S3b deliberately reaches OUTSIDE the venue-ish universe, unlike every other signal here.
+  // The first run with S3b scoped to the universe found nothing real, because the accounts we
+  // most need to pair are precisely the ones with no venue credit yet: @salvageoneevents (0
+  // weddings), @luc_conferences, @venutisrestaurant, @edgewoodvalleycc. A shell that has never
+  // been credited as a venue can never enter the universe, and can never get credited until it
+  // is linked -- the chicken-and-egg this signal exists to break. Publishing the same website as
+  // a known venue is itself strong enough evidence to admit the account as a candidate, so the
+  // pool below is every account with an external_url (1,677 as of 2026-09-20) and a pair is
+  // proposed only when AT LEAST ONE side is in the universe.
+  const { rows: hostPoolRaw } = await pool.query<{
+    id: string;
+    username: string;
+    full_name: string | null;
+    biography: string | null;
+    external_url: string | null;
+    followers: number | null;
+    profile_scraped_at: string | null;
+  }>(
+    `select id, username::text as username, full_name, biography, external_url, followers,
+            profile_scraped_at
+     from accounts where external_url is not null and external_url <> ''`
+  );
+  const universeIdSet = new Set(universeIds);
+  const hostPool = hostPoolRaw.map((r) => ({ ...r, id: Number(r.id) }));
+  // Anything admitted this way must also be resolvable downstream (direction, exclusions,
+  // reporting), so register it in the same `accounts` map every other signal reads from.
+  for (const r of hostPool) {
+    if (accounts.has(r.id)) continue;
+    accounts.set(r.id, {
+      id: r.id,
+      username: r.username,
+      fullName: r.full_name,
+      biography: r.biography,
+      externalUrl: r.external_url,
+      followers: r.followers,
+      hasScrapedProfile: r.profile_scraped_at != null,
+    });
+  }
+  const hostGroups = groupPairs(hostPool, (r) => {
+    const host = registrableHost(r.external_url);
+    if (!host || isAggregatorHost(host)) return null;
+    return host;
+  });
+  for (const [host, members] of hostGroups) {
+    if (members.length < 2 || members.length > MAX_GROUP_SIZE_FOR_PAIRING) continue;
+    for (let i = 0; i < members.length; i++) {
+      for (let j = i + 1; j < members.length; j++) {
+        const a = members[i];
+        const b = members[j];
+        if (!universeIdSet.has(a.id) && !universeIdSet.has(b.id)) continue;
+        addSignal(pairs, a.id, b.id, "S3b", `same website host "${host}"`);
+      }
+    }
+  }
+
   // ---- S4: bio @mention, phrase-classified where possible ----
   // Every bio @mention of another in-universe account is evidence worth surfacing (e.g.
   // "Also @thelytleauditorium" doesn't match either phrase pattern below, but a human should
@@ -591,6 +667,20 @@ async function main() {
       s4AliasLikeFired,
       s5MaxPostCount: s5PostCountByPair.get(key) ?? 0,
       s6Fired: distinctCodes.includes("S6"),
+      // D062: a Levenshtein hit alone is only evidence when the STEMS (not the raw handles) are
+      // long enough to carry information and differ by at most one edit -- see isS6Trustworthy
+      // for the measured @ihchicago counter-examples. A shared stem or host also corroborates.
+      s6Corroborated:
+        distinctCodes.includes("S1") ||
+        distinctCodes.includes("S3b") ||
+        isS6Trustworthy(a.username, b.username),
+      // D062: S3b only carries a pair to T2 when both sides could plausibly BE the venue. A
+      // vendor hosting its site on a venue's domain is a real relationship, not a shared
+      // identity -- see isNonVenueUsername for the measured cases.
+      s3bFired:
+        distinctCodes.includes("S3b") &&
+        !isNonVenueUsername(a.username) &&
+        !isNonVenueUsername(b.username),
       s7MaxPostCount: s7PostCountByPair.get(key) ?? 0,
     });
 
@@ -640,7 +730,7 @@ async function main() {
   console.log(`  T3 (list):      ${t3.length}`);
   console.log(`  related, not the same venue: ${related.length}`);
   console.log(`\n[find-venue-alias-candidates] pairs by signal (a pair can carry more than one):`);
-  for (const code of ["S1", "S1b", "S2", "S3", "S4", "S5", "S6", "S7"] as SignalCode[]) {
+  for (const code of ["S1", "S1b", "S2", "S3", "S3b", "S4", "S5", "S6", "S7"] as SignalCode[]) {
     console.log(`  ${code}: ${signalCounts.get(code) ?? 0}`);
   }
 

@@ -5,9 +5,9 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 | Tier | Count |
 |---|---|
 | T1 (auto-safe) | 3 |
-| T2 (verify) | 28 |
-| T3 (list) | 74 |
-| related, not the same venue | 47 |
+| T2 (verify) | 12 |
+| T3 (list) | 94 |
+| related, not the same venue | 45 |
 
 ## T1 -- auto-safe (3)
 
@@ -47,7 +47,7 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
   - [S1] @pear_tree_estate ~ @peartreeestate (stem "peartreeeste")
   - [S1b] scrape/parse artifact ('.'/'_' variant)
 
-## T2 -- verify (28)
+## T2 -- verify (12)
 
 ### @universityclubofchicago ~ @uclubashley
 
@@ -59,28 +59,6 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 - full_name: @universityclubofchicago "University Club of Chicago" / @uclubashley ""
 - evidence:
   - [S5] co-credited on the same venue credit line, 6 posts (e.g. https://www.instagram.com/p/DBM2IkePguO/)
-
-### @uccweddings ~ @cacweddings
-
-- suggested: **canonical** = @uccweddings, **alias** = @cacweddings -- @uccweddings has a scraped profile, @cacweddings does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @uccweddings 111 / @cacweddings 0
-- candidates (structural): @uccweddings 124 / @cacweddings 1
-- followers: @uccweddings 441 / @cacweddings null
-- full_name: @uccweddings "UCC Weddings" / @cacweddings ""
-- evidence:
-  - [S6] Levenshtein distance 2: @cacweddings (never scraped) vs @uccweddings (real venue)
-
-### @uccweddings ~ @tciweddings
-
-- suggested: **canonical** = @uccweddings, **alias** = @tciweddings -- @uccweddings has a scraped profile, @tciweddings does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @uccweddings 111 / @tciweddings 0
-- candidates (structural): @uccweddings 124 / @tciweddings 1
-- followers: @uccweddings 441 / @tciweddings null
-- full_name: @uccweddings "UCC Weddings" / @tciweddings ""
-- evidence:
-  - [S6] Levenshtein distance 2: @tciweddings (never scraped) vs @uccweddings (real venue)
 
 ### @totlspecialevents ~ @thompsonchicago
 
@@ -116,50 +94,6 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 - evidence:
   - [S6] Levenshtein distance 1: @tigerlillyevents (never scraped) vs @tigerlilyevents (real venue)
 
-### @cantignypark ~ @catignypark
-
-- suggested: **canonical** = @cantignypark, **alias** = @catignypark -- @cantignypark has a scraped profile, @catignypark does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @cantignypark 36 / @catignypark 0
-- candidates (structural): @cantignypark 54 / @catignypark 1
-- followers: @cantignypark 21625 / @catignypark null
-- full_name: @cantignypark "Cantigny" / @catignypark ""
-- evidence:
-  - [S6] Levenshtein distance 1: @catignypark (never scraped) vs @cantignypark (real venue)
-
-### @ulcchicago ~ @olmchicago
-
-- suggested: **canonical** = @ulcchicago, **alias** = @olmchicago -- @ulcchicago has a scraped profile, @olmchicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @ulcchicago 42 / @olmchicago 1
-- candidates (structural): @ulcchicago 47 / @olmchicago 0
-- followers: @ulcchicago 6477 / @olmchicago null
-- full_name: @ulcchicago "Union League Club of Chicago" / @olmchicago ""
-- evidence:
-  - [S6] Levenshtein distance 2: @olmchicago (never scraped) vs @ulcchicago (real venue)
-
-### @fschicago ~ @ihchicago
-
-- suggested: **canonical** = @fschicago, **alias** = @ihchicago -- @fschicago has a scraped profile, @ihchicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @fschicago 34 / @ihchicago 0
-- candidates (structural): @fschicago 41 / @ihchicago 2
-- followers: @fschicago 53006 / @ihchicago null
-- full_name: @fschicago "Four Seasons Hotel Chicago" / @ihchicago ""
-- evidence:
-  - [S6] Levenshtein distance 2: @ihchicago (never scraped) vs @fschicago (real venue)
-
-### @fschicago ~ @msichicago
-
-- suggested: **canonical** = @fschicago, **alias** = @msichicago -- @fschicago has a scraped profile, @msichicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @fschicago 34 / @msichicago 1
-- candidates (structural): @fschicago 41 / @msichicago 0
-- followers: @fschicago 53006 / @msichicago null
-- full_name: @fschicago "Four Seasons Hotel Chicago" / @msichicago ""
-- evidence:
-  - [S6] Levenshtein distance 2: @msichicago (never scraped) vs @fschicago (real venue)
-
 ### @riverroastchi ~ @rreventschicago
 
 - suggested: **canonical** = @riverroastchi, **alias** = @rreventschicago -- @riverroastchi has more followers (13458 vs 330)
@@ -174,38 +108,16 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 ☕️Home to Corner R..." (unclassified)
   - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DYKObfIFeL2/)
 
-### @lhchicago ~ @ihchicago
+### @luc_conferences ~ @loyola_cuneomansion
 
-- suggested: **canonical** = @lhchicago, **alias** = @ihchicago -- @lhchicago has a scraped profile, @ihchicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @lhchicago 18 / @ihchicago 0
-- candidates (structural): @lhchicago 20 / @ihchicago 2
-- followers: @lhchicago 105688 / @ihchicago null
-- full_name: @lhchicago "LondonHouse Chicago" / @ihchicago ""
+- suggested: **canonical** = @loyola_cuneomansion, **alias** = @luc_conferences -- @loyola_cuneomansion has more followers (1182 vs 553)
+- signals: S3b
+- weddings (venue-role, alias-resolved): @luc_conferences 0 / @loyola_cuneomansion 24
+- candidates (structural): @luc_conferences 0 / @loyola_cuneomansion 26
+- followers: @luc_conferences 553 / @loyola_cuneomansion 1182
+- full_name: @luc_conferences "LUC Conference Services" / @loyola_cuneomansion "Cuneo Mansion & Gardens"
 - evidence:
-  - [S6] Levenshtein distance 1: @ihchicago (never scraped) vs @lhchicago (real venue)
-
-### @lhchicago ~ @olmchicago
-
-- suggested: **canonical** = @lhchicago, **alias** = @olmchicago -- @lhchicago has a scraped profile, @olmchicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @lhchicago 18 / @olmchicago 1
-- candidates (structural): @lhchicago 20 / @olmchicago 0
-- followers: @lhchicago 105688 / @olmchicago null
-- full_name: @lhchicago "LondonHouse Chicago" / @olmchicago ""
-- evidence:
-  - [S6] Levenshtein distance 2: @olmchicago (never scraped) vs @lhchicago (real venue)
-
-### @ravisloeweddings ~ @ravisloeccweddings
-
-- suggested: **canonical** = @ravisloeweddings, **alias** = @ravisloeccweddings -- @ravisloeweddings has a scraped profile, @ravisloeccweddings does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @ravisloeweddings 17 / @ravisloeccweddings 0
-- candidates (structural): @ravisloeweddings 18 / @ravisloeccweddings 1
-- followers: @ravisloeweddings 1583 / @ravisloeccweddings null
-- full_name: @ravisloeweddings "Ravisloe Weddings And Events" / @ravisloeccweddings ""
-- evidence:
-  - [S6] Levenshtein distance 2: @ravisloeccweddings (never scraped) vs @ravisloeweddings (real venue)
+  - [S3b] same website host "luc.edu"
 
 ### @chicagosymphony ~ @chicagoforte
 
@@ -217,17 +129,6 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 - full_name: @chicagosymphony "Chicago Symphony Orchestra" / @chicagoforte "Forte Events at Symphony Center"
 - evidence:
   - [S5] co-credited on the same venue credit line, 5 posts (e.g. https://www.instagram.com/p/DN3JgyoXH7K/)
-
-### @wachicago ~ @wipachicago
-
-- suggested: **canonical** = @wachicago, **alias** = @wipachicago -- @wachicago has a scraped profile, @wipachicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @wachicago 14 / @wipachicago 1
-- candidates (structural): @wachicago 13 / @wipachicago 3
-- followers: @wachicago 32438 / @wipachicago null
-- full_name: @wachicago "Waldorf Astoria Chicago" / @wipachicago ""
-- evidence:
-  - [S6] Levenshtein distance 2: @wipachicago (never scraped) vs @wachicago (real venue)
 
 ### @chezeventvenue ~ @chezweddingvenue
 
@@ -242,17 +143,6 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
   - [S4] @chezeventvenue bio: "...riences! Also visit @chezweddingvenue for more photos!
 +1..." (unclassified)
 
-### @wachicago ~ @ihchicago
-
-- suggested: **canonical** = @wachicago, **alias** = @ihchicago -- @wachicago has a scraped profile, @ihchicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @wachicago 14 / @ihchicago 0
-- candidates (structural): @wachicago 13 / @ihchicago 2
-- followers: @wachicago 32438 / @ihchicago null
-- full_name: @wachicago "Waldorf Astoria Chicago" / @ihchicago ""
-- evidence:
-  - [S6] Levenshtein distance 2: @ihchicago (never scraped) vs @wachicago (real venue)
-
 ### @floatingworldevents ~ @floatingworldgallery
 
 - suggested: **canonical** = @floatingworldgallery, **alias** = @floatingworldevents -- @floatingworldgallery has more followers (2553 vs 259)
@@ -263,17 +153,6 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 - full_name: @floatingworldevents "FloatingWorldEvents" / @floatingworldgallery "Floating World Gallery"
 - evidence:
   - [S5] co-credited on the same venue credit line, 5 posts (e.g. https://www.instagram.com/p/CzMlTNgPVYA/)
-
-### @msichicago ~ @mcachicago
-
-- suggested: **canonical** = @mcachicago, **alias** = @msichicago -- @mcachicago has a scraped profile, @msichicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @msichicago 1 / @mcachicago 7
-- candidates (structural): @msichicago 0 / @mcachicago 9
-- followers: @msichicago null / @mcachicago 183996
-- full_name: @msichicago "" / @mcachicago "Museum of Contemporary Art Chicago"
-- evidence:
-  - [S6] Levenshtein distance 2: @msichicago (never scraped) vs @mcachicago (real venue)
 
 ### @stregischicago ~ @treditarestaurant
 
@@ -288,17 +167,6 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 @mirurestaurant @treditarestaurant..." (unclassified)
   - [S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/DaDqg0zDlEc/)
 
-### @thegagechicago ~ @thewadechicago
-
-- suggested: **canonical** = @thewadechicago, **alias** = @thegagechicago -- @thewadechicago has a scraped profile, @thegagechicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @thegagechicago 4 / @thewadechicago 5
-- candidates (structural): @thegagechicago 0 / @thewadechicago 5
-- followers: @thegagechicago null / @thewadechicago 18328
-- full_name: @thegagechicago "" / @thewadechicago "The Wade Hotel, Chicago"
-- evidence:
-  - [S6] Levenshtein distance 2: @thegagechicago (never scraped) vs @thewadechicago (real venue)
-
 ### @lshirewedding ~ @lshireweddings
 
 - suggested: **canonical** = @lshireweddings, **alias** = @lshirewedding -- @lshireweddings has a scraped profile, @lshirewedding does not
@@ -310,50 +178,6 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 - evidence:
   - [S1] @lshirewedding ~ @lshireweddings (stem "lshire")
   - [S6] Levenshtein distance 1: @lshirewedding (never scraped) vs @lshireweddings (real venue)
-
-### @cbgweddingsandevents ~ @cogweddingsandevents
-
-- suggested: **canonical** = @cbgweddingsandevents, **alias** = @cogweddingsandevents -- @cbgweddingsandevents has a scraped profile, @cogweddingsandevents does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @cbgweddingsandevents 3 / @cogweddingsandevents 0
-- candidates (structural): @cbgweddingsandevents 7 / @cogweddingsandevents 1
-- followers: @cbgweddingsandevents 817 / @cogweddingsandevents null
-- full_name: @cbgweddingsandevents "Columbus Botanical Garden 💍" / @cogweddingsandevents ""
-- evidence:
-  - [S6] Levenshtein distance 1: @cogweddingsandevents (never scraped) vs @cbgweddingsandevents (real venue)
-
-### @uchicago ~ @ihchicago
-
-- suggested: **canonical** = @uchicago, **alias** = @ihchicago -- @uchicago has a scraped profile, @ihchicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @uchicago 3 / @ihchicago 0
-- candidates (structural): @uchicago 1 / @ihchicago 2
-- followers: @uchicago 271382 / @ihchicago null
-- full_name: @uchicago "The University Of Chicago" / @ihchicago ""
-- evidence:
-  - [S6] Levenshtein distance 2: @ihchicago (never scraped) vs @uchicago (real venue)
-
-### @rlm_chicago ~ @olmchicago
-
-- suggested: **canonical** = @rlm_chicago, **alias** = @olmchicago -- @rlm_chicago has a scraped profile, @olmchicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @rlm_chicago 4 / @olmchicago 1
-- candidates (structural): @rlm_chicago 0 / @olmchicago 0
-- followers: @rlm_chicago 3489 / @olmchicago null
-- full_name: @rlm_chicago "RLM Events & Design" / @olmchicago ""
-- evidence:
-  - [S6] Levenshtein distance 2: @olmchicago (never scraped) vs @rlm_chicago (real venue)
-
-### @iahcchicago ~ @ihchicago
-
-- suggested: **canonical** = @iahcchicago, **alias** = @ihchicago -- @iahcchicago has a scraped profile, @ihchicago does not
-- signals: S6
-- weddings (venue-role, alias-resolved): @iahcchicago 3 / @ihchicago 0
-- candidates (structural): @iahcchicago 0 / @ihchicago 2
-- followers: @iahcchicago 7282 / @ihchicago null
-- full_name: @iahcchicago "Irish American Heritage Center☘️" / @ihchicago ""
-- evidence:
-  - [S6] Levenshtein distance 2: @ihchicago (never scraped) vs @iahcchicago (real venue)
 
 ### @officialwrigleyfield ~ @wrigleyfieldevents
 
@@ -367,7 +191,7 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
   - [S1] @officialwrigleyfield ~ @wrigleyfieldevents (stem "wrigleyfield")
   - [S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/DceHsaFiBne/)
 
-## T3 -- list (74)
+## T3 -- list (94)
 
 ### @the.arbory ~ @ovationchicago
 
@@ -424,6 +248,28 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 - evidence:
   - [S1] @thedalcy ~ @thedalcychicago (stem "dalcy")
 
+### @uccweddings ~ @cacweddings
+
+- suggested: **canonical** = @uccweddings, **alias** = @cacweddings -- @uccweddings has a scraped profile, @cacweddings does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @uccweddings 111 / @cacweddings 0
+- candidates (structural): @uccweddings 124 / @cacweddings 1
+- followers: @uccweddings 441 / @cacweddings null
+- full_name: @uccweddings "UCC Weddings" / @cacweddings ""
+- evidence:
+  - [S6] Levenshtein distance 2: @cacweddings (never scraped) vs @uccweddings (real venue)
+
+### @uccweddings ~ @tciweddings
+
+- suggested: **canonical** = @uccweddings, **alias** = @tciweddings -- @uccweddings has a scraped profile, @tciweddings does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @uccweddings 111 / @tciweddings 0
+- candidates (structural): @uccweddings 124 / @tciweddings 1
+- followers: @uccweddings 441 / @tciweddings null
+- full_name: @uccweddings "UCC Weddings" / @tciweddings ""
+- evidence:
+  - [S6] Levenshtein distance 2: @tciweddings (never scraped) vs @uccweddings (real venue)
+
 ### @alterbeer ~ @eventsatmortonarboretum
 
 - suggested: **canonical** = @eventsatmortonarboretum, **alias** = @alterbeer -- @eventsatmortonarboretum has a scraped profile, @alterbeer does not
@@ -445,6 +291,28 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 - full_name: @mortonarb "The Morton Arboretum" / @alterbeer ""
 - evidence:
   - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/Dbe-Rg9FmP3/)
+
+### @fairliechicago ~ @thefairlie
+
+- suggested: **canonical** = @fairliechicago, **alias** = @thefairlie -- @fairliechicago has a full_name on record, @thefairlie does not
+- signals: S1
+- weddings (venue-role, alias-resolved): @fairliechicago 85 / @thefairlie 1
+- candidates (structural): @fairliechicago 108 / @thefairlie 1
+- followers: @fairliechicago 5191 / @thefairlie 1
+- full_name: @fairliechicago "Fairlie" / @thefairlie ""
+- evidence:
+  - [S1] @fairliechicago ~ @thefairlie (stem "fairlie")
+
+### @fairliechicago ~ @failiechicago
+
+- suggested: **canonical** = @fairliechicago, **alias** = @failiechicago -- @fairliechicago has a scraped profile, @failiechicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @fairliechicago 85 / @failiechicago 0
+- candidates (structural): @fairliechicago 108 / @failiechicago 1
+- followers: @fairliechicago 5191 / @failiechicago null
+- full_name: @fairliechicago "Fairlie" / @failiechicago ""
+- evidence:
+  - [S6] Levenshtein distance 1: @failiechicago (never scraped) vs @fairliechicago (real venue)
 
 ### @artifacteventschicago ~ @artifactevents
 
@@ -556,16 +424,49 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 - evidence:
   - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DL43agKOm-3/)
 
+### @theexchangechicago ~ @exchangechicago
+
+- suggested: **canonical** = @theexchangechicago, **alias** = @exchangechicago -- @theexchangechicago has a scraped profile, @exchangechicago does not
+- signals: S1
+- weddings (venue-role, alias-resolved): @theexchangechicago 48 / @exchangechicago 1
+- candidates (structural): @theexchangechicago 51 / @exchangechicago 0
+- followers: @theexchangechicago 8259 / @exchangechicago null
+- full_name: @theexchangechicago "The Exchange" / @exchangechicago ""
+- evidence:
+  - [S1] @theexchangechicago ~ @exchangechicago (stem "exchange")
+
+### @theexchangechicago ~ @alyssabudayyeh
+
+- suggested: **canonical** = @theexchangechicago, **alias** = @alyssabudayyeh -- @theexchangechicago has a scraped profile, @alyssabudayyeh does not
+- signals: S5
+- weddings (venue-role, alias-resolved): @theexchangechicago 48 / @alyssabudayyeh 0
+- candidates (structural): @theexchangechicago 51 / @alyssabudayyeh 1
+- followers: @theexchangechicago 8259 / @alyssabudayyeh null
+- full_name: @theexchangechicago "The Exchange" / @alyssabudayyeh ""
+- evidence:
+  - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DRFTFHNjTcb/)
+
 ### @cantignypark ~ @cantignygolf
 
 - suggested: **canonical** = @cantignypark, **alias** = @cantignygolf -- @cantignypark has more followers (21625 vs 3062)
 - signals: S5
 - weddings (venue-role, alias-resolved): @cantignypark 36 / @cantignygolf 4
-- candidates (structural): @cantignypark 54 / @cantignygolf 3
+- candidates (structural): @cantignypark 55 / @cantignygolf 3
 - followers: @cantignypark 21625 / @cantignygolf 3062
 - full_name: @cantignypark "Cantigny" / @cantignygolf "Cantigny Golf"
 - evidence:
   - [S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/DdG9F3iRECY/)
+
+### @ulcchicago ~ @olmchicago
+
+- suggested: **canonical** = @ulcchicago, **alias** = @olmchicago -- @ulcchicago has a scraped profile, @olmchicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @ulcchicago 42 / @olmchicago 1
+- candidates (structural): @ulcchicago 47 / @olmchicago 0
+- followers: @ulcchicago 6477 / @olmchicago null
+- full_name: @ulcchicago "Union League Club of Chicago" / @olmchicago ""
+- evidence:
+  - [S6] Levenshtein distance 2: @olmchicago (never scraped) vs @ulcchicago (real venue)
 
 ### @thelytlehouse ~ @thelytleauditorium
 
@@ -580,6 +481,28 @@ Universe: 1936 venue-ish accounts. Report-only -- verify before running applyAcc
 Also @thelytleauditorium..." (unclassified)
   - [S4] @thelytleauditorium bio: "...sses | Performances
 @thelytlehouse..." (unclassified)
+
+### @fschicago ~ @ihchicago
+
+- suggested: **canonical** = @fschicago, **alias** = @ihchicago -- @fschicago has a scraped profile, @ihchicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @fschicago 34 / @ihchicago 0
+- candidates (structural): @fschicago 41 / @ihchicago 2
+- followers: @fschicago 53006 / @ihchicago null
+- full_name: @fschicago "Four Seasons Hotel Chicago" / @ihchicago ""
+- evidence:
+  - [S6] Levenshtein distance 2: @ihchicago (never scraped) vs @fschicago (real venue)
+
+### @fschicago ~ @msichicago
+
+- suggested: **canonical** = @fschicago, **alias** = @msichicago -- @fschicago has a scraped profile, @msichicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @fschicago 34 / @msichicago 1
+- candidates (structural): @fschicago 41 / @msichicago 0
+- followers: @fschicago 53006 / @msichicago null
+- full_name: @fschicago "Four Seasons Hotel Chicago" / @msichicago ""
+- evidence:
+  - [S6] Levenshtein distance 2: @msichicago (never scraped) vs @fschicago (real venue)
 
 ### @loewschicagohotel ~ @streetervillesocial
 
@@ -616,6 +539,17 @@ Also @thelytleauditorium..." (unclassified)
 📍Located on @navypierchicago's East End
 🌎 World..." (unclassified)
 
+### @kitchen_chicago ~ @cityviewloft
+
+- suggested: **canonical** = @cityviewloft, **alias** = @kitchen_chicago -- @cityviewloft has more followers (2919 vs 1205)
+- signals: S5
+- weddings (venue-role, alias-resolved): @kitchen_chicago 2 / @cityviewloft 23
+- candidates (structural): @kitchen_chicago 0 / @cityviewloft 27
+- followers: @kitchen_chicago 1205 / @cityviewloft 2919
+- full_name: @kitchen_chicago "Kitchen Chicago" / @cityviewloft "City View Loft Chicago"
+- evidence:
+  - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/C2XssXarupw/)
+
 ### @haleymansion ~ @thehaleymansion
 
 - suggested: **canonical** = @haleymansion, **alias** = @thehaleymansion -- @haleymansion has a scraped profile, @thehaleymansion does not
@@ -626,6 +560,17 @@ Also @thelytleauditorium..." (unclassified)
 - full_name: @haleymansion "The Haley Mansion" / @thehaleymansion ""
 - evidence:
   - [S1] @haleymansion ~ @thehaleymansion (stem "haleymansion")
+
+### @lhchicago ~ @ihchicago
+
+- suggested: **canonical** = @lhchicago, **alias** = @ihchicago -- @lhchicago has a scraped profile, @ihchicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @lhchicago 18 / @ihchicago 0
+- candidates (structural): @lhchicago 20 / @ihchicago 2
+- followers: @lhchicago 105688 / @ihchicago null
+- full_name: @lhchicago "LondonHouse Chicago" / @ihchicago ""
+- evidence:
+  - [S6] Levenshtein distance 1: @ihchicago (never scraped) vs @lhchicago (real venue)
 
 ### @igniteglass ~ @igniteeventschi
 
@@ -641,6 +586,17 @@ Also @thelytleauditorium..." (unclassified)
 @igniteglass 🔥 
 #chicagovenue #..." (unclassified)
 
+### @lhchicago ~ @olmchicago
+
+- suggested: **canonical** = @lhchicago, **alias** = @olmchicago -- @lhchicago has a scraped profile, @olmchicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @lhchicago 18 / @olmchicago 1
+- candidates (structural): @lhchicago 20 / @olmchicago 0
+- followers: @lhchicago 105688 / @olmchicago null
+- full_name: @lhchicago "LondonHouse Chicago" / @olmchicago ""
+- evidence:
+  - [S6] Levenshtein distance 2: @olmchicago (never scraped) vs @lhchicago (real venue)
+
 ### @lhchicago ~ @lhrooftop
 
 - suggested: **canonical** = @lhchicago, **alias** = @lhrooftop -- @lhchicago has more followers (105688 vs 5893)
@@ -653,6 +609,21 @@ Also @thelytleauditorium..." (unclassified)
   - [S4] @lhrooftop bio: "...fficial IG account: @lhchicago 
 [This account is n..." (unclassified)
 
+### @victoriainthepark ~ @victoriavenues
+
+- suggested: **canonical** = @victoriainthepark, **alias** = @victoriavenues -- @victoriainthepark has more followers (2016 vs 216)
+- signals: S4
+- weddings (venue-role, alias-resolved): @victoriainthepark 15 / @victoriavenues 2
+- candidates (structural): @victoriainthepark 16 / @victoriavenues 3
+- followers: @victoriainthepark 2016 / @victoriavenues 216
+- full_name: @victoriainthepark "Wedding & Event Venue near Chicago, Illinois" / @victoriavenues "Victoria Venues"
+- evidence:
+  - [S4] @victoriainthepark bio: "...bar) for any event! @victoriavenues 
+@theknot @stylemep..." (unclassified)
+  - [S4] @victoriavenues bio: "...other celebrations!
+@victoriainthepark 
+@missionhillsclub..." (unclassified)
+
 ### @thevillamke ~ @villaterracemuseum
 
 - suggested: **canonical** = @thevillamke, **alias** = @villaterracemuseum -- tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand
@@ -664,6 +635,17 @@ Also @thelytleauditorium..." (unclassified)
 - evidence:
   - [S5] co-credited on the same venue credit line, 3 posts (e.g. https://www.instagram.com/p/C2I_pm2ukAi/)
 
+### @wachicago ~ @wipachicago
+
+- suggested: **canonical** = @wachicago, **alias** = @wipachicago -- @wachicago has a scraped profile, @wipachicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @wachicago 14 / @wipachicago 1
+- candidates (structural): @wachicago 13 / @wipachicago 3
+- followers: @wachicago 32438 / @wipachicago null
+- full_name: @wachicago "Waldorf Astoria Chicago" / @wipachicago ""
+- evidence:
+  - [S6] Levenshtein distance 2: @wipachicago (never scraped) vs @wachicago (real venue)
+
 ### @theherringtoninnandspa ~ @herringtoninnandspa
 
 - suggested: **canonical** = @theherringtoninnandspa, **alias** = @herringtoninnandspa -- @theherringtoninnandspa has a full_name on record, @herringtoninnandspa does not
@@ -674,6 +656,17 @@ Also @thelytleauditorium..." (unclassified)
 - full_name: @theherringtoninnandspa "The Herrington Inn & Spa" / @herringtoninnandspa ""
 - evidence:
   - [S1] @theherringtoninnandspa ~ @herringtoninnandspa (stem "herringtoninnspa")
+
+### @wachicago ~ @ihchicago
+
+- suggested: **canonical** = @wachicago, **alias** = @ihchicago -- @wachicago has a scraped profile, @ihchicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @wachicago 14 / @ihchicago 0
+- candidates (structural): @wachicago 13 / @ihchicago 2
+- followers: @wachicago 32438 / @ihchicago null
+- full_name: @wachicago "Waldorf Astoria Chicago" / @ihchicago ""
+- evidence:
+  - [S6] Levenshtein distance 2: @ihchicago (never scraped) vs @wachicago (real venue)
 
 ### @thegraychi ~ @boleochicago
 
@@ -779,28 +772,16 @@ Also @thelytleauditorium..." (unclassified)
 - evidence:
   - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/Cvu69aqhMU4/)
 
-### @thestonegatebanquet ~ @thestonegate
+### @msichicago ~ @mcachicago
 
-- suggested: **canonical** = @thestonegatebanquet, **alias** = @thestonegate -- @thestonegatebanquet has a scraped profile, @thestonegate does not
-- signals: S1
-- weddings (venue-role, alias-resolved): @thestonegatebanquet 8 / @thestonegate 0
-- candidates (structural): @thestonegatebanquet 8 / @thestonegate 1
-- followers: @thestonegatebanquet 950 / @thestonegate null
-- full_name: @thestonegatebanquet "The Stonegate Banquet & Conference" / @thestonegate ""
+- suggested: **canonical** = @mcachicago, **alias** = @msichicago -- @mcachicago has a scraped profile, @msichicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @msichicago 1 / @mcachicago 7
+- candidates (structural): @msichicago 0 / @mcachicago 9
+- followers: @msichicago null / @mcachicago 183996
+- full_name: @msichicago "" / @mcachicago "Museum of Contemporary Art Chicago"
 - evidence:
-  - [S1] @thestonegatebanquet ~ @thestonegate (stem "stonege")
-
-### @dunhamwoodsridingclub ~ @weddingsatdunhamwoods
-
-- suggested: **canonical** = @dunhamwoodsridingclub, **alias** = @weddingsatdunhamwoods -- @dunhamwoodsridingclub has a scraped profile, @weddingsatdunhamwoods does not
-- signals: S4
-- weddings (venue-role, alias-resolved): @dunhamwoodsridingclub 6 / @weddingsatdunhamwoods 0
-- candidates (structural): @dunhamwoodsridingclub 9 / @weddingsatdunhamwoods 1
-- followers: @dunhamwoodsridingclub 804 / @weddingsatdunhamwoods null
-- full_name: @dunhamwoodsridingclub "Dunham Woods Riding Club" / @weddingsatdunhamwoods ""
-- evidence:
-  - [S4] @dunhamwoodsridingclub bio: "...Chicago.
-Weddings: @weddingsatdunhamwoods..." (unclassified)
+  - [S6] Levenshtein distance 2: @msichicago (never scraped) vs @mcachicago (real venue)
 
 ### @hiltonorrington ~ @hiltonhotels
 
@@ -846,6 +827,28 @@ Weddings: @weddingsatdunhamwoods..." (unclassified)
 - full_name: @hotelarista "Hotel Arista" / @golfthebridge "Stonebridge Country Club"
 - evidence:
   - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DM8xVCSP7WR/)
+
+### @thegagechicago ~ @thewadechicago
+
+- suggested: **canonical** = @thewadechicago, **alias** = @thegagechicago -- @thewadechicago has a scraped profile, @thegagechicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @thegagechicago 4 / @thewadechicago 5
+- candidates (structural): @thegagechicago 0 / @thewadechicago 5
+- followers: @thegagechicago null / @thewadechicago 18328
+- full_name: @thegagechicago "" / @thewadechicago "The Wade Hotel, Chicago"
+- evidence:
+  - [S6] Levenshtein distance 2: @thegagechicago (never scraped) vs @thewadechicago (real venue)
+
+### @cbgweddingsandevents ~ @cogweddingsandevents
+
+- suggested: **canonical** = @cbgweddingsandevents, **alias** = @cogweddingsandevents -- @cbgweddingsandevents has a scraped profile, @cogweddingsandevents does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @cbgweddingsandevents 3 / @cogweddingsandevents 0
+- candidates (structural): @cbgweddingsandevents 7 / @cogweddingsandevents 1
+- followers: @cbgweddingsandevents 817 / @cogweddingsandevents null
+- full_name: @cbgweddingsandevents "Columbus Botanical Garden 💍" / @cogweddingsandevents ""
+- evidence:
+  - [S6] Levenshtein distance 1: @cogweddingsandevents (never scraped) vs @cbgweddingsandevents (real venue)
 
 ### @thehoxtonhotel ~ @cabrachicago
 
@@ -960,6 +963,17 @@ a @16occhicago project..." (unclassified)
 - evidence:
   - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/Dc5xzKwjSvj/)
 
+### @hannahschweissphotography ~ @thestudiochicago
+
+- suggested: **canonical** = @thestudiochicago, **alias** = @hannahschweissphotography -- @thestudiochicago has more followers (13944 vs 11012)
+- signals: S3b
+- weddings (venue-role, alias-resolved): @hannahschweissphotography 0 / @thestudiochicago 3
+- candidates (structural): @hannahschweissphotography 0 / @thestudiochicago 3
+- followers: @hannahschweissphotography 11012 / @thestudiochicago 13944
+- full_name: @hannahschweissphotography "Hannah Schweiss" / @thestudiochicago "The Studio Chicago"
+- evidence:
+  - [S3b] same website host "thestudiochi.com"
+
 ### @navypierchicago ~ @sableatnavypier
 
 - suggested: **canonical** = @navypierchicago, **alias** = @sableatnavypier -- @navypierchicago has more followers (119271 vs 4756)
@@ -994,6 +1008,17 @@ a @16occhicago project..." (unclassified)
 - evidence:
   - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DO_0mokE0y7/)
 
+### @uchicago ~ @ihchicago
+
+- suggested: **canonical** = @uchicago, **alias** = @ihchicago -- @uchicago has a scraped profile, @ihchicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @uchicago 3 / @ihchicago 0
+- candidates (structural): @uchicago 1 / @ihchicago 2
+- followers: @uchicago 271382 / @ihchicago null
+- full_name: @uchicago "The University Of Chicago" / @ihchicago ""
+- evidence:
+  - [S6] Levenshtein distance 2: @ihchicago (never scraped) vs @uchicago (real venue)
+
 ### @oasisatdeathvalley ~ @oasisatdeathvalleyweddings
 
 - suggested: **canonical** = @oasisatdeathvalley, **alias** = @oasisatdeathvalleyweddings -- tie on profile/full_name/followers -- arbitrary alphabetical pick, verify by hand
@@ -1015,6 +1040,28 @@ a @16occhicago project..." (unclassified)
 - full_name: @raviniagreencountryclub "Ravinia Green Country Club" / @rgccprivateevents ""
 - evidence:
   - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DL1HBp-xO5u/)
+
+### @rlm_chicago ~ @olmchicago
+
+- suggested: **canonical** = @rlm_chicago, **alias** = @olmchicago -- @rlm_chicago has a scraped profile, @olmchicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @rlm_chicago 4 / @olmchicago 1
+- candidates (structural): @rlm_chicago 0 / @olmchicago 0
+- followers: @rlm_chicago 3489 / @olmchicago null
+- full_name: @rlm_chicago "RLM Events & Design" / @olmchicago ""
+- evidence:
+  - [S6] Levenshtein distance 2: @olmchicago (never scraped) vs @rlm_chicago (real venue)
+
+### @iahcchicago ~ @ihchicago
+
+- suggested: **canonical** = @iahcchicago, **alias** = @ihchicago -- @iahcchicago has a scraped profile, @ihchicago does not
+- signals: S6
+- weddings (venue-role, alias-resolved): @iahcchicago 3 / @ihchicago 0
+- candidates (structural): @iahcchicago 0 / @ihchicago 2
+- followers: @iahcchicago 7282 / @ihchicago null
+- full_name: @iahcchicago "Irish American Heritage Center☘️" / @ihchicago ""
+- evidence:
+  - [S6] Levenshtein distance 2: @ihchicago (never scraped) vs @iahcchicago (real venue)
 
 ### @dcestatewineryweddings ~ @dcestatewinery
 
@@ -1205,7 +1252,7 @@ a @16occhicago project..." (unclassified)
 - evidence:
   - [S4] @ivyhotelchicago bio: "...ago // Rooftop Bar: @skyterracechicago..." (unclassified)
 
-## Related, not the same venue (47)
+## Related, not the same venue (45)
 
 ### @bridgeportartcenter ~ @venuelogic
 
@@ -1245,30 +1292,6 @@ a @16occhicago project..." (unclassified)
   - [S4] @thedalcy bio: "...ivate event hall by @lettuceentertainyou in the Fulton Marke..." (related_not_alias)
   - [S5] co-credited on the same venue credit line, 6 posts (e.g. https://www.instagram.com/p/DaLqck4RPHA/)
   - EXCLUDED: known round-3 false positive or deny-listed brand handle
-
-### @fairliechicago ~ @thefairlie
-
-- suggested: **canonical** = @fairliechicago, **alias** = @thefairlie -- non-venue vendors.category or catering/management/hospitality-type bio
-- signals: S1
-- weddings (venue-role, alias-resolved): @fairliechicago 85 / @thefairlie 1
-- candidates (structural): @fairliechicago 108 / @thefairlie 1
-- followers: @fairliechicago 5191 / @thefairlie 1
-- full_name: @fairliechicago "Fairlie" / @thefairlie ""
-- evidence:
-  - [S1] @fairliechicago ~ @thefairlie (stem "fairlie")
-  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
-
-### @fairliechicago ~ @failiechicago
-
-- suggested: **canonical** = @fairliechicago, **alias** = @failiechicago -- non-venue vendors.category or catering/management/hospitality-type bio
-- signals: S6
-- weddings (venue-role, alias-resolved): @fairliechicago 85 / @failiechicago 0
-- candidates (structural): @fairliechicago 108 / @failiechicago 1
-- followers: @fairliechicago 5191 / @failiechicago null
-- full_name: @fairliechicago "Fairlie" / @failiechicago ""
-- evidence:
-  - [S6] Levenshtein distance 1: @failiechicago (never scraped) vs @fairliechicago (real venue)
-  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
 
 ### @chicagomuseumevents ~ @pattymcguirehmuartists
 
@@ -1368,18 +1391,6 @@ a @16occhicago project..." (unclassified)
   - [S4] @lmcateringchi bio: "...@lacunaloftevents, @lmstudiochi, @skyonnine, and @t..." (unclassified)
   - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
 
-### @theexchangechicago ~ @exchangechicago
-
-- suggested: **canonical** = @theexchangechicago, **alias** = @exchangechicago -- non-venue vendors.category or catering/management/hospitality-type bio
-- signals: S1
-- weddings (venue-role, alias-resolved): @theexchangechicago 48 / @exchangechicago 1
-- candidates (structural): @theexchangechicago 51 / @exchangechicago 0
-- followers: @theexchangechicago 8259 / @exchangechicago null
-- full_name: @theexchangechicago "The Exchange" / @exchangechicago ""
-- evidence:
-  - [S1] @theexchangechicago ~ @exchangechicago (stem "exchange")
-  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
-
 ### @theexchangechicago ~ @episcope.hospitality
 
 - suggested: **canonical** = @theexchangechicago, **alias** = @episcope.hospitality -- known round-3 false positive or deny-listed brand handle
@@ -1392,18 +1403,6 @@ a @16occhicago project..." (unclassified)
   - [S4] @theexchangechicago bio: "...⠀⠀⠀⠀⠀⠀⠀⠀
 Created by @episcope.hospitality..." (related_not_alias)
   - EXCLUDED: known round-3 false positive or deny-listed brand handle
-
-### @theexchangechicago ~ @alyssabudayyeh
-
-- suggested: **canonical** = @theexchangechicago, **alias** = @alyssabudayyeh -- non-venue vendors.category or catering/management/hospitality-type bio
-- signals: S5
-- weddings (venue-role, alias-resolved): @theexchangechicago 48 / @alyssabudayyeh 0
-- candidates (structural): @theexchangechicago 51 / @alyssabudayyeh 1
-- followers: @theexchangechicago 8259 / @alyssabudayyeh null
-- full_name: @theexchangechicago "The Exchange" / @alyssabudayyeh ""
-- evidence:
-  - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/DRFTFHNjTcb/)
-  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
 
 ### @thecrawfordvenue ~ @abbotthospitality
 
@@ -1427,6 +1426,18 @@ Created by @episcope.hospitality..." (related_not_alias)
 - full_name: @thepeninsulachi "The Peninsula Chicago" / @peninsulachi ""
 - evidence:
   - [S1] @thepeninsulachi ~ @peninsulachi (stem "peninsula")
+  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
+
+### @thelytlehouse ~ @chicagoweddingphotography
+
+- suggested: **canonical** = @thelytlehouse, **alias** = @chicagoweddingphotography -- non-venue vendors.category or catering/management/hospitality-type bio
+- signals: S3b
+- weddings (venue-role, alias-resolved): @thelytlehouse 34 / @chicagoweddingphotography 0
+- candidates (structural): @thelytlehouse 37 / @chicagoweddingphotography 0
+- followers: @thelytlehouse 3965 / @chicagoweddingphotography 1352
+- full_name: @thelytlehouse "The Lytle House" / @chicagoweddingphotography ""
+- evidence:
+  - [S3b] same website host "thelytlehouse.com"
   - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
 
 ### @lmcateringchi ~ @skyonnine
@@ -1453,18 +1464,6 @@ Created by @episcope.hospitality..." (related_not_alias)
   - [S4] @lmcateringchi bio: "...hi, @skyonnine, and @twentysixchicago..." (unclassified)
   - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
 
-### @kitchen_chicago ~ @cityviewloft
-
-- suggested: **canonical** = @cityviewloft, **alias** = @kitchen_chicago -- non-venue vendors.category or catering/management/hospitality-type bio
-- signals: S5
-- weddings (venue-role, alias-resolved): @kitchen_chicago 2 / @cityviewloft 23
-- candidates (structural): @kitchen_chicago 0 / @cityviewloft 27
-- followers: @kitchen_chicago 1205 / @cityviewloft 2919
-- full_name: @kitchen_chicago "Kitchen Chicago" / @cityviewloft "City View Loft Chicago"
-- evidence:
-  - [S5] co-credited on the same venue credit line, 2 posts (e.g. https://www.instagram.com/p/C2XssXarupw/)
-  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
-
 ### @rcchicago ~ @ihchicago
 
 - suggested: **canonical** = @rcchicago, **alias** = @ihchicago -- non-venue vendors.category or catering/management/hospitality-type bio
@@ -1480,12 +1479,13 @@ Created by @episcope.hospitality..." (related_not_alias)
 ### @venuelogic ~ @amazingspacechicago
 
 - suggested: **canonical** = @venuelogic, **alias** = @amazingspacechicago -- known round-3 false positive or deny-listed brand handle
-- signals: S4
+- signals: S3b, S4
 - weddings (venue-role, alias-resolved): @venuelogic 20 / @amazingspacechicago 9
 - candidates (structural): @venuelogic 6 / @amazingspacechicago 13
 - followers: @venuelogic 4889 / @amazingspacechicago 408
 - full_name: @venuelogic "VenueLogic Chicago" / @amazingspacechicago "Amazing Space"
 - evidence:
+  - [S3b] same website host "venuelogicchicago.com"
   - [S4] @venuelogic bio: "...idgeportartcenter & @amazingspacechicago 
 • Purveyors of the..." (unclassified)
   - EXCLUDED: known round-3 false positive or deny-listed brand handle
@@ -1501,22 +1501,6 @@ Created by @episcope.hospitality..." (related_not_alias)
 - evidence:
   - [S5] co-credited on the same venue credit line, 7 posts (e.g. https://www.instagram.com/p/DaBtG-ECMNC/)
   - EXCLUDED: church/parish/cathedral-type name
-
-### @victoriainthepark ~ @victoriavenues
-
-- suggested: **canonical** = @victoriainthepark, **alias** = @victoriavenues -- non-venue vendors.category or catering/management/hospitality-type bio
-- signals: S4
-- weddings (venue-role, alias-resolved): @victoriainthepark 15 / @victoriavenues 2
-- candidates (structural): @victoriainthepark 15 / @victoriavenues 3
-- followers: @victoriainthepark 2016 / @victoriavenues 216
-- full_name: @victoriainthepark "Wedding & Event Venue near Chicago, Illinois" / @victoriavenues "Victoria Venues"
-- evidence:
-  - [S4] @victoriainthepark bio: "...bar) for any event! @victoriavenues 
-@theknot @stylemep..." (unclassified)
-  - [S4] @victoriavenues bio: "...other celebrations!
-@victoriainthepark 
-@missionhillsclub..." (unclassified)
-  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
 
 ### @communityhouse_celebrate ~ @belvedereeventsandcatering
 
@@ -1535,24 +1519,12 @@ Created by @episcope.hospitality..." (related_not_alias)
 - suggested: **canonical** = @chicagostyleweddings, **alias** = @victoriainthepark -- non-venue vendors.category or catering/management/hospitality-type bio
 - signals: S4
 - weddings (venue-role, alias-resolved): @chicagostyleweddings 0 / @victoriainthepark 15
-- candidates (structural): @chicagostyleweddings 1 / @victoriainthepark 15
+- candidates (structural): @chicagostyleweddings 1 / @victoriainthepark 16
 - followers: @chicagostyleweddings 10154 / @victoriainthepark 2016
 - full_name: @chicagostyleweddings "Chicago Style Weddings" / @victoriainthepark "Wedding & Event Venue near Chicago, Illinois"
 - evidence:
   - [S4] @victoriainthepark bio: "...knot @stylemepretty @chicagostyleweddings Vendor ✨🎀
 🥳 Book..." (unclassified)
-  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
-
-### @victoriainthepark ~ @vicloriainthepark
-
-- suggested: **canonical** = @victoriainthepark, **alias** = @vicloriainthepark -- non-venue vendors.category or catering/management/hospitality-type bio
-- signals: S6
-- weddings (venue-role, alias-resolved): @victoriainthepark 15 / @vicloriainthepark 0
-- candidates (structural): @victoriainthepark 15 / @vicloriainthepark 1
-- followers: @victoriainthepark 2016 / @vicloriainthepark null
-- full_name: @victoriainthepark "Wedding & Event Venue near Chicago, Illinois" / @vicloriainthepark ""
-- evidence:
-  - [S6] Levenshtein distance 1: @vicloriainthepark (never scraped) vs @victoriainthepark (real venue)
   - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
 
 ### @modluxweddingschi ~ @modernluxury
@@ -1745,6 +1717,18 @@ c/o @urbanallureevents..." (unclassified)
   - [S1] @stjameschapel ~ @stjameschapelchicago (stem "stjameschapel")
   - EXCLUDED: church/parish/cathedral-type name
 
+### @clementinechicago ~ @suzysparacio
+
+- suggested: **canonical** = @clementinechicago, **alias** = @suzysparacio -- non-venue vendors.category or catering/management/hospitality-type bio
+- signals: S3b
+- weddings (venue-role, alias-resolved): @clementinechicago 2 / @suzysparacio 0
+- candidates (structural): @clementinechicago 1 / @suzysparacio 0
+- followers: @clementinechicago 8895 / @suzysparacio 1067
+- full_name: @clementinechicago "Clementine Custom Events" / @suzysparacio "Suzy Sparacio"
+- evidence:
+  - [S3b] same website host "clementinecustomevents.com"
+  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
+
 ### @smowparish ~ @mswparish
 
 - suggested: **canonical** = @smowparish, **alias** = @mswparish -- church/parish/cathedral-type name
@@ -1770,6 +1754,30 @@ c/o @urbanallureevents..." (unclassified)
   - [S1b] scrape/parse artifact ('.'/'_' variant)
   - EXCLUDED: church/parish/cathedral-type name
 
+### @hmrdesigns ~ @brittanieahrens
+
+- suggested: **canonical** = @hmrdesigns, **alias** = @brittanieahrens -- non-venue vendors.category or catering/management/hospitality-type bio
+- signals: S3b
+- weddings (venue-role, alias-resolved): @hmrdesigns 1 / @brittanieahrens 0
+- candidates (structural): @hmrdesigns 1 / @brittanieahrens 0
+- followers: @hmrdesigns 71262 / @brittanieahrens 810
+- full_name: @hmrdesigns "HMR Designs" / @brittanieahrens "Brittanie Ahrens | HMR Designs"
+- evidence:
+  - [S3b] same website host "hmrdesigns.com"
+  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
+
+### @hmrdesigns ~ @twbaker.events
+
+- suggested: **canonical** = @hmrdesigns, **alias** = @twbaker.events -- non-venue vendors.category or catering/management/hospitality-type bio
+- signals: S3b
+- weddings (venue-role, alias-resolved): @hmrdesigns 1 / @twbaker.events 0
+- candidates (structural): @hmrdesigns 1 / @twbaker.events 0
+- followers: @hmrdesigns 71262 / @twbaker.events 635
+- full_name: @hmrdesigns "HMR Designs" / @twbaker.events "Chicago Wedding & Event Designer TW Baker"
+- evidence:
+  - [S3b] same website host "hmrdesigns.com"
+  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio
+
 ### @arlenmusicproductions ~ @entouragebandchicago
 
 - suggested: **canonical** = @arlenmusicproductions, **alias** = @entouragebandchicago -- non-venue vendors.category or catering/management/hospitality-type bio
@@ -1793,3 +1801,15 @@ c/o @urbanallureevents..." (unclassified)
 - evidence:
   - [S6] Levenshtein distance 1: @stmarychicago (never scraped) vs @stmarkchicago (real venue)
   - EXCLUDED: church/parish/cathedral-type name
+
+### @lolaeventpros ~ @lolamichellev
+
+- suggested: **canonical** = @lolaeventpros, **alias** = @lolamichellev -- non-venue vendors.category or catering/management/hospitality-type bio
+- signals: S3b
+- weddings (venue-role, alias-resolved): @lolaeventpros 1 / @lolamichellev 0
+- candidates (structural): @lolaeventpros 0 / @lolamichellev 0
+- followers: @lolaeventpros 9316 / @lolamichellev 2112
+- full_name: @lolaeventpros "LOLA Event Productions: Chicago wedding planner" / @lolamichellev "Michelle Vining (Kurinec) - Chicago Wedding Planner"
+- evidence:
+  - [S3b] same website host "lolaeventproductions.com"
+  - EXCLUDED: non-venue vendors.category or catering/management/hospitality-type bio

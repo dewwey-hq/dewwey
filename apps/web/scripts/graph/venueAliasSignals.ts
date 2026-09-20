@@ -18,14 +18,48 @@
 const STRIP_TOKENS_RE =
   /(chicago|chi|events?|weddings?|venue|banquets?|official|il|the|and|at)/g;
 
-/** S1: lowercase -> strip the marketing/geo/role tokens -> strip everything non-alphanumeric.
- * Caller applies the `stem.length >= minStemLen` filter (default 4) before treating two accounts
- * as a match -- a short/empty stem is not returned specially here, just left short, so tests can
- * assert the raw value. */
+/** D062 (2026-09-20): facility nouns stripped ONLY as a trailing suffix, never globally.
+ *
+ * The gap this closes: `navypierchicago` stemmed to "navypier" but `navypiereventcenter` stemmed
+ * to "navypiercenter" -- STRIP_TOKENS_RE removes "event" but left "center" -- so the venue's own
+ * event arm never paired with its brand handle. Same shape for any "<venue>eventcenter" /
+ * "<venue>pavilion" / "<venue>rooftop" handle.
+ *
+ * Why suffix-anchored and not added to STRIP_TOKENS_RE: a global strip of facility words is
+ * actively destructive. "greenhouseloft" (34 weddings) would lose both "house" and "loft" and
+ * stem to "green", a 5-char stem that then pairs with anything else ending up there. Anchoring to
+ * the end keeps the venue's actual name intact -- Dunham Woods Riding *Club*, Greenhouse *Loft* --
+ * while still collapsing the trailing facility descriptor that marketing handles append.
+ *
+ * Deliberately NOT included: house, club, hall, estate, mansion, gardens, loft, studio, room.
+ * Each of those is routinely part of the venue's real name rather than a descriptor, so stripping
+ * them merges genuinely different venues. */
+const FACILITY_SUFFIX_RE =
+  /(conferencecenter|eventcenter|eventspace|banquetcenter|center|centre|pavilion|ballroom|rooftop|terrace)$/;
+
+/** S1: lowercase -> strip the marketing/geo/role tokens -> strip everything non-alphanumeric ->
+ * strip one trailing facility noun. Caller applies the `stem.length >= minStemLen` filter
+ * (default 4) before treating two accounts as a match -- a short/empty stem is not returned
+ * specially here, just left short, so tests can assert the raw value.
+ *
+ * ORDER MATTERS, and not in the obvious way: the facility strip runs BEFORE the token strip, on
+ * the raw alphanumeric handle. STRIP_TOKENS_RE contains "il" (for Illinois), which chews the
+ * middle out of "pavilion" -> "pavion" and "ballroom" is untouched but "terrace" survives only by
+ * luck. Running the facility strip second would mean matching against those mangled forms. Run it
+ * first and each facility noun is still intact:
+ *   navypiereventcenter -> [facility] navypier      -> [tokens] navypier
+ *   navypierchicago     -> [facility] (no match)    -> [tokens] navypier
+ *   theramovapavilion   -> [facility] theramova     -> [tokens] ramova
+ *
+ * Applied once, not to a fixed point -- a handle ending in two stacked facility nouns is not a
+ * pattern we have seen, and repeated stripping would eat real names faster than it helps. */
 export function computeStem(handleOrName: string): string {
-  const lowered = handleOrName.toLowerCase();
-  const stripped = lowered.replace(STRIP_TOKENS_RE, "");
-  return stripped.replace(/[^a-z0-9]/g, "");
+  const alnum = handleOrName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const deFacilitied = alnum.replace(FACILITY_SUFFIX_RE, "");
+  // Never let the facility strip empty a stem out entirely ("pavilion" -> ""): if it would, keep
+  // the pre-strip value so the caller's min-stem-len filter sees something honest.
+  const base = deFacilitied.length > 0 ? deFacilitied : alnum;
+  return base.replace(STRIP_TOKENS_RE, "");
 }
 
 /** S1b helper: drop every '.' and '_' (covers the "trailing '.'" case too -- Instagram usernames
@@ -69,6 +103,157 @@ export function normalizeExternalUrl(raw: string | null | undefined): string | n
   } catch {
     return raw.trim().toLowerCase().replace(/\/+$/, "") || null;
   }
+}
+
+// ============================================================
+// S3b -- registrable-host grouping (D062, 2026-09-20)
+// ============================================================
+
+/** Hosts that many unrelated businesses share, so two accounts pointing at one prove nothing.
+ *
+ * This deny-list is not defensive coding -- it is the whole reason S3b is safe. Measured on the
+ * live `accounts` table 2026-09-20, grouping external_url by host with no deny-list:
+ *   linkin.bio   -> 21 accounts (Chicago Winery + Chicago History Museum + Ralph Lauren + ...)
+ *   sprout.link  -> 15 (incl. both navypierchicago AND navypiereventcenter, but also Loyola
+ *                       and Choose Chicago -- a right answer for the wrong reason)
+ *   lnk.bio      -> 10 (Morton Arboretum + Chicago Botanic + Boka)
+ *   campsite.bio -> 5
+ * Un-denied, S3b would propose merging those into single venues.
+ *
+ * Two classes are listed: link-in-bio aggregators, and booking/reservation/social platforms that
+ * venues link to instead of their own site (OpenTable, Tock, Eventbrite, Resy, Vimeo, and the
+ * social networks themselves). `invitedclubs.com` is a third kind -- a club-management group whose
+ * member clubs each link to it; see the management-company rule in isExcludedPair. */
+const AGGREGATOR_HOSTS = new Set([
+  // link-in-bio
+  "linkin.bio",
+  "sprout.link",
+  "lnk.bio",
+  "campsite.bio",
+  "linktr.ee",
+  "hopp.bio",
+  "visitstore.bio",
+  "link.me",
+  "beacons.ai",
+  "bio.site",
+  "tap.bio",
+  "milkshake.app",
+  "shorby.com",
+  "woobox.com",
+  "later.com",
+  "withkoji.com",
+  // booking / reservation / ticketing
+  "opentable.com",
+  "exploretock.com",
+  "resy.com",
+  "eventbrite.com",
+  "sevenrooms.com",
+  "tripleseat.com",
+  // social / media platforms
+  "instagram.com",
+  "facebook.com",
+  "youtube.com",
+  "vimeo.com",
+  "tiktok.com",
+  "twitter.com",
+  "x.com",
+  "pinterest.com",
+  "google.com",
+  "goo.gl",
+  "bit.ly",
+  "linktw.in",
+  // management groups whose member venues all link to the parent
+  "invitedclubs.com",
+]);
+
+/** S3b: the registrable-ish host of a url -- scheme, "www.", path, query, fragment and port all
+ * dropped. Deliberately NOT normalizeExternalUrl, which keeps the path: `navypier.org` and
+ * `navypier.org/host-an-event` are the same venue but different S3 keys, which is exactly why S3
+ * never paired a venue with its own events arm.
+ *
+ * "Registrable-ish", not registrable: this does not consult a public-suffix list, so a
+ * `foo.co.uk`-style host keeps its full name. That is fine for the signal's purpose (equality
+ * between two of our own rows) and avoids a new dependency; it would matter only if we tried to
+ * compare across different subdomains of a public suffix, which we do not. Subdomains are kept
+ * (`events.venue.com` != `venue.com`) -- intentional, since a shared parent domain with different
+ * subdomains is weaker evidence than an exact host and would widen the signal past what the
+ * measured wins need. */
+export function registrableHost(raw: string | null | undefined): string | null {
+  if (!raw || !raw.trim()) return null;
+  let candidate = raw.trim();
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(candidate)) candidate = `http://${candidate}`;
+  try {
+    const host = new URL(candidate).hostname.toLowerCase().replace(/^www\./, "");
+    return host || null;
+  } catch {
+    const fallback = raw
+      .trim()
+      .toLowerCase()
+      .replace(/^[a-z][a-z0-9+.-]*:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/[/:?#].*$/, "");
+    return fallback || null;
+  }
+}
+
+/** Link-in-bio services live almost exclusively on these TLDs, and they mint host variants faster
+ * than a deny-list can track. The first S3b run caught @uchicago and @hilton sharing
+ * "clicklinkin.bio" -- a variant of linkin.bio that matched neither the exact entry nor the
+ * subdomain check, because it ends with "linkin.bio" without a dot separator. Rather than chase
+ * spellings, treat the whole TLD family as aggregator space: nothing in this dataset publishes a
+ * real venue website on a .bio or .link domain. */
+const AGGREGATOR_TLD_RE = /\.(bio|link)$/;
+
+/** True when a host is shared by unrelated businesses and therefore proves no relationship.
+ * Matches the host itself, any subdomain of it (`chicagowinery.linkin.bio`), any host ending in a
+ * denied name (`clicklinkin.bio`), and the .bio/.link aggregator TLDs. */
+export function isAggregatorHost(host: string | null | undefined): boolean {
+  if (!host) return false;
+  const h = host.toLowerCase().replace(/^www\./, "");
+  if (AGGREGATOR_HOSTS.has(h)) return true;
+  if (AGGREGATOR_TLD_RE.test(h)) return true;
+  for (const denied of AGGREGATOR_HOSTS) {
+    if (h.endsWith(`.${denied}`) || h.endsWith(denied)) return true;
+  }
+  return false;
+}
+
+/** S3b pair test: both sides resolve to the same non-aggregator host. */
+export function sharesRegistrableHost(
+  urlA: string | null | undefined,
+  urlB: string | null | undefined
+): boolean {
+  const a = registrableHost(urlA);
+  const b = registrableHost(urlB);
+  if (!a || !b || a !== b) return false;
+  return !isAggregatorHost(a);
+}
+
+/** D062: is an S6 Levenshtein hit trustworthy on its own?
+ *
+ * S6 exists to catch typo shells minted from a credit line, which by definition have no bio, no
+ * website and no other signal -- so demanding external corroboration would defeat it. The real
+ * discriminator is not the raw edit distance but *what fraction of the distinguishing part of the
+ * handle* differs. Measured on the 2026-09-20 run:
+ *
+ *   BAD  @ihchicago / @fschicago     stems "ih" / "fs"   -> distance 2 on a 2-char stem: the
+ *                                     entire distinguishing portion differs. "chicago" is 7 of
+ *                                     the 9 characters, so edit distance 2 means nothing. This
+ *                                     shape paired @ihchicago with five different Chicago hotels.
+ *   BAD  @msichicago / @mcachicago   stems "msi" / "mca" -> 2 of 3.
+ *   BAD  @thegagechicago / @thewadechicago  stems "gage" / "wade" -> 2 of 4.
+ *   GOOD @catignypark / @cantignypark       stems differ by 1 of 12.
+ *   GOOD @tigerlillyevents / @tigerlilyevents  stems differ by 1 of 10.
+ *
+ * So: the STEMS must be long enough to carry information (>= 4 chars) and differ by at most one
+ * edit. A pair that fails this still appears in the T3 listing for a human -- it is demoted, not
+ * discarded. Known false negative accepted: @cogweddingsandevents / @cbgweddingsandevents stems
+ * to "cog" / "cbg", too short to trust, even though it is a real pair; it stays in T3. */
+export function isS6Trustworthy(usernameA: string, usernameB: string): boolean {
+  const stemA = computeStem(usernameA);
+  const stemB = computeStem(usernameB);
+  if (stemA.length < 4 || stemB.length < 4) return false;
+  return levenshtein(stemA, stemB) <= 1;
 }
 
 // ============================================================
@@ -172,8 +357,44 @@ export function isChurchLikeUsername(username: string | null | undefined): boole
   return !!username && CHURCH_SUBSTRING_RE.test(username);
 }
 
+/** D062 (2026-09-20): a venue that describes its own amenities is not a catering company.
+ *
+ * The bug this fixes, found while applying alias round 9: @victoriainthepark's bio reads
+ * "All-inclusive venue (catering, bar) for any event!" -- NON_VENUE_BIO_RE matched the bare word
+ * "catering" and pushed the pair vicloriainthepark -> victoriainthepark into "Related, not the
+ * same venue / never propose", even though the canonical holds 15 weddings and calls itself a
+ * "Wedding & Event Venue near Chicago, Illinois". Every all-inclusive venue that mentions catering
+ * was unaliasable. The pair had to be overridden by hand.
+ *
+ * The rule the exclusion actually wants is "this account IS a caterer / planner / management
+ * company", not "this text contains the word catering". A bio that self-identifies as a venue
+ * settles that question, so it wins over the keyword. */
+const VENUE_SELF_DESCRIPTION_RE =
+  /\b(venue|event space|event centre|event center|banquet hall|ballroom|our space|host your|book your (?:wedding|event)|weddings? (?:and|&) events?)\b/i;
+
+/** D062: a handle that names its own non-venue trade. The username variant of isNonVenueBio,
+ * needed because S3b reaches outside the venue-ish universe and therefore meets accounts with no
+ * bio, no vendors.category and no venue credit -- nothing for the existing exclusions to read.
+ *
+ * The first widened S3b run surfaced this class: @hannahschweissphotography shares thestudiochi.com
+ * with @thestudiochicago, @chicagoweddingphotography shares thelytlehouse.com with @thelytlehouse,
+ * @brittanieahrens shares hmrdesigns.com with @hmrdesigns. A vendor hosting its site on a venue's
+ * domain (or a venue's in-house photographer) is a real relationship but NOT the same business, so
+ * these belong in the listing tier, not the verify tier. Same substring reasoning as
+ * CHURCH_SUBSTRING_RE -- handles are concatenated words with no boundaries to anchor on. */
+const NON_VENUE_USERNAME_RE =
+  /photograph|photog|films?|cinema|videograph|floral|florist|planner|planning|makeup|beauty|hairby|djs?by|catering|caterer/i;
+
+export function isNonVenueUsername(username: string | null | undefined): boolean {
+  return !!username && NON_VENUE_USERNAME_RE.test(username);
+}
+
 export function isNonVenueBio(text: string | null | undefined): boolean {
-  return !!text && NON_VENUE_BIO_RE.test(text);
+  if (!text) return false;
+  if (!NON_VENUE_BIO_RE.test(text)) return false;
+  // Self-identifies as a venue -> the catering/planning word is describing an amenity it offers,
+  // not the business it is.
+  return !VENUE_SELF_DESCRIPTION_RE.test(text);
 }
 
 /** Round-3 tail-end-coverage false positives (docs/decisions.md, applyAccountAliasesSchema.ts's
@@ -218,7 +439,7 @@ export function isExcludedPair(usernameA: string, usernameB: string): boolean {
 // Tier decision
 // ============================================================
 
-export type SignalCode = "S1" | "S1b" | "S2" | "S3" | "S4" | "S5" | "S6" | "S7";
+export type SignalCode = "S1" | "S1b" | "S2" | "S3" | "S3b" | "S4" | "S5" | "S6" | "S7";
 export type Tier = "T1" | "T2" | "T3";
 
 export interface TierInput {
@@ -235,21 +456,50 @@ export interface TierInput {
   s5MaxPostCount: number;
   /** S6 (mis-capture) fired. */
   s6Fired: boolean;
+  /** D062: S6 is corroborated by a shared stem or a shared non-aggregator host. Edit distance
+   * alone on 8-10 char handles is not evidence -- see decideTier's comment. */
+  s6Corroborated?: boolean;
+  /** D062: S3b (same non-aggregator registrable host) fired. */
+  s3bFired?: boolean;
   /** highest distinct-post count across S7 reader-disagreement evidence for this pair (0 if S7
    * didn't fire). */
   s7MaxPostCount: number;
 }
 
-/** T1 auto-safe = S1b, or S2 where both are venue-category, or S4 alias_like phrase.
- * T2 verify = any pair with >=2 distinct signals, or S5 with >=5 posts, or S6, or S7 with
- * >=3 posts. T3 = everything else that fired at least one signal. */
+/** T1 auto-safe = S1b, or S2 where both are venue-category, or S4 alias_like phrase, or S3b
+ * (shared non-aggregator host) backed by any second signal.
+ * T2 verify = any pair with >=2 distinct signals, or S3b alone, or S5 with >=5 posts, or a
+ * CORROBORATED S6, or S7 with >=3 posts. T3 = everything else that fired at least one signal.
+ *
+ * D062 (2026-09-20), two changes:
+ *
+ * - S3b enters at T2 on its own. Two accounts publishing the same non-aggregator host is strong,
+ *   venue-specific evidence (salvageone.com -> salvageone + salvageoneevents; venutis.com ->
+ *   venutis.banquets + venutisrestaurant). It reaches T1 only with corroboration, because a
+ *   domain can also be shared by a management company and the venues it operates -- the
+ *   venuelogicchicago.com case, already on DENY_LIST_USERNAMES.
+ *
+ * - S6 no longer reaches T2 unaided. Bare Levenshtein <= 2 on 8-10 character handles is not
+ *   evidence: the 2026-09-20 run paired @ihchicago against @fschicago, @lhchicago, @wachicago,
+ *   @uchicago and @iahcchicago -- five genuinely different Chicago hotels -- and every one of
+ *   them landed in T2 for a human to read. Requiring a shared stem or shared host keeps the real
+ *   typo captures (rockwellontherive -> rockwellontheriver, catignypark -> cantignypark) and
+ *   drops the alphabet soup to T3. */
 export function decideTier(input: TierInput): Tier {
-  if (input.s1bFired || input.s2BothVenueCategory || input.s4AliasLikeFired) return "T1";
   const distinctSignalCount = new Set(input.signalCodes).size;
   if (
+    input.s1bFired ||
+    input.s2BothVenueCategory ||
+    input.s4AliasLikeFired ||
+    (input.s3bFired === true && distinctSignalCount >= 2)
+  ) {
+    return "T1";
+  }
+  if (
     distinctSignalCount >= 2 ||
+    input.s3bFired === true ||
     input.s5MaxPostCount >= 5 ||
-    input.s6Fired ||
+    (input.s6Fired && input.s6Corroborated === true) ||
     input.s7MaxPostCount >= 3
   ) {
     return "T2";

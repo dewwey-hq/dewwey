@@ -14,6 +14,9 @@ import {
   isChurchLike,
   isChurchLikeUsername,
   isNonVenueBio,
+  registrableHost,
+  isAggregatorHost,
+  sharesRegistrableHost,
   isExcludedPair,
   decideTier,
   suggestDirection,
@@ -241,8 +244,11 @@ describe("decideTier", () => {
     expect(decideTier({ ...base, signalCodes: ["S5"], s5MaxPostCount: 2 })).toBe("T3");
   });
 
-  it("T2 on S6 alone", () => {
-    expect(decideTier({ ...base, signalCodes: ["S6"], s6Fired: true })).toBe("T2");
+  // Re-pinned 2026-09-20 (D062): S6 alone used to reach T2. It no longer does -- bare
+  // Levenshtein <= 2 on 8-10 char handles paired @ihchicago with five different Chicago hotels.
+  // It needs a shared stem or host to corroborate; see "decideTier with S3b and corroborated S6".
+  it("S6 alone is T3 -- needs corroboration since D062", () => {
+    expect(decideTier({ ...base, signalCodes: ["S6"], s6Fired: true })).toBe("T3");
   });
 
   it("T2 on S7 with >=3 posts alone", () => {
@@ -291,5 +297,141 @@ describe("suggestDirection", () => {
     );
     expect(d.canonicalUsername).toBe("alpha");
     expect(d.reason).toMatch(/arbitrary/);
+  });
+});
+
+describe("computeStem facility suffix (S1, D062)", () => {
+  // The regression this whole change exists for: a venue's event arm never paired with its
+  // brand handle because "center" survived the token strip.
+  it("navypierchicago and navypiereventcenter reach the same stem", () => {
+    expect(computeStem("navypierchicago")).toBe("navypier");
+    expect(computeStem("navypiereventcenter")).toBe("navypier");
+    expect(computeStem("navypiereventcenter")).toBe(computeStem("navypierchicago"));
+  });
+
+  it("strips other trailing facility nouns", () => {
+    expect(computeStem("theramovapavilion")).toBe("ramova");
+    expect(computeStem("skylineterrace")).toBe("skyline");
+    expect(computeStem("aonballroom")).toBe("aon");
+  });
+
+  // The reason this is suffix-anchored instead of added to STRIP_TOKENS_RE. A global strip of
+  // facility words would take greenhouseloft (34 weddings) down to "green".
+  it("does NOT strip facility words that sit inside the venue's real name", () => {
+    expect(computeStem("greenhouseloft")).toBe("greenhouseloft");
+    expect(computeStem("dunhamwoodsridingclub")).toBe("dunhamwoodsridingclub");
+  });
+
+  it("never returns an empty stem when the handle is only a facility noun", () => {
+    // The fallback matters: an empty stem would group every such handle together.
+    expect(computeStem("eventcenter").length).toBeGreaterThan(0);
+    expect(computeStem("pavilion").length).toBeGreaterThan(0);
+    expect(computeStem("ballroom").length).toBeGreaterThan(0);
+  });
+});
+
+describe("registrableHost / isAggregatorHost / sharesRegistrableHost (S3b, D062)", () => {
+  it("drops scheme, www., path, query and port -- the S3 gap", () => {
+    expect(registrableHost("https://www.navypier.org/host-an-event")).toBe("navypier.org");
+    expect(registrableHost("navypier.org")).toBe("navypier.org");
+    expect(registrableHost("http://navypier.org:8080/x?y=1#z")).toBe("navypier.org");
+  });
+
+  it("S3 and S3b disagree on exactly the case that matters", () => {
+    // Same venue, different paths: S3's key differs, S3b's matches.
+    expect(normalizeExternalUrl("https://navypier.org")).not.toBe(
+      normalizeExternalUrl("https://navypier.org/host-an-event")
+    );
+    expect(sharesRegistrableHost("https://navypier.org", "https://navypier.org/host-an-event")).toBe(true);
+  });
+
+  it("returns null for empty/missing input", () => {
+    expect(registrableHost(null)).toBeNull();
+    expect(registrableHost("")).toBeNull();
+    expect(registrableHost("   ")).toBeNull();
+  });
+
+  // Measured 2026-09-20: un-denied, linkin.bio groups 21 unrelated accounts, sprout.link 15.
+  it("denies link-in-bio aggregators, including subdomains", () => {
+    expect(isAggregatorHost("linkin.bio")).toBe(true);
+    expect(isAggregatorHost("chicagowinery.linkin.bio")).toBe(true);
+    expect(isAggregatorHost("sprout.link")).toBe(true);
+    expect(isAggregatorHost("linktr.ee")).toBe(true);
+  });
+
+  it("denies booking and social platforms venues link to instead of their own site", () => {
+    expect(isAggregatorHost("opentable.com")).toBe(true);
+    expect(isAggregatorHost("exploretock.com")).toBe(true);
+    expect(isAggregatorHost("instagram.com")).toBe(true);
+    expect(isAggregatorHost("vimeo.com")).toBe(true);
+  });
+
+  it("allows a real venue domain", () => {
+    expect(isAggregatorHost("salvageone.com")).toBe(false);
+    expect(isAggregatorHost("navypier.org")).toBe(false);
+    expect(isAggregatorHost(null)).toBe(false);
+  });
+
+  it("sharesRegistrableHost refuses to pair on an aggregator", () => {
+    // Both navypierchicago and navypiereventcenter really do sit on sprout.link -- a right
+    // answer for the wrong reason, alongside Loyola and Choose Chicago.
+    expect(sharesRegistrableHost("https://sprout.link/navypier", "https://sprout.link/loyola")).toBe(false);
+    expect(sharesRegistrableHost("https://salvageone.com", "https://salvageone.com/events")).toBe(true);
+  });
+});
+
+describe("isNonVenueBio venue-self-description override (D062)", () => {
+  // The bug: @victoriainthepark (15 weddings) was excluded from aliasing because its bio
+  // contains the bare word "catering".
+  it("an all-inclusive venue describing its amenities is not a caterer", () => {
+    expect(isNonVenueBio("All-inclusive venue (catering, bar) for any event!")).toBe(false);
+    expect(isNonVenueBio("Private & Public Events Venue. Catering by @greenspoonk")).toBe(false);
+  });
+
+  it("still excludes an account that IS a catering or planning business", () => {
+    expect(isNonVenueBio("Chicago's premier catering company")).toBe(true);
+    expect(isNonVenueBio("Full-service wedding planning")).toBe(true);
+    expect(isNonVenueBio("Restaurant group / hospitality")).toBe(true);
+  });
+
+  it("is unchanged for bios with no non-venue keyword at all", () => {
+    expect(isNonVenueBio("Historic wedding and event venue")).toBe(false);
+    expect(isNonVenueBio(null)).toBe(false);
+  });
+});
+
+describe("decideTier with S3b and corroborated S6 (D062)", () => {
+  const base = {
+    signalCodes: [] as import("./venueAliasSignals").SignalCode[],
+    s1bFired: false,
+    s2BothVenueCategory: false,
+    s4AliasLikeFired: false,
+    s5MaxPostCount: 0,
+    s6Fired: false,
+    s7MaxPostCount: 0,
+  };
+
+  it("S3b alone is T2", () => {
+    expect(decideTier({ ...base, signalCodes: ["S3b"], s3bFired: true })).toBe("T2");
+  });
+
+  it("S3b plus any second signal is T1", () => {
+    expect(decideTier({ ...base, signalCodes: ["S3b", "S1"], s3bFired: true })).toBe("T1");
+  });
+
+  // The @ihchicago alphabet soup: five different Chicago hotels, all T2 before this change.
+  it("uncorroborated S6 falls to T3", () => {
+    expect(decideTier({ ...base, signalCodes: ["S6"], s6Fired: true })).toBe("T3");
+    expect(decideTier({ ...base, signalCodes: ["S6"], s6Fired: true, s6Corroborated: false })).toBe("T3");
+  });
+
+  it("corroborated S6 still reaches T2 (the real typo captures)", () => {
+    expect(
+      decideTier({ ...base, signalCodes: ["S6"], s6Fired: true, s6Corroborated: true })
+    ).toBe("T2");
+  });
+
+  it("two distinct signals still reach T2 even when S6 is one of them", () => {
+    expect(decideTier({ ...base, signalCodes: ["S6", "S1"], s6Fired: true })).toBe("T2");
   });
 });
