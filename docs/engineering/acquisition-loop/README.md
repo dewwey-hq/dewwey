@@ -305,3 +305,15 @@ profile scrape's `external_url`; its frozen discovery counts move when profiles 
   writes the seed venue's credit with `event_context` from the caption's event word when the anchor
   is a different `Venue:` credit; (3) `/label/candidates` labeling guidance: label these
   **Other venue** with the `Venue:` handle. Per `feedback-batch-failure-paths`.
+
+- **Reader recall on tagged-feed posts (spot-check, 2026-09-19): 6 of 53 real weddings called
+  NOT_WEDDING at 0.95.** Two are prompt bugs: a post dated 2026-09-14 for a "9.12.2026" wedding was
+  read as a *future* event (the date is two days before the post; teach the reader that a wedding
+  date at or before the post date is past, and that a future date alone is not disqualifying when
+  the post reads as a recap), and a "dog in the wedding party" recap with no couple name. Four are a
+  **standard** question the user answered: a vendor post with a `Venue:` credit at the target venue
+  (a string quartet's "save this", a planner's checklist, a photographer's emoji post) counts as a
+  wedding at that venue for coverage, even without a named couple (same call as D054's "accept some
+  junk to drive coverage"). The prompt's rubric is stricter than the user's standard; align
+  `extract-v1.3` to the user's standard for THIS_VENUE on credit-line-anchored tagged posts, and
+  keep the strict rule only for author-is-venue marketing (Biagio / Le Loft pattern, D055).

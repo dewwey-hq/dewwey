@@ -130,16 +130,24 @@ Decision: `docs/decisions.md` D061. Plan of record `~/.claude/plans/on-1-what-do
 creation_decisions`, `post_images`, `v_ig_posts`, `structural_post_vendor_evidence` re-sourced +
 `structural_post_vendor_evidence_for_batch(batch_id)`); pilot tick `acq-20260919-pilot` fetched 249
 posts (98 new), parsed (49 full stacks), clustered (55 candidates), read (47 THIS_VENUE ≥ 0.8),
-created **45 weddings** (batches `-create-2` = 2 A1, `-create-3` = 43 v2; `-create-1` was reverted
-and re-created as the rollback rehearsal). Weddings **6,017**. Funnel:
+created **53 weddings** (`-create-2` = 2 A1, `-create-3` = 43 v2, `-create-4` = 8 human-confirmed;
+`-create-1` was reverted and re-created as the rollback rehearsal). Weddings **6,025**. Funnel:
 `tmp_analysis/acquisition_funnel_acq-20260919-pilot_2026-09-19.md`. Provenance drill works
 (`tmp_analysis/d061_post_provenance.sql -v wedding_id=…`).
 
+**Blind spot-check done (user, 2026-09-19 night, 55 posts via `/label/candidates?spotcheck=acq-…&n=100`):**
+model THIS_VENUE precision **45/47 = 95.7% → PASS** (bar 95%), overall agreement 45/55 = 81.8%.
+Report: `tmp_analysis/spot_check_acq-20260919-pilot_2026-09-20.md`. Resolution (user's calls): all 8
+candidates the human verdicts confirmed were created (`create-4`, incl. 3 vendor posts with a venue
+credit and no couple — the user's coverage standard, now in memory + backlog); both model-created
+weddings the human had labeled NOT_WEDDING were **kept** (superseding THIS_VENUE rows under `jeremy`,
+`tmp_analysis/d061_spotcheck_keep_two.sql`). Pilot total: **53 weddings** (2 + 43 + 8), weddings
+**6,025**. Reader recall misses (6 at 0.95) are a backlog item (future-date misread; vendor-pitch
+standard) — plan file / README.
+
 **Blocked on the user:**
-1. **Blind spot-check** of the pilot's 47 model-written posts before probes may auto-create
-   (`spotCheckSample.ts` is commit 2; until it exists, the 10 human-queue candidates from the pilot are
-   already in `/label/candidates`).
-2. Say "go" for tick 2 (profiles, ~$1.0) and the canary (20 probe venues + 5 vendor feeds, ~$1.4).
+1. Say "go" for tick 2 (profiles, ~$1.0) and the canary (20 probe venues + 5 vendor feeds, ~$1.4).
+   Probes may auto-create (spot-check bar met).
 
 **Next actions (Claude):** commit 2 = `targets.ts` (priors from README §1 + vendor tier),
 `measure.ts` (yield → prior update, tri-state status, writes `pipeline_versions`),
