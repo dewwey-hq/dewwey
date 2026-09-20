@@ -130,6 +130,47 @@ function slugify(s: string): string {
 }
 
 let resourceCounter = 0;
+/**
+ * Resource refresh, 2026-09-20 (calibration c6): the concept pages were built in August and some of
+ * the resource URLs they cite are no longer what the venue's pages serve -- Marchetti re-rendered
+ * its Pavilion floor-plan images (4 of 7 ids gone, 3 new), Geraghty replaced its two wedding
+ * floor plans, and the Field Museum's four "featured wedding" Vimeo links are injected by
+ * JavaScript (never present in the HTML, so no crawler can cite them; one wedding video is
+ * linked in the HTML). The golden must describe what the site serves, so these overrides replace
+ * the stale entries at import time; the concept data stays untouched (plan non-goal).
+ */
+const RESOURCE_REFRESH: Record<string, { drop: RegExp; add: Omit<Resource, "id" | "snapshot_id" | "checked_at">[] }> = {
+  "galleria-marchetti": {
+    drop: /framerusercontent\.com\/images\/(EG7ddnTJ|yNcIWBw9|inbGCvAh|dXRjrbrz)/,
+    add: [
+      "f9UTVdlrEbGWC07qPuogiH7Icr0",
+      "NdA4EBUwlXf20gz0VYEwOURDQ",
+      "S1zz0P2iqsq6IPX4L5Td5ncODM",
+    ].map((id, i) => ({ kind: "floor_plan" as const, label: `Pavilion floor plan ${i + 4}`, url: `https://framerusercontent.com/images/${id}.jpg?width=792&height=612`, scope: "space:the-pavilion" as const, embeddable: null, has_text_layer: null, source_url: "https://www.galleriamarchetti.com/thepavilion" })),
+  },
+  geraghty: {
+    drop: /Wedding-2-Web-1-2048x1583|Wedding-1-Web-2-2048x1583/,
+    add: [
+      { kind: "floor_plan", label: "Wedding - Ceremony, Reception & Afterparty", url: "https://thegeraghty.com/wp-content/uploads/2025/06/FLOORPLAN_WeddingExample1-1-960x720.jpg", scope: "space:the-geraghty", embeddable: null, has_text_layer: null, source_url: "https://thegeraghty.com/floor-plans/" },
+      { kind: "floor_plan", label: "Wedding - Ceremony & Reception", url: "https://thegeraghty.com/wp-content/uploads/2025/06/FLOORPLAN_Labkon-960x720.jpg", scope: "space:the-geraghty", embeddable: null, has_text_layer: null, source_url: "https://thegeraghty.com/floor-plans/" },
+      { kind: "video", label: "The Geraghty video", url: "https://vimeo.com/325970909", scope: "venue", embeddable: true, has_text_layer: null, source_url: "https://thegeraghty.com/" },
+    ],
+  },
+  "field-museum": {
+    drop: /vimeo\.com\/(528972601|529077728|527346081|528911613)/,
+    add: [
+      { kind: "video", label: "Stunning Fall Wedding in Stanley Field Hall", url: "https://vimeo.com/321867867/885696a3fe", scope: "venue", embeddable: true, has_text_layer: null, source_url: "https://www.fieldmuseum.org/page/weddings" },
+    ],
+  },
+};
+
+function refreshStaleResources(doc: VenueDetailsV3, slug: string): void {
+  const r = RESOURCE_REFRESH[slug];
+  if (!r) return;
+  doc.resources = doc.resources.filter((x) => !r.drop.test(x.url));
+  for (const a of r.add) doc.resources.push(resource(a));
+}
+
 function resource(r: Omit<Resource, "id" | "snapshot_id" | "checked_at"> & { id?: string }): Resource {
   return {
     id: r.id ?? `res-${++resourceCounter}`,
@@ -633,6 +674,7 @@ function buildMarchetti(): VenueDetailsV3 {
     ...m.spaces[1].floorPlans.map((fp, i) => resource({ kind: "floor_plan", label: fp.label, url: fp.imageUrl, scope: "space:la-pergola", embeddable: null, has_text_layer: null, source_url: thePavilionUrl, id: `floorplan-la-pergola-${i + 1}` })),
   ];
 
+  refreshStaleResources(doc, "galleria-marchetti");
   doc.sources = { snapshot_ids: [], pages: m.sourcePages, crawled_at: m.lastVerified };
   return doc;
 }
@@ -2102,6 +2144,7 @@ function buildFieldMuseum(): VenueDetailsV3 {
     ...fm.foodAndBeverage.beverageResources.map((r, i) => resource({ kind: "bar_menu", label: r.label, url: r.url, scope: "venue", embeddable: null, has_text_layer: null, source_url: r.url, id: `bev-${i + 1}` })),
     ...fm.spaces.map((s) => resource({ kind: "video", label: `${s.name} Video Tour`, url: s.videoUrl, scope: `space:${slugify(s.name)}`, embeddable: null, has_text_layer: null, source_url: s.sourceUrl, id: `video-${slugify(s.name)}` })),
   ];
+  refreshStaleResources(doc, "field-museum");
 
   doc.vendor_lists = Array.from(new Set(fm.approvedVendors.map((v) => v.category))).map((category) => ({
     label: category,
@@ -2240,6 +2283,8 @@ function buildGeraghty(): VenueDetailsV3 {
     ...g.space.floorPlans.map((fp, i) => resource({ kind: "floor_plan", label: fp.label, url: fp.imageUrl, scope: "space:the-geraghty", embeddable: null, has_text_layer: null, source_url: floorPlansUrl, id: `floorplan-${i + 1}` })),
     resource({ kind: "virtual_tour", label: "Virtual tour", url: g.space.tourUrl, scope: "venue", embeddable: null, has_text_layer: null, source_url: g.space.tourUrl }),
   ];
+
+  refreshStaleResources(doc, "geraghty");
 
   doc.vendor_lists = [
     {

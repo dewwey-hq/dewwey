@@ -524,31 +524,7 @@
   ],
   "resources": [
     {
-      "id": "floorplan-1",
-      "kind": "floor_plan",
-      "label": "Ceremony, Reception & Afterparty (300 guests)",
-      "url": "https://thegeraghty.com/wp-content/uploads/2025/06/Wedding-2-Web-1-2048x1583.png",
-      "scope": "space:the-geraghty",
-      "embeddable": null,
-      "has_text_layer": null,
-      "checked_at": null,
-      "source_url": "https://thegeraghty.com/floor-plans/",
-      "snapshot_id": null
-    },
-    {
-      "id": "floorplan-2",
-      "kind": "floor_plan",
-      "label": "Ceremony & Reception (300 guests)",
-      "url": "https://thegeraghty.com/wp-content/uploads/2025/06/Wedding-1-Web-2-2048x1583.png",
-      "scope": "space:the-geraghty",
-      "embeddable": null,
-      "has_text_layer": null,
-      "checked_at": null,
-      "source_url": "https://thegeraghty.com/floor-plans/",
-      "snapshot_id": null
-    },
-    {
-      "id": "res-12",
+      "id": "res-16",
       "kind": "virtual_tour",
       "label": "Virtual tour",
       "url": "https://thegeraghty.com/virtual-tour",
@@ -557,6 +533,42 @@
       "has_text_layer": null,
       "checked_at": null,
       "source_url": "https://thegeraghty.com/virtual-tour",
+      "snapshot_id": null
+    },
+    {
+      "id": "res-17",
+      "kind": "floor_plan",
+      "label": "Wedding - Ceremony, Reception & Afterparty",
+      "url": "https://thegeraghty.com/wp-content/uploads/2025/06/FLOORPLAN_WeddingExample1-1-960x720.jpg",
+      "scope": "space:the-geraghty",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://thegeraghty.com/floor-plans/",
+      "snapshot_id": null
+    },
+    {
+      "id": "res-18",
+      "kind": "floor_plan",
+      "label": "Wedding - Ceremony & Reception",
+      "url": "https://thegeraghty.com/wp-content/uploads/2025/06/FLOORPLAN_Labkon-960x720.jpg",
+      "scope": "space:the-geraghty",
+      "embeddable": null,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://thegeraghty.com/floor-plans/",
+      "snapshot_id": null
+    },
+    {
+      "id": "res-19",
+      "kind": "video",
+      "label": "The Geraghty video",
+      "url": "https://vimeo.com/325970909",
+      "scope": "venue",
+      "embeddable": true,
+      "has_text_layer": null,
+      "checked_at": null,
+      "source_url": "https://thegeraghty.com/",
       "snapshot_id": null
     }
   ],

@@ -692,7 +692,7 @@
   ],
   "resources": [
     {
-      "id": "res-8",
+      "id": "res-11",
       "kind": "brochure",
       "label": "Wedding Brochure",
       "url": "https://londonhousechicago.com/assets/uploads/documents/LHC_weddings_brochure.pdf",
@@ -704,7 +704,7 @@
       "snapshot_id": null
     },
     {
-      "id": "res-9",
+      "id": "res-12",
       "kind": "menu",
       "label": "Wedding Menu",
       "url": "https://londonhousechicago.com/assets/uploads/general/Wedding_Menu_2026_LondonHouse.pdf",
@@ -716,7 +716,7 @@
       "snapshot_id": null
     },
     {
-      "id": "res-10",
+      "id": "res-13",
       "kind": "capacity_sheet",
       "label": "Capacity Chart",
       "url": "http://londonhousechicago.com/assets/uploads/documents/LH_Capacity_Chart.pdf",
@@ -728,7 +728,7 @@
       "snapshot_id": null
     },
     {
-      "id": "res-11",
+      "id": "res-14",
       "kind": "video",
       "label": "LondonHouse Wedding",
       "url": "https://www.youtube.com/watch?v=tAQ1JfyvG24",

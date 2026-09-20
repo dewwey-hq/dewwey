@@ -540,51 +540,15 @@
       "snapshot_id": null
     },
     {
-      "id": "video-stanley-field-hall-balcony",
+      "id": "res-15",
       "kind": "video",
-      "label": "Stanley Field Hall & Balcony Video Tour",
-      "url": "https://vimeo.com/528972601?fl=pl&fe=ti",
-      "scope": "space:stanley-field-hall-balcony",
-      "embeddable": null,
+      "label": "Stunning Fall Wedding in Stanley Field Hall",
+      "url": "https://vimeo.com/321867867/885696a3fe",
+      "scope": "venue",
+      "embeddable": true,
       "has_text_layer": null,
       "checked_at": null,
-      "source_url": "https://www.fieldmuseum.org/stanley-field-hall-balcony",
-      "snapshot_id": null
-    },
-    {
-      "id": "video-outdoor-terraces",
-      "kind": "video",
-      "label": "Outdoor Terraces Video Tour",
-      "url": "https://vimeo.com/529077728?fl=pl&fe=ti",
-      "scope": "space:outdoor-terraces",
-      "embeddable": null,
-      "has_text_layer": null,
-      "checked_at": null,
-      "source_url": "https://www.fieldmuseum.org/outdoor-terraces",
-      "snapshot_id": null
-    },
-    {
-      "id": "video-east-atrium-pavilion",
-      "kind": "video",
-      "label": "East Atrium & Pavilion Video Tour",
-      "url": "https://vimeo.com/527346081?fl=pl&fe=ti",
-      "scope": "space:east-atrium-pavilion",
-      "embeddable": null,
-      "has_text_layer": null,
-      "checked_at": null,
-      "source_url": "https://www.fieldmuseum.org/east-atrium-pavilion",
-      "snapshot_id": null
-    },
-    {
-      "id": "video-rice-gallery",
-      "kind": "video",
-      "label": "Rice Gallery Video Tour",
-      "url": "https://vimeo.com/528911613?fl=pl&fe=ti",
-      "scope": "space:rice-gallery",
-      "embeddable": null,
-      "has_text_layer": null,
-      "checked_at": null,
-      "source_url": "https://www.fieldmuseum.org/rice-gallery",
+      "source_url": "https://www.fieldmuseum.org/page/weddings",
       "snapshot_id": null
     }
   ],

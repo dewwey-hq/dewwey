@@ -967,7 +967,7 @@
   ],
   "resources": [
     {
-      "id": "res-2",
+      "id": "res-5",
       "kind": "catering_guidelines",
       "label": "Catering & Composting Guidelines",
       "url": "https://www.greenhouseloft.com/s/Greenhouse-Loft-Catering-and-Composting-Guidelines.pdf",
@@ -979,7 +979,7 @@
       "snapshot_id": null
     },
     {
-      "id": "res-3",
+      "id": "res-6",
       "kind": "contract",
       "label": "GHL Service Agreement (2021 template)",
       "url": "https://static1.squarespace.com/static/5489bdc5e4b0563d578c5190/t/600f1b64a4f4466e7d415241/1611602788773/GHL+SERVICE+AGREEMENT+January+2021.pdf",
@@ -991,7 +991,7 @@
       "snapshot_id": null
     },
     {
-      "id": "res-4",
+      "id": "res-7",
       "kind": "virtual_tour",
       "label": "Virtual tour",
       "url": "https://www.greenhouseloft.com/tour",
@@ -1003,7 +1003,7 @@
       "snapshot_id": null
     },
     {
-      "id": "res-5",
+      "id": "res-8",
       "kind": "gallery",
       "label": "Event gallery",
       "url": "https://www.greenhouseloft.com/event-gallery",
