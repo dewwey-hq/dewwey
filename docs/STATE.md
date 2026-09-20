@@ -161,6 +161,14 @@ standard) — plan file / README.
 - Running totals 2026-09-20 02:30 UTC: weddings **6,082** (110 from acquisition today), Apify
   $3.23 ingested + $12.82 in flight, OpenRouter ≈ $1.20, 657 acquisition posts, 1,369 images in R2.
 
+- **Tigerlily Events recredit (user-caught, 2026-09-20):** a catering / venue-management company
+  credited as the venue (64 weddings). Fact-checked on tlilyevents.com: all 15 of its spaces are on
+  Lincoln Park Zoo grounds. `recreditManagementCompany.ts --handle tigerlilyevents
+  --exclude-wedding-ids 4723,5619,9744` (76 credits → other, 30 re-anchored by tag/credit), then
+  `tmp_analysis/d061_tigerlily_reanchor_remaining.sql` (user's rule: Café Brauer when the caption names
+  it, else the zoo; 10 + 24, provenance batch `d061-tigerlily-reanchor-1`). Now zoo 72, Café Brauer 26,
+  Tigerlily 0. Café Brauer's account is still bare (user declined a profile scrape for now).
+
 **Blocked on the user:** nothing at the moment — Gate 1a decides probes A; the user asked to be told
 before that spend.
 
