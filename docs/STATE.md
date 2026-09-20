@@ -145,9 +145,19 @@ weddings the human had labeled NOT_WEDDING were **kept** (superseding THIS_VENUE
 **6,025**. Reader recall misses (6 at 0.95) are a backlog item (future-date misread; vendor-pitch
 standard) — plan file / README.
 
-**Blocked on the user:**
-1. Say "go" for tick 2 (profiles, ~$1.0) and the canary (20 probe venues + 5 vendor feeds, ~$1.4).
-   Probes may auto-create (spot-check bar met).
+**Ticks 2 and 2b ran on the user's "lets go" (2026-09-20 ~01:20–02:00 UTC):**
+- Tick 2 profiles: 541 accounts, 11 runs, $1.24; 539 profiled, 478 with followers, 110 bios naming
+  another handle (alias-candidate CSVs `tmp_analysis/acq_alias_candidates_<run>.csv`), 460 avatars.
+- Canary, vendor half (`acq-20260919-canary-vendor`, 3 tier-A planners + 2 florists × 25): $0.29,
+  125 fetched / 82 new, 33 stacks, 37 candidates, **23 weddings** (22 v2 + 1 A1), 5 at venues that had
+  < 6 ($0.06 each). 0.18 weddings per fetched post — the vendor band clears Gate 1a.
+- Canary, venue half (`acq-20260919-canary`, 20 thin venues from the top prior band × 25): $1.15,
+  running at hand-off; chain + Gate 1a read next.
+- Probes A pool ready: `tmp_analysis/d061_probesA_targets.sql` → 223 targets (183 thin listed + 40 alias
+  siblings), ~$12.80.
+
+**Blocked on the user:** nothing at the moment — Gate 1a decides probes A; the user asked to be told
+before that spend.
 
 **Next actions (Claude):** commit 2 = `targets.ts` (priors from README §1 + vendor tier),
 `measure.ts` (yield → prior update, tri-state status, writes `pipeline_versions`),
