@@ -11,7 +11,7 @@
  * Prior per target = the LATEST ops.crawl_targets row for (account, feed) when one exists (measured by
  * measure.ts), else the lookup prior from features: venue_type class, follower band, Places reviews /
  * primary_type (venues) or role (vendors). Excluded always: status dead/excluded, private, brand
- * handles (never listed), hotels / houses of worship / restaurants for venue tiers.
+ * handles (never listed). Venue types are a prior, never an exclusion (low-types probe, 2026-09-20).
  *
  * Read-only. Prints the ranked table and writes the ids (one per line) to --ids-file for runTick.ts.
  *   bun run scripts/acquire/targets.ts --tier probe --limit 90 --ids-file /tmp/probesB.txt
@@ -68,8 +68,10 @@ const VENUE_POOL = `
     (select count(*) from weddings w where w.venue_id=a.id)::int nw
   from accounts a join v_account_role r on r.account_id=a.id and r.role='venue'
   join account_locations al on al.account_id=a.id and al.in_metro
-  where coalesce(a.is_private,false)=false
-    and coalesce(a.venue_type,'') not in ('hotel','house_of_worship','restaurant')`;
+  where coalesce(a.is_private,false)=false`;
+  // 2026-09-20: hotels / restaurants / houses of worship are NOT excluded any more -- the 41 at 1-5
+  // weddings the plan had skipped yielded 49 weddings from 984 posts (0.05/post, 7 venues into 6+).
+  // venueLookupPrior still ranks them lower; the budget cap, not a type filter, decides the cut.
 
 const ALIAS_POOL = `
   select a.id, a.username::text username, 'alias sibling of '||c.username::text why, a.followers, a.venue_type,
