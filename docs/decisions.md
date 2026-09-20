@@ -164,6 +164,15 @@ Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-
 - *Remainder tiers* in `targets.ts`: `probe6` (6-15-bucket metro venues never tagged-crawled, 55) and
   `discovered` (hop-1 `crawl_frontier` pending, venue role + metro, 39, of which 22 are not already in `probe6`);
   `deepen` = 8 measured-promising venues to 100. Estimated ≈ $6.3 of the ≈ $8.8 left before the $28.50 stop.
+- *Remainder ticks run (afternoon, first live use of `extract-v1.3`):* **probe6** 55 venues, $3.00, 1,149 new posts →
+  **180 weddings** (0.14 w/post; 15 venues 6-15 → 16-49; 47 promising / 5 dead); **discovered** 22 venues, $1.16, 398 new
+  → **84** (0.17 w/post; 17 promising / 3 dead); **deepen** 8 venues to 100, $1.84, 439 new of 797 fetched (45% already
+  held: the actor re-pays the first 25, plus overlap with staging) → **105** (0.13 per fetched, 0.24 per new post,
+  $0.018 per wedding — the cheapest tick; next time `--only-newer-than` the last crawl). Reconciliation matched 0
+  existing weddings across the three; HUMAN_STYLED 0; 48 candidates to the human queue. **Month 1 closes at
+  weddings 5,972 → 6,939 (969 created by the loop), Apify $25.69 of $29, OpenRouter ≈ $8**; coverage 0: 165 · 1-5: 270 ·
+  6-15: 93 · 16-49: 78 · 50+: 34. Wedding 725 (@thelogantheatre, a "vintage cinema shoot we produced" from 2026-08-20)
+  retired on the user's word (`acq-20260920-styled-retire-1`); credited vendor pitches stay a human call (user's call).
 
 ---
 

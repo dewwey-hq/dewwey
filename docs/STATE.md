@@ -93,7 +93,7 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
 2. **Push** (`git push origin main`) — the classifier blocks Claude from pushing.
 3. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
 
-## Second mission (parallel window) — D061 Acquisition loop: month-1 ticks DONE; reader v1.3 shipped (2026-09-20 morning)
+## Second mission (parallel window) — D061 Acquisition loop: month 1 COMPLETE incl. remainder ticks; reader v1.3 shipped (2026-09-20)
 
 Decision + narrative: `docs/decisions.md` D061 and its addenda. Plan of record
 `~/.claude/plans/on-1-what-do-joyful-church.md` (rev 2). README `docs/engineering/acquisition-loop/README.md`.
@@ -117,10 +117,16 @@ re-anchored, not added; 1 retired after spot-check). Spend: **Apify $19.48** of 
 | Probes B (zero-wedding venues) | 60 | 2.87 | 1,201 | 18 | 0.015 | 14 | 0 (3 venues 0 → 1; 39 dead) |
 | Vendor tick (tier-A planners/florists) | 22 | 1.27 | 425 | 103 | 0.188 | 5 | 0 |
 | **Probe6** (6-15 venues, own feed never crawled; 2026-09-20 afternoon, reader v1.3) | 55 | 3.00 | 1,149 | **180** | 0.138 | 1 | 1 (15 venues 6-15 → 16-49) |
+| Discovered (hop-1 frontier venues, metro + venue role) | 22 | 1.16 | 398 | 84 | 0.168 | 0 | 0 |
+| Deepen calibration (8 proven venues 25 → 100; 45% already had) | 8 | 1.84 | 439 | 105 | 0.132 (0.24 per NEW post) | 0 | 0 (1 venue → 50+) |
 
 Coverage (metro venue accounts, morning → end of night): 0: 170 → **165** · 1-5: 302 → **270** · 6-15: 78 → **108**
-· 16-49: 64 → 64 · 50+: 27 → **33**. After probe6 (2026-09-20 afternoon): 6-15 **93**, 16-49 **79**, others unchanged;
-weddings **6,751** (probe6: 47 of 55 targets promising, 5 dead, 23 candidates to the human queue, HUMAN_STYLED 0).
+· 16-49: 64 → 64 · 50+: 27 → **33**. **After the remainder ticks (2026-09-20 17:50 UTC): 0: 165 · 1-5: 270 · 6-15: 93 ·
+16-49: 78 · 50+: 34.** Weddings **6,939** (day: 5,972 → 6,939; the loop created 969, 1 retired after spot-check, 1 pre-loop
+styled wedding 725 retired). **Apify $25.69 of $29** (stop $28.50; ≈ $2.8 left), OpenRouter ≈ $8. Remainder ticks: probe6
+47/55 promising (5 dead), discovered 17/22 (3 dead), deepen 8/8; HUMAN_STYLED 0 on all three; 48 candidates to the queue.
+Deepen lesson: 100 posts at a proven venue = $0.018 per wedding (best of any tick) but 45% of results were already held
+(the actor re-pays the first 25 + overlap with staging) — the next deepening should use `--only-newer-than` the last crawl.
 
 **Gates:** Gate 0 PASS (pilot), pilot spot-check **95.7% PASS**, Gate 1a PASS (canary 0.076), Gate 1 PASS
 (probes A 0.072 vs 0.03). **Probes A spot-check DONE (user, 97 posts): model THIS_VENUE precision 65/67 =
@@ -134,20 +140,21 @@ agreed posts kept; four rounds, ≈ $1.05 (`tmp_analysis/d061_reader_v13_{evalse
 --eval-urls-file`). Alias-family fold in `decideVerdictWrite` + `venue_same_family_handles` in the prompt.
 **Styled-shoot auto-create gate** live (`HUMAN_STYLED` in the creation summary; probes A dry-run 0). Remainder
 tiers `probe6` (55) / `discovered` (22 unique after `probe6`) / `deepen` (8 → 100 posts) added to `targets.ts`, ≈ $6.3 of ≈ $8.8 left.
-**Nothing in flight** unless the remainder ticks below are running (check `acq_logs/` and `ops.crawl_runs`).
+**Remainder ticks all DONE (2026-09-20 17:50 UTC). Nothing in flight.** Wedding 725 (@thelogantheatre styled shoot,
+pre-loop) retired on the user's word, batch `acq-20260920-styled-retire-1`; credited vendor pitches stay in the human queue
+(user's call).
 
-**Blocked on the user:** (1) **wedding 725 at @thelogantheatre** (created 2026-08-20, before the loop) is a
-"vintage cinema shoot we produced" — a D049 LIKELY styled post that is a wedding row; retire it? (2) the 10
-rubric conflicts from the eval (bridal shower, gender reveal, engagement shoot, vendor pitches labeled THIS_VENUE
-by you): the reader keeps rejecting non-wedding events and sends credited pitches to your queue — say if you
-want them auto-accepted instead. (Spot-check follow-up: wedding 12804 Chicago Forte promo retired via
+**Blocked on the user:** nothing. Optional: the human queue (`/label/candidates?batch=acq-20260920-probe6` 50,
+`…=acq-20260919-probesA` 90, `…=acq-20260920-vendor` 71, discovered/deepen ≈ 25) — say when done and I create from your
+verdicts; push (commits local: 5eec47b reader v1.3 + this close-out). (Spot-check follow-up: wedding 12804 Chicago Forte promo retired via
 `retireNonWeddingPosts.ts --from-audit`, batch `acq-20260919-probesA-spotcheck-retire-1`; 12866 Sable Creek kept,
 verdict flipped under `jeremy`, `tmp_analysis/d061_spotcheck2_keep_one.sql`; 5 more probes A weddings created
 from the user's confirmations. Weddings **6,450**.)
 
-**Next (Claude):** remainder ticks, one at a time: `acq-20260920-probe6` (tagged × 25) → chain → create →
-measure; `acq-20260920-discovered` (profile the 1 unprofiled first) → same; `acq-20260920-deepen` (8 venues,
-`--results-limit 100`, re-pays their first 25) → same; coverage table; STATE. Then: typo-handle alias rule;
+**Next (Claude):** month 2 planning once the Apify cycle resets (10-16) or credit is added: monthly recency at
+promising targets with `--only-newer-than`, alias-family feeds, deepen the 47 + 17 newly promising venues (measured
+priors in `ops.crawl_targets`); the 1-5 bucket (270) is what's left of the coverage problem and its own feeds are
+now crawled — the next lever there is vendor tagged feeds at those venues' credited vendors. Then: typo-handle alias rule;
 `event_context` credit for side-event posts at creation; re-pin the two pre-D061 `graphStrengthening`
 invariants (D059 owner); the user's 164-post human queue (`/label/candidates?batch=…`).
 

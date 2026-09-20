@@ -1,0 +1,14 @@
+{
+  "batch_id": "acq-20260920-styled-retire-1",
+  "generated_at": "2026-09-20T17:10:00.000Z",
+  "note": "D061 styled-shoot gate follow-up: found while sizing the gate; user approved retiring on the recommendation (2026-09-20)",
+  "weddings": [
+    {
+      "wedding_id": 725,
+      "decision": "retire",
+      "reason": "post_styled_shoot_signal LIKELY; caption: 'Throwback to this vintage cinema shoot we produced at the Logan Theater' -- a styled shoot that became a wedding row on 2026-08-20, before the D049 signal existed",
+      "venue": "thelogantheatre",
+      "post_urls": ["https://www.instagram.com/p/DaBT89ND2AL/"]
+    }
+  ]
+}
