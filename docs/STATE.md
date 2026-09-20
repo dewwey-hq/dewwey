@@ -154,8 +154,10 @@ runs `chain.sh` for each after its DONE line — **creation is NOT run for these
 passes** (chain.sh only dry-runs creation). Then: `createWeddings… --acquisition-batch <b>` ×2 pools,
 `refreshAccountRoleTagsFromWeddings.ts --apply`, `measure.ts --batch-id <b> --apply`, funnel.
 
-**Blocked on the user:** nothing (spot-check done). Two model-created probes A weddings the user labeled
-NOT_WEDDING are listed in chat for keep/retire.
+**Blocked on the user:** nothing. (Spot-check follow-up: wedding 12804 Chicago Forte promo retired via
+`retireNonWeddingPosts.ts --from-audit`, batch `acq-20260919-probesA-spotcheck-retire-1`; 12866 Sable Creek kept,
+verdict flipped under `jeremy`, `tmp_analysis/d061_spotcheck2_keep_one.sql`; 5 more probes A weddings created
+from the user's confirmations. Weddings **6,450**.)
 
 **Next (Claude):** after the spot-check: create probes B + vendor batches, measure, coverage table; then the
 deepen calibration (8 measured-promising venues, ≈$0.5) and alias-family feeds with the remaining ≈$8;

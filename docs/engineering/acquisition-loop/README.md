@@ -326,3 +326,4 @@ profile scrape's `external_url`; its frozen discovery counts move when profiles 
   a known venue handle is ≤ 2 (or that is a known handle plus/minus a `weddings`/`events` suffix) →
   alias candidate for human confirm. Sizing query: bare accounts (no profile after tick 2) that carry a
   venue-role credit. Fixed by hand this time (alias round 8).
+- Probes A spot-check (2026-09-20, 97 posts): the same two reader miss classes again -- 7 NOT_WEDDING on real recaps, 8 OTHER_VENUE inversions (two venues credited / side-event venue) -- now 13 + 10 examples across the two checks for `extract-v1.3`; precision on THIS_VENUE 97%, so the misses are recall, not safety.
