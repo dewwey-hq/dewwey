@@ -265,6 +265,18 @@ describe("PRICING_TOOL", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildDocument", () => {
+  it("caps any single page at a third of the budget so one giant page cannot starve the rest", () => {
+    const pages = [
+      { url: "https://x.com/", text: "home ".repeat(200), score: 100, kind: "html" as const },
+      { url: "https://x.com/giant", text: "junk ".repeat(200_000), score: 6, kind: "html" as const },
+      { url: "https://x.com/faq", text: "faq ".repeat(300), score: 8, kind: "html" as const },
+      { url: "https://x.com/pricing", text: "price ".repeat(300), score: 5, kind: "html" as const },
+    ];
+    const doc = buildDocument(pages, 120_000);
+    expect(doc.pagesUsed).toEqual(["https://x.com/", "https://x.com/faq", "https://x.com/giant", "https://x.com/pricing"]);
+    expect(doc.text).toContain("[page truncated at 40000 chars of 1000000]");
+    expect(doc.charsUsed).toBeLessThanOrEqual(120_000);
+  });
   const pageA: DocPage = { url: "https://a.com/wedding", text: "A".repeat(100), score: 10, kind: "html" };
   const pageB: DocPage = { url: "https://b.com/pricing", text: "B".repeat(100), score: 5, kind: "html" };
   const pageC: DocPage = { url: "https://c.com/faq", text: "C".repeat(100), score: 5, kind: "html" };

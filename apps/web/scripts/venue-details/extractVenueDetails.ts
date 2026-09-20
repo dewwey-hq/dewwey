@@ -216,20 +216,6 @@ async function loadFromManifest(accountId: number): Promise<LoadedPages | null> 
   return { pages, snapshotIds: [], snapshotShas, assetCandidates };
 }
 
-async function resolveSnapshotIds(pool: Pool, accountId: number, entries: { url: string; sha256: string }[]): Promise<number[]> {
-  if (entries.length === 0) return [];
-  // Parallel unnest (zips the two arrays element-wise, unlike a cross-joined `unnest(a), unnest(b)`
-  // in the FROM clause) so (url, sha256) pairs are matched, not every url against every sha256.
-  const { rows } = await pool.query<{ id: string }>(
-    `select s.id::text as id
-     from venue_source_snapshots s
-     join unnest($2::text[], $3::text[]) as t(url, sha256) on t.url = s.url and t.sha256 = s.sha256
-     where s.account_id = $1`,
-    [accountId, entries.map((e) => e.url), entries.map((e) => e.sha256)]
-  );
-  return rows.map((r) => Number(r.id));
-}
-
 async function loadFromDb(pool: Pool, accountId: number): Promise<LoadedPages> {
   const { rows } = await pool.query<{ id: string; url: string; sha256: string; kind: "html" | "pdf"; score: number | null }>(
     `select distinct on (s.url) s.id::text as id, s.url, s.sha256, s.kind, f.score
@@ -244,6 +230,13 @@ async function loadFromDb(pool: Pool, accountId: number): Promise<LoadedPages> {
   const assetCandidates: AssetCandidate[] = [];
   const snapshotShas: string[] = [];
   const snapshotIds: number[] = [];
+  // PDF anchor titles live only in the crawl manifest (the snapshot row has none); use them when present.
+  const titleBySha = new Map<string, string | null>();
+  try {
+    for (const e of (await readManifest(accountId)).entries) titleBySha.set(e.sha256, e.title ?? null);
+  } catch {
+    /* no manifest: titles fall back to the file name */
+  }
 
   for (const r of rows) {
     let text: string;
@@ -259,7 +252,7 @@ async function loadFromDb(pool: Pool, accountId: number): Promise<LoadedPages> {
     }
     snapshotIds.push(Number(r.id));
     snapshotShas.push(r.sha256);
-    const candidate = assetCandidateFor({ url: r.url, kind: r.kind, title: null });
+    const candidate = assetCandidateFor({ url: r.url, kind: r.kind, title: titleBySha.get(r.sha256) ?? null });
     if (candidate) assetCandidates.push(candidate);
     pages.push({ url: r.url, text, score: pageScore({ score: r.score, depth: 0 }), kind: r.kind });
   }
@@ -267,18 +260,22 @@ async function loadFromDb(pool: Pool, accountId: number): Promise<LoadedPages> {
   return { pages, snapshotIds, snapshotShas, assetCandidates };
 }
 
-/** Local cache manifest first (`crawl/cache.ts`), else `venue_source_snapshots` rows + R2 text. */
+/** With a DB: `venue_source_snapshots` is the source of truth (latest snapshot per URL, text from
+ * the local cache by sha else R2), so the run's `snapshot_ids`/`input_hash` are EXACTLY the pages
+ * the model reads and the validator later loads. Tick c1 (2026-09-19) showed why the manifest
+ * cannot lead when a DB exists: it keys redirected PDFs by their final (squarespace) URL and
+ * keeps stale shas from earlier dry-run crawls, so `resolveSnapshotIds` silently dropped
+ * Greenhouse's six PDFs and two Geraghty pages from the run -- the model quoted them, validation
+ * could not see them, and two critical facts were demoted as "ungrounded". The manifest is only
+ * the offline path (`--cache-only` / no DB). */
 async function loadPages(pool: Pool | null, accountId: number, opts: { cacheOnly: boolean }): Promise<LoadedPages> {
-  const fromManifest = await loadFromManifest(accountId);
-  if (fromManifest) {
-    if (pool && !opts.cacheOnly) {
-      const manifest = await readManifest(accountId);
-      fromManifest.snapshotIds = await resolveSnapshotIds(pool, accountId, manifest.entries.map((e) => ({ url: e.finalUrl ?? e.url, sha256: e.sha256 })));
-    }
-    return fromManifest;
+  if (pool && !opts.cacheOnly) {
+    const fromDb = await loadFromDb(pool, accountId);
+    if (fromDb.pages.length > 0) return fromDb;
   }
-  if (opts.cacheOnly || !pool) return { pages: [], snapshotIds: [], snapshotShas: [], assetCandidates: [] };
-  return loadFromDb(pool, accountId);
+  const fromManifest = await loadFromManifest(accountId);
+  if (fromManifest) return fromManifest;
+  return { pages: [], snapshotIds: [], snapshotShas: [], assetCandidates: [] };
 }
 
 // ---------------------------------------------------------------------------

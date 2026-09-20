@@ -13,7 +13,11 @@
 
 import type { SpineTier, VenueDetailsV3 } from "../../lib/venueDetails/types";
 
-export const VENUE_DETAILS_PROMPT_VERSION = "venue-details-v3.0";
+// v3.1 (2026-09-19, tick c2): same tool schemas and rules as v3.0; the DOCUMENT changed -- the
+// extractor now reads the DB snapshot set (not the cache manifest) and `buildDocument` caps any
+// single page at max(40k chars, a third of the budget). Bumped so c1 (v3.0) and c2 runs never
+// share an input_hash and the scorer can filter by `--prompt-version`.
+export const VENUE_DETAILS_PROMPT_VERSION = "venue-details-v3.1";
 
 // ---------------------------------------------------------------------------
 // Raw tool-call output shapes (pre-validation; SPINE_TOOL / PRICING_TOOL args)

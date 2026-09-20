@@ -18,7 +18,7 @@ import { GOLDEN_ACCOUNT_IDS, GOLDEN_SLUGS, getGolden, type GoldenSlug } from "..
 import { criticalFieldPaths } from "../../lib/venueDetails/tiers";
 import type { VenueDetailsV3 } from "../../lib/venueDetails/types";
 import { DEFAULT_PROMPT_VERSION } from "./contract";
-import { scoreVenue, type VenueScoreResult } from "./score";
+import { scoreVenue, type VenueScoreResult, type InventoryKindScore } from "./score";
 import { MUST_NOT_ASSERTIONS } from "./mustnot/assertions";
 import { runMustNot, type MustNotResult } from "./mustnot/check";
 import { parseCsvRows } from "./csv";
@@ -97,6 +97,29 @@ function printTierRow(label: string, m: number, t: number, acc: number, gate: nu
   console.log(`    ${label.padEnd(10)} ${m}/${t}  (${(acc * 100).toFixed(1)}%, gate >= ${(gate * 100).toFixed(0)}%)  ${pass ? "PASS" : "FAIL"}`);
 }
 
+function printInventoryKindRow(label: string, k: InventoryKindScore) {
+  if (k.golden_items === 0 && k.extracted_items === 0) return; // nothing to report for this kind
+  console.log(
+    `      ${label.padEnd(16)} recall=${(k.recall * 100).toFixed(0)}% (${k.found}/${k.golden_items})  precision=${(k.precision * 100).toFixed(0)}% (${k.matched}/${k.extracted_items})`
+  );
+}
+
+function printExclusions(excluded: VenueScoreResult["excluded"]) {
+  if (excluded.total === 0) {
+    console.log(`    excluded    none -- every in-scope golden fact was measured`);
+    return;
+  }
+  const parts: string[] = [];
+  if (excluded.source_not_crawled.total > 0) {
+    const urlList = excluded.source_not_crawled.by_url.map((u) => `${u.url} x${u.count}`).join(", ");
+    parts.push(`${excluded.source_not_crawled.total} source_not_crawled (${urlList})`);
+  }
+  if (excluded.human_only > 0) parts.push(`${excluded.human_only} human_only`);
+  if (excluded.no_text_layer > 0) parts.push(`${excluded.no_text_layer} no_text_layer`);
+  if (excluded.other > 0) parts.push(`${excluded.other} other (untagged fields)`);
+  console.log(`    Excluded from scoring: ${parts.join(", ")}`);
+}
+
 async function runGoldenScoring(args: Args) {
   const slugs = args.slug ? [args.slug] : GOLDEN_SLUGS;
   const results: { slug: GoldenSlug; result: VenueScoreResult | null; note: string | null }[] = [];
@@ -144,22 +167,35 @@ async function runGoldenScoring(args: Args) {
       continue;
     }
     printTierRow("critical", result.tiers.critical.matches, result.tiers.critical.total, result.tiers.critical.accuracy, 0.95, result.gates.critical);
-    printTierRow("important", result.tiers.important.matches, result.tiers.important.total, result.tiers.important.accuracy, 0.85, result.gates.important);
+    printTierRow("important_core", result.important_core.matches, result.important_core.total, result.important_core.accuracy, 0.85, result.gates.important);
     printTierRow("secondary", result.tiers.secondary.matches, result.tiers.secondary.total, result.tiers.secondary.accuracy, 0.7, result.gates.secondary);
+    console.log(
+      `    (deprecated) important (old, spine-only)  ${result.tiers.important.matches}/${result.tiers.important.total}  (${(result.tiers.important.accuracy * 100).toFixed(1)}%) -- superseded by important_core above`
+    );
     console.log(
       `    headline    golden=${result.capacities.goldenHeadline ?? "null"} candidate=${result.capacities.candidateHeadline ?? "null"}  ${result.gates.headlineExact ? "EXACT" : "MISMATCH"}`
     );
     console.log(`    capacities  ${result.capacities.matches}/${result.capacities.total} exact-max matches`);
     console.log(`    spaces      recall=${(result.spaces.recall * 100).toFixed(0)}% precision=${(result.spaces.precision * 100).toFixed(0)}% (${result.spaces.matchedCount}/${result.spaces.goldenCount})`);
-    console.log(`    add-ons     recall=${(result.addOns.recall * 100).toFixed(0)}% precision=${(result.addOns.precision * 100).toFixed(0)}% (${result.addOns.matchedCount}/${result.addOns.goldenCount})`);
     console.log(`    pricing     ${result.pricingScalars.matches}/${result.pricingScalars.total} scalar matches`);
+    console.log(
+      `    inventory   recall=${(result.inventory.recall * 100).toFixed(0)}% (${result.inventory.found}/${result.inventory.golden_items})  precision=${(result.inventory.precision * 100).toFixed(0)}% (${result.inventory.matched}/${result.inventory.extracted_items})  (informational, not gated)`
+    );
+    printInventoryKindRow("add_ons", result.inventory.by_kind.add_ons);
+    printInventoryKindRow("inclusions", result.inventory.by_kind.inclusions);
+    printInventoryKindRow("faqs", result.inventory.by_kind.faqs);
+    printInventoryKindRow("resources", result.inventory.by_kind.resources);
+    printInventoryKindRow("vendor_entries", result.inventory.by_kind.vendor_entries);
+    printInventoryKindRow("add_on_categories", result.inventory.by_kind.add_on_categories);
+    printInventoryKindRow("press_features", result.inventory.by_kind.press_features);
     console.log(
       `    cost delta  ${result.costDelta.pctDelta == null ? "n/a (no_path)" : `${(result.costDelta.pctDelta * 100).toFixed(2)}%`} (gate <= 2%)  ${result.gates.costDelta ? "PASS" : "FAIL"}`
     );
     console.log(
       `    crit. grounding  ${result.criticalGrounding.withQuote}/${result.criticalGrounding.statedCriticalNumerics}  (${(result.criticalGrounding.rate * 100).toFixed(1)}%, gate = 100%)  ${result.gates.criticalGrounding ? "PASS" : "FAIL"}`
     );
-    console.log(`    OVERALL: ${result.gates.overall ? "PASS" : "FAIL"}\n`);
+    printExclusions(result.excluded);
+    console.log(`    OVERALL: ${result.gates.overall ? "PASS" : "FAIL"}  (critical >= 95%, important_core >= 85%)\n`);
   }
 
   const scored = results.filter((r) => r.result != null).map((r) => r.result as VenueScoreResult);

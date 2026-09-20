@@ -797,8 +797,21 @@ const PAGE_SEPARATOR = "\n\n";
  * first, never cutting a page's text mid-stream unless exactly one page remains and it alone
  * exceeds maxChars. Deterministic and stable under input reordering (the explicit sort is the
  * only thing that determines order). */
+/** No single page may take more than this share of the document. Tick c1 (2026-09-19):
+ * Greenhouse's `/floorplans` page is 595k chars of embedded-PDF text; at score 6 it consumed the
+ * whole 120k budget and starved nine lower-scored pages (the model saw 6 pages, not 16). A page
+ * over the cap is cut at the cap with a marker, so one junk page costs at most a third of the
+ * budget. Real content that long (a 40k-char service agreement) still fits whole. */
+export const MAX_PAGE_SHARE = 1 / 3;
+/** Floor for the per-page cap so tiny test budgets never truncate ordinary pages. */
+export const MIN_PAGE_CAP = 40_000;
+
 export function buildDocument(pages: DocPage[], maxChars: number, assetCandidates: AssetCandidate[] = []): BuiltDocument {
-  const sorted = [...pages].sort((a, b) => (b.score !== a.score ? b.score - a.score : a.url.localeCompare(b.url)));
+  const perPageCap = Math.max(MIN_PAGE_CAP, Math.floor(maxChars * MAX_PAGE_SHARE));
+  const capped: DocPage[] = pages.map((p) =>
+    p.text.length > perPageCap ? { ...p, text: `${p.text.slice(0, perPageCap)}\n[page truncated at ${perPageCap} chars of ${p.text.length}]` } : p,
+  );
+  const sorted = [...capped].sort((a, b) => (b.score !== a.score ? b.score - a.score : a.url.localeCompare(b.url)));
   const kept = [...sorted];
 
   const totalLen = (list: DocPage[]) => list.map(formatPage).join(PAGE_SEPARATOR).length;

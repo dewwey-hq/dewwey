@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getGolden } from "../../lib/venueDetails/golden";
 import { criticalFieldPaths } from "../../lib/venueDetails/tiers";
+import type { AddOn } from "../../lib/venueDetails/types";
 import { emptyRates, fact, makeVenue, spineWith } from "../../lib/venueDetails/testHelpers";
 import { scoreCapacities, scorePricingScalars, scoreSpaces, scoreSpineTiers, scoreVenue } from "./score";
 
@@ -149,5 +150,149 @@ describe("capacity headline exact / mismatch", () => {
     const result = scoreCapacities(candidate, golden);
     expect(result.headlineExact).toBe(false);
     expect(result.matches).toBeLessThan(result.total);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// important_core / inventory split (the important-tier line-item fix)
+// ---------------------------------------------------------------------------
+
+function makeAddOn(i: number, overrides: Partial<AddOn> = {}): AddOn {
+  return {
+    id: `add-${i}`,
+    name: `Add-on ${i}`,
+    category: "extras",
+    variant: null,
+    group: "other",
+    price: i * 10,
+    price_max: null,
+    unit: "flat",
+    per_space_prices: null,
+    applies_to: null,
+    path_ids: null,
+    condition: null,
+    priceable: true,
+    tax_pct_override: null,
+    min_guests: null,
+    as_stated_price: null,
+    note: null,
+    quote: "quote",
+    source_url: "https://example.com",
+    snapshot_id: null,
+    ...overrides,
+  };
+}
+
+function importantCoreFixture() {
+  const addOns = Array.from({ length: 10 }, (_, i) => makeAddOn(i));
+  const addOnEval = Object.fromEntries(addOns.map((a) => [`/pricing/add_ons/${a.id}`, "extractor" as const]));
+  const golden = makeVenue({
+    spine: spineWith({
+      event_insurance: fact("required"),
+      day_of_coordinator: fact("included"),
+      security: fact("required_hire"),
+    }),
+    pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: addOns, required_third_party: [], notes: [] },
+    sources: { snapshot_ids: [], pages: ["https://example.com"], crawled_at: null },
+    eval: {
+      "/spine/event_insurance": "extractor",
+      "/spine/day_of_coordinator": "extractor",
+      "/spine/security": "extractor",
+      ...addOnEval,
+    },
+  });
+  return { golden, addOns };
+}
+
+describe("important_core vs inventory: a wrong spine field and missing add-ons hit different numbers", () => {
+  it("a wrong important-tier spine field drops important_core but leaves inventory alone", () => {
+    const { golden, addOns } = importantCoreFixture();
+    const candidate = makeVenue({
+      ...golden,
+      spine: spineWith({
+        event_insurance: fact("not_required"), // wrong -- golden says "required"
+        day_of_coordinator: fact("included"),
+        security: fact("required_hire"),
+      }),
+      pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: addOns, required_third_party: [], notes: [] },
+      sources: { snapshot_ids: [], pages: ["https://example.com"], crawled_at: null },
+    });
+
+    const result = scoreVenue(candidate, golden, []);
+    expect(result.important_core.total).toBe(3);
+    expect(result.important_core.matches).toBe(2);
+    expect(result.important_core.accuracy).toBeCloseTo(2 / 3);
+    expect(result.important_core.misses).toContain("/spine/event_insurance");
+
+    // Inventory (all 10 add-ons present, correct) is untouched by the spine miss.
+    expect(result.inventory.by_kind.add_ons.recall).toBe(1);
+    expect(result.inventory.by_kind.add_ons.precision).toBe(1);
+  });
+
+  it("missing add-ons only lower inventory recall, not important_core", () => {
+    const { golden, addOns } = importantCoreFixture();
+    const candidate = makeVenue({
+      ...golden,
+      spine: spineWith({
+        event_insurance: fact("required"),
+        day_of_coordinator: fact("included"),
+        security: fact("required_hire"),
+      }),
+      // Only 7 of the golden's 10 add-ons survive extraction.
+      pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: addOns.slice(0, 7), required_third_party: [], notes: [] },
+      sources: { snapshot_ids: [], pages: ["https://example.com"], crawled_at: null },
+    });
+
+    const result = scoreVenue(candidate, golden, []);
+    expect(result.important_core.total).toBe(3);
+    expect(result.important_core.matches).toBe(3);
+    expect(result.important_core.accuracy).toBe(1);
+
+    expect(result.inventory.by_kind.add_ons.golden_items).toBe(10);
+    expect(result.inventory.by_kind.add_ons.found).toBe(7);
+    expect(result.inventory.by_kind.add_ons.recall).toBeCloseTo(0.7);
+  });
+
+  it("tiers.important (deprecated) still equals the old spine-only computation", () => {
+    const { golden, addOns } = importantCoreFixture();
+    const candidate = makeVenue({
+      ...golden,
+      spine: spineWith({
+        event_insurance: fact("not_required"),
+        day_of_coordinator: fact("included"),
+        security: fact("required_hire"),
+      }),
+      pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: addOns.slice(0, 4), required_third_party: [], notes: [] },
+      sources: { snapshot_ids: [], pages: ["https://example.com"], crawled_at: null },
+    });
+
+    const result = scoreVenue(candidate, golden, []);
+    const standalone = scoreSpineTiers(candidate, golden).important;
+    expect(result.tiers.important).toEqual(standalone);
+    // The old number is spine-only -- it never sees the add-on losses that important_core/inventory do.
+    expect(result.tiers.important.total).toBe(3);
+  });
+});
+
+describe("excluded: a fact whose source_url was never crawled is accounted for, not silently dropped", () => {
+  it("lands in source_not_crawled with the url counted", () => {
+    const hiddenAddOn = makeAddOn(0, { id: "hidden", name: "Hidden add-on", source_url: "https://example.com/hidden.pdf" });
+    const golden = makeVenue({
+      pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: [hiddenAddOn], required_third_party: [], notes: [] },
+      sources: { snapshot_ids: [], pages: ["https://example.com/hidden.pdf"], crawled_at: null },
+      eval: { "/pricing/add_ons/hidden": "extractor" },
+    });
+    // The candidate's own crawl never reached the PDF -- it's absent from `sources.pages`.
+    const candidate = makeVenue({
+      pricing: { archetype: null, paths: [], rates: emptyRates(), add_ons: [], required_third_party: [], notes: [] },
+      sources: { snapshot_ids: [], pages: ["https://example.com"], crawled_at: null },
+    });
+
+    const result = scoreVenue(candidate, golden, []);
+    expect(result.excluded.source_not_crawled.total).toBe(1);
+    expect(result.excluded.source_not_crawled.by_url).toEqual([{ url: "https://example.com/hidden.pdf", count: 1 }]);
+    expect(result.excluded.total).toBeGreaterThanOrEqual(1);
+    // It never silently entered any denominator.
+    expect(result.inventory.by_kind.add_ons.golden_items).toBe(0);
   });
 });
