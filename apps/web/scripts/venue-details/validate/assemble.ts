@@ -435,8 +435,12 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   // field to [] with ONE `malformed_array` issue naming the field, before anything iterates.
   issues.push(...coerceRawArrays(input.spineRaw, input.pricingRaw));
 
-  // Enum-invalid is a hard fail regardless of grounding -- checked up front.
-  issues.push(...checkEnums(input.spineRaw, input.pricingRaw));
+  // Enum-invalid is a hard fail regardless of grounding -- checked up front. An invalid spine enum
+  // (a catering value in vendor_list_policy, a rental_charge_type value in pricing_archetype --
+  // tick c6) is DEMOTED below: unknown beats wrong, and the repair request re-asks for it.
+  const enumIssues = checkEnums(input.spineRaw, input.pricingRaw);
+  issues.push(...enumIssues);
+  const invalidSpineKeys = new Set(enumIssues.filter((i) => i.code === "enum_invalid" && i.path.startsWith("/spine/")).map((i) => i.path.slice("/spine/".length)));
 
   // --- spine -----------------------------------------------------------------
   const spine: Record<string, Tri<unknown>> = {};
@@ -457,7 +461,7 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
       spineStatedRaw++;
       const g = ground(field.quote ?? "", field.source_url ?? "", pagesMap, stats);
       if (g.keep) {
-        spine[key] = { status: "stated", value: field.value, quote: field.quote ?? "", source_url: g.sourceUrl, snapshot_id: g.snapshotId };
+        spine[key] = invalidSpineKeys.has(key) ? NOT_STATED : { status: "stated", value: field.value, quote: field.quote ?? "", source_url: g.sourceUrl, snapshot_id: g.snapshotId };
         const extra = weakOrElsewhereIssue(g, `/spine/${key}`, tier);
         if (extra) issues.push(extra);
       } else {
@@ -941,9 +945,27 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   ];
 
   // (a) every page's own ASSETS lines (video/virtual_tour/floor_plan embeds and images).
-  for (const { page, assets } of pageAssetsByPage.values()) {
+  // Floor-plan images: wedding-labeled ones first; when any wedding-labeled plan exists, plans
+  // labeled for other event types are skipped; at most 8 derived floor plans (Geraghty's floor-plans
+  // page lists 15 corporate/gala layouts before its two wedding ones and hit the resource cap).
+  const OTHER_EVENT_PLAN_RE = /corporate|gala|town ?hall|conference|meeting|seminar|expo|temp\b/i;
+  const WEDDING_PLAN_RE = /wedding|ceremony|reception/i;
+  const allAssets = [...pageAssetsByPage.values()].flatMap(({ page, assets }) => assets.map((a) => ({ page, a })));
+  const anyWeddingPlan = allAssets.some(({ a }) => a.kind === "floor_plan" && WEDDING_PLAN_RE.test(`${a.label} ${a.url}`));
+  const rankedAssets = allAssets.sort((x, y) => {
+    const wx = x.a.kind === "floor_plan" && WEDDING_PLAN_RE.test(`${x.a.label} ${x.a.url}`) ? 0 : 1;
+    const wy = y.a.kind === "floor_plan" && WEDDING_PLAN_RE.test(`${y.a.label} ${y.a.url}`) ? 0 : 1;
+    return wx - wy;
+  });
+  let derivedFloorPlans = 0;
+  for (const { page, a } of rankedAssets) {
     const pageNorm = normalizeUrl(page.url);
-    for (const a of assets) {
+    {
+      if (a.kind === "floor_plan") {
+        if (anyWeddingPlan && OTHER_EVENT_PLAN_RE.test(`${a.label} ${a.url}`) && !WEDDING_PLAN_RE.test(`${a.label} ${a.url}`)) continue;
+        if (derivedFloorPlans >= 8) continue;
+        derivedFloorPlans++;
+      }
       // A `pdf` asset is typed by its anchor label (Diamond Garden's "American & Italian Menu" ->
       // menu) -- the hashed filename says nothing and the PDF's own snapshot title may be null.
       const kind: ResourceKind = a.kind === "pdf" ? (PDF_KIND_PATTERNS.find(([re]) => re.test(`${a.label} ${a.url}`))?.[1] ?? "other") : (a.kind as ResourceKind);
@@ -961,7 +983,8 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     const label = p.title || fallbackLabel;
     const hay = `${label} ${p.url}`;
     const match = PDF_KIND_PATTERNS.find(([re]) => re.test(hay));
-    const kind: ResourceKind | null = match ? match[1] : p.has_text_layer ? "other" : null;
+    const COUPLE_DOC_RE = /wedding|event|venue|rental|package|pricing|planning|reception|banquet|catering|menu|bar|tour|brochure|faq/i;
+    const kind: ResourceKind | null = match ? match[1] : p.has_text_layer && COUPLE_DOC_RE.test(hay) ? "other" : null;
     if (!kind) continue;
     const pageNorm = normalizeUrl(p.url);
     addDerivedResource({ kind, label, url: p.url, scope: "venue", sourceUrl: pageNorm, snapshotId: p.snapshot_id ?? null }, `PDF title/filename match ("${label}")`);
@@ -978,6 +1001,14 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     if (PDF_URL_RE.test(p.url)) continue;
     const match = PAGE_KIND_PATTERNS.find(([re]) => re.test(p.url));
     if (!match) continue;
+    if (match[1] === "gallery") {
+      // "Rice Gallery" / "Sue's Gallery" are museum spaces and exhibits, not photo galleries: the
+      // page must read as a photo gallery (photos/gallery of events/weddings) and not be a space.
+      const slug = p.url.replace(/\/+$/, "").split("/").pop() ?? "";
+      const isSpacePage = spaces.some((sp) => slug.toLowerCase() === sp.id.replace(/_/g, "-").toLowerCase() || slug.toLowerCase().includes(sp.name.toLowerCase().replace(/\s+/g, "-")));
+      const readsAsPhotos = (/^(gallery|photos|photo-gallery|event-gallery)$/i.test(slug) || /photo|wedding|event/i.test(`${slug} ${p.title ?? ""}`)) && !/exhibit/i.test(p.title ?? "");
+      if (isSpacePage || !readsAsPhotos) continue;
+    }
     const pageNorm = normalizeUrl(p.url);
     addDerivedResource({ kind: match[1], label: p.title || p.url, url: p.url, scope: "venue", sourceUrl: pageNorm, snapshotId: p.snapshot_id ?? null }, `page URL pattern (${match[1]})`);
   }
@@ -1122,6 +1153,33 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   // paths[]; a flat rental with none (Greenhouse: open catering) is flat_fee.
   if (stated("rental_charge_type") === "flat_plus_per_guest" && !hasPerGuestTiers && paths.some((pth) => pth.fixed_fees.length > 0)) {
     setSpine("rental_charge_type", "flat_fee", "rental_charge_no_per_guest", "No per-guest packages in paths[] -- flat_fee, not flat_plus_per_guest.");
+  }
+  // flat_fee with the venue's own per-guest packages in paths[] is flat_plus_per_guest (Diamond Garden, c6).
+  if (stated("rental_charge_type") === "flat_fee" && hasPerGuestTiers && paths.some((pth) => pth.fixed_fees.length > 0)) {
+    setSpine("rental_charge_type", "flat_plus_per_guest", "rental_charge_has_per_guest", "Flat rental AND per-guest packages in paths[] -- flat_plus_per_guest.");
+  }
+  // price_from_usd is the LOWEST published venue fee: never higher than the smallest fixed fee.
+  const allFees = paths.flatMap((pth) => pth.fixed_fees.map((fee) => fee.amount)).filter((n): n is number => typeof n === "number" && n > 0);
+  const minFee = allFees.length > 0 ? Math.min(...allFees) : null;
+  const pf = stated("price_from_usd");
+  if (minFee != null && typeof pf === "number" && pf > minFee) {
+    setSpine("price_from_usd", minFee, "price_from_min_fee", `price_from_usd ${pf} exceeds the smallest fixed fee ${minFee} -- lowered.`);
+  }
+  // pricing_archetype from the extracted cost model when the spine left it not_stated (a
+  // classification of facts we hold, not an inference about the venue).
+  const fbMinApplies = (() => { const v = stated("fb_minimum") as { applies?: boolean } | undefined; return v?.applies === true; })();
+  const hasFixedFees = paths.some((pth) => pth.fixed_fees.length > 0);
+  if (spine.pricing_archetype?.status === "not_stated" && (hasFixedFees || hasPerGuestTiers)) {
+    const isHotel = stated("venue_kind") === "hotel";
+    const derived = hasFixedFees && hasPerGuestTiers ? (isHotel ? "hotel_package" : "rental_plus_per_guest_packages")
+      : hasFixedFees && fbMinApplies ? "rental_plus_fb_minimum"
+      : hasFixedFees ? "raw_space_byo"
+      : isHotel ? "hotel_package" : "all_inclusive_per_guest";
+    const firstFee = paths.find((pth) => pth.fixed_fees.length > 0)?.fixed_fees[0] ?? null;
+    const firstTier = paths.find((pth) => pth.per_guest_tiers.length > 0)?.per_guest_tiers[0] ?? null;
+    const ev = (firstFee ?? firstTier) as { quote?: string; source_url?: string; snapshot_id?: number | null } | null;
+    spine.pricing_archetype = { status: "stated", value: derived, quote: ev?.quote ?? "", source_url: ev?.source_url ?? "", snapshot_id: ev?.snapshot_id ?? null } as Tri<unknown>;
+    issues.push({ code: "archetype_derived", path: "/spine/pricing_archetype", severity: "warning", tier: null, message: `pricing_archetype derived from the extracted cost model: ${derived}.` });
   }
   // bar: in_house_or_byo needs the venue's OWN bar packages; without any (no bar ladders, no bar
   // add-ons) a bring-your-own venue is byob. A corkage add-on makes it byo_with_corkage.

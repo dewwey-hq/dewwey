@@ -20,7 +20,8 @@ function toIssue(violation: string, scope: "spine" | "pricing"): Issue {
   const path = violation.split(":")[0]?.trim() ?? violation;
   return {
     code: "enum_invalid",
-    path: `/${scope}/${path}`,
+    // `/spine/<key>` (the raw path arrives as "spine.<key>.value"), so repairs and demotion can find it.
+    path: `/${scope}/${path.replace(/^spine\./, "").replace(/\.value$/, "")}`,
     severity: "error",
     tier: scope === "spine" ? spineTierFor(path) : null,
     message: violation,

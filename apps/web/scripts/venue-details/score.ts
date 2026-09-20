@@ -1027,7 +1027,10 @@ function scoreFaqsInventory(candidate: VenueDetailsV3, golden: VenueDetailsV3, o
 function scoreResourcesInventory(candidate: VenueDetailsV3, golden: VenueDetailsV3, options: { allFields?: boolean }, excluded?: ExcludedFact[]): InventoryKindScore {
   const inScopeGolden = scopedItems(golden, golden.resources, (r) => `/resources/${r.id}`, (r) => r.source_url, candidate.sources.pages, options, "loose", excluded);
   // Same video cited as /embed/<id> and /watch?v=<id> (or vimeo with tracking params) is one resource.
-  return toInventoryKindScore(recallPrecision(inScopeGolden, candidate.resources, (r) => normalizeUrl(canonicalVideoUrl(r.url))));
+  // Image renditions (?width=792&height=612) are the same floor plan; videos cited as embed/watch are the same video.
+  // Image renditions: framer `?width=792&height=612` params and WordPress `-960x720` size suffixes name the same file.
+  const resourceKey = (url: string) => { const v = canonicalVideoUrl(url); return normalizeUrl(/\.(jpe?g|png|webp|gif)(\?|$)/i.test(v) ? v.replace(/\?.*$/, "").replace(/-\d{2,4}x\d{2,4}(\.(jpe?g|png|webp|gif))$/i, "$1") : v); };
+  return toInventoryKindScore(recallPrecision(inScopeGolden, candidate.resources, (r) => resourceKey(r.url)));
 }
 
 function scoreVendorEntriesInventory(candidate: VenueDetailsV3, golden: VenueDetailsV3, options: { allFields?: boolean }, excluded?: ExcludedFact[]): InventoryKindScore {
