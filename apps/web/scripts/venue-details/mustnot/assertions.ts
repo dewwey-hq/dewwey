@@ -20,8 +20,9 @@ export interface MustNotFixture {
 
 // Universal assertions every one of the 15 gets (plan: "the subset the rubric's failure-mode table
 // actually implicates plus the universal ones: generic-label, duplicate, summed rooms, ADR, junk
-// vendors").
-const UNIVERSAL: MustNotAssertion[] = [
+// vendors"). Exported so `mustnot/checkUniversal.ts` can run this same six-assertion floor against
+// arbitrary fill-loop venues that have no must-not fixture of their own.
+export const UNIVERSAL: MustNotAssertion[] = [
   { kind: "no_generic_label_space" },
   { kind: "no_duplicate_space" },
   { kind: "no_summed_rooms" },

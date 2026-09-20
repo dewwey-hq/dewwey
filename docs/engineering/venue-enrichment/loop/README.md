@@ -27,8 +27,9 @@ bun run scripts/venue-details/runTick.ts --tick f1 --ids-file scripts/graph/tmp_
 bun run scripts/venue-details/runTick.ts --tick f1 --ids-file … --skip-crawl --apply-serve                 # gate green only
 ```
 Then: append the printed row to `ticks.md`, rewrite the D060 section of `docs/STATE.md` from the funnel,
-commit `vd tick f1: …`. Calibration ticks use `--golden` (+ the must-not ids via `--account-ids`) and
-`--crawl-only` for `c0`.
+commit `vd tick f1: …`. Calibration ticks pass the golden six + the resolvable must-not ids as one `--account-ids` list (the
+population flag is exactly one of `--golden` / `--account-ids` / `--ids-file`; scoring picks the golden
+slugs out of the population and resolves the must-not slate on its own) and `--crawl-only` for `c0`.
 
 Batch ids: crawl `vd-crawl-<tick>`, serve `vd-serve-<tick>`, discovery `vd-discovery-1`. Every write carries
 its batch id; `rollbackVenueDetails.ts --undo-batch vd-serve-<tick>` reverts a tick's serve.
