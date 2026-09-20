@@ -174,6 +174,25 @@ vendor 72 · probesA 46 · deepen 43 · discovered 26 · probe6 10 · probesB 9 
 patterns as the pilot (NOT_WEDDING on real recaps ×7, OTHER_VENUE inversion ×8) → `extract-v1.3` backlog.
 Probes B and the vendor tick are **released to auto-create**.
 
+**`extract-v1.3` blind spot-checks (2026-09-20 evening, user labeled 40 + 41 posts) — the first blind test of
+v1.3 on data it had not been tuned on.** probe6: agreement 35/40 = 87.5%, THIS_VENUE precision **26/28 = 92.9%**.
+deepen: agreement 34/41 = 82.9%, precision **31/34 = 91.2%**. Combined **57/62 = 91.9%**, vs probes A's 97% under
+v1.2. Both below the coded `THIS_VENUE_PASS_BAR_PCT = 95` → the reports print FAIL. **The user's call
+(2026-09-20): ~85% precision is the standard for this use case; results accepted, no revert, month 2 runs
+hands-off.** The 95 constant in `scripts/acquire/reportSpotCheck.ts` is unchanged, so reports will keep printing
+FAIL until it is moved — a decision the user has not made yet.
+Reading the 12 disagreements caption-by-caption, **6 look like labeling slips rather than model errors** (3 marked
+NOT_WEDDING that name the wedding and credit the anchored venue — `DZVIwxJuoeC` Ivy Room, `DZp8Fd9lCZO` "Connie
+and Rajeev" at the @fieldmuseumspecialevents alias, `DdKMptwlpe3` a Venue:-credited decor showcase; 3 marked
+THIS_VENUE that are not weddings — `DVzAbTUmC4p` a St. Patrick's Day event at the Field Museum, `DIzLiC0vp5w`
+@amazingspacechicago promoting itself, `DTJV07KgOha` planner educational content). If those resolve toward the
+model, precision is 60/62 = 96.8%. The user was asked to re-look and declined to revisit; **the six stay in
+`post_venue_verdicts` as ground truth**, so a future eval built from spot-check labels (which is how the v1.3
+eval set was built) will inherit them — re-read this note before building an eval from these batches.
+Three model errors are genuine and match the known pattern: `Daq0Lo_BWb_` and `DWBxTwgFv3x` are generic vendor
+marketing / a product post auto-created at 85%, `DbWBqC7Pb_5` ("N + A big day" with a full vendor team) is a real
+recap the model rejected. Vendor marketing that uses "wedding" generically is still the top failure class → v1.4.
+
 **2026-09-20 morning (user approved items 2-4):** reader **`extract-v1.3` shipped** — 79-post eval from the two
 spot-checks: THIS_VENUE precision **52/52** (v1.2 40/41), recall **52/62** (v1.2 40/62), 0 false positives, all 40
 agreed posts kept; four rounds, ≈ $1.05 (`tmp_analysis/d061_reader_v13_{evalset,score}.sql`, `runExtract.ts

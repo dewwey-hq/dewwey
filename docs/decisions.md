@@ -173,6 +173,26 @@ Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-
   weddings 5,972 → 6,939 (969 created by the loop), Apify $25.69 of $29, OpenRouter ≈ $8**; coverage 0: 165 · 1-5: 270 ·
   6-15: 93 · 16-49: 78 · 50+: 34. Wedding 725 (@thelogantheatre, a "vintage cinema shoot we produced" from 2026-08-20)
   retired on the user's word (`acq-20260920-styled-retire-1`); credited vendor pitches stay a human call (user's call).
+- *First blind spot-check of `extract-v1.3` (2026-09-20 evening, user labeled 40 + 41 posts).* Until this point
+  v1.3 had only a retrospective 79-post eval built from the v1.2 spot-checks — no blind test, while 602 weddings
+  in five unchecked batches (probe6, discovered, deepen, vendor, probesB) had been auto-created by it. Results:
+  probe6 agreement 35/40 = 87.5%, THIS_VENUE precision **26/28 = 92.9%**; deepen agreement 34/41 = 82.9%,
+  precision **31/34 = 91.2%**; combined **57/62 = 91.9%** vs probes A's 97% under v1.2. Both FAIL the coded
+  `THIS_VENUE_PASS_BAR_PCT = 95`. **Decision (the user, 2026-09-20): ~85% precision is the right standard for
+  this use case — results accepted, nothing reverted, month 2 runs hands-off.** The 95 constant is left as-is
+  for now, so the reports keep printing FAIL; moving it is an open call.
+  Caveat recorded deliberately: reading all 12 disagreements caption-by-caption, **6 read as labeling slips, not
+  model errors** — 3 NOT_WEDDING labels on posts that name the wedding and credit the anchored venue (Ivy Room;
+  "Connie and Rajeev" at the @fieldmuseumspecialevents alias of @fieldmuseum; a Venue:-credited decor showcase),
+  and 3 THIS_VENUE labels on a St. Patrick's Day event at the Field Museum, a venue promoting itself
+  (@amazingspacechicago — the exact class D055 excludes), and planner educational content. Resolved toward the
+  model, precision would be 60/62 = 96.8%. The user declined to revisit, so those six stay as ground truth in
+  `post_venue_verdicts`; since the v1.3 eval set was itself built from spot-check labels, **any eval built from
+  these two batches inherits the six** — check them before trusting such an eval.
+  Three model errors are genuine and are all one class: generic vendor marketing using the word "wedding"
+  (a beauty vendor's "Everytime I do a wedding…", a "My Veil" product post) auto-created at 85%, plus one real
+  recall miss ("N + A big day" with a full vendor team, rejected). Vendor marketing remains the top failure
+  class for a v1.4 prompt round.
 - *Human-verdict creation pass (2026-09-20 evening, no spend).* The user labeled 93 verdicts (64 THIS_VENUE,
   28 NOT_WEDDING, 1 OTHER_VENUE) across 89 posts / 80 candidates in `probe6`, `probesA` and `vendor`. Created
   from those plus 9 older eligible-but-uncreated human candidates (`pilot`, `canary`, `canary-vendor`) through the
