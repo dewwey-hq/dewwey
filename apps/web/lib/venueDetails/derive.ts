@@ -219,8 +219,10 @@ export function headlineCapacity(d: VenueDetailsV3): HeadlineCapacity {
   };
 
   const tileFor = (tile: "seated" | "seated_dance" | "cocktail"): CapacityTile => {
+    // Tiles show wedding figures: a gala/corporate-conditioned row never fills a tile (Geraghty's
+    // "Gala - 1,000 Seated" would otherwise be the Seated tile while the headline says 300).
     const best = maxBy(
-      caps.filter((c) => c.tile === tile),
+      caps.filter((c) => c.tile === tile && !(c.condition && OTHER_EVENT_TYPE_RE.test(c.condition))),
       (c) => c.max,
     );
     return { tile, as_stated_label: best?.as_stated_label ?? null, max: best?.max ?? null };
