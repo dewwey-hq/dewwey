@@ -221,6 +221,10 @@ export function relabelCapacityLayout(layout: Layout, asStatedLabel: string, quo
     next = "theater";
   } else if (layout === "seated_dinner" && RELABEL_DANCE_RE.test(hay)) {
     next = "seated_with_dance";
+  } else if (layout === "ceremony_seated" && RELABEL_NOT_CEREMONY_ONLY_RE.test(hay)) {
+    // "Wedding - Ceremony & Reception: 300" is the reception figure the couple plans around, not a
+    // ceremony-only row (Geraghty, c5: both wedding rows had been tagged ceremony_seated).
+    next = RELABEL_DANCE_RE.test(hay) || /afterparty|party/i.test(hay) ? "seated_with_dance" : "seated_dinner";
   } else if (layout !== "ceremony_seated" && RELABEL_CEREMONY_RE.test(hay) && !RELABEL_NOT_CEREMONY_ONLY_RE.test(hay)) {
     next = "ceremony_seated";
   }
@@ -1110,31 +1114,41 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   if (stated("venue_kind") === "hotel" && stated("pricing_archetype") === "all_inclusive_per_guest" && hasPerGuestTiers) {
     setSpine("pricing_archetype", "hotel_package", "archetype_hotel_package", "venue_kind is hotel and pricing is per-person packages -- hotel_package.");
   }
+  // rental_charge_type: flat_plus_per_guest needs the venue's own per-guest packages somewhere in
+  // paths[]; a flat rental with none (Greenhouse: open catering) is flat_fee.
+  if (stated("rental_charge_type") === "flat_plus_per_guest" && !hasPerGuestTiers && paths.some((pth) => pth.fixed_fees.length > 0)) {
+    setSpine("rental_charge_type", "flat_fee", "rental_charge_no_per_guest", "No per-guest packages in paths[] -- flat_fee, not flat_plus_per_guest.");
+  }
   // bar: in_house_or_byo needs the venue's OWN bar packages; without any (no bar ladders, no bar
   // add-ons) a bring-your-own venue is byob. A corkage add-on makes it byo_with_corkage.
   const hasOwnBarPackages = foodBeverage.bar_ladders.length > 0 || addOns.some((a) => /\bbar\b|bartend|open bar|cash bar/i.test(`${a.name} ${a.category}`) && a.price != null);
-  const hasCorkageAddOn = addOns.some((a) => /corkage/i.test(`${a.name} ${a.category} ${a.note ?? ""}`));
-  if (stated("bar") === "in_house_or_byo" && hasCorkageAddOn) {
-    setSpine("bar", "byo_with_corkage", "bar_corkage_add_on", "A corkage add-on exists -- byo_with_corkage, not in_house_or_byo.");
+  const fbText = [foodBeverage.caption?.value, foodBeverage.bar_note?.value, foodBeverage.food_note?.value, ...foodBeverage.notes.map((n) => n.value)].filter(Boolean).join(" ");
+  // Corkage evidence: a priced corkage add-on is decisive; a mention in the F&B notes or pages
+  // counts only when it is about the couple's alcohol, not nonprofit/donated alcohol (Geraghty:
+  // "charitable donations of alcohol for nonprofit organizations… corkage fee").
+  const NONPROFIT_RE = /501\s*\(?c\)?|non-?profit|charitable|donat/i;
+  const corkageMentions: string[] = [];
+  for (const pg of input.pages) {
+    const re = /corkage/gi; let m: RegExpExecArray | null;
+    while ((m = re.exec(pg.text)) !== null) corkageMentions.push(pg.text.slice(Math.max(0, m.index - 300), m.index + 200));
+  }
+  if (/corkage/i.test(fbText)) corkageMentions.push(fbText);
+  const hasPricedCorkageAddOn = addOns.some((a) => /corkage/i.test(`${a.name} ${a.category} ${a.note ?? ""}`) && a.price != null);
+  const coupleCorkage = hasPricedCorkageAddOn || corkageMentions.some((t) => !NONPROFIT_RE.test(t));
+  const nonprofitOnlyCorkage = !hasPricedCorkageAddOn && corkageMentions.length > 0 && corkageMentions.every((t) => NONPROFIT_RE.test(t));
+  if (stated("bar") === "in_house_or_byo" && coupleCorkage) {
+    setSpine("bar", "byo_with_corkage", "bar_corkage_add_on", "A corkage fee applies to the couple's own alcohol -- byo_with_corkage, not in_house_or_byo.");
   } else if (stated("bar") === "in_house_or_byo" && !hasOwnBarPackages) {
     setSpine("bar", "byob", "bar_no_own_packages", "No in-house bar packages or bar add-ons were extracted -- byob, not in_house_or_byo.");
   }
-  // corkage that exists only for nonprofit / donated alcohol (Geraghty: "charitable donations of
-  // alcohol for nonprofit organizations… corkage fee") is not a couple's BYO option.
-  if (stated("bar") === "byo_with_corkage" && !hasCorkageAddOn) {
-    const NONPROFIT_RE = /501\s*\(?c\)?|non-?profit|charitable|donat/i;
-    let mentions = 0, nonprofitOnly = 0;
-    for (const pg of input.pages) {
-      const re = /corkage/gi; let m: RegExpExecArray | null;
-      while ((m = re.exec(pg.text)) !== null) { mentions++; if (NONPROFIT_RE.test(pg.text.slice(Math.max(0, m.index - 300), m.index + 200))) nonprofitOnly++; }
-    }
-    if (mentions > 0 && nonprofitOnly === mentions) {
-      setSpine("bar", "in_house", "bar_corkage_nonprofit_only", "Every corkage mention is about nonprofit/donated alcohol -- in_house for couples.");
-    }
+  if (stated("bar") === "byo_with_corkage" && nonprofitOnlyCorkage) {
+    setSpine("bar", "in_house", "bar_corkage_nonprofit_only", "Every corkage mention is about nonprofit/donated alcohol -- in_house for couples.");
   }
   // setting: 'both' needs a real outdoor event space (user decision 2026-09-20): a space whose
   // name/structure/outdoor sq ft says outdoor. A terrace for photos or a parking lot does not count.
-  const OUTDOOR_SPACE_RE = /garden|courtyard|lawn|rooftop|roof deck|patio|tent|pavilion|pergola|outdoor|terrace|veranda|beach|vineyard|grounds|plaza/i;
+  // "terrace" is deliberately absent: hotel terraces are photo spots (LondonHouse), not event spaces.
+  // "rooftop" is absent too: a hotel rooftop bar/cupola (LondonHouse) is not where the wedding is held.
+  const OUTDOOR_SPACE_RE = /garden|courtyard|lawn|patio|tent|pavilion|pergola|outdoor|veranda|beach|vineyard|grounds|plaza/i;
   const hasOutdoorSpace = spaces.some((sp) => (sp.sq_ft_outdoor ?? 0) > 0 || OUTDOOR_SPACE_RE.test(`${sp.name} ${sp.structure_label ?? ""}`));
   if (stated("setting") === "both" && !hasOutdoorSpace) {
     setSpine("setting", "indoor", "setting_no_outdoor_space", "No outdoor event space among spaces[] -- indoor, not both.");
