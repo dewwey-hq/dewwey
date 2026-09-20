@@ -897,7 +897,8 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   // rental_charge_type become inquire_only rather than not_stated (Field Museum's spine call said
   // not_stated while its own pricing call said inquire_only). Quote is empty by construction --
   // there is nothing to quote -- and the fact is marked so the UI can say "no prices published".
-  const noPaths = paths.length === 0 && addOns.every((a) => a.price == null);
+  // Priced add-ons (a photo session, a coat check) do not make the RENTAL priced -- only paths do.
+  const noPaths = paths.length === 0;
   if (pricingArchetype === "inquire_only" && noPaths) {
     const firstPage = input.pages[0];
     for (const key of ["pricing_archetype", "rental_charge_type"] as const) {
