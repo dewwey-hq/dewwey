@@ -1,7 +1,9 @@
 # Acquisition loop — Instagram post acquisition that learns from its own yield (D061)
 
-**Status: approved plan, 2026-09-19 (rev 2, after two outside review rounds). Commit 1 in build;
-nothing spent yet.** Plan of record: `~/.claude/plans/on-1-what-do-joyful-church.md` (this README is
+**Status: month-1 ticks all run (2026-09-19 → 20). Day 1: weddings 5,972 → 6,571 (600 created by the loop),
+Apify $19.48 of $29, OpenRouter $5.35, 7,851 posts fetched; Gates 0 / 1a / 1 and two blind spot-checks (95.7%,
+97%) passed. Live status: `docs/STATE.md` "Second mission"; history: `docs/decisions.md` D061 + addenda.**
+Plan of record: `~/.claude/plans/on-1-what-do-joyful-church.md` (this README is
 kept in line with it). Yield queries:
 `apps/web/scripts/graph/tmp_analysis/d061_acquisition_yield_baselines.sql`. Prior Apify threads this
 replaces: D052 Track 3, D055 coverage items 2–3.
