@@ -194,10 +194,15 @@ function filterVerbatimItems(items: string[], pageText: string | undefined, path
 // gave it -- never when the label already agrees with the current layout.
 // ---------------------------------------------------------------------------
 
-const RELABEL_COCKTAIL_RE = /cocktail|standing|strolling|reception-style/i;
+// c5 lesson: "Seated Reception: up to 425" is seated, and "Wedding - Ceremony & Reception: 300" is a
+// reception figure -- a bare "reception" or "ceremony" word never relabels. Cocktail needs the
+// cocktail/standing/strolling word AND no "seated"; ceremony needs a ceremony-only label.
+const RELABEL_COCKTAIL_RE = /cocktail|standing|strolling/i;
+const RELABEL_SEATED_RE = /\bseated\b|sit-?down|plated/i;
 const RELABEL_THEATER_RE = /theater|theatre|auditorium/i;
 const RELABEL_DANCE_RE = /dance|dancing|band|dj/i;
 const RELABEL_CEREMONY_RE = /ceremony/i;
+const RELABEL_NOT_CEREMONY_ONLY_RE = /reception|dinner|party|afterparty|banquet/i;
 
 export interface LayoutRelabelResult {
   layout: Layout;
@@ -210,13 +215,13 @@ export interface LayoutRelabelResult {
 export function relabelCapacityLayout(layout: Layout, asStatedLabel: string, quote: string): LayoutRelabelResult {
   const hay = `${asStatedLabel} ${quote}`;
   let next: Layout = layout;
-  if (layout === "seated_dinner" && RELABEL_COCKTAIL_RE.test(hay)) {
+  if (layout === "seated_dinner" && RELABEL_COCKTAIL_RE.test(hay) && !RELABEL_SEATED_RE.test(hay)) {
     next = "cocktail_standing";
   } else if (layout !== "theater" && RELABEL_THEATER_RE.test(hay)) {
     next = "theater";
   } else if (layout === "seated_dinner" && RELABEL_DANCE_RE.test(hay)) {
     next = "seated_with_dance";
-  } else if (layout !== "ceremony_seated" && RELABEL_CEREMONY_RE.test(hay)) {
+  } else if (layout !== "ceremony_seated" && RELABEL_CEREMONY_RE.test(hay) && !RELABEL_NOT_CEREMONY_ONLY_RE.test(hay)) {
     next = "ceremony_seated";
   }
   return { layout: next, changed: next !== layout };
@@ -1093,6 +1098,48 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
       }
     }
   }
+  // (1c) Consistency rules decided with the user after c4/c5 (deterministic, free):
+  const stated = (key: string) => (spine[key]?.status === "stated" ? (spine[key] as { value?: unknown }).value : undefined);
+  const setSpine = (key: string, value: unknown, code: string, message: string) => {
+    const cur = spine[key] as { quote?: string; source_url?: string; snapshot_id?: number | null };
+    spine[key] = { status: "stated", value, quote: cur?.quote ?? "", source_url: cur?.source_url ?? "", snapshot_id: cur?.snapshot_id ?? null } as Tri<unknown>;
+    issues.push({ code, path: `/spine/${key}`, severity: "warning", tier: null, message });
+  };
+  // hotel + per-person packages = hotel_package (a pricing style, never room rates).
+  const hasPerGuestTiers = paths.some((pth) => pth.per_guest_tiers.length > 0);
+  if (stated("venue_kind") === "hotel" && stated("pricing_archetype") === "all_inclusive_per_guest" && hasPerGuestTiers) {
+    setSpine("pricing_archetype", "hotel_package", "archetype_hotel_package", "venue_kind is hotel and pricing is per-person packages -- hotel_package.");
+  }
+  // bar: in_house_or_byo needs the venue's OWN bar packages; without any (no bar ladders, no bar
+  // add-ons) a bring-your-own venue is byob. A corkage add-on makes it byo_with_corkage.
+  const hasOwnBarPackages = foodBeverage.bar_ladders.length > 0 || addOns.some((a) => /\bbar\b|bartend|open bar|cash bar/i.test(`${a.name} ${a.category}`) && a.price != null);
+  const hasCorkageAddOn = addOns.some((a) => /corkage/i.test(`${a.name} ${a.category} ${a.note ?? ""}`));
+  if (stated("bar") === "in_house_or_byo" && hasCorkageAddOn) {
+    setSpine("bar", "byo_with_corkage", "bar_corkage_add_on", "A corkage add-on exists -- byo_with_corkage, not in_house_or_byo.");
+  } else if (stated("bar") === "in_house_or_byo" && !hasOwnBarPackages) {
+    setSpine("bar", "byob", "bar_no_own_packages", "No in-house bar packages or bar add-ons were extracted -- byob, not in_house_or_byo.");
+  }
+  // corkage that exists only for nonprofit / donated alcohol (Geraghty: "charitable donations of
+  // alcohol for nonprofit organizations… corkage fee") is not a couple's BYO option.
+  if (stated("bar") === "byo_with_corkage" && !hasCorkageAddOn) {
+    const NONPROFIT_RE = /501\s*\(?c\)?|non-?profit|charitable|donat/i;
+    let mentions = 0, nonprofitOnly = 0;
+    for (const pg of input.pages) {
+      const re = /corkage/gi; let m: RegExpExecArray | null;
+      while ((m = re.exec(pg.text)) !== null) { mentions++; if (NONPROFIT_RE.test(pg.text.slice(Math.max(0, m.index - 300), m.index + 200))) nonprofitOnly++; }
+    }
+    if (mentions > 0 && nonprofitOnly === mentions) {
+      setSpine("bar", "in_house", "bar_corkage_nonprofit_only", "Every corkage mention is about nonprofit/donated alcohol -- in_house for couples.");
+    }
+  }
+  // setting: 'both' needs a real outdoor event space (user decision 2026-09-20): a space whose
+  // name/structure/outdoor sq ft says outdoor. A terrace for photos or a parking lot does not count.
+  const OUTDOOR_SPACE_RE = /garden|courtyard|lawn|rooftop|roof deck|patio|tent|pavilion|pergola|outdoor|terrace|veranda|beach|vineyard|grounds|plaza/i;
+  const hasOutdoorSpace = spaces.some((sp) => (sp.sq_ft_outdoor ?? 0) > 0 || OUTDOOR_SPACE_RE.test(`${sp.name} ${sp.structure_label ?? ""}`));
+  if (stated("setting") === "both" && !hasOutdoorSpace) {
+    setSpine("setting", "indoor", "setting_no_outdoor_space", "No outdoor event space among spaces[] -- indoor, not both.");
+  }
+
   // (2) A bookable space with no capacity row is a repair request (critical: the headline may
   // depend on it), never silently a page without a capacity headline.
   const spacesWithCaps = new Set(capacities.map((c) => c.space_id));

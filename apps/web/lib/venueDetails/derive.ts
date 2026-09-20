@@ -246,7 +246,7 @@ export function headlineCapacity(d: VenueDetailsV3): HeadlineCapacity {
     (c) => c.max,
   );
   const cocktailOnly = maxBy(
-    caps.filter((c) => c.tile === "cocktail"),
+    caps.filter((c) => c.tile === "cocktail" && !(c.condition && OTHER_EVENT_TYPE_RE.test(c.condition))),
     (c) => c.max,
   );
 
