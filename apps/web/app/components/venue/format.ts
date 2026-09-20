@@ -7,7 +7,7 @@
  * `headlineCapacity`, `policyRows`, `quickFacts`, `fbPills` stay in derive.ts).
  */
 
-import { fbPills } from "../../../lib/venueDetails/derive";
+import { fbPills, OTHER_EVENT_TYPE_RE } from "../../../lib/venueDetails/derive";
 import {
   ADD_ON_CATEGORIES_STD,
   type AddOn,
@@ -178,7 +178,8 @@ export const TILE_FALLBACK_LABEL: Record<SpaceCapacityTile["tile"], string> = {
  * golden-set-template.md §2's "always render all 3 tiles" rule, applied per-space instead of
  * venue-wide. */
 export function spaceCapacityTiles(d: VenueDetailsV3, spaceId: string): SpaceCapacityTile[] {
-  const caps = d.capacities.filter((c) => c.space_id === spaceId);
+  // Other-event-type rows (gala, corporate) never fill a wedding tile -- same rule as headlineCapacity.
+  const caps = d.capacities.filter((c) => c.space_id === spaceId && !(c.condition && OTHER_EVENT_TYPE_RE.test(c.condition)));
   return TILE_ORDER.map((tile) => {
     const matches = caps.filter((c) => c.tile === tile);
     if (matches.length === 0) return { tile, as_stated_label: null, max: null, quote: null, source_url: null, snapshot_id: null };

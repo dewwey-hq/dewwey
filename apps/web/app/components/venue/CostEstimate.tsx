@@ -22,6 +22,7 @@ import {
   headlineCapacity,
   selectableAddOns,
   type EstimateInput,
+  hasNoPricedPath,
 } from "@/lib/venueDetails/derive";
 import type { AddOn, Day, EstimateExtra, PricingPath, Season, VenueDetailsV3 } from "@/lib/venueDetails/types";
 import * as fmt from "./format";
@@ -172,7 +173,7 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
   // component runs unconditionally on every render, matching the pattern above.
   const exampleRange = useMemo(() => calculatorRange(venue, pathId), [venue, pathId]);
 
-  if (venue.pricing.paths.length === 0) {
+  if (hasNoPricedPath(venue)) {
     return (
       <div className="rounded-2xl border border-black/[0.06] bg-gray-50 p-5 text-sm text-gray-500">
         Pricing on request. {venue.name} does not publish fixed pricing anywhere on its site; contact them directly for a quote.

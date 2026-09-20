@@ -443,6 +443,15 @@ function groupTotal(lines: EstimateLine[]): number {
   return lines.reduce((sum, l) => sum + l.amount, 0);
 }
 
+/** True when the calculator has nothing to add up: no path at all, or an inquire-only venue whose
+ * paths carry no fees, tiers or minimums (an extracted "pricing on request" path). The renderer
+ * shows the request card in exactly these cases. An EMPTY path on a priced archetype is legitimate
+ * ("venue rental included in the package"; extras still price). */
+export function hasNoPricedPath(d: VenueDetailsV3): boolean {
+  const pathHasNumbers = (pth: PricingPath) => pth.fixed_fees.length > 0 || pth.per_guest_tiers.length > 0 || pth.minimums.length > 0;
+  return d.pricing.paths.length === 0 || (d.pricing.archetype === "inquire_only" && !d.pricing.paths.some(pathHasNumbers));
+}
+
 export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstimate {
   const { pricing } = d;
   const warnings: EstimateWarning[] = [];
@@ -456,10 +465,7 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
   // No path, an inquire-only archetype, or paths that carry no numbers at all (an extracted
   // "pricing on request" path -- Geraghty, served 2026-09-20): the calculator has nothing to add up,
   // so the UI shows the request card instead of "$0 · included in package".
-  const pathHasNumbers = (pth: PricingPath) => pth.fixed_fees.length > 0 || pth.per_guest_tiers.length > 0 || pth.minimums.length > 0;
-  // (An empty path on a priced archetype is legitimate -- "venue rental included", extras still add
-  // up -- so the empty-path rule applies only to inquire_only venues.)
-  if (pricing.paths.length === 0 || (pricing.archetype === "inquire_only" && !pricing.paths.some(pathHasNumbers))) {
+  if (hasNoPricedPath(d)) {
     warnings.push("no_path");
     return { groups: [], total: 0, not_included, warnings, assumptions };
   }
