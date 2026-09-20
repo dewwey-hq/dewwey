@@ -8,13 +8,13 @@ the page doesn't either).
 ## Universe A summary
 
 - Listed venues: **434**
-- Total weddings (anchored to a listed venue): **6501**
-- Buckets: 0=0  1-5=224  6-15=97  16-49=79  50+=34
+- Total weddings (anchored to a listed venue): **6502**
+- Buckets: 0=0  1-5=223  6-15=98  16-49=79  50+=34
 - Median weddings/venue: **5**
-- Top 50 share: 3553 / 6501 (54.7%)
-- Top 100 share: 4825 / 6501 (74.2%)
+- Top 50 share: 3553 / 6502 (54.6%)
+- Top 100 share: 4825 / 6502 (74.2%)
 
-## Hidden B -- venue-top, no account_locations row at all (302 accounts, 95 weddings)
+## Hidden B -- venue-top, no account_locations row at all (300 accounts, 94 weddings)
 
 Top 15 by weddings:
 - harrycarays -- 4 weddings

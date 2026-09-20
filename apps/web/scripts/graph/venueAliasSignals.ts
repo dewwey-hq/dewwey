@@ -164,6 +164,35 @@ const AGGREGATOR_HOSTS = new Set([
   "linktw.in",
   // management groups whose member venues all link to the parent
   "invitedclubs.com",
+  // D062 round 2, surfaced by the 2026-09-20 profile-enrichment scrape: HOTEL CHAIN BOOKING
+  // DOMAINS. Every property of a chain links to the chain's reservation site, so the host groups
+  // unrelated hotels -- and not merely across brands but across continents. Measured pairs from
+  // that run: @westinchicagons ~ @stregiskanairesort and @renchicagonorth ~ @marriott.chicago.nw
+  // all on "marriott.com"; @hyattregencyschaumburg ~ @hyattregencyorlando on "hyatt.com". This is
+  // the same chain-contamination class that makes Jeremy's social links a candidate feed rather
+  // than an authority (JW Marriott Chicago -> @marriottbonvoy).
+  "marriott.com",
+  "hyatt.com",
+  "hilton.com",
+  "ihg.com",
+  "accor.com",
+  "choicehotels.com",
+  "wyndhamhotels.com",
+  "radissonhotels.com",
+  "bestwestern.com",
+  "loewshotels.com",
+  "omnihotels.com",
+  "fourseasons.com",
+  "ritzcarlton.com",
+  "marriottbonvoy.com",
+  // more link-in-bio / shortener hosts the same run exposed
+  "likeshop.me",
+  "youtu.be",
+  "youtube.com",
+  "lnk.to",
+  "linkpop.com",
+  "pxlme.me",
+  "shor.by",
 ]);
 
 /** S3b: the registrable-ish host of a url -- scheme, "www.", path, query, fragment and port all

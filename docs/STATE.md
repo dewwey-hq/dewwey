@@ -248,6 +248,99 @@ invariants (D059 owner); the user's 164-post human queue (`/label/candidates?bat
 - `measure.ts` counts only weddings created after the run was ingested (legacy registrations carry old links).
 - Venue types are priors, not exclusions: the excluded hotels/restaurants/churches yielded 0.05 w/post.
 
+## Third mission — D062 Venue coverage: identity before acquisition (2026-09-20 evening)
+
+Strategy doc `docs/engineering/venue-coverage/README.md`; decision `docs/decisions.md` D062. Started
+because D061 month 1 bought 1,025 weddings at $0.025 each and the thin end of the catalog barely
+moved. The assumption "thin venues need more crawling" is measurably wrong.
+
+**The bar (user's call): a venue is covered at ≥ 1 documented wedding** — which is already
+`/venues`' own listing predicate, so covered == listed. `reportVenueCoverage.ts`: **434 venues
+listed, 6,501 weddings**.
+
+**The standing artifact is `reportVenueIdentityTaxonomy.ts`** — run it instead of re-deriving the
+analysis. Over 1,031 venue-ish accounts (2026-09-20):
+
+| bucket | accounts | weddings held | remedy |
+|---|---|---|---|
+| `geo_blocked` | **116** | **143** | backfill `account_locations` — already clears the bar |
+| `mis_anchored` | 18 | 28 | re-anchor |
+| `never_crawled` | **265** | 0 | crawl the tagged feed (the only class where that is right) |
+| `dead_feed` | 80 | 0 | website / vendor own feeds — NOT more crawling |
+| `no_identity` | **33** | 0 | profile-scrape first, then re-classify |
+| `chain_brand` | 9 · `not_a_venue` 4 | 0 | never list / delist |
+
+(`no_identity` was 260 and `never_crawled` 41 before the profile tick; the scrape converted 227
+"we know nothing about this" into "real venue, feed never pulled" — a month-2 crawl queue.)
+
+**135 accounts holding 172 weddings already clear the bar and are invisible** for want of geography
+or a correct anchor. That is the cheapest coverage available and needs no Apify credit.
+
+**Why the old assumption was wrong.** Thin venues are not small: median followers are flat across
+buckets (0: 4,096 · 1-5: 3,350 · 6-15: **2,329** · 16-49: 4,574 · 50+: 7,906) and the zero bucket has
+the *highest* median Places review count (564 vs 50+'s 258). 152 thin venues are measured `dead` —
+≥20 posts fetched, 0 stacks, 0 candidates. The website is the identity key the thin end actually has:
+**82% of zero-wedding listed venues publish one, 8% carry a Places row.**
+
+**Signals rebuilt** (`venueAliasSignals.ts` / `findVenueAliasCandidates.ts`): S3b groups by
+registrable website *host* (S3 compared the full path, which is why `navypier.org` never met
+`navypier.org/host-an-event`) and deliberately reaches outside the venue-ish universe; `computeStem`
+drops a trailing facility noun (`navypiereventcenter` → `navypier`); S6 needs `isS6Trustworthy`;
+`isUmbrellaBrandUsername` / `isNonVenueUsername` / the `isNonVenueBio` catering fix. **T2 28 → 11.**
+
+**Profile enrichment tick (`acq-20260920-d062ident`, $1.15 of the $2.80 left).** 499 bare accounts
+scraped; **403 gained a website**, 413 a bio, 436 a full_name. Effect on the finder: **S3b 8 → 54
+fired pairs**, S2 2 → 6, S4 44 → 58, T1 3 → 8. That multiplier is the justification for the spend.
+It also exposed a false-positive class only visible once the data existed: **hotel-chain booking
+domains** (`marriott.com` grouped a Chicago Westin with a St Regis in Hawaii; `hyatt.com` grouped
+Schaumburg with Orlando), plus `likeshop.me` and `youtu.be`. All denied; S3b 54 → 19, T2 36 → 9.
+Apify now **$26.85 of $29** (stop $28.50; ≈ $1.6 left).
+
+**Batch 1 applied — `idn-20260920-alias-1`.** 6 merges, 11 weddings + 18 `wedding_vendors` rows
+re-pointed, 29 `account_alias_remaps` rows, revert SQL printed. Named deltas: `floatingworldgallery`
+2→6, `lshiremarriott` 26→30, `riverroastchi` 25→27, `officialwrigleyfield` 1→2. **The true zero
+bucket did not move** — merges fix fragmentation, not absence.
+
+**Provenance is now enforced**: `account_aliases` carries `batch_id`/`source`/`evidence`/
+`verified_by`; the 66 older rows keep a null batch_id rather than a fabricated one. Every batch:
+dry-run → snapshot → apply → before/after diff with **every moved venue named** → revertable.
+
+**Batch 2 applied — `idn-20260920-alias-2`.** 8 merges, all matching on BOTH full_name and website
+host: `thehaleymansion`→`haleymansion`, `150_events`→`150northriverside`,
+`grovecountryclub`→`thegrovecountryclub` (direction flipped — the finder proposed the
+wedding-bearing handle as the alias), `hotelbakerweddings`→`hotelbaker`,
+`bullvalleygolfclubevents`→`bullvalleygc`, `weddingswhiteeagle`→`whiteeaglegolfclub`,
+`icc.weddingsandevents`→`itascacountryclub`, `zhoubeventschi`→`zhoubartcenter`. 10 weddings + 11
+vendor rows re-pointed, 21 remap rows.
+
+**A regression the batch diff caught, and the fix.** Two canonicals (`itascacountryclub`,
+`whiteeaglegolfclub`) had NO `account_locations` row, so the merge moved 9 weddings from LISTED
+aliases onto UNLISTED canonicals: `/venues` went 6,501 → 6,493 weddings. Correct identity work that
+made the catalog worse until geography caught up — the `geo_blocked` bucket biting in miniature.
+Fixed by `applyD062GeoBackfill.ts` (WebSearch-verified addresses, Itasca IL 60143 / Naperville IL
+60564). **`/venues` now 434 venues, 6,502 weddings** — two venues listed that never were before.
+**Always run the before/after diff after a merge batch; a merge into a geo-blocked canonical is a
+silent regression.**
+
+**Next (D062):** geography backfill for the 116 `geo_blocked` (biggest, cheapest — and now proven
+to matter); re-anchor the 18; the 265 `never_crawled` are month 2's queue; then website-as-venue-truth (a venue
+serving `/weddings` with no Instagram evidence is a *confirmed venue, known gap*, not `dead_feed` —
+D060 has pages for 97 of 166, Jeremy adds 60 more).
+
+**D062 landmines:**
+- A merge does not move `/venues` until `remapWeddingsToCanonicalAccounts.ts` physically re-points
+  the weddings. Run it after every alias batch.
+- **Never merge a separately-branded in-house venue** (Azure at Shedd Aquarium, Offshore at Navy
+  Pier) or an umbrella into a property (`@luc_conferences` books three Loyola campuses;
+  `@loyola_cuneomansion` is one, 40 miles north). Encoded in `isUmbrellaBrandUsername`.
+- Jeremy's `staging.vendor_social_links` is a candidate feed, never an authority: it maps JW Marriott
+  Chicago to `@marriottbonvoy`, Four Seasons Chicago to `@fourseasons`.
+- The aggregator deny-list is load-bearing for S3b: un-denied, `linkin.bio` merges 21 unrelated
+  accounts. `.bio`/`.link` TLDs are denied wholesale after `clicklinkin.bio` leaked through.
+- `graphStrengthening` / `vendorAssociation` / `venuePortfolioContent` DB tests fail on drifted
+  row-count invariants (partly this session's 56 wedding creations, partly the pre-existing D059
+  drift). Unrelated to D062's files, still unfixed.
+
 ## Next actions (Claude, when unblocked)
 
 1. Before f2 (no model spend): fix the repair-tool `unknown field_path` bug that errored on @the.arbory;

@@ -1,65 +1,65 @@
 # Venue identity taxonomy -- why a venue is not listed (D062)
 
-Generated 2026-09-20T23:16:34.538Z. Read-only.
+Generated 2026-09-20T23:47:39.447Z. Read-only.
 Bar: a venue is covered at >= 1 documented wedding (user's call, 2026-09-20), which is also
 `/venues`' own listing predicate.
 
 | bucket | accounts | weddings held | remedy |
 |---|---|---|---|
-| `geo_blocked` | 117 | 144 | backfill account_locations (Places / Jeremy staging address), then it lists |
+| `geo_blocked` | 116 | 143 | backfill account_locations (Places / Jeremy staging address), then it lists |
 | `mis_anchored` | 18 | 28 | re-anchor the wedding to the real venue |
-| `never_crawled` | 41 | 0 | crawl the tagged feed |
+| `never_crawled` | 265 | 0 | crawl the tagged feed |
 | `dead_feed` | 80 | 0 | website or a credited vendor's own feed -- NOT more tagged crawling |
-| `no_identity` | 260 | 0 | profile-scrape / website first, then re-classify |
+| `no_identity` | 33 | 0 | profile-scrape / website first, then re-classify |
 | `chain_brand` | 9 | 0 | never list, never merge -- the local property needs its own account |
 | `not_a_venue` | 4 | 0 | delist: strip the venue role |
-| `merged_away` | 502 | 6536 | none -- same venue, counted once (or already listed) |
+| `merged_away` | 506 | 6537 | none -- same venue, counted once (or already listed) |
 
-## geo_blocked (117) -- backfill account_locations (Places / Jeremy staging address), then it lists
+## geo_blocked (116) -- backfill account_locations (Places / Jeremy staging address), then it lists
 
 | handle | followers | weddings | crawl | website |
 |---|---|---|---|---|
-| @harrycarays | - | 4 | - | - |
+| @harrycarays | 9811 | 4 | unknown | y |
+| @trumpturnberryscotland | 81874 | 3 | unknown | y |
 | @bokachicago | 55536 | 3 | - | y |
-| @kohlerwi | - | 3 | - | - |
-| @grand_geneva | - | 3 | - | - |
-| @trumpturnberryscotland | - | 3 | - | - |
-| @stjames1868 | - | 3 | - | - |
-| @thevillamke | - | 2 | - | - |
-| @venue3two | - | 2 | - | - |
+| @kohlerwi | 38028 | 3 | unknown | y |
+| @grand_geneva | 35948 | 3 | unknown | y |
+| @stjames1868 | 12168 | 3 | unknown | y |
+| @marriottbonvoy | 2462280 | 2 | unknown | y |
+| @bevhillshotel | 351311 | 2 | unknown | y |
+| @stregiskanairesort | 40686 | 2 | unknown | y |
+| @castello_di_petrata | 40672 | 2 | unknown | y |
+| @psbrewingco | 9832 | 2 | unknown | y |
+| @renplanowest | 9130 | 2 | unknown | y |
+| @ndbasilica | 7745 | 2 | unknown | y |
+| @venue3two | 6744 | 2 | unknown | y |
+| @allegrochicago | 4371 | 2 | unknown | y |
+| @thevillamke | 3710 | 2 | unknown | y |
+| @the_odyssey_events | 2124 | 2 | unknown | y |
+| @prairiestreetevents | 2065 | 2 | unknown | y |
+| @villagesuitesbayharbor | 1254 | 2 | unknown | y |
 | @thelasallechicago | - | 2 | - | - |
-| @allegrochicago | - | 2 | - | - |
-| @castello_di_petrata | - | 2 | - | - |
-| @bevhillshotel | - | 2 | - | - |
-| @the_odyssey_events | - | 2 | - | - |
-| @villagesuitesbayharbor | - | 2 | - | - |
-| @marriottbonvoy | - | 2 | - | - |
-| @stregiskanairesort | - | 2 | - | - |
-| @renplanowest | - | 2 | - | - |
-| @psbrewingco | - | 2 | - | - |
-| @ndbasilica | - | 2 | - | - |
-| @prairiestreetevents | - | 2 | - | - |
+| @hoophall | 530638 | 1 | unknown | y |
+| @stregishotels | 525774 | 1 | unknown | y |
+| @carnegiehall | 435054 | 1 | unknown | y |
+| @pepesoffice | 386593 | 1 | unknown | y |
+| @castelfalfi | 313469 | 1 | unknown | y |
+| @sugarbeachviceroy | 271777 | 1 | unknown | y |
+| @mo_emiratespalace | 229551 | 1 | unknown | y |
+| @brooklynbotanic | 217657 | 1 | unknown | y |
+| @nizucresort | 200733 | 1 | unknown | y |
+| @villa_balbiano | 146153 | 1 | unknown | y |
+| @saltshedchicago | 136175 | 1 | unknown | y |
+| @fspuntamita | 133156 | 1 | unknown | y |
+| @sandvalleygolf | 66317 | 1 | unknown | y |
 | @carnerosresort | 64783 | 1 | - | y |
-| @lazyshacienda | 13597 | 1 | - | y |
-| @boweryandbash | 10047 | 1 | - | y |
-| @subtle.haus | 6729 | 1 | - | y |
-| @thursdaytherapychi | 2383 | 1 | - | y |
-| @loft21events | 1838 | 1 | unknown | y |
-| @ssabrookfieldteam | 234 | 1 | - | y |
-| @avecchicago | - | 1 | - | - |
-| @dream_creeks | - | 1 | - | - |
-| @xocohousegallery | - | 1 | - | - |
-| @eventswcoe | - | 1 | - | - |
-| @humbledhospitality | - | 1 | - | - |
-| @elgrancaribe | - | 1 | - | - |
-| @pepesoffice | - | 1 | - | - |
-| @sofarchicago | - | 1 | - | - |
-| @churchclubchicago | - | 1 | - | - |
-| @whitehawkcc | - | 1 | - | - |
-| @carnegiehall | - | 1 | - | - |
-| @stregishotels | - | 1 | - | - |
-| @kohlerw | - | 1 | - | - |
-| _… 77 more, see the JSON_ | | | | |
+| @shoreclubchi | 47223 | 1 | unknown | y |
+| @avecchicago | 44166 | 1 | unknown | y |
+| @sofarchicago | 43989 | 1 | unknown | y |
+| @contidisanbonifacio | 38340 | 1 | unknown | y |
+| @aftermidnight.la | 36754 | 1 | unknown | y |
+| @elgrancaribe | 36094 | 1 | unknown | y |
+| _… 76 more, see the JSON_ | | | | |
 
 ## mis_anchored (18) -- re-anchor the wedding to the real venue
 
@@ -84,51 +84,51 @@ Bar: a venue is covered at >= 1 documented wedding (user's call, 2026-09-20), wh
 | @averyhouse | 2887 | 1 | - | y |
 | @revelglobalevents | 2003 | 1 | - | y |
 
-## never_crawled (41) -- crawl the tagged feed
+## never_crawled (265) -- crawl the tagged feed
 
 | handle | followers | weddings | crawl | website |
 |---|---|---|---|---|
+| @disneyland | 8906847 | 0 | unknown | y |
+| @teenvogue | 4446783 | 0 | unknown | y |
+| @fourseasons | 1655838 | 0 | unknown | y |
+| @ritzcarlton | 946048 | 0 | unknown | y |
+| @disneyweddings | 840958 | 0 | unknown | y |
 | @choosechicago | 578339 | 0 | - | y |
+| @zhu | 458715 | 0 | unknown | y |
+| @thehoxtonhotel | 443462 | 0 | unknown | y |
+| @theryman | 360499 | 0 | unknown | y |
+| @theplazahotel | 325918 | 0 | unknown | y |
 | @uchicago | 271382 | 0 | - | y |
+| @halfevilco | 195917 | 0 | unknown | y |
+| @badruttspalace | 188021 | 0 | unknown | y |
+| @doubletree | 128766 | 0 | unknown | y |
+| @kulmhotel | 126757 | 0 | unknown | y |
+| @paradisostmoritz | 115342 | 0 | unknown | y |
+| @trumpdoral | 115107 | 0 | unknown | y |
+| @abarestaurant | 97729 | 0 | unknown | y |
+| @trumpgolfpalmbeach | 90414 | 0 | unknown | y |
+| @thefindlab | 89455 | 0 | unknown | y |
+| @portlandjapanesegarden | 88700 | 0 | unknown | y |
 | @staypineapple | 82345 | 0 | - | y |
-| @beatkitchenbar | 27452 | 0 | unknown | y |
-| @pennywhistletavern | 18530 | 0 | unknown | y |
-| @villagamberaia | 18026 | 0 | - | y |
-| @logansquareimprov | 15365 | 0 | - | y |
-| @electricfuneralbar | 11383 | 0 | unknown | - |
-| @manoir_de_kerhuel | 4593 | 0 | - | y |
-| @westinchicagons | 3095 | 0 | unknown | y |
-| @l.a_aguilar_ | 2259 | 0 | - | y |
-| @botanicochicago | 1536 | 0 | - | y |
-| @hotelchicagodowntown | 1175 | 0 | - | y |
-| @villadcitta | 1041 | 0 | - | y |
-| @universal_entertainment_ | 850 | 0 | - | y |
-| @matthewjamesorchestra | 693 | 0 | - | y |
-| @smowparish | 640 | 0 | - | y |
-| @stgeorgesocscher | 558 | 0 | - | y |
-| @bettertogethertravelstg | 495 | 0 | - | y |
-| @st.johnbrebeufniles | 430 | 0 | - | y |
-| @stpaulofthecrosschurch | 235 | 0 | - | y |
-| @sydney_kehoedesigns | 214 | 0 | - | y |
-| @cielodulceeventvenue | 120 | 0 | - | y |
-| @360eventcenter | 19 | 0 | - | - |
-| @jseventdecor7 | 6 | 0 | - | - |
-| @wedicity | - | 0 | ambiguous | - |
-| @chezeventspace | - | 0 | - | - |
-| @thesinclairchicago | - | 0 | - | - |
-| @lillianroseevents | - | 0 | - | - |
-| @oldnorthfilmcompany | - | 0 | - | - |
-| @lespacechicago | - | 0 | - | - |
-| @stapledevents_venue | - | 0 | - | - |
-| @theparkwayatmichigan.com | - | 0 | - | - |
-| @artroomevents | - | 0 | - | - |
-| @keeping_tradition_fresh | - | 0 | - | - |
-| @justinebursoniphoto | - | 0 | - | - |
-| @catalystranchchicago | - | 0 | ambiguous | - |
-| @slipperysloped | - | 0 | ambiguous | y |
-| @madegallery | - | 0 | ambiguous | - |
-| @the.neighborhood.hotel | - | 0 | unknown | y |
-| _… 1 more, see the JSON_ | | | | |
+| @thebasementeast | 81746 | 0 | unknown | y |
+| @citywinerynyc | 81717 | 0 | unknown | y |
+| @themaralagoclub | 78850 | 0 | unknown | y |
+| @crowneplaza | 76269 | 0 | unknown | y |
+| @stonehavenweddings | 67946 | 0 | unknown | y |
+| @citywinerynsh | 64229 | 0 | unknown | y |
+| @theritzybor | 57348 | 0 | unknown | y |
+| @chspourhouse | 56739 | 0 | unknown | y |
+| @hobcleveland | 55050 | 0 | unknown | y |
+| @themagmile | 52201 | 0 | unknown | y |
+| @grandhotelkronenhof | 47264 | 0 | unknown | y |
+| @kpopclubnight | 46360 | 0 | unknown | y |
+| @mclemoreresort | 45525 | 0 | unknown | y |
+| @catscradlenc | 43980 | 0 | unknown | y |
+| @citywineryphil | 42812 | 0 | unknown | y |
+| @sanmontanoresort | 42786 | 0 | unknown | y |
+| @wisconsinunion | 41975 | 0 | unknown | y |
+| @theburlky | 39942 | 0 | unknown | y |
+| _… 225 more, see the JSON_ | | | | |
 
 ## dead_feed (80) -- website or a credited vendor's own feed -- NOT more tagged crawling
 
@@ -176,7 +176,7 @@ Bar: a venue is covered at >= 1 documented wedding (user's call, 2026-09-20), wh
 | @ancora_themes | 6307 | 0 | dead | y |
 | _… 40 more, see the JSON_ | | | | |
 
-## no_identity (260) -- profile-scrape / website first, then re-classify
+## no_identity (33) -- profile-scrape / website first, then re-classify
 
 | handle | followers | weddings | crawl | website |
 |---|---|---|---|---|
@@ -184,6 +184,7 @@ Bar: a venue is covered at >= 1 documented wedding (user's call, 2026-09-20), wh
 | @jparkerchicago | 15308 | 0 | promising | y |
 | @punchhousechicago | 14055 | 0 | promising | y |
 | @buddy.chicago | 12649 | 0 | promising | y |
+| @alterbeer | 10804 | 0 | unknown | y |
 | @thefultonstreetcollective | 7919 | 0 | promising | y |
 | @lacunabycatalystsuites | 7630 | 0 | promising | y |
 | @napersettlement | 6649 | 0 | ambiguous | y |
@@ -212,29 +213,20 @@ Bar: a venue is covered at >= 1 documented wedding (user's call, 2026-09-20), wh
 | @fwe_experience | 60 | 0 | promising | y |
 | @projectsimeon2k | 9 | 0 | ambiguous | - |
 | @challenge | - | 0 | unknown | - |
-| @asianfashionshowchi | - | 0 | - | - |
-| @crowneplaza | - | 0 | - | - |
-| @ashkenazberkeley | - | 0 | - | - |
-| @thecedar | - | 0 | - | - |
-| @wisconsinunion | - | 0 | - | - |
-| @cspshall | - | 0 | - | - |
-| @moesalley | - | 0 | - | - |
-| @lonetreemanor | - | 0 | - | - |
-| _… 220 more, see the JSON_ | | | | |
 
 ## chain_brand (9) -- never list, never merge -- the local property needs its own account
 
 | handle | followers | weddings | crawl | website |
 |---|---|---|---|---|
+| @hiltonhotels | 467708 | 0 | unknown | y |
+| @baccarathotels | 148484 | 0 | unknown | y |
+| @renhotels | 113649 | 0 | unknown | y |
+| @langhamhotels | 52567 | 0 | unknown | y |
 | @sonestahotels | 26418 | 0 | - | y |
+| @theheritagecollection | 25013 | 0 | unknown | y |
 | @chicagohotelcollection | 23659 | 0 | dead | y |
 | @luc_conferences | 553 | 0 | ambiguous | y |
-| @theheritagecollection | - | 0 | - | - |
-| @baccarathotels | - | 0 | - | - |
-| @langhamhotels | - | 0 | - | - |
-| @renhotels | - | 0 | - | - |
-| @hiltonhotels | - | 0 | - | - |
-| @janko.hospitality | - | 0 | - | - |
+| @janko.hospitality | 290 | 0 | unknown | y |
 
 ## not_a_venue (4) -- delist: strip the venue role
 
@@ -242,10 +234,10 @@ Bar: a venue is covered at >= 1 documented wedding (user's call, 2026-09-20), wh
 |---|---|---|---|---|
 | @wix | 882810 | 0 | dead | y |
 | @squarespace | 446381 | 0 | dead | y |
+| @modernluxury | 125047 | 0 | unknown | y |
 | @theamericanlegion | 56119 | 0 | dead | y |
-| @modernluxury | - | 0 | - | - |
 
-## merged_away (502) -- none -- same venue, counted once (or already listed)
+## merged_away (506) -- none -- same venue, counted once (or already listed)
 
 | handle | followers | weddings | crawl | website |
 |---|---|---|---|---|
@@ -289,4 +281,4 @@ Bar: a venue is covered at >= 1 documented wedding (user's call, 2026-09-20), wh
 | @thegeraghty | 6677 | 46 | - | y |
 | @the_carter_fultonmarket | 1642 | 46 | promising | y |
 | @artinstitutechi | 850234 | 45 | dead | y |
-| _… 462 more, see the JSON_ | | | | |
+| _… 466 more, see the JSON_ | | | | |

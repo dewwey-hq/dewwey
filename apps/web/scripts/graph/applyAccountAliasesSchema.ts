@@ -43,7 +43,7 @@ const ADD_PROVENANCE_COLUMNS = [
 
 /** The identity batch this run stamps on any row it inserts. Bump the counter for a second run
  * on the same day so each is separately revertable. */
-const BATCH_ID = "idn-20260920-alias-1";
+const BATCH_ID = "idn-20260920-alias-2";
 
 interface AliasRow {
   aliasUsername: string;
@@ -191,8 +191,20 @@ const ALIASES: AliasRow[] = [
   { aliasUsername: "wrigleyfieldevents", canonicalUsername: "officialwrigleyfield", note: "round 10 (D062): Wrigley Field's private-events arm", source: "websearch", evidence: "WebSearch: wrigleyfieldevents.com is the official events brand of Wrigley Field / the Chicago Cubs, booking 20 spaces across the ballpark and campus. full_names 'Wrigley Field Events' and 'Wrigley Field'." },
   { aliasUsername: "rreventschicago", canonicalUsername: "riverroastchi", note: "round 10 (D062): River Roast's events handle -- the one the canonical's own bio names", source: "alias-finder", evidence: "S4: riverroastchi's bio names @rreventschicago as its events account (this is why riverroastchi/riverroastchicago sits on the round-3 false-positive list -- the bio points HERE instead). S5 co-credited. full_names 'RR Events Chicago' / 'River Roast Chicago'." },
   { aliasUsername: "tigerlillyevents", canonicalUsername: "tigerlilyevents", note: "round 10 (D062): double-L typo shell. Identity merge only -- makes no claim that the canonical is a venue; it is the management company for Cafe Brauer (D061 Tigerlily landmine)", source: "alias-finder", evidence: "Bare shell: 0 followers, 0 weddings. Corroborated S6 (stems differ by one edit over 10+ chars). Canonical full_name 'Cafe Brauer & Lincoln Park Zoo'." },
-  { aliasUsername: "floatingworldevents", canonicalUsername: "floatingworldgallery", note: "round 10 (D062): the gallery's events arm", source: "alias-finder", evidence: "S5 co-credited on the same venue credit line. full_names 'FloatingWorldEvents' / 'Floating World Gallery'; 4 weddings on the alias + 2 on the canonical." },];
-
+  { aliasUsername: "floatingworldevents", canonicalUsername: "floatingworldgallery", note: "round 10 (D062): the gallery's events arm", source: "alias-finder", evidence: "S5 co-credited on the same venue credit line. full_names 'FloatingWorldEvents' / 'Floating World Gallery'; 4 weddings on the alias + 2 on the canonical." },
+  // round 11 (D062, 2026-09-20), batch idn-20260920-alias-2 -- surfaced only AFTER the profile
+  // enrichment tick: 499 bare accounts scraped for $1.15, of which 403 gained a website, and S3b
+  // went from 8 fired pairs to 19 (54 before the hotel-chain booking domains were denied). Every
+  // pair below matches on BOTH full_name and website host, which is why they land as T1.
+  { aliasUsername: "thehaleymansion", canonicalUsername: "haleymansion", note: "round 11 (D062): duplicate handle for The Haley Mansion", source: "alias-finder", evidence: "S1+S2+S3+S3b: identical full_name 'The Haley Mansion' and identical website patrickhaleymansion.com. Canonical holds 21 weddings and 2,256 followers; the alias holds 0 and 75." },
+  { aliasUsername: "150_events", canonicalUsername: "150northriverside", note: "round 11 (D062): 150 North Riverside's events handle", source: "alias-finder", evidence: "S3+S3b: both publish 150northriverside.com. full_names '150 Events' / '150 North Riverside'. 1 wedding on the alias + 5 on the canonical." },
+  { aliasUsername: "grovecountryclub", canonicalUsername: "thegrovecountryclub", note: "round 11 (D062): duplicate handle. Direction flipped from the finder's suggestion -- it proposed the wedding-bearing handle as the alias", source: "alias-finder", evidence: "S1+S2+S3b: identical full_name 'The Grove Country Club', both on thegrovecc.com. Canonical chosen as the handle that actually holds the 4 weddings; the other holds 0." },
+  { aliasUsername: "hotelbakerweddings", canonicalUsername: "hotelbaker", note: "round 11 (D062): Hotel Baker's weddings handle", source: "alias-finder", evidence: "S1+S3+S3b: both publish hotelbaker.com; full_names 'Weddings at Hotel Baker' / 'HOTEL BAKER'." },
+  { aliasUsername: "bullvalleygolfclubevents", canonicalUsername: "bullvalleygc", note: "round 11 (D062): Bull Valley Golf Club's events handle", source: "alias-finder", evidence: "S2+S3+S3b: full_name 'Bull Valley Golf Club' on both (case differs only), both on bullvalleygolfclub.com." },
+  { aliasUsername: "weddingswhiteeagle", canonicalUsername: "whiteeaglegolfclub", note: "round 11 (D062): White Eagle Golf Club's weddings handle -- takes the club OUT of the zero bucket", source: "alias-finder", evidence: "S3b+S4: both on whiteeaglegc.com (the alias at /weddings-and-events). full_names 'White Eagle Golf Club Weddings' / 'White Eagle Golf Club'. 2 weddings move to a canonical that had 0." },
+  { aliasUsername: "icc.weddingsandevents", canonicalUsername: "itascacountryclub", note: "round 11 (D062): Itasca Country Club's weddings handle -- takes the club OUT of the zero bucket", source: "alias-finder", evidence: "S3b: both on itascacountryclub.com (the alias at /events). full_name 'Itasca Country Club | Weddings + ...' / 'Itasca Country Club'. 7 weddings move to a canonical that had 0." },
+  { aliasUsername: "zhoubeventschi", canonicalUsername: "zhoubartcenter", note: "round 11 (D062): Zhou B Art Center's events handle", source: "alias-finder", evidence: "S3b: both on zhoubartcenter.com. full_names 'Zhou B Events' / 'Zhou B Art Center'; canonical holds 5 weddings and 49,835 followers." },
+];
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
   const pool = getPool();

@@ -367,6 +367,20 @@ describe("registrableHost / isAggregatorHost / sharesRegistrableHost (S3b, D062)
     expect(isAggregatorHost("vimeo.com")).toBe(true);
   });
 
+  // D062 round 2: surfaced by the profile-enrichment scrape. Every property of a chain links to
+  // the chain's booking site, so the host groups unrelated hotels across cities and continents.
+  it("denies hotel-chain booking domains", () => {
+    expect(isAggregatorHost("marriott.com")).toBe(true);
+    expect(isAggregatorHost("hyatt.com")).toBe(true);
+    expect(isAggregatorHost("hilton.com")).toBe(true);
+    expect(isAggregatorHost("reservations.marriott.com")).toBe(true);
+  });
+
+  it("denies the shorteners the same run exposed", () => {
+    expect(isAggregatorHost("likeshop.me")).toBe(true);
+    expect(isAggregatorHost("youtu.be")).toBe(true);
+  });
+
   it("allows a real venue domain", () => {
     expect(isAggregatorHost("salvageone.com")).toBe(false);
     expect(isAggregatorHost("navypier.org")).toBe(false);
