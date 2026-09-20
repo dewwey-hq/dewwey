@@ -1271,12 +1271,15 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
   return (
     <section id="add-ons">
       <SectionHeading title="Add-ons & extras" actions={actions} />
-      {groups.map((g, gi) => {
+      {/* Many items: one CARD per standard category (the Diamond Garden concept shape) — title, the
+          venue's own blurb(s), the item table, example bullets — in a two-column grid. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+      {groups.map((g) => {
         const blurbSubgroups = g.subgroups.filter((sg) => sg.blurb);
         const examples = [...new Set(g.subgroups.flatMap((sg) => sg.examples))];
         const table = fmt.buildAddOnCategoryStdTable(g.subgroups, venue.spaces);
         return (
-          <div key={g.category_std} className={gi === 0 ? "" : "mt-8"}>
+          <div key={g.category_std} className="min-w-0 rounded-2xl border border-black/[0.06] p-5">
             <h3 className={`text-base text-gray-900 ${uiHeadingClassName}`}>{g.label}</h3>
             {blurbSubgroups.length > 0 && (
               <div className="mt-2 space-y-1">
@@ -1303,6 +1306,7 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
           </div>
         );
       })}
+      </div>
     </section>
   );
 }
