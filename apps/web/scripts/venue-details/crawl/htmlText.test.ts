@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { canonicalVideoUrl, decodeHtmlEntities, extractHtml, parseAssetsBlock } from "./htmlText";
 
 const BASE = "https://venue.com/weddings";
