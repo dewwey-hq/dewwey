@@ -11,7 +11,7 @@ at the repo root with a "Now" section.
 - [engineering/working-across-sessions.md](engineering/working-across-sessions.md) — the
   protocol for daily work across context windows (three tiers of state, session shape, batch
   and on-behalf-review protocols)
-- [decisions.md](decisions.md) — append-only decision log (D001–…); D055 is the active mission
+- [decisions.md](decisions.md) — append-only decision log (D001–…); D060 (VenueDetails v3) and D061 (acquisition loop) are the active missions
 - [merge-eval.md](merge-eval.md) — evaluation of Jeremy's wedding-app and the
   case for the merge; the schema/scraping analysis behind D006
 - [jeremy-ddl.sql](jeremy-ddl.sql) — schema-only dump of his beta RDS tables
@@ -27,7 +27,9 @@ at the repo root with a "Now" section.
   plan inside the $29 credit
 - [engineering/venue-enrichment/](engineering/venue-enrichment/) — the
   venue-website extraction data plane (adopted wholesale in the merged schema); the golden-set
-  template (locked page format), quality rubric, and `industry-research-2026-09-13.md`
+  template (locked page format), quality rubric, `industry-research-2026-09-13.md`, and
+  [`loop/`](engineering/venue-enrichment/loop/README.md) — the **D060 fill loop** (ticks, gates, budget,
+  recovery; running since 2026-09-19)
 - [engineering/post-classification/](engineering/post-classification/) — the
   AI-native pipeline deciding which of the ~45k staged Instagram posts are
   credible real Chicago weddings (D009)

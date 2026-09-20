@@ -1,7 +1,7 @@
 # Venue Details (VenueDetails v3)
 
 Status: In Progress
-Started: 2026-09-13 · Last updated: 2026-09-13
+Started: 2026-09-13 · Last updated: 2026-09-19
 Related: ROADMAP.md "Now" (points at STATE.md), docs/decisions.md D060; predecessors
 `docs/product/venue-enrichment.md` (the retired automated pipeline) and
 `docs/engineering/venue-enrichment/golden-set-template.md` (the locked page format, §7 named this fork)
@@ -65,3 +65,11 @@ legacy `venue_enrichment` table; editing the `/concept/*` pages; any new env var
 
 - 2026-09-13 — Plan approved after three review rounds (user, ChatGPT, Grok ×2). D060 written. Phase 0
   docs landed; Phase 1a (types + pure libs + golden fixtures) in progress.
+- 2026-09-14 — Phases 1a, 1b and all Phase 2 code committed (schema, crawler, prompt, extract/validate/
+  repair/serve/rollback/corrections, scorer, funnel); dry-runs only.
+- 2026-09-18 → 09-19 — Seven golden-render review rounds on `/lab/venue?golden=` (user), all landed as
+  general rules + optional schema fields (D060 addendum). Diamond Garden's fixture completed against the
+  venue's own 2024 add-ons sheet.
+- 2026-09-19 — v3 schema applied by the user. Website discovery over the live listing: 421 listed → 307
+  candidates → 258 verified. The fill loop starts (`docs/engineering/venue-enrichment/loop/`): calibration
+  ticks on the golden six + must-not slate, then fill ticks of ~30 venues in wedding-count order.

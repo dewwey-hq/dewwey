@@ -312,6 +312,22 @@ which exposed that extra hours had been in the fixture but never rendered. Open 
 prices Top Shelf open bar at $35/4 hr vs $30/$40 in the bar-packages PDF; left as-is pending that PDF.
 765 tests. Still zero DB/R2/OpenRouter writes; the three user approvals in STATE.md are unchanged.
 
+**Addendum 2026-09-19 (loop start).** The user applied the v3 schema (31 statements, 7 empty tables + view
+verified) and asked whether to run the rest as a loop. Decision: **yes, a ticked loop with gates, the same
+shape as D061's** (`docs/engineering/venue-enrichment/loop/README.md`). Two units: calibration ticks (one
+per prompt version on the golden six + the must-not slate; `c0` is the crawl-only checkpoint) and fill
+ticks (~30 venues in wedding-count order, band 20+ first). One command per tick (`runTick.ts`), one
+tracked report directory, one row in `loop/ticks.md`, one STATE.md rewrite, one commit — a context loss
+costs at most one tick, and every step is idempotent on DB state (content-hash dedupe, `input_hash` skip,
+repair self-selection, dry-run-by-default serve). Approvals were front-loaded once (push; discovery apply;
+crawls into R2; OpenRouter ≤ $10 calibration / ≤ $40 Phase 3; serving into the new tables, which only
+`/lab/venue?u=` reads) with two human spot-checks (after `f1`, at Phase 3 end) instead of per-tick asks.
+Discovery re-run the same day: 421 listed → 307 candidates (196 IG bio, 111 Places) → 258 verified / 23 JS
+shells / 26 unreachable, 170 wedding pages — the IG-bio share grew from 55 to 196 because the D061
+acquisition loop's profile scrapes filled `accounts.external_url`; Phase 3's population is therefore
+~258, not 146, and the $40 cap is expected to cover the 20+ and 6–19 bands (~176 venues) with the 1–5 band
+a second approval. New small scripts: `runTick.ts`, `targets.ts`, `mustnot/checkUniversal.ts`.
+
 ## D059 — 2026-09-13 — Attire split: dress/suit/bridesmaid/veil/shoes broken out of generic "Attire"
 
 **Context.** Every dress shop, suit shop, bridesmaid-dress brand, veil seller, and shoe vendor
