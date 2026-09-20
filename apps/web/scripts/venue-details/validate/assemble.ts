@@ -327,6 +327,14 @@ export function coerceRawArrays(spineRaw: RawSpineResult, pricingRaw: RawPricing
     pr.food_beverage = { food_pills: [], bar_pills: [], caption: null, food_note: null, bar_note: null, menus: [], bar_ladders: [], bar_min_guests: null, notes: [] };
   }
   for (const k of FB_ARRAY_FIELDS) coerceArrayField(pr.food_beverage as Record<string, unknown>, k, `/food_beverage/${k}`, issues);
+  // rates: a required object the model can omit (tick c3, Field Museum run 26 -- an inquire-only
+  // venue with nothing to put there). Same rule: missing -> empty silently; wrong type -> one issue.
+  if (!pr.rates || typeof pr.rates !== "object") {
+    if (pr.rates !== undefined && pr.rates !== null) {
+      issues.push({ code: "malformed_array", path: "/pricing/rates", severity: "warning", tier: null, message: `Expected an object, got ${typeof pr.rates} -- treated as empty.` });
+    }
+    pr.rates = { service_charge_pct: null, service_charge_base: null, sales_tax_pct: null, sales_tax_base: null, taxes_included_in_rental: null, cc_fee_pct: null, quote: null, source_url: null };
+  }
   return issues;
 }
 

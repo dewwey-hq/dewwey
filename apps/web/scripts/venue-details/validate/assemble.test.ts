@@ -161,6 +161,13 @@ describe("coerceRawArrays", () => {
     const paths = issues.filter((i) => i.code === "malformed_array").map((i) => i.path).sort();
     expect(paths).toEqual(["/food_beverage/food_pills", "/pricing/faqs", "/pricing/paths/0/fixed_fees", "/spaces"]);
   });
+  it("fills a missing pricing.rates object silently", () => {
+    const spineRaw = { spaces: [] } as unknown as Parameters<typeof coerceRawArrays>[0];
+    const pricingRaw = { paths: [], add_ons: [], add_on_categories: [], required_third_party: [], faqs: [], food_beverage: { food_pills: [], bar_pills: [], menus: [], bar_ladders: [], notes: [] } } as unknown as Parameters<typeof coerceRawArrays>[1];
+    const issues = coerceRawArrays(spineRaw, pricingRaw);
+    expect(issues).toEqual([]);
+    expect((pricingRaw as unknown as { rates: { quote: unknown } }).rates.quote).toBeNull();
+  });
   it("is a no-op on a null pricing result", () => {
     const spineRaw = { spaces: [] } as unknown as Parameters<typeof coerceRawArrays>[0];
     expect(coerceRawArrays(spineRaw, null)).toEqual([]);
