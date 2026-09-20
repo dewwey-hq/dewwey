@@ -2005,10 +2005,14 @@ function buildFieldMuseum(): VenueDetailsV3 {
     catering: f("approved_list_only", fm.quickFacts[2].note!, vendorsUrl),
     bar: f("in_house", fm.quickFacts[3].note!, site),
     rental_charge_type: f("inquire_only", fm.policies[2].value, site),
-    parking: f("paid", fm.policies[5].value, vendorsUrl),
+    // Concept row: "Not provided; approved vendors listed" -- the museum provides no parking; couples hire
+    // an approved parking vendor. "paid" contradicted its own quote (caught by the c2 scorecard, 2026-09-20).
+    parking: f("none", fm.policies[5].value, vendorsUrl),
     // "Not required; on-site Account Manager provided" -- closest of the 3 real enum values:
     // a form of built-in support is provided, just not a traditional wedding coordinator.
-    day_of_coordinator: f("included", fm.faqs[0].answer, site),
+    // Concept row: "Not required; on-site Account Manager provided" -- the museum does NOT provide a planner
+    // (its own FAQ says so); an Account Manager handles museum logistics. "included" contradicted the quote.
+    day_of_coordinator: f("optional", fm.faqs[0].answer, site),
     // Judgment call (see report): CATERING_POLICIES has no closed-list value shared with
     // VENDOR_LIST_POLICIES; the venue's own "choose from our approved vendors" wording with no
     // opt-out anywhere is a de facto closed list, so mapped to `required_list` even though the

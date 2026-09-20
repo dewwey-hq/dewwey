@@ -93,14 +93,14 @@
     },
     "parking": {
       "status": "stated",
-      "value": "paid",
+      "value": "none",
       "quote": "Not provided; approved vendors listed",
       "source_url": "https://www.fieldmuseum.org/plan-your-special-event/approved-vendors",
       "snapshot_id": null
     },
     "day_of_coordinator": {
       "status": "stated",
-      "value": "included",
+      "value": "optional",
       "quote": "The Field Museum does not provide a planner or act as a planner for your wedding. An Account Manager will be onsite to manage museum logistics from setup to the end of your celebration. We are happy to recommend local wedding planners who have worked with past clients if you wish to hire one on your own. We highly recommend hiring a wedding planner to assist with logistics, but it is not required.",
       "source_url": "https://www.fieldmuseum.org/page/weddings",
       "snapshot_id": null
