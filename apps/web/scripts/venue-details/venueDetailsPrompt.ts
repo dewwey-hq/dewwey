@@ -196,8 +196,8 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
   rental_charge_type: {
     valueSchema: enumSchema(RENTAL_CHARGE_TYPES),
     description:
-      "How the VENUE RENTAL itself is charged (food/bar are separate fields). flat_fee: the rental is one flat amount, even if food is priced per guest on top. per_guest_bundled: the rental exists only inside a per-person package. " +
-      "flat_plus_per_guest: the rental itself has a flat part AND a per-guest part. inquire_only: the site publishes NO rental numbers at all ('contact us for pricing', no rates anywhere) -- use this, never not_stated, when the site clearly sells events but gives no price. none: rental is free.",
+      "How booking the venue is charged. flat_fee: a flat rental and NO per-guest packages (catering is a separate outside cost). per_guest_bundled: the rental exists only inside a per-person package (no rental-only option). " +
+      "flat_plus_per_guest: the venue publishes BOTH a flat rental fee AND its own per-guest packages/menus (tiers like 'Argento $190 per guest', or an all-inclusive package next to a hall-rental option). inquire_only: the site publishes NO rental numbers at all ('contact us for pricing', no rates anywhere) -- use this, never not_stated, when the site clearly sells events but gives no price. none: rental is free.",
   },
   fb_minimum: {
     valueSchema: FB_MINIMUM_VALUE_SCHEMA,
@@ -290,8 +290,8 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
   pricing_archetype: {
     valueSchema: enumSchema(PRICING_ARCHETYPES),
     description:
-      "all_inclusive_per_guest: one all-in per-person price. rental_plus_fb_minimum: rental fee + separate F&B minimum. rental_plus_per_guest_packages: rental fee + named per-guest tiers. " +
-      "raw_space_byo: rental fee for the space, open catering, NO food-and-beverage minimum (rental_plus_fb_minimum requires that an F&B minimum actually applies). hotel_package: bundles room block + event space + F&B. inquire_only: the site publishes no prices at all -- use it, never not_stated, when events are clearly sold without numbers. mixed: genuinely combines more than one.",
+      "all_inclusive_per_guest: one all-in per-person price at a non-hotel venue. rental_plus_fb_minimum: rental fee + separate F&B minimum. rental_plus_per_guest_packages: rental fee + named per-guest tiers. " +
+      "raw_space_byo: rental fee for the space, open catering, NO food-and-beverage minimum (rental_plus_fb_minimum requires that an F&B minimum actually applies). hotel_package: a HOTEL selling per-person wedding packages (venue_kind hotel + per-guest packages = hotel_package, never all_inclusive_per_guest). inquire_only: the site publishes no prices at all -- use it, never not_stated, when events are clearly sold without numbers. mixed: genuinely combines more than one.",
   },
   price_from_usd: {
     valueSchema: { type: "number" },
@@ -300,7 +300,7 @@ const SPINE_FIELD_CONFIG: Record<(typeof SPINE_KEYS)[number], SpineFieldConfig> 
   },
   per_guest_from_usd: {
     valueSchema: { type: "number" },
-    description: "The lowest published per-guest price across packages/tiers, when pricing has a per-guest component.",
+    description: "The lowest published per-guest price across WEDDING RECEPTION packages/tiers. Not a lunch, brunch, early-bird or daytime special, not a single menu item.",
   },
   per_guest_to_usd: {
     valueSchema: { type: "number" },
@@ -729,7 +729,7 @@ RULES THAT APPLY EVERYWHERE:
 - Prefer wedding/private-event pages over hotel lodging/guest-room pages. Prefer WEDDING figures over gala/corporate figures when both exist.
 - A corkage fee mentioned ANYWHERE on the site means bar = byo_with_corkage, even if the main bar page doesn't say so.
 - A "production fee" or "facility fee" stated as a percentage is the venue's service charge under a different name -- never treat it as separate from service_charge_pct.
-- Capacity: one row per labeled style per space in capacities[] (never invented, never summed across rooms). Ignore contact-form guest-count dropdowns entirely.
+- Capacity: one row per labeled style per space in capacities[] (never invented, never summed across rooms). Ignore contact-form guest-count dropdowns entirely. When the homepage/general pages and the wedding page or wedding brochure give different figures for the same space and layout, use the WEDDING figure (a brochure's \"Seated Reception: up to 425\" beats a homepage's \"Seated up to 450\").
 - Spaces: wedding/event rooms only. Hotels: only rooms listed under Weddings. Never amalgamate two named rooms into one space unless the site itself sells that combination as its own product. The same physical area described on two different pages is ONE space. A venue with exactly one undifferentiated space gets exactly one space entry, named after the venue.
 - differentiator is null for most venues -- only fill it when the site demonstrates something genuinely unique with real specifics, never from generic marketing adjectives ("stunning", "unforgettable").
 - about is Sourced (not quote-grounded): keep it under 600 chars, no em dashes, and never state a number that doesn't appear somewhere in the crawled pages.

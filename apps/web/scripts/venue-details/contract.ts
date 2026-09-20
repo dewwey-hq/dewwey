@@ -22,7 +22,11 @@ import type { SpineTier, VenueDetailsV3 } from "../../lib/venueDetails/types";
 // rental_hours = event hours not access window; price_from = lowest venue fee, never a per-guest
 // menu price; bar in_house when outside alcohol is forbidden; capacity_max_guests = wedding figure;
 // venue_kind specific over event_space; vendor list preferred vs required. Input budget 240k chars.
-export const VENUE_DETAILS_PROMPT_VERSION = "venue-details-v3.2";
+// v3.3 (2026-09-20, tick c4): rental_charge_type reconciled across the goldens (flat rental + the
+// venue's own per-guest packages = flat_plus_per_guest; flat_fee only when no per-guest packages
+// exist); hotel + per-guest packages = hotel_package; per_guest_from excludes lunch/daytime specials;
+// wedding-page capacity beats a homepage figure for the same space+layout.
+export const VENUE_DETAILS_PROMPT_VERSION = "venue-details-v3.3";
 
 // ---------------------------------------------------------------------------
 // Raw tool-call output shapes (pre-validation; SPINE_TOOL / PRICING_TOOL args)

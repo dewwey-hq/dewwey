@@ -245,7 +245,10 @@ function buildMarchetti(): VenueDetailsV3 {
     weekday_events: f(true, m.faqs[3].answer, site),
     catering: f("exclusive_in_house", m.policies[0].value, site),
     bar: f("in_house", m.policies[1].value, site),
-    rental_charge_type: f("flat_fee", m.policies[2].detail!, site),
+    // 2026-09-20 (tick c3): reconciled with Diamond Garden -- a flat venue fee PLUS the venue's own
+    // per-guest packages (Argento/Oro/Platino) is flat_plus_per_guest; flat_fee is reserved for venues
+    // with no per-guest packages of their own (Greenhouse).
+    rental_charge_type: f("flat_plus_per_guest", m.policies[2].detail!, site),
     fb_minimum: f({ applies: true, amount_usd: null, detail: m.policies[3].detail! }, m.policies[3].detail!, brochure),
     service_charge_pct: f(25, m.policies[4].detail!, site),
     parking: f("valet_paid", m.policies[5].detail!, termsUrl),

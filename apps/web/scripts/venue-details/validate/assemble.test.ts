@@ -161,6 +161,13 @@ describe("coerceRawArrays", () => {
     const paths = issues.filter((i) => i.code === "malformed_array").map((i) => i.path).sort();
     expect(paths).toEqual(["/food_beverage/food_pills", "/pricing/faqs", "/pricing/paths/0/fixed_fees", "/spaces"]);
   });
+  it("recovers an array that arrived JSON-encoded as a string", () => {
+    const spineRaw = { spaces: [] } as unknown as Parameters<typeof coerceRawArrays>[0];
+    const pricingRaw = { paths: JSON.stringify([{ id: "hall", fixed_fees: [] }]), add_ons: [], add_on_categories: [], required_third_party: [], faqs: [], food_beverage: {} } as unknown as Parameters<typeof coerceRawArrays>[1];
+    const issues = coerceRawArrays(spineRaw, pricingRaw);
+    expect((pricingRaw as unknown as { paths: { id: string }[] }).paths[0].id).toBe("hall");
+    expect(issues.map((i) => i.code)).toContain("stringified_array");
+  });
   it("fills a missing pricing.rates object silently", () => {
     const spineRaw = { spaces: [] } as unknown as Parameters<typeof coerceRawArrays>[0];
     const pricingRaw = { paths: [], add_ons: [], add_on_categories: [], required_third_party: [], faqs: [], food_beverage: { food_pills: [], bar_pills: [], menus: [], bar_ladders: [], notes: [] } } as unknown as Parameters<typeof coerceRawArrays>[1];

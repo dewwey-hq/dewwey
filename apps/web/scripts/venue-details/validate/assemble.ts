@@ -303,6 +303,20 @@ function coerceArrayField(obj: Record<string, unknown> | null | undefined, key: 
     obj[key] = [];
     return;
   }
+  // A string that IS the array, JSON-encoded (Diamond Garden's pricing paths, tick c3): recover it
+  // rather than lose three pricing paths -- the content is the model's own, just double-encoded.
+  if (typeof v === "string") {
+    try {
+      const parsed: unknown = JSON.parse(v);
+      if (Array.isArray(parsed)) {
+        issues.push({ code: "stringified_array", path, severity: "warning", tier: null, message: `Array arrived JSON-encoded as a string (${v.length} chars) -- parsed.` });
+        obj[key] = parsed;
+        return;
+      }
+    } catch {
+      /* not JSON: fall through to the malformed case */
+    }
+  }
   const desc = typeof v === "string" ? `string of ${v.length} chars` : typeof v;
   issues.push({ code: "malformed_array", path, severity: "warning", tier: null, message: `Expected an array, got ${desc} -- treated as empty.` });
   obj[key] = [];
@@ -898,12 +912,17 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
   // not_stated while its own pricing call said inquire_only). Quote is empty by construction --
   // there is nothing to quote -- and the fact is marked so the UI can say "no prices published".
   // Priced add-ons (a photo session, a coat check) do not make the RENTAL priced -- only paths do.
-  const noPaths = paths.length === 0;
-  if (pricingArchetype === "inquire_only" && noPaths) {
+  const pathHasPrices = (pth: PricingPath) => pth.fixed_fees.length > 0 || pth.per_guest_tiers.length > 0 || pth.minimums.length > 0;
+  const noPaths = !paths.some(pathHasPrices);
+  // The spine's own conclusion counts too: a stated inquire_only archetype ("Rental prices are quoted
+  // upon request") implies the rental charge type is inquire_only as well (Geraghty, tick c3).
+  const spineSaysInquire = spine.pricing_archetype?.status === "stated" && (spine.pricing_archetype as { value?: unknown }).value === "inquire_only";
+  if ((pricingArchetype === "inquire_only" && noPaths) || (spineSaysInquire && noPaths)) {
     const firstPage = input.pages[0];
     for (const key of ["pricing_archetype", "rental_charge_type"] as const) {
       if (spine[key]?.status === "not_stated") {
-        spine[key] = { status: "stated", value: "inquire_only", quote: "", source_url: firstPage ? normalizeUrl(firstPage.url) : (input.websiteUrl ?? ""), snapshot_id: firstPage?.snapshot_id ?? null };
+        const archetypeFact = spineSaysInquire ? (spine.pricing_archetype as { quote?: string; source_url?: string; snapshot_id?: number | null }) : null;
+        spine[key] = { status: "stated", value: "inquire_only", quote: archetypeFact?.quote ?? "", source_url: archetypeFact?.source_url ?? (firstPage ? normalizeUrl(firstPage.url) : (input.websiteUrl ?? "")), snapshot_id: archetypeFact?.snapshot_id ?? firstPage?.snapshot_id ?? null };
         issues.push({ code: "derived_inquire_only", path: `/spine/${key}`, severity: "info", tier: null, message: "Pricing call found no published prices -- set to inquire_only." });
       }
     }

@@ -74,7 +74,7 @@
     },
     "rental_charge_type": {
       "status": "stated",
-      "value": "flat_fee",
+      "value": "flat_plus_per_guest",
       "quote": "See Spaces for each room's day-by-day rates. Event times are set in your contract; running past your scheduled end time is subject to availability and approval, and may cost extra.",
       "source_url": "https://www.galleriamarchetti.com/",
       "snapshot_id": null
