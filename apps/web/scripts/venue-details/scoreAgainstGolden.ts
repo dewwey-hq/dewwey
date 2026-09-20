@@ -18,7 +18,7 @@ import { GOLDEN_ACCOUNT_IDS, GOLDEN_SLUGS, getGolden, type GoldenSlug } from "..
 import { criticalFieldPaths } from "../../lib/venueDetails/tiers";
 import type { VenueDetailsV3 } from "../../lib/venueDetails/types";
 import { DEFAULT_PROMPT_VERSION } from "./contract";
-import { scoreVenue, type VenueScoreResult, type InventoryKindScore } from "./score";
+import { scoreVenue, type VenueScoreResult, type InventoryKindScore, type Miss } from "./score";
 import { MUST_NOT_ASSERTIONS } from "./mustnot/assertions";
 import { runMustNot, type MustNotResult } from "./mustnot/check";
 import { parseCsvRows } from "./csv";
@@ -97,6 +97,16 @@ function printTierRow(label: string, m: number, t: number, acc: number, gate: nu
   console.log(`    ${label.padEnd(10)} ${m}/${t}  (${(acc * 100).toFixed(1)}%, gate >= ${(gate * 100).toFixed(0)}%)  ${pass ? "PASS" : "FAIL"}`);
 }
 
+/** One line per miss, `path: golden -> candidate (note)` -- every miss carries its own values
+ * (tick c2), so a scorecard reader can tell a real extraction error from a scorer artifact without
+ * re-running anything. */
+function printMisses(misses: Miss[]) {
+  for (const m of misses) {
+    const note = m.note ? ` (${m.note})` : "";
+    console.log(`      ${m.path}: ${JSON.stringify(m.golden)} → ${JSON.stringify(m.candidate)}${note}`);
+  }
+}
+
 function printInventoryKindRow(label: string, k: InventoryKindScore) {
   if (k.golden_items === 0 && k.extracted_items === 0) return; // nothing to report for this kind
   console.log(
@@ -167,8 +177,11 @@ async function runGoldenScoring(args: Args) {
       continue;
     }
     printTierRow("critical", result.tiers.critical.matches, result.tiers.critical.total, result.tiers.critical.accuracy, 0.95, result.gates.critical);
+    printMisses(result.tiers.critical.misses);
     printTierRow("important_core", result.important_core.matches, result.important_core.total, result.important_core.accuracy, 0.85, result.gates.important);
+    printMisses(result.important_core.misses);
     printTierRow("secondary", result.tiers.secondary.matches, result.tiers.secondary.total, result.tiers.secondary.accuracy, 0.7, result.gates.secondary);
+    printMisses(result.tiers.secondary.misses);
     console.log(
       `    (deprecated) important (old, spine-only)  ${result.tiers.important.matches}/${result.tiers.important.total}  (${(result.tiers.important.accuracy * 100).toFixed(1)}%) -- superseded by important_core above`
     );
@@ -176,8 +189,10 @@ async function runGoldenScoring(args: Args) {
       `    headline    golden=${result.capacities.goldenHeadline ?? "null"} candidate=${result.capacities.candidateHeadline ?? "null"}  ${result.gates.headlineExact ? "EXACT" : "MISMATCH"}`
     );
     console.log(`    capacities  ${result.capacities.matches}/${result.capacities.total} exact-max matches`);
+    printMisses(result.capacities.misses);
     console.log(`    spaces      recall=${(result.spaces.recall * 100).toFixed(0)}% precision=${(result.spaces.precision * 100).toFixed(0)}% (${result.spaces.matchedCount}/${result.spaces.goldenCount})`);
     console.log(`    pricing     ${result.pricingScalars.matches}/${result.pricingScalars.total} scalar matches`);
+    printMisses(result.pricingScalars.misses);
     console.log(
       `    inventory   recall=${(result.inventory.recall * 100).toFixed(0)}% (${result.inventory.found}/${result.inventory.golden_items})  precision=${(result.inventory.precision * 100).toFixed(0)}% (${result.inventory.matched}/${result.inventory.extracted_items})  (informational, not gated)`
     );

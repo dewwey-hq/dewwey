@@ -18,11 +18,32 @@
  * scoreVenue for the exact rule table.
  */
 import { defaultAxes, estimateCost, headlineCapacity } from "../../lib/venueDetails/derive";
-import { SPINE_KEYS, SPINE_TIERS, type SpineTier, type VenueDetailsV3 } from "../../lib/venueDetails/types";
+import {
+  SPINE_KEYS,
+  SPINE_TIERS,
+  type Cancellation,
+  type EstimateInput,
+  type FbMinimum,
+  type FixedFee,
+  type Minimum,
+  type PaymentSchedule,
+  type PerGuestTier,
+  type PricingPath,
+  type Season,
+  type Space,
+  type SpineTier,
+  type VenueDetailsV3,
+  type VenueSpine,
+} from "../../lib/venueDetails/types";
 // Reused as-is for the fuzzy add-on-name match in the `inventory` tier (item 1 of the important-tier
 // split plan) -- app/components/venue/format.ts is a pure, React-free module so it imports cleanly
 // from a scripts/ context.
 import { isNearDuplicateAddOnName } from "../../app/components/venue/format";
+// Same URL normalization the validator's grounding check uses (scheme/www/trailing-slash/hash) --
+// reused, not reimplemented, so "was this page crawled?" never drifts between validation and
+// scoring (tick c3 evidence: LondonHouse's golden cites ".../weddings", the crawl stored
+// ".../weddings/", and raw string comparison called all 46 facts on that page source_not_crawled).
+import { normalizeUrl } from "./validate/grounding";
 
 // ---------------------------------------------------------------------------
 // eval-tag / crawled-set scope filter
@@ -43,6 +64,17 @@ function evalTagFor(golden: VenueDetailsV3, path: string): EvalTag | undefined {
   return undefined;
 }
 
+/** Is `url` in the crawled set, comparing NORMALIZED forms (`normalizeUrl` -- scheme, `www.`,
+ * trailing slash, hash all fall away) -- the same rule `validate/grounding.ts`'s `checkGrounding`
+ * uses to decide a page was crawled. A golden fact citing ".../weddings" must count as crawled
+ * when the crawl stored ".../weddings/" (tick c3, LondonHouse evidence: 46 facts wrongly landed in
+ * `source_not_crawled` over exactly this trailing slash). */
+function crawledSetHas(crawledPages: string[], url: string | null): boolean {
+  if (url == null) return false;
+  const norm = normalizeUrl(url);
+  return crawledPages.some((p) => normalizeUrl(p) === norm);
+}
+
 /** In scope iff `--all-fields`, or the golden field is tagged `extractor` AND (it's `not_stated`,
  * so there's no source_url to check, or its `source_url` is in the CANDIDATE's crawled set --
  * `sources.pages` -- meaning a live run actually had a chance to see that page). */
@@ -51,7 +83,7 @@ function passesEvalAndCrawlFilter(golden: VenueDetailsV3, path: string, goldenSo
   const tag = evalTagFor(golden, path);
   if (tag !== "extractor") return false;
   if (goldenSourceUrl == null) return true;
-  return crawledPages.includes(goldenSourceUrl);
+  return crawledSetHas(crawledPages, goldenSourceUrl);
 }
 
 // ---------------------------------------------------------------------------
@@ -75,7 +107,8 @@ export interface ExcludedFact {
  * (`has_text_layer === false`) -- `null` (not yet checked) or no matching resource both fall back
  * to the more conservative `source_not_crawled` reading. */
 function resourceTextLayerFor(golden: VenueDetailsV3, url: string): boolean | null {
-  const r = golden.resources.find((res) => res.url === url || res.source_url === url);
+  const norm = normalizeUrl(url);
+  const r = golden.resources.find((res) => normalizeUrl(res.url) === norm || normalizeUrl(res.source_url) === norm);
   return r ? r.has_text_layer : null;
 }
 
@@ -102,7 +135,7 @@ function classify(
   if (tag === "human_only") return { inScope: false, reason: "human_only" };
   if (tag !== "extractor" && mode === "strict") return { inScope: false, reason: "other" };
   if (sourceUrl == null) return { inScope: true, reason: null };
-  if (crawledPages.includes(sourceUrl)) return { inScope: true, reason: null };
+  if (crawledSetHas(crawledPages, sourceUrl)) return { inScope: true, reason: null };
   if (resourceTextLayerFor(golden, sourceUrl) === false) return { inScope: false, reason: "no_text_layer" };
   return { inScope: false, reason: "source_not_crawled" };
 }
@@ -168,6 +201,27 @@ function summarizeExclusions(facts: ExcludedFact[]): ExcludedSummary {
 }
 
 // ---------------------------------------------------------------------------
+// Misses carry values (tick c2 calibration fix): every miss entry below is `{path, golden,
+// candidate, note}` -- a short, JSON-safe snapshot of what each side actually said, not just the
+// field_path -- so a scorecard reader (human or the calibration loop) can tell a real extraction
+// error from a scorer artifact without re-running anything. `golden`/`candidate` are deliberately
+// loose (`unknown`): every call site passes whatever small JSON-safe value it already has in hand
+// (a tri-state's resolved value, a fee amount, a capacity max, a golden/candidate value for a text
+// field) -- never the full nested Fact/Tri wrapper.
+// ---------------------------------------------------------------------------
+
+export interface Miss {
+  path: string;
+  golden: unknown;
+  candidate: unknown;
+  note: string;
+}
+
+function mkMiss(path: string, golden: unknown, candidate: unknown, note: string = ""): Miss {
+  return { path, golden, candidate, note };
+}
+
+// ---------------------------------------------------------------------------
 // Generic tri-state field comparison
 // ---------------------------------------------------------------------------
 
@@ -189,8 +243,106 @@ function deepEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+/** Short JSON-safe summary of a tri-state field's current value, for miss reporting -- `not_stated`
+ * collapses to the string `"not_stated"` (never confused with a real value), `conflicting` reports
+ * every candidate value (an array), `stated` reports the bare value. */
+function triSummary(t: TriLike): unknown {
+  if (t.status === "not_stated") return "not_stated";
+  if (t.status === "conflicting") return (t.candidates ?? []).map((c) => c.value);
+  return t.value;
+}
+
+function missNoteFor(golden: TriLike, candidate: TriLike): string {
+  if (golden.status === "not_stated") return "candidate stated a value the golden fixture doesn't confirm";
+  if (candidate.status === "not_stated") return "candidate missing";
+  if (golden.status === "conflicting") return "candidate didn't match any of the golden's conflicting values";
+  return "value mismatch";
+}
+
+// ---------------------------------------------------------------------------
+// Semantic value comparison for a handful of structured/text spine fields (tick c2 calibration
+// fix, evidence from runs 16-19): these fields carry the SAME fact in genuinely different wording
+// between the golden fixture and a live model run (a paraphrase, a reordered JSON object, a
+// "2:00 am" vs "02:00" time format) -- scoring them with plain `deepEqual` was counting real
+// matches as misses. Only wired into the STATED-vs-STATED branch of `triMatches` below; the
+// not_stated/conflicting branches keep the existing generic rule table untouched, so a golden
+// `conflicting` fact (e.g. Marchetti's `payment_schedule`) still scores a stated candidate as a
+// miss unless it happens to deep-equal one of the conflicting candidates verbatim -- deliberately
+// conservative, per the plan's explicit "conflicting golden vs stated candidate stays a miss".
+// ---------------------------------------------------------------------------
+
+/** Numeric/percent tokens in a piece of prose ("50% deposit" -> ["50%"], "10 days" -> ["10"]),
+ * compared as a set (order-independent) -- two write-ups of the same fact should carry the same
+ * numbers even when everything around them is paraphrased. */
+function numericTokens(s: string): Set<string> {
+  return new Set(s.match(/\d+(?:\.\d+)?%?/g) ?? []);
+}
+
+function numericTokenSetsMatch(a: string, b: string): boolean {
+  const ta = numericTokens(a);
+  const tb = numericTokens(b);
+  if (ta.size !== tb.size) return false;
+  for (const t of ta) if (!tb.has(t)) return false;
+  return true;
+}
+
+/** "2:00 am" / "2am" / "02:00" -> "02:00" (24h `HH:MM`); `null` when the string doesn't parse as a
+ * time at all (e.g. a golden fixture's prose "Midnight") -- callers fall back to exact string
+ * comparison in that case rather than silently treating an unparseable value as a match. */
+export function normalizeTime(raw: string): string | null {
+  const s = raw.trim().toLowerCase();
+  let m = /^(\d{1,2}):(\d{2})$/.exec(s);
+  if (m) {
+    const hh = Number(m[1]);
+    if (hh >= 0 && hh <= 23) return `${String(hh).padStart(2, "0")}:${m[2]}`;
+  }
+  m = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/.exec(s);
+  if (m) {
+    let hh = Number(m[1]) % 12;
+    if (m[3] === "pm") hh += 12;
+    return `${String(hh).padStart(2, "0")}:${m[2] ?? "00"}`;
+  }
+  return null;
+}
+
+function noiseCurfewMatches(a: string, b: string): boolean {
+  const na = normalizeTime(a);
+  const nb = normalizeTime(b);
+  return na != null && nb != null ? na === nb : a === b;
+}
+
+/** Deposit numeric tokens must agree, and both sides must have/lack `balance_due` -- comparing its
+ * numeric tokens too when both state one. */
+function paymentScheduleMatches(g: PaymentSchedule, c: PaymentSchedule): boolean {
+  if (!numericTokenSetsMatch(g.deposit, c.deposit)) return false;
+  const gHas = !!g.balance_due?.trim();
+  const cHas = !!c.balance_due?.trim();
+  if (gHas !== cHas) return false;
+  return !gHas || numericTokenSetsMatch(g.balance_due as string, c.balance_due as string);
+}
+
+function cancellationMatches(g: Cancellation, c: Cancellation): boolean {
+  if ((g.deposit_refundable ?? null) !== (c.deposit_refundable ?? null)) return false;
+  return numericTokenSetsMatch(g.summary, c.summary);
+}
+
+/** `applies` + `amount_usd` only -- `detail` is prose (two honest write-ups of the same
+ * yes/no-and-amount fact needn't share a single word of it). */
+function fbMinimumMatches(g: FbMinimum, c: FbMinimum): boolean {
+  return g.applies === c.applies && g.amount_usd === c.amount_usd;
+}
+
+const SEMANTIC_SPINE_COMPARATORS: Partial<Record<keyof VenueSpine, (g: unknown, c: unknown) => boolean>> = {
+  payment_schedule: (g, c) => paymentScheduleMatches(g as PaymentSchedule, c as PaymentSchedule),
+  cancellation: (g, c) => cancellationMatches(g as Cancellation, c as Cancellation),
+  noise_curfew: (g, c) => noiseCurfewMatches(g as string, c as string),
+  fb_minimum: (g, c) => fbMinimumMatches(g as FbMinimum, c as FbMinimum),
+};
+
 /** Rule table:
- *  - golden stated, candidate stated: match iff values equal.
+ *  - golden stated, candidate stated: match iff values equal -- `key`, when given and one of the
+ *    fields above, dispatches to the semantic comparator instead of plain `deepEqual` (enum/numeric
+ *    scalar fields have no entry, so they keep exact equality -- "enum fields stay exact").
  *  - golden stated, candidate conflicting: match iff any candidate value equals golden's.
  *  - golden stated, candidate not_stated: miss (unknown beats wrong, but a golden-known fact that
  *    the pipeline missed is still a miss for scoring purposes).
@@ -199,8 +351,12 @@ function deepEqual(a: unknown, b: unknown): boolean {
  *  - golden not_stated, candidate stated/conflicting: miss (candidate invented a fact the fixture
  *    doesn't confirm) -- conservative reading; flagged in the module docstring as an interpretation.
  */
-function triMatches(golden: TriLike, candidate: TriLike): boolean {
+function triMatches(golden: TriLike, candidate: TriLike, key?: keyof VenueSpine): boolean {
   if (golden.status === "not_stated") return candidate.status === "not_stated";
+  if (golden.status === "stated" && candidate.status === "stated" && key) {
+    const cmp = SEMANTIC_SPINE_COMPARATORS[key];
+    if (cmp) return cmp(golden.value, candidate.value);
+  }
   const goldenValues = triValues(golden);
   const candidateValues = triValues(candidate);
   if (candidateValues.length === 0) return false;
@@ -216,7 +372,7 @@ export interface TierScore {
   matches: number;
   total: number;
   accuracy: number; // matches/total; 1 when total===0 (nothing in scope, vacuously fine)
-  misses: string[]; // field_paths that didn't match, for debugging
+  misses: Miss[];
 }
 
 export function scoreSpineTiers(candidate: VenueDetailsV3, golden: VenueDetailsV3, options: { allFields?: boolean } = {}): Record<SpineTier, TierScore> {
@@ -234,10 +390,10 @@ export function scoreSpineTiers(candidate: VenueDetailsV3, golden: VenueDetailsV
 
     const tier = SPINE_TIERS[key];
     const c = candidate.spine[key] as unknown as TriLike;
-    const match = triMatches(g, c);
+    const match = triMatches(g, c, key);
     result[tier].total++;
     if (match) result[tier].matches++;
-    else result[tier].misses.push(path);
+    else result[tier].misses.push(mkMiss(path, triSummary(g), triSummary(c), missNoteFor(g, c)));
   }
 
   for (const tier of Object.keys(result) as SpineTier[]) {
@@ -292,6 +448,160 @@ export function scoreAddOns(candidate: VenueDetailsV3, golden: VenueDetailsV3, o
 }
 
 // ---------------------------------------------------------------------------
+// Space alignment (tick c2 calibration fix, evidence from runs 16-19): a live model run invents
+// its OWN space ids ("the_pavilion", "greenhouse_loft", "whole_venue") that never match a golden
+// fixture's hand-authored slugs ("the-pavilion", "loft") even when every capacity/fee number
+// underneath is identical -- scoreCapacities/scoreImportantCore used to key off the raw id and
+// score every one of those facts as a miss. `alignSpaces` builds a candidateId -> goldenId map so
+// every space-keyed comparison below (capacities, fixed fees, per-guest tiers) compares on the
+// SAME space instead of the same spelling.
+// ---------------------------------------------------------------------------
+
+function normalizeSpaceId(id: string): string {
+  const base = id.toLowerCase().trim().replace(/[_\s]+/g, "-");
+  return base.startsWith("the-") ? base.slice(4) : base;
+}
+
+function nameTokens(s: string): Set<string> {
+  return new Set(normalizeName(s).split(" ").filter(Boolean));
+}
+
+function nameTokenJaccard(a: string, b: string): number {
+  const ta = nameTokens(a);
+  const tb = nameTokens(b);
+  if (ta.size === 0 || tb.size === 0) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  const union = ta.size + tb.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+
+/**
+ * candidateId -> goldenId, by (1) normalized id equality (lowercase, `_`/space -> `-`, strip a
+ * leading `the-`), (2) normalized name token Jaccard >= 0.5 (greedy, highest score first, each
+ * golden space used at most once), (3) the single-space rule: when the golden has exactly one
+ * space, EVERY remaining candidate space aligns to it -- including the literal pseudo-id
+ * `"whole_venue"`, which never needs to appear in `candidate` at all (a `CapacityTuple`/`FixedFee`
+ * can reference it directly with no matching `Space` entry).
+ */
+export function alignSpaces(golden: Space[], candidate: Space[]): Map<string, string> {
+  const map = new Map<string, string>();
+  const usedGolden = new Set<string>();
+
+  for (const c of candidate) {
+    const normC = normalizeSpaceId(c.id);
+    const g = golden.find((gs) => !usedGolden.has(gs.id) && normalizeSpaceId(gs.id) === normC);
+    if (g) {
+      map.set(c.id, g.id);
+      usedGolden.add(g.id);
+    }
+  }
+
+  const scored: { c: Space; g: Space; score: number }[] = [];
+  for (const c of candidate) {
+    if (map.has(c.id)) continue;
+    for (const g of golden) {
+      if (usedGolden.has(g.id)) continue;
+      const score = nameTokenJaccard(c.name, g.name);
+      if (score >= 0.5) scored.push({ c, g, score });
+    }
+  }
+  scored.sort((a, b) => b.score - a.score);
+  for (const { c, g } of scored) {
+    if (map.has(c.id) || usedGolden.has(g.id)) continue;
+    map.set(c.id, g.id);
+    usedGolden.add(g.id);
+  }
+
+  if (golden.length === 1) {
+    const gId = golden[0].id;
+    if (candidate.length === 1 && !map.has(candidate[0].id)) map.set(candidate[0].id, gId);
+    if (!map.has("whole_venue")) map.set("whole_venue", gId);
+  }
+
+  return map;
+}
+
+interface SpaceAlignmentContext {
+  spaceMap: Map<string, string>; // candidateId -> goldenId
+  goldenSpaceIds: Set<string>;
+}
+
+function buildSpaceAlignmentContext(golden: VenueDetailsV3, candidate: VenueDetailsV3): SpaceAlignmentContext {
+  return { spaceMap: alignSpaces(golden.spaces, candidate.spaces), goldenSpaceIds: new Set(golden.spaces.map((s) => s.id)) };
+}
+
+/** A capacity/fee's space reference (a real space id, `null`, or the literal `"whole_venue"`
+ * pseudo-id) resolved onto the GOLDEN's own space id whenever alignment found one -- `null` and
+ * `"whole_venue"` both mean "the whole venue", which `alignSpaces` already collapsed onto the
+ * golden's single space id when the golden itself has exactly one (Greenhouse's whole-venue fees
+ * vs. the candidate's own `greenhouse_loft`-keyed ones). An id that resolves to nothing is returned
+ * unchanged, so it only ever self-matches an equally-unresolved id -- conservative, never a false
+ * positive. */
+function canonicalSpaceKey(rawId: string | null, ctx: SpaceAlignmentContext): string {
+  const id = rawId ?? "whole_venue";
+  if (ctx.goldenSpaceIds.has(id)) return id;
+  return ctx.spaceMap.get(id) ?? id;
+}
+
+const seasonKey = (s: Season | null | undefined): Season => s ?? "any";
+
+/** A fixed fee's effective space key -- `applies_to === "whole_venue"` always resolves through the
+ * `null`/whole-venue path regardless of whatever `space_id` a model happened to also set. */
+function feeSpaceKey(f: { applies_to: string; space_id: string | null }, ctx: SpaceAlignmentContext): string {
+  return canonicalSpaceKey(f.applies_to === "whole_venue" ? null : f.space_id, ctx);
+}
+
+/** Semantic fixed-fee match (tick c2): aligned space, exact day, season-or-`any`, amount within 1%
+ * -- not the old literal `key` string equality, which broke the instant a model chose its own key
+ * spelling even when every underlying number was identical (Marchetti/Greenhouse evidence). */
+function fixedFeesMatch(g: FixedFee, c: FixedFee, ctx: SpaceAlignmentContext): boolean {
+  if (feeSpaceKey(g, ctx) !== feeSpaceKey(c, ctx)) return false;
+  if ((g.day ?? null) !== (c.day ?? null)) return false;
+  if (seasonKey(g.season) !== seasonKey(c.season)) return false;
+  return priceWithin1Pct(g.amount, c.amount);
+}
+
+/** The candidate fee sharing the golden's (space, day, season) regardless of amount -- so a miss
+ * can report what the candidate actually said instead of just "nothing matched". */
+function findAlignedFee(g: FixedFee, candidateFees: FixedFee[], ctx: SpaceAlignmentContext): FixedFee | undefined {
+  return candidateFees.find((c) => feeSpaceKey(g, ctx) === feeSpaceKey(c, ctx) && (g.day ?? null) === (c.day ?? null) && seasonKey(g.season) === seasonKey(c.season));
+}
+
+/** Per-guest tier match: normalized name OR normalized id, price within 1% -- no space dimension
+ * (per-guest tiers aren't space-scoped in this schema). */
+function tiersMatch(g: PerGuestTier, c: PerGuestTier): boolean {
+  const idOrNameMatch = normalizeName(g.id) === normalizeName(c.id) || normalizeName(g.name) === normalizeName(c.name);
+  return idOrNameMatch && priceWithin1Pct(g.per_guest, c.per_guest);
+}
+
+function findAlignedTier(g: PerGuestTier, candidateTiers: PerGuestTier[]): PerGuestTier | undefined {
+  return candidateTiers.find((c) => normalizeName(g.id) === normalizeName(c.id) || normalizeName(g.name) === normalizeName(c.name));
+}
+
+function minimumsMatch(g: Minimum, c: Minimum): boolean {
+  return g.kind === c.kind && (g.day ?? null) === (c.day ?? null) && seasonKey(g.season) === seasonKey(c.season) && g.amount === c.amount;
+}
+
+function findAlignedMinimum(g: Minimum, candidateMins: Minimum[]): Minimum | undefined {
+  return candidateMins.find((c) => g.kind === c.kind && (g.day ?? null) === (c.day ?? null) && seasonKey(g.season) === seasonKey(c.season));
+}
+
+/** Resolves the candidate pricing path a golden path should compare against -- exact id match
+ * first, else (tick c2 calibration fix, evidence from run 16/17) the candidate's own single path
+ * when BOTH documents have exactly one: a model invents its own path id/name
+ * ("wedding_experiences") that has no reason to match a golden fixture's ("default") even though
+ * it's clearly the same one path -- the same fallback `scorePricingScalars` already uses for its
+ * own (single) default-path lookup, applied here to every golden path. A multi-path venue whose
+ * ids don't align is left unresolved -- conservative, no attempt to guess which candidate path
+ * corresponds to which golden path when there's more than one of either. */
+function resolveCandidatePath(gp: PricingPath, golden: VenueDetailsV3, candidate: VenueDetailsV3): PricingPath | undefined {
+  const exact = candidate.pricing.paths.find((p) => p.id === gp.id);
+  if (exact) return exact;
+  return golden.pricing.paths.length === 1 && candidate.pricing.paths.length === 1 ? candidate.pricing.paths[0] : undefined;
+}
+
+// ---------------------------------------------------------------------------
 // Capacity: exact (space_id, layout) -> max match; headline exactness.
 // ---------------------------------------------------------------------------
 
@@ -302,18 +612,25 @@ export interface CapacityScore {
   headlineExact: boolean;
   goldenHeadline: number | null;
   candidateHeadline: number | null;
+  misses: Miss[];
 }
 
 export function scoreCapacities(candidate: VenueDetailsV3, golden: VenueDetailsV3, options: { allFields?: boolean } = {}): CapacityScore {
   let matches = 0;
   let total = 0;
-  const candidateByKey = new Map(candidate.capacities.map((c) => [`${c.space_id}:${c.layout}`, c]));
+  const misses: Miss[] = [];
+  const ctx = buildSpaceAlignmentContext(golden, candidate);
+  // Keyed on the CANONICAL (aligned-to-golden) space id -- a candidate's own spelling
+  // ("the_pavilion", "whole_venue") never has to match the golden's ("the-pavilion") verbatim.
+  const candidateByKey = new Map(candidate.capacities.map((c) => [`${canonicalSpaceKey(c.space_id, ctx)}:${c.layout}`, c]));
   for (const gc of golden.capacities) {
-    const key = `${gc.space_id}:${gc.layout}`;
-    if (!passesEvalAndCrawlFilter(golden, `/capacities/${key}`, gc.source_url, candidate.sources.pages, options)) continue;
+    const rawKey = `${gc.space_id}:${gc.layout}`;
+    if (!passesEvalAndCrawlFilter(golden, `/capacities/${rawKey}`, gc.source_url, candidate.sources.pages, options)) continue;
     total++;
-    const cc = candidateByKey.get(key);
+    const alignedKey = `${canonicalSpaceKey(gc.space_id, ctx)}:${gc.layout}`;
+    const cc = candidateByKey.get(alignedKey);
     if (cc && cc.max === gc.max) matches++;
+    else misses.push(mkMiss(`/capacities/${rawKey}`, gc.max, cc?.max ?? null, cc ? "max differs" : "no aligned candidate capacity for this space/layout"));
   }
 
   const goldenHc = headlineCapacity(golden);
@@ -326,6 +643,7 @@ export function scoreCapacities(candidate: VenueDetailsV3, golden: VenueDetailsV
     headlineExact: goldenHc.headline === candidateHc.headline,
     goldenHeadline: goldenHc.headline,
     candidateHeadline: candidateHc.headline,
+    misses,
   };
 }
 
@@ -337,13 +655,13 @@ export interface PricingScalarScore {
   matches: number;
   total: number;
   accuracy: number;
-  misses: string[];
+  misses: Miss[];
 }
 
 const RATE_FIELDS = ["service_charge_pct", "service_charge_base", "sales_tax_pct", "sales_tax_base", "sales_tax_source", "cc_fee_pct"] as const;
 
 export function scorePricingScalars(candidate: VenueDetailsV3, golden: VenueDetailsV3, options: { allFields?: boolean } = {}): PricingScalarScore {
-  const misses: string[] = [];
+  const misses: Miss[] = [];
   let matches = 0;
   let total = 0;
 
@@ -352,8 +670,10 @@ export function scorePricingScalars(candidate: VenueDetailsV3, golden: VenueDeta
   // scalar the calculator actually keys off of).
   if (passesEvalAndCrawlFilter(golden, "/spine/pricing_archetype", golden.spine.pricing_archetype.status === "stated" ? golden.spine.pricing_archetype.source_url : null, candidate.sources.pages, options)) {
     total++;
-    if (triMatches(golden.spine.pricing_archetype as unknown as TriLike, candidate.spine.pricing_archetype as unknown as TriLike)) matches++;
-    else misses.push("/spine/pricing_archetype");
+    const g = golden.spine.pricing_archetype as unknown as TriLike;
+    const c = candidate.spine.pricing_archetype as unknown as TriLike;
+    if (triMatches(g, c)) matches++;
+    else misses.push(mkMiss("/spine/pricing_archetype", triSummary(g), triSummary(c), missNoteFor(g, c)));
   }
 
   // rates
@@ -361,23 +681,23 @@ export function scorePricingScalars(candidate: VenueDetailsV3, golden: VenueDeta
     for (const field of RATE_FIELDS) {
       total++;
       if (golden.pricing.rates[field] === candidate.pricing.rates[field]) matches++;
-      else misses.push(`/pricing/rates/${field}`);
+      else misses.push(mkMiss(`/pricing/rates/${field}`, golden.pricing.rates[field], candidate.pricing.rates[field]));
     }
   }
 
-  // minimums, keyed by (kind, day, season), scoped to the golden's default path when present
+  // minimums, keyed by (kind, day, season-or-any) semantics -- not literal key equality (tick c2) --
+  // scoped to the golden's default path when present.
   const goldenPath = golden.pricing.paths.find((p) => p.id === defaultAxes(golden).path_id) ?? golden.pricing.paths[0];
   const candidatePath = candidate.pricing.paths.find((p) => p.id === goldenPath?.id) ?? candidate.pricing.paths[0];
   if (goldenPath) {
-    const candidateMinByKey = new Map((candidatePath?.minimums ?? []).map((m) => [`${m.kind}:${m.day}:${m.season}`, m]));
     for (const m of goldenPath.minimums) {
       const key = `${m.kind}:${m.day}:${m.season}`;
       const path = `/pricing/paths/${goldenPath.id}/minimums/${key}`;
       if (!passesEvalAndCrawlFilter(golden, path, m.source_url, candidate.sources.pages, options)) continue;
       total++;
-      const cm = candidateMinByKey.get(key);
-      if (cm && cm.amount === m.amount) matches++;
-      else misses.push(path);
+      const aligned = findAlignedMinimum(m, candidatePath?.minimums ?? []);
+      if (aligned && minimumsMatch(m, aligned)) matches++;
+      else misses.push(mkMiss(path, m.amount, aligned?.amount ?? null, aligned ? "amount differs" : "no matching candidate minimum (kind/day/season)"));
     }
   }
 
@@ -389,7 +709,7 @@ export function scorePricingScalars(candidate: VenueDetailsV3, golden: VenueDeta
     const g = golden.pricing.seasons;
     const c = candidate.pricing.seasons;
     if (c && g.peak === c.peak && g.off === c.off) matches++;
-    else misses.push("/pricing/seasons");
+    else misses.push(mkMiss("/pricing/seasons", g, c ?? null));
   }
 
   // includes: the golden default path's path-wide inclusions, verbatim-item-set equality.
@@ -397,10 +717,10 @@ export function scorePricingScalars(candidate: VenueDetailsV3, golden: VenueDeta
     const includesPath = `/pricing/paths/${goldenPath.id}/includes`;
     if (passesEvalAndCrawlFilter(golden, includesPath, null, candidate.sources.pages, options)) {
       total++;
-      const goldenSet = JSON.stringify([...goldenPath.includes].sort());
-      const candidateSet = JSON.stringify([...(candidatePath?.includes ?? [])].sort());
-      if (goldenSet === candidateSet) matches++;
-      else misses.push(includesPath);
+      const goldenSorted = [...goldenPath.includes].sort();
+      const candidateSorted = [...(candidatePath?.includes ?? [])].sort();
+      if (JSON.stringify(goldenSorted) === JSON.stringify(candidateSorted)) matches++;
+      else misses.push(mkMiss(includesPath, goldenSorted, candidateSorted));
     }
   }
 
@@ -410,10 +730,10 @@ export function scorePricingScalars(candidate: VenueDetailsV3, golden: VenueDeta
     const termsPath = `/pricing/paths/${goldenPath.id}/terms`;
     if (passesEvalAndCrawlFilter(golden, termsPath, null, candidate.sources.pages, options)) {
       total++;
-      const goldenLabels = JSON.stringify([...goldenPath.terms.map((t) => t.label)].sort());
-      const candidateLabels = JSON.stringify([...(candidatePath?.terms ?? []).map((t) => t.label)].sort());
-      if (goldenLabels === candidateLabels) matches++;
-      else misses.push(termsPath);
+      const goldenLabels = [...goldenPath.terms.map((t) => t.label)].sort();
+      const candidateLabels = [...(candidatePath?.terms ?? []).map((t) => t.label)].sort();
+      if (JSON.stringify(goldenLabels) === JSON.stringify(candidateLabels)) matches++;
+      else misses.push(mkMiss(termsPath, goldenLabels, candidateLabels));
     }
   }
 
@@ -440,14 +760,15 @@ export interface CoreScore {
   matches: number;
   total: number;
   accuracy: number;
-  misses: string[];
+  misses: Miss[];
 }
 
 export function scoreImportantCore(candidate: VenueDetailsV3, golden: VenueDetailsV3, options: { allFields?: boolean } = {}, excluded?: ExcludedFact[]): CoreScore {
-  const misses: string[] = [];
+  const misses: Miss[] = [];
   let matches = 0;
   let total = 0;
   const crawled = candidate.sources.pages;
+  const ctx = buildSpaceAlignmentContext(golden, candidate);
 
   // Important-tier spine fields -- identical rule to scoreSpineTiers, filtered to just this tier.
   for (const key of SPINE_KEYS) {
@@ -461,14 +782,15 @@ export function scoreImportantCore(candidate: VenueDetailsV3, golden: VenueDetai
     }
     total++;
     const c = candidate.spine[key] as unknown as TriLike;
-    if (triMatches(g, c)) matches++;
-    else misses.push(path);
+    if (triMatches(g, c, key)) matches++;
+    else misses.push(mkMiss(path, triSummary(g), triSummary(c), missNoteFor(g, c)));
   }
 
   // Non-headline capacity tuples (the headline tuple is gated separately via headlineExact).
   const goldenHc = headlineCapacity(golden);
   const headlineKey = goldenHc.headline_space_id != null && goldenHc.headline_layout != null ? `${goldenHc.headline_space_id}:${goldenHc.headline_layout}` : null;
-  const candidateByCapKey = new Map(candidate.capacities.map((c) => [`${c.space_id}:${c.layout}`, c]));
+  // Keyed on the CANONICAL (aligned-to-golden) space id -- see scoreCapacities.
+  const candidateByCapKey = new Map(candidate.capacities.map((c) => [`${canonicalSpaceKey(c.space_id, ctx)}:${c.layout}`, c]));
   const nonHeadlineCaps = scopedItems(
     golden,
     golden.capacities.filter((gc) => `${gc.space_id}:${gc.layout}` !== headlineKey),
@@ -480,12 +802,13 @@ export function scoreImportantCore(candidate: VenueDetailsV3, golden: VenueDetai
     excluded
   );
   for (const gc of nonHeadlineCaps) {
-    const key = `${gc.space_id}:${gc.layout}`;
-    const path = `/capacities/${key}`;
+    const rawKey = `${gc.space_id}:${gc.layout}`;
+    const path = `/capacities/${rawKey}`;
     total++;
-    const cc = candidateByCapKey.get(key);
+    const alignedKey = `${canonicalSpaceKey(gc.space_id, ctx)}:${gc.layout}`;
+    const cc = candidateByCapKey.get(alignedKey);
     if (cc && cc.max === gc.max) matches++;
-    else misses.push(path);
+    else misses.push(mkMiss(path, gc.max, cc?.max ?? null, cc ? "max differs" : "no aligned candidate capacity for this space/layout"));
   }
 
   // Rates: same single-gate-many-fields shape as scorePricingScalars (reused, not reimplemented).
@@ -498,31 +821,33 @@ export function scoreImportantCore(candidate: VenueDetailsV3, golden: VenueDetai
       for (const field of RATE_FIELDS) {
         total++;
         if (golden.pricing.rates[field] === candidate.pricing.rates[field]) matches++;
-        else misses.push(`/pricing/rates/${field}`);
+        else misses.push(mkMiss(`/pricing/rates/${field}`, golden.pricing.rates[field], candidate.pricing.rates[field]));
       }
     }
   }
 
-  // Pricing-path numerics, every path (not just the default one).
+  // Pricing-path numerics, every path (not just the default one) -- fee/tier/minimum matching is
+  // semantic (aligned space, day, season-or-any, amount within 1%), not literal key equality
+  // (tick c2: a model's own key spelling never has to match the golden's).
   for (const gp of golden.pricing.paths) {
-    const cp = candidate.pricing.paths.find((p) => p.id === gp.id);
+    const cp = resolveCandidatePath(gp, golden, candidate);
 
     const fixedFees = scopedItems(golden, gp.fixed_fees, (f) => `/pricing/paths/${gp.id}/fixed_fees/${f.key}`, (f) => f.source_url, crawled, options, "strict", excluded);
     for (const f of fixedFees) {
       const path = `/pricing/paths/${gp.id}/fixed_fees/${f.key}`;
       total++;
-      const cf = cp?.fixed_fees.find((x) => x.key === f.key);
-      if (cf && cf.amount === f.amount) matches++;
-      else misses.push(path);
+      const aligned = findAlignedFee(f, cp?.fixed_fees ?? [], ctx);
+      if (aligned && fixedFeesMatch(f, aligned, ctx)) matches++;
+      else misses.push(mkMiss(path, f.amount, aligned?.amount ?? null, aligned ? "amount differs" : "no matching candidate fee (space/day/season)"));
     }
 
     const perGuestTiers = scopedItems(golden, gp.per_guest_tiers, (t) => `/pricing/paths/${gp.id}/per_guest_tiers/${t.id}`, (t) => t.source_url, crawled, options, "strict", excluded);
     for (const t of perGuestTiers) {
       const path = `/pricing/paths/${gp.id}/per_guest_tiers/${t.id}`;
       total++;
-      const ct = cp?.per_guest_tiers.find((x) => x.id === t.id);
-      if (ct && ct.per_guest === t.per_guest) matches++;
-      else misses.push(path);
+      const aligned = findAlignedTier(t, cp?.per_guest_tiers ?? []);
+      if (aligned && tiersMatch(t, aligned)) matches++;
+      else misses.push(mkMiss(path, t.per_guest, aligned?.per_guest ?? null, aligned ? "per_guest differs" : "no matching candidate tier (name/id)"));
     }
 
     const minimums = scopedItems(
@@ -539,9 +864,9 @@ export function scoreImportantCore(candidate: VenueDetailsV3, golden: VenueDetai
       const key = `${m.kind}:${m.day}:${m.season}`;
       const path = `/pricing/paths/${gp.id}/minimums/${key}`;
       total++;
-      const cm = cp?.minimums.find((x) => `${x.kind}:${x.day}:${x.season}` === key);
-      if (cm && cm.amount === m.amount) matches++;
-      else misses.push(path);
+      const aligned = findAlignedMinimum(m, cp?.minimums ?? []);
+      if (aligned && minimumsMatch(m, aligned)) matches++;
+      else misses.push(mkMiss(path, m.amount, aligned?.amount ?? null, aligned ? "amount differs" : "no matching candidate minimum (kind/day/season)"));
     }
 
     if (gp.required_staffing) {
@@ -552,8 +877,9 @@ export function scoreImportantCore(candidate: VenueDetailsV3, golden: VenueDetai
       } else {
         total++;
         const cs = cp?.required_staffing;
+        const gs = { price_per_role: gp.required_staffing.price_per_role, bartender_per_guests: gp.required_staffing.bartender_per_guests };
         if (cs && cs.price_per_role === gp.required_staffing.price_per_role && cs.bartender_per_guests === gp.required_staffing.bartender_per_guests) matches++;
-        else misses.push(path);
+        else misses.push(mkMiss(path, gs, cs ? { price_per_role: cs.price_per_role, bartender_per_guests: cs.bartender_per_guests } : null));
       }
     }
   }
@@ -718,13 +1044,46 @@ export interface CostDeltaScore {
 
 const COST_DELTA_GATE = 0.02;
 
+/**
+ * Remaps the golden's pinned default axes (`space_id`/`path_id`/`tier_id`) onto the CANDIDATE's
+ * own ids before `estimateCost` runs on it (tick c3 evidence): `estimateCost` keys its fee/tier
+ * lookups off these raw ids, so pinning the golden's own spelling ("the-pavilion", "default") on
+ * the candidate silently drops every space-scoped fee that doesn't happen to share it --
+ * Greenhouse's candidateTotal came back 0, Marchetti's was missing its Pavilion Saturday fee.
+ * Reuses the exact alignment machinery `scoreCapacities`/`scoreImportantCore` already use for
+ * space/path/tier -- never a second notion of "the same space/path/tier". `guests`/`day`/`season`/
+ * etc. are left untouched -- only the id-shaped axes need remapping. */
+function mapAxesToCandidate(axes: EstimateInput, golden: VenueDetailsV3, candidate: VenueDetailsV3): EstimateInput {
+  const mapped: EstimateInput = { ...axes };
+
+  if (axes.space_id != null) {
+    const spaceMap = alignSpaces(golden.spaces, candidate.spaces);
+    const reverse = new Map<string, string>();
+    for (const [cId, gId] of spaceMap) if (!reverse.has(gId)) reverse.set(gId, cId);
+    const candidateSpaceId = reverse.get(axes.space_id);
+    if (candidateSpaceId != null) mapped.space_id = candidateSpaceId;
+  }
+
+  const goldenPath = axes.path_id != null ? golden.pricing.paths.find((p) => p.id === axes.path_id) : undefined;
+  const candidatePath = goldenPath ? resolveCandidatePath(goldenPath, golden, candidate) : undefined;
+  if (candidatePath) mapped.path_id = candidatePath.id;
+
+  if (axes.tier_id != null && goldenPath) {
+    const goldenTier = goldenPath.per_guest_tiers.find((t) => t.id === axes.tier_id);
+    const candidateTier = goldenTier ? findAlignedTier(goldenTier, candidatePath?.per_guest_tiers ?? []) : undefined;
+    if (candidateTier) mapped.tier_id = candidateTier.id;
+  }
+
+  return mapped;
+}
+
 export function scoreCostDelta(candidate: VenueDetailsV3, golden: VenueDetailsV3): CostDeltaScore {
   const axes = defaultAxes(golden);
   const goldenEstimate = estimateCost(golden, axes);
   if (goldenEstimate.warnings.includes("no_path")) {
     return { goldenTotal: null, candidateTotal: null, pctDelta: null, withinGate: true };
   }
-  const candidateEstimate = estimateCost(candidate, axes);
+  const candidateEstimate = estimateCost(candidate, mapAxesToCandidate(axes, golden, candidate));
   const candidateTotal = candidateEstimate.warnings.includes("no_path") ? null : candidateEstimate.total;
   const pctDelta = candidateTotal == null ? null : Math.abs(candidateTotal - goldenEstimate.total) / (goldenEstimate.total || 1);
   return {
