@@ -134,8 +134,8 @@ describe("money", () => {
     expect(fmt.money(0)).toBe("$0");
   });
 
-  it("keeps up to 2 fraction digits", () => {
-    expect(fmt.money(12742.5)).toBe("$12,742.5");
+  it("shows cents when fractional", () => {
+    expect(fmt.money(12742.5)).toBe("$12,742.50");
   });
 });
 
@@ -1578,5 +1578,29 @@ describe("groupSelectableAddOnsByCategory (rule 18)", () => {
     const rentals = groups.find((g) => g.category === "Rentals")!;
     expect(rentals.individual).toEqual([parking]);
     expect(rentals.groups).toEqual([]);
+  });
+});
+
+describe("money — cents only when fractional", () => {
+  it("keeps whole dollars whole and shows two decimals otherwise", () => {
+    expect(fmt.money(6000)).toBe("$6,000");
+    expect(fmt.money(1.5)).toBe("$1.50");
+    expect(fmt.money(84.95)).toBe("$84.95");
+  });
+});
+
+describe("captionForCategoryCard / mergeExamplesIntoTable (category card cleanup)", () => {
+  const base = { id: "x", name: "Unlimited ice", category: "Food & beverage add-ons", variant: null, group: "fb" as const, price: 100, price_max: null, unit: "flat" as const, per_space_prices: null, applies_to: null, path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: null, note: null, quote: "q", source_url: "u", snapshot_id: null };
+  it("drops a caption that restates the standard category label, keeps a distinct one", () => {
+    expect(fmt.captionForCategoryCard(base, "Food & beverage", false)).toBeNull();
+    expect(fmt.captionForCategoryCard({ ...base, category: "Extra hours" }, "Space & rentals", false)).toBe("Extra hours");
+    expect(fmt.captionForCategoryCard({ ...base, category: "Extra hours" }, "Space & rentals", true)).toBeNull();
+  });
+  it("folds priced examples into rows, drops duplicates, keeps unpriced leftovers", () => {
+    const table = { columnLabels: ["Price"], rows: [{ key: "a", itemLabel: "Unlimited ice", caption: null, prices: ["$100"], note: null }] };
+    const out = fmt.mergeExamplesIntoTable(table, ["Unlimited ice: $100", "Food package (Bronze/Silver/Gold): $15.95-$35/guest", "Linens available in 30 colors"]);
+    expect(out.table.rows.map((r) => r.itemLabel)).toEqual(["Unlimited ice", "Food package"]);
+    expect(out.table.rows[1].prices).toEqual(["$15.95-$35/guest"]);
+    expect(out.leftover).toEqual(["Linens available in 30 colors"]);
   });
 });

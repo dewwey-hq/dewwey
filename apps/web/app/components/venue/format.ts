@@ -40,7 +40,9 @@ import {
 // ---------------------------------------------------------------------------
 
 export function money(n: number): string {
-  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  // Whole dollars stay whole ("$6,000"); anything fractional shows cents ("$1.50", "$84.95").
+  const fractional = Math.abs(n - Math.round(n)) > 1e-9;
+  return `$${n.toLocaleString(undefined, fractional ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 })}`;
 }
 
 /** Thousands separators for a plain (non-money) count — guest numbers, capacities, etc. Round 4
@@ -1021,15 +1023,67 @@ export function addOnCardCaption(a: AddOn): string | null {
  * columns appear as soon as any item carries `per_space_prices`; an item with a flat price instead
  * repeats that price across every space column (Marchetti's Chiavari chairs/Stage rows sit beside
  * its per-space Dance floor rows in the same "Space & rentals" table). */
-export function buildAddOnCategoryStdTable(subgroups: AddOnSubgroup[], spaces: Space[]): { columnLabels: string[]; rows: AddOnCategoryTableRow[] } {
+/** A row caption (the venue's own sub-category) earns its place only when it tells the reader
+ * something the card header doesn't: dropped when it restates the standard category label
+ * ("Food & beverage add-ons" under "Food & beverage") or when every item in the card shares one
+ * sub-category (the header already says it). */
+export function captionForCategoryCard(a: AddOn, stdLabel: string, singleSubcategory: boolean): string | null {
+  const base = addOnCardCaption(a);
+  if (!base) return null;
+  if (singleSubcategory) return null;
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const c = norm(base);
+  const l = norm(stdLabel);
+  if (c === l || c.startsWith(l) || c.replace(/ add ?ons?$/, "") === l) return null;
+  return base;
+}
+
+/** Curated example bullets often duplicate priced rows ("Unlimited ice: $100") or carry priced
+ * items the fixture keeps display-only ("Food package (Bronze/Silver/Gold): $15.95–$35/guest").
+ * Fold every "Name: $price" example into the table as a row (no calculator effect), drop examples
+ * that duplicate an existing row, and return whatever is left as plain bullets. */
+export function mergeExamplesIntoTable(
+  table: { columnLabels: string[]; rows: AddOnCategoryTableRow[] },
+  examples: string[],
+): { table: { columnLabels: string[]; rows: AddOnCategoryTableRow[] }; leftover: string[] } {
+  const norm = (x: string) => x.toLowerCase().replace(/\(.*?\)/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+  const existing = table.rows.map((r) => norm(r.itemLabel));
+  const isDuplicate = (name: string) => {
+    const n = norm(name);
+    return existing.some((e) => e === n || e.startsWith(n) || n.startsWith(e));
+  };
+  const rows = [...table.rows];
+  const leftover: string[] = [];
+  examples.forEach((ex, i) => {
+    const m = ex.match(/^(.+?):\s*(\$.+)$/);
+    if (!m) {
+      if (!isDuplicate(ex)) leftover.push(ex);
+      return;
+    }
+    const [, name, price] = m;
+    if (isDuplicate(name)) return;
+    rows.push({
+      key: `ex-${i}`,
+      itemLabel: name.trim(),
+      caption: null,
+      prices: table.columnLabels.map(() => price.trim()),
+      note: null,
+    });
+    existing.push(norm(name));
+  });
+  return { table: { columnLabels: table.columnLabels, rows }, leftover };
+}
+
+export function buildAddOnCategoryStdTable(subgroups: AddOnSubgroup[], spaces: Space[], stdLabel?: string): { columnLabels: string[]; rows: AddOnCategoryTableRow[] } {
   const items = subgroups.flatMap((sg) => sg.items);
+  const singleSubcategory = new Set(items.map((a) => a.category.trim().toLowerCase())).size <= 1;
   const spaceIds = [...new Set(items.flatMap((a) => (a.per_space_prices ? Object.keys(a.per_space_prices) : [])))];
   const spaceName = (id: string) => spaces.find((s) => s.id === id)?.name ?? id;
   const columnLabels = spaceIds.length > 0 ? spaceIds.map(spaceName) : ["Price"];
   const rows: AddOnCategoryTableRow[] = items.map((a) => ({
     key: a.id,
     itemLabel: addOnItemLabel(a),
-    caption: addOnCardCaption(a),
+    caption: stdLabel ? captionForCategoryCard(a, stdLabel, singleSubcategory) : addOnCardCaption(a),
     prices: spaceIds.length > 0 ? spaceIds.map((sid) => (a.per_space_prices?.[sid] != null ? money(a.per_space_prices[sid]) : addOnPriceString(a))) : [addOnPriceString(a)],
     note: a.note,
   }));

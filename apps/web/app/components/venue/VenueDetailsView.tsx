@@ -1278,8 +1278,11 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
       <div className="gap-4 sm:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
       {groups.map((g) => {
         const blurbSubgroups = g.subgroups.filter((sg) => sg.blurb);
-        const examples = [...new Set(g.subgroups.flatMap((sg) => sg.examples))];
-        const table = fmt.buildAddOnCategoryStdTable(g.subgroups, venue.spaces);
+        const rawExamples = [...new Set(g.subgroups.flatMap((sg) => sg.examples))];
+        const { table, leftover: examples } = fmt.mergeExamplesIntoTable(
+          fmt.buildAddOnCategoryStdTable(g.subgroups, venue.spaces, g.label),
+          rawExamples,
+        );
         return (
           <div key={g.category_std} className="inline-block w-full min-w-0 rounded-2xl border border-black/[0.06] p-5 align-top">
             <h3 className={`text-base text-gray-900 ${uiHeadingClassName}`}>{g.label}</h3>
