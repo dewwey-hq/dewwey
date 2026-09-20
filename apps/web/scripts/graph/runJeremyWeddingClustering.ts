@@ -346,16 +346,32 @@ async function main() {
   // structural_post_vendor_evidence_for_batch(batch_id) (applyStructuralEvidenceSchema.ts: same
   // body, same row type, universe restricted to the tick's first-observed posts), which computes
   // in seconds. Other evidence sources keep the plain url filter -- their views are small.
-  const evidenceRelation =
-    acquisitionBatch && evidenceSource === "structural"
-      ? `structural_post_vendor_evidence_for_batch($2::text)`
-      : evidenceView;
-  const { rows: evidence } = await pool.query<EvidenceRow>(
-    acquisitionBatchUrls
-      ? `select ${evidenceColumns} from ${evidenceRelation} where source_post_url = any($1::text[])`
-      : `select ${evidenceColumns} from ${evidenceView}`,
-    acquisitionBatchUrls ? (evidenceSource === "structural" ? [acquisitionBatchUrls, acquisitionBatch] : [acquisitionBatchUrls]) : []
-  );
+  // 2026-09-20, second correction: the batch-scoped FUNCTION scales badly (13 s for 98 posts, past the
+  // 2-minute timeout at 1,541), while the full view -- since its UNION ALL re-source -- computes in
+  // ~25 s regardless of batch size. So: the plain view + url filter (the CTEs materialize once, the
+  // filter is applied after), run on one client inside a transaction with a local statement timeout,
+  // because the transaction-mode pooler drops a bare `set` before the next statement.
+  let evidence: EvidenceRow[];
+  {
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("set local statement_timeout = '900s'");
+      const res = await client.query<EvidenceRow>(
+        acquisitionBatchUrls
+          ? `select ${evidenceColumns} from ${evidenceView} where source_post_url = any($1::text[])`
+          : `select ${evidenceColumns} from ${evidenceView}`,
+        acquisitionBatchUrls ? [acquisitionBatchUrls] : []
+      );
+      await client.query("commit");
+      evidence = res.rows;
+    } catch (e) {
+      await client.query("rollback").catch(() => undefined);
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
   const evidenceByPost = new Map<string, EvidenceRow[]>();
   for (const e of evidence) {
     if (!evidenceByPost.has(e.source_post_url)) evidenceByPost.set(e.source_post_url, []);
