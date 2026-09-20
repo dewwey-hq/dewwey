@@ -93,7 +93,7 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
 2. **Push** (`git push origin main`) — the classifier blocks Claude from pushing.
 3. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
 
-## Second mission (parallel window) — D061 Acquisition loop: month 1 COMPLETE incl. remainder ticks; reader v1.3 shipped (2026-09-20)
+## Second mission (parallel window) — D061 Acquisition loop: month 1 COMPLETE incl. remainder ticks + the human-verdict creation pass; reader v1.3 shipped (2026-09-20)
 
 Decision + narrative: `docs/decisions.md` D061 and its addenda. Plan of record
 `~/.claude/plans/on-1-what-do-joyful-church.md` (rev 2). README `docs/engineering/acquisition-loop/README.md`.
@@ -108,25 +108,42 @@ re-anchored, not added; 1 retired after spot-check). Spend: **Apify $19.48** of 
 
 | Tick | Targets | $ | New posts | Weddings | w/post | thin-venue weddings | venues → 6+ |
 |---|---|---|---|---|---|---|---|
-| Pilot (proven venues) | 10 | 0.58 | 98 | 53 | 0.21 | 0 | 0 |
-| Canary vendor feeds | 5 | 0.29 | 82 | 23 | 0.18 | 5 | 0 |
-| Canary thin venues | 20 | 1.13 | 477 | 37 | 0.076 | 33 | 5 |
+| Pilot (proven venues) | 10 | 0.58 | 98 | 53 | 0.213 | 0 | 0 |
+| Canary vendor feeds | 5 | 0.29 | 82 | 26 | 0.208 | 6 | 0 |
+| Canary thin venues | 20 | 1.13 | 477 | 38 | 0.078 | 34 | 7 (funnel) |
 | Legacy: Ben's posts at zero venues | 75 | 0 | 1,541 | 6 | 0.004 | 6 | 0 (46 venues dead) |
-| **Probes A** (thin venues + alias siblings) | 223 | 9.84 | 3,965 | **306** | 0.072 | 202 | **24** |
+| **Probes A** (thin venues + alias siblings) | 223 | 9.84 | 3,965 | **333** | 0.079 | 225 | **27** (funnel; +1 venue 0 → 1) |
 | Low-types (hotels/restaurants/churches at 1-5) | 41 | 2.26 | 900 | 49 | 0.050 | 33 | 7 |
 | Probes B (zero-wedding venues) | 60 | 2.87 | 1,201 | 18 | 0.015 | 14 | 0 (3 venues 0 → 1; 39 dead) |
-| Vendor tick (tier-A planners/florists) | 22 | 1.27 | 425 | 103 | 0.188 | 5 | 0 |
-| **Probe6** (6-15 venues, own feed never crawled; 2026-09-20 afternoon, reader v1.3) | 55 | 3.00 | 1,149 | **180** | 0.138 | 1 | 1 (15 venues 6-15 → 16-49) |
+| Vendor tick (tier-A planners/florists) | 22 | 1.27 | 425 | 104 | 0.190 | 6 | 0 |
+| **Probe6** (6-15 venues, own feed never crawled; 2026-09-20 afternoon, reader v1.3) | 55 | 3.00 | 1,149 | **208** | 0.160 | 1 | 1 (16 venues 6-15 → 16-49) |
 | Discovered (hop-1 frontier venues, metro + venue role) | 22 | 1.16 | 398 | 84 | 0.168 | 0 | 0 |
 | Deepen calibration (8 proven venues 25 → 100; 45% already had) | 8 | 1.84 | 439 | 105 | 0.132 (0.24 per NEW post) | 0 | 0 (1 venue → 50+) |
 
 Coverage (metro venue accounts, morning → end of night): 0: 170 → **165** · 1-5: 302 → **270** · 6-15: 78 → **108**
-· 16-49: 64 → 64 · 50+: 27 → **33**. **After the remainder ticks (2026-09-20 17:50 UTC): 0: 165 · 1-5: 270 · 6-15: 93 ·
-16-49: 78 · 50+: 34.** Weddings **6,939** (day: 5,972 → 6,939; the loop created 969, 1 retired after spot-check, 1 pre-loop
-styled wedding 725 retired). **Apify $25.69 of $29** (stop $28.50; ≈ $2.8 left), OpenRouter ≈ $8. Remainder ticks: probe6
+· 16-49: 64 → 64 · 50+: 27 → **33**. After the remainder ticks (2026-09-20 17:50 UTC): 0: 165 · 1-5: 270 · 6-15: 93 ·
+16-49: 78 · 50+: 34. **After the human-verdict creation pass (2026-09-20 21:10 UTC): 0: 165 · 1-5: 266 · 6-15: 96 ·
+16-49: 79 · 50+: 34.** Weddings **6,995** (day: 5,972 → 6,995; the loop created 1,025, 1 retired after spot-check, 1
+pre-loop styled wedding 725 retired). **Apify $25.69 of $29** (stop $28.50; ≈ $2.8 left, unchanged — the creation pass
+spent nothing), OpenRouter ≈ $8. Remainder ticks: probe6
 47/55 promising (5 dead), discovered 17/22 (3 dead), deepen 8/8; HUMAN_STYLED 0 on all three; 48 candidates to the queue.
 Deepen lesson: 100 posts at a proven venue = $0.018 per wedding (best of any tick) but 45% of results were already held
 (the actor re-pays the first 25 + overlap with staging) — the next deepening should use `--only-newer-than` the last crawl.
+
+**Human-verdict creation pass (2026-09-20 ~21:00 UTC, no spend).** The user labeled 93 verdicts (64 THIS_VENUE,
+28 NOT_WEDDING, 1 OTHER_VENUE) over 89 posts / 80 candidates in `probe6` / `probesA` / `vendor`. Creating from those
+plus 9 older eligible-but-uncreated human candidates (`pilot`, `canary`, `canary-vendor`) through the unchanged
+`createWeddingsFromJeremyEvidence.ts --from-confirmed-candidates --acquisition-batch` path, both clustering pools,
+6 batches × 2 runs: **63 eligible → 56 created**, 0 WOULD_ATTACH, 0 weak matches. The 7 not created: 3
+`chicago_unconfirmed` (@liven_events, @tigerlillyevents, @maliboulakelodge), 3 `wrong_venue_no_correction` (venue
+marked wrong, no correction named), 1 `HUMAN_STYLED` (styled-shoot gate, probesA). Creation batches
+`{probe6-create-3/4, probesA-create-5/6, canary-vendor-create-3/4, canary-create-6, vendor-create-3}` — revertable
+one at a time. Weddings 6,939 → **6,995**; 5 venues changed bucket: @southshoreccac 4→6, @chateaudelmarevents 5→7,
+@belvedereeventsandcatering 5→7, @events.at.ethereal 5→6 (all probesA, 1-5 → 6-15) and @heritageprairiefarm 15→16
+(probe6, 6-15 → 16-49). The 0 bucket did not move. Pre-write snapshot:
+`scripts/graph/snapshots/2026-09-20T20-51-35-719Z-pre-human-verdict-create-20260920`. `measure.ts --apply` re-ran on
+all six batches (priors appended; the tick table above carries the new totals). Human queue left, by undecided posts:
+vendor 72 · probesA 46 · deepen 43 · discovered 26 · probe6 10 · probesB 9 · lowtypes 8 · canary-vendor 2.
 
 **Gates:** Gate 0 PASS (pilot), pilot spot-check **95.7% PASS**, Gate 1a PASS (canary 0.076), Gate 1 PASS
 (probes A 0.072 vs 0.03). **Probes A spot-check DONE (user, 97 posts): model THIS_VENUE precision 65/67 =
@@ -144,16 +161,20 @@ tiers `probe6` (55) / `discovered` (22 unique after `probe6`) / `deepen` (8 → 
 pre-loop) retired on the user's word, batch `acq-20260920-styled-retire-1`; credited vendor pitches stay in the human queue
 (user's call).
 
-**Blocked on the user:** nothing. Optional: the human queue (`/label/candidates?batch=acq-20260920-probe6` 50,
-`…=acq-20260919-probesA` 90, `…=acq-20260920-vendor` 71, discovered/deepen ≈ 25) — say when done and I create from your
-verdicts; push (commits local: 5eec47b reader v1.3 + this close-out). (Spot-check follow-up: wedding 12804 Chicago Forte promo retired via
+**Blocked on the user:** nothing. Optional: keep labeling — the queue after the creation pass, by undecided posts
+(`/label/candidates?batch=<id>`): `acq-20260920-vendor` 72, `acq-20260919-probesA` 46, `acq-20260920-deepen` 43,
+`acq-20260920-discovered` 26, `acq-20260920-probe6` 10, `acq-20260920-probesB` 9, `acq-20260919-probesA-lowtypes` 8,
+`acq-20260919-canary-vendor` 2 — say when done and I create from the verdicts again (the pass above is the recipe).
+Also: name the correct venue on the 3 `wrong_venue_no_correction` candidates (14296, 14304, 14564) and decide the
+1 `HUMAN_STYLED` probesA candidate if it is a real wedding; push (commits local: 5eec47b reader v1.3, the close-out,
+and this creation pass). (Spot-check follow-up: wedding 12804 Chicago Forte promo retired via
 `retireNonWeddingPosts.ts --from-audit`, batch `acq-20260919-probesA-spotcheck-retire-1`; 12866 Sable Creek kept,
 verdict flipped under `jeremy`, `tmp_analysis/d061_spotcheck2_keep_one.sql`; 5 more probes A weddings created
 from the user's confirmations. Weddings **6,450**.)
 
 **Next (Claude):** month 2 planning once the Apify cycle resets (10-16) or credit is added: monthly recency at
 promising targets with `--only-newer-than`, alias-family feeds, deepen the 47 + 17 newly promising venues (measured
-priors in `ops.crawl_targets`); the 1-5 bucket (270) is what's left of the coverage problem and its own feeds are
+priors in `ops.crawl_targets`); the 1-5 bucket (266) is what is left of the coverage problem and its own feeds are
 now crawled — the next lever there is vendor tagged feeds at those venues' credited vendors. Then: typo-handle alias rule;
 `event_context` credit for side-event posts at creation; re-pin the two pre-D061 `graphStrengthening`
 invariants (D059 owner); the user's 164-post human queue (`/label/candidates?batch=…`).

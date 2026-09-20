@@ -15,6 +15,7 @@
 - acq-20260919-pilot-create-3: CREATE: 43
 - acq-20260919-pilot-create-4: CREATE: 8
 - acq-20260919-pilot-create-4: SKIP: 2
+- acq-20260919-pilot-create-5: SKIP: 2
 
 ## Weddings created
 

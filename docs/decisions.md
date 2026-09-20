@@ -173,6 +173,22 @@ Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-
   weddings 5,972 → 6,939 (969 created by the loop), Apify $25.69 of $29, OpenRouter ≈ $8**; coverage 0: 165 · 1-5: 270 ·
   6-15: 93 · 16-49: 78 · 50+: 34. Wedding 725 (@thelogantheatre, a "vintage cinema shoot we produced" from 2026-08-20)
   retired on the user's word (`acq-20260920-styled-retire-1`); credited vendor pitches stay a human call (user's call).
+- *Human-verdict creation pass (2026-09-20 evening, no spend).* The user labeled 93 verdicts (64 THIS_VENUE,
+  28 NOT_WEDDING, 1 OTHER_VENUE) across 89 posts / 80 candidates in `probe6`, `probesA` and `vendor`. Created
+  from those plus 9 older eligible-but-uncreated human candidates (`pilot`, `canary`, `canary-vendor`) through the
+  unchanged `--from-confirmed-candidates --acquisition-batch` path, both clustering pools, 6 batches × 2 runs:
+  **63 eligible → 56 created**, 0 WOULD_ATTACH, 0 CREATE_WEAK_MATCH. The 7 held back were each held by a gate that
+  exists for a reason: 3 `chicago_unconfirmed` (@liven_events, @tigerlillyevents, @maliboulakelodge), 3
+  `wrong_venue_no_correction` (candidates 14296 / 14304 / 14564 — "wrong venue" with no correction named is not
+  creatable), 1 `HUMAN_STYLED` (the styled-shoot gate's first live catch). **Weddings 6,939 → 6,995**; coverage
+  0: 165 · 1-5: **266** · 6-15: **96** · 16-49: **79** · 50+: 34 — 4 venues left the 1-5 bucket (@southshoreccac,
+  @chateaudelmarevents, @belvedereeventsandcatering, @events.at.ethereal, all probes A) and @heritageprairiefarm
+  crossed 15 → 16. The 0 bucket did not move; nothing here touched it, and nothing cheap will — those venues'
+  own feeds are already crawled. `measure.ts --apply` re-ran on all six batches, so the priors and the STATE tick
+  table now carry human-created weddings too (probe6 180 → 208 at 0.16 w/post, probes A 306 → 333 at 0.079).
+  Two process notes: the creation script **refuses to write without a graph snapshot less than 24h old** (the
+  09-19 snapshot had just aged out — take one first, it is ~2 min), and each creation batch is still revertable on
+  its own (`probe6-create-3/4`, `probesA-create-5/6`, `canary-vendor-create-3/4`, `canary-create-6`, `vendor-create-3`).
 
 ---
 

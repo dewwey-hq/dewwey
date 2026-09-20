@@ -1,9 +1,9 @@
 # Acquisition loop — Instagram post acquisition that learns from its own yield (D061)
 
-**Status: MONTH 1 COMPLETE (2026-09-19 → 20, incl. the remainder ticks probe6 / discovered / deepen). Weddings
-5,972 → 6,939 (969 created by the loop), Apify $25.69 of $29, OpenRouter ≈ $8, 10,461 post results fetched; Gates
+**Status: MONTH 1 COMPLETE (2026-09-19 → 20, incl. the remainder ticks probe6 / discovered / deepen and the human-verdict creation pass). Weddings
+5,972 → 6,995 (1,025 created by the loop), Apify $25.69 of $29, OpenRouter ≈ $8, 10,461 post results fetched; Gates
 0 / 1a / 1 and two blind spot-checks (95.7%, 97%) passed. Reader `extract-v1.3` shipped 2026-09-20 (precision 52/52, recall 52/62 on the 79-post eval; v1.2 40/41,
-40/62) with the styled-shoot auto-create gate; remainder tiers `probe6` / `discovered` / `deepen` next.
+40/62) with the styled-shoot auto-create gate. The human-verdict creation pass (2026-09-20 evening, no spend) added 56 weddings from the user's 93 labels; 4 venues left the 1-5 bucket.
 Live status: `docs/STATE.md` "Second mission"; history: `docs/decisions.md` D061 + addenda.**
 Plan of record: `~/.claude/plans/on-1-what-do-joyful-church.md` (this README is
 kept in line with it). Yield queries:

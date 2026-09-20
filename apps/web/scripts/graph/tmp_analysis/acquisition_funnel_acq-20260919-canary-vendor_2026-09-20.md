@@ -11,10 +11,13 @@
 
 - acq-20260919-canary-vendor-create-1: CREATE: 22
 - acq-20260919-canary-vendor-create-2: CREATE: 1
+- acq-20260919-canary-vendor-create-3: CREATE: 2
+- acq-20260919-canary-vendor-create-3: SKIP: 2
+- acq-20260919-canary-vendor-create-4: CREATE: 1
 
 ## Weddings created
 
-- Weddings created (`jeremy_weddings_created.batch_id like 'acq-20260919-canary-vendor-create-%'`): **23**
+- Weddings created (`jeremy_weddings_created.batch_id like 'acq-20260919-canary-vendor-create-%'`): **26**
 - Venues crossing 0 -> 1 documented wedding: **0**
 - Venues crossing into 6+ (previously 1-5): **0**
 - $ per created wedding: $0.01
@@ -24,4 +27,4 @@
 
 - `posts.posted_at` (Instagram) range: 2025-12-20T15:00:00.000Z .. 2026-09-19T00:12:49.000Z
 - `observed_at` (fetch) range: 2026-09-20T01:25:40.182Z .. 2026-09-20T01:25:40.182Z
-- `jeremy_weddings_created.created_at` (decision) range: 2026-09-20T01:43:54.351Z .. 2026-09-20T01:44:08.735Z
+- `jeremy_weddings_created.created_at` (decision) range: 2026-09-20T01:43:54.351Z .. 2026-09-20T21:05:12.233Z

@@ -12,12 +12,19 @@
 - acq-20260919-probesA-create-1: CREATE: 291
 - acq-20260919-probesA-create-1: SKIP: 2
 - acq-20260919-probesA-create-2: CREATE: 15
+- acq-20260919-probesA-create-3: CREATE: 4
+- acq-20260919-probesA-create-3: SKIP: 1
+- acq-20260919-probesA-create-4: CREATE: 1
+- acq-20260919-probesA-create-5: CREATE: 21
+- acq-20260919-probesA-create-5: HUMAN: 1
+- acq-20260919-probesA-create-5: SKIP: 1
+- acq-20260919-probesA-create-6: CREATE: 2
 
 ## Weddings created
 
-- Weddings created (`jeremy_weddings_created.batch_id like 'acq-20260919-probesA-create-%'`): **306**
+- Weddings created (`jeremy_weddings_created.batch_id like 'acq-20260919-probesA-create-%'`): **333**
 - Venues crossing 0 -> 1 documented wedding: **1**
-- Venues crossing into 6+ (previously 1-5): **24**
+- Venues crossing into 6+ (previously 1-5): **27**
 - $ per created wedding: $0.03
 - $ per new wedding at a venue that had < 6 before: $0.05
 
@@ -25,4 +32,4 @@
 
 - `posts.posted_at` (Instagram) range: 2013-10-23T20:55:53.000Z .. 2026-09-20T02:08:55.000Z
 - `observed_at` (fetch) range: 2026-09-20T02:36:34.511Z .. 2026-09-20T04:44:57.498Z
-- `jeremy_weddings_created.created_at` (decision) range: 2026-09-20T05:27:32.081Z .. 2026-09-20T05:30:25.693Z
+- `jeremy_weddings_created.created_at` (decision) range: 2026-09-20T05:27:32.081Z .. 2026-09-20T21:04:47.188Z
