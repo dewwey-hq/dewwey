@@ -316,10 +316,14 @@ export function guestRange(d: VenueDetailsV3): GuestRange {
   }
 
   const capMax = d.spine.capacity_max_guests;
-  if (isStated(capMax)) {
+  const hc = headlineCapacity(d);
+  // A stated venue maximum that is exactly another event type's figure ("Gala - 1,000 Seated")
+  // while a wedding row exists is not the wedding maximum: use the wedding headline.
+  const otherEventMax = d.capacities.filter((c) => c.condition && OTHER_EVENT_TYPE_RE.test(c.condition)).map((c) => c.max);
+  const capMaxIsOtherEvent = isStated(capMax) && otherEventMax.includes(capMax.value) && hc.headline != null && hc.headline < capMax.value;
+  if (isStated(capMax) && !capMaxIsOtherEvent) {
     return { min, max: capMax.value, max_measures: "guests" };
   }
-  const hc = headlineCapacity(d);
   return { min, max: hc.headline, max_measures: hc.cocktail_only ? "guests" : "seated" };
 }
 
@@ -449,7 +453,13 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
     not_included.push(rtp.estimate_usd != null ? `${rtp.name} (~$${rtp.estimate_usd.toLocaleString()})` : rtp.name);
   }
 
-  if (pricing.paths.length === 0) {
+  // No path, an inquire-only archetype, or paths that carry no numbers at all (an extracted
+  // "pricing on request" path -- Geraghty, served 2026-09-20): the calculator has nothing to add up,
+  // so the UI shows the request card instead of "$0 · included in package".
+  const pathHasNumbers = (pth: PricingPath) => pth.fixed_fees.length > 0 || pth.per_guest_tiers.length > 0 || pth.minimums.length > 0;
+  // (An empty path on a priced archetype is legitimate -- "venue rental included", extras still add
+  // up -- so the empty-path rule applies only to inquire_only venues.)
+  if (pricing.paths.length === 0 || (pricing.archetype === "inquire_only" && !pricing.paths.some(pathHasNumbers))) {
     warnings.push("no_path");
     return { groups: [], total: 0, not_included, warnings, assumptions };
   }

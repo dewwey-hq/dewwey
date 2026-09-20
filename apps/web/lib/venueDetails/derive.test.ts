@@ -119,6 +119,21 @@ describe("deriveStandardFaqs", () => {
 // headlineCapacity
 // ---------------------------------------------------------------------------
 
+describe("inquire-only and gala-max rules (served pages, 2026-09-20)", () => {
+  it("estimateCost returns no_path when no path carries numbers or the archetype is inquire_only", () => {
+    const base = makeVenue();
+    const emptyPath = { id: "inquire", name: "On request", description: null, applies_to_spaces: "all", fixed_fees: [], per_guest_tiers: [], minimums: [], required_staffing: null, rental_hours: null, year_surcharges: [], promotions: [], quote: "q", source_url: "u", snapshot_id: null };
+    const v = { ...base, pricing: { ...base.pricing, archetype: "inquire_only", paths: [emptyPath] } } as unknown as VenueDetailsV3;
+    expect(estimateCost(v, defaultAxes(v)).warnings).toContain("no_path");
+  });
+  it("guestRange ignores a stated max that is a gala figure when a wedding row exists", () => {
+    const base = makeVenue();
+    const t = (layout: "seated_dinner" | "seated_with_dance", max: number, condition: string | null) => ({ space_id: "whole_venue", layout, min: null, max, as_stated_label: null, tile: "seated" as const, condition, quote: "q", source_url: "u", snapshot_id: null });
+    const v = { ...base, capacities: [t("seated_dinner", 1000, "gala"), t("seated_with_dance", 300, null)], spine: { ...base.spine, capacity_max_guests: { status: "stated", value: 1000, quote: "Gala - Maximum Capacity: 1,000", source_url: "u", snapshot_id: null } } } as unknown as VenueDetailsV3;
+    expect(guestRange(v).max).toBe(300);
+  });
+});
+
 describe("headlineCapacity", () => {
   it("conditioned tuples (gala, live band) never set the headline", () => {
     const base = makeVenue();

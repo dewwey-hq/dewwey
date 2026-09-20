@@ -1216,6 +1216,15 @@ export function assembleDocument(input: AssembleInput): AssembleOutput {
     setSpine("setting", "indoor", "setting_no_outdoor_space", "No outdoor event space among spaces[] -- indoor, not both.");
   }
 
+  // (1d) capacity_max_guests that is exactly another event type's figure ("Gala - Maximum Capacity:
+  // 1,000") while wedding rows exist is replaced by the largest wedding (unconditioned) row.
+  const otherEventMaxes = capacities.filter((c) => c.condition && EVENT_TYPE_RE.test(c.condition)).map((c) => c.max);
+  const weddingMax = capacities.filter((c) => !c.condition).reduce<number | null>((m, c) => (m == null || c.max > m ? c.max : m), null);
+  const cmg = stated("capacity_max_guests");
+  if (typeof cmg === "number" && otherEventMaxes.includes(cmg) && weddingMax != null && weddingMax < cmg) {
+    setSpine("capacity_max_guests", weddingMax, "capacity_max_other_event", `capacity_max_guests ${cmg} is a gala/corporate figure -- wedding maximum ${weddingMax}.`);
+  }
+
   // (2) A bookable space with no capacity row is a repair request (critical: the headline may
   // depend on it), never silently a page without a capacity headline.
   const spacesWithCaps = new Set(capacities.map((c) => c.space_id));
