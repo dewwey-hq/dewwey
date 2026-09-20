@@ -459,7 +459,11 @@ describe("fbPillLabel / fbSharedRow", () => {
   });
 });
 
-describe("fbLayout (round 5 rule 5: pill-row layout depends only on whether the Food/Bar pill SETS match — a resource or caption no longer forces a split; they render as their own always-visible callout lines instead)", () => {
+describe("fbBlocks (round 6 rule 2, supersedes round 5 rule 5: a single shared pill row only when the pills match AND neither side has a note AND there's no menus/bar-ladders table — any of the three earns the venue its own two-block FOOD/BAR layout)", () => {
+  it("is 'shared' for a venue with no food_beverage detail at all", () => {
+    expect(fmt.fbBlocks(makeVenue())).toBe("shared");
+  });
+
   it("is 'split' when the pill sets genuinely differ", () => {
     const d = makeVenue({
       food_beverage: {
@@ -472,10 +476,10 @@ describe("fbLayout (round 5 rule 5: pill-row layout depends only on whether the 
         notes: [],
       },
     });
-    expect(fmt.fbLayout(d)).toBe("split");
+    expect(fmt.fbBlocks(d)).toBe("split");
   });
 
-  it("is 'shared' for Greenhouse Loft's shape: identical BYO/BYO pills, even with a composting note (round 5: a note no longer forces a split)", () => {
+  it("is 'split' for Greenhouse Loft's shape: identical BYO/BYO pills, but a composting note attributed to the Food side (round 6: a note now forces a split)", () => {
     const d = makeVenue({
       food_beverage: {
         food_pills: [fact("byo", "q", "https://example.com", 1)],
@@ -487,10 +491,10 @@ describe("fbLayout (round 5 rule 5: pill-row layout depends only on whether the 
         notes: [fact("LEED Platinum certified building: mandatory recycling + composting at every event.", "q", "https://example.com", 1)],
       },
     });
-    expect(fmt.fbLayout(d)).toBe("shared");
+    expect(fmt.fbBlocks(d)).toBe("split");
   });
 
-  it("is 'shared' for Marchetti's shape: identical All-Inclusive pills, no caption", () => {
+  it("is 'split' for Marchetti's shape: identical All-Inclusive pills, but a note attributed to the Bar side", () => {
     const d = makeVenue({
       food_beverage: {
         food_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
@@ -502,10 +506,10 @@ describe("fbLayout (round 5 rule 5: pill-row layout depends only on whether the 
         notes: [fact("Villa, Tenuta, and Riserva Bar Collections build on each other.", "q", "https://example.com", 1)],
       },
     });
-    expect(fmt.fbLayout(d)).toBe("shared");
+    expect(fmt.fbBlocks(d)).toBe("split");
   });
 
-  it("is 'shared' for LondonHouse's shape: identical All-Inclusive pills, even with a corkage caption (round 5: caption is its own callout line now, not a layout driver)", () => {
+  it("is 'shared' for LondonHouse's shape: identical All-Inclusive pills, a corkage caption but no note or table (a caption isn't a 'note')", () => {
     const d = makeVenue({
       food_beverage: {
         food_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
@@ -517,7 +521,22 @@ describe("fbLayout (round 5 rule 5: pill-row layout depends only on whether the 
         notes: [],
       },
     });
-    expect(fmt.fbLayout(d)).toBe("shared");
+    expect(fmt.fbBlocks(d)).toBe("shared");
+  });
+
+  it("is 'split' when pills match and there's no note but a menus table exists", () => {
+    const d = makeVenue({
+      food_beverage: {
+        food_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
+        bar_pills: [fact("all_inclusive", "q", "https://example.com", 1)],
+        caption: null,
+        menus: [{ name: "Plated dinner", cuisine: null, includes: "Salad, entree, dessert", cost: "$85/guest", extras: [], evidence: { source_url: "https://example.com", snapshot_id: 1 } }],
+        bar_ladders: [],
+        bar_min_guests: null,
+        notes: [],
+      },
+    });
+    expect(fmt.fbBlocks(d)).toBe("split");
   });
 });
 
@@ -1100,13 +1119,25 @@ describe("buildMergedPriceGrid — round 4 rule 2 drops the old identical-price 
   });
 });
 
-describe("seasonsMonthsLine", () => {
-  it("states both season definitions once", () => {
-    expect(fmt.seasonsMonthsLine({ peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("off-season is Jan, Feb, Mar, Nov; peak season is Apr–Oct, Dec");
+describe("seasonShortLabel (round 6 rule 3)", () => {
+  it("gives the short row label for each season", () => {
+    expect(fmt.seasonShortLabel("peak")).toBe("Peak");
+    expect(fmt.seasonShortLabel("off")).toBe("Off");
+    expect(fmt.seasonShortLabel("any")).toBe("Any");
+  });
+});
+
+describe("seasonMonthsLine (round 6 rule 3 — replaces seasonLabelWithMonths's inline-per-row months with one line rendered once under the grid)", () => {
+  it("states both season definitions once, in the same chronological order the grid's own rows use", () => {
+    // Off starts in January, before Peak's April -> off first, matching `seasonOrderFor`.
+    expect(fmt.seasonMonthsLine({ peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("Off: Jan, Feb, Mar, Nov · Peak: Apr–Oct, Dec");
+  });
+  it("only names the seasons the venue actually states months for", () => {
+    expect(fmt.seasonMonthsLine({ peak: "Apr–Oct, Dec", off: null })).toBe("Peak: Apr–Oct, Dec");
   });
   it("returns null when a venue states neither", () => {
-    expect(fmt.seasonsMonthsLine(undefined)).toBeNull();
-    expect(fmt.seasonsMonthsLine({ peak: null, off: null })).toBeNull();
+    expect(fmt.seasonMonthsLine(undefined)).toBeNull();
+    expect(fmt.seasonMonthsLine({ peak: null, off: null })).toBeNull();
   });
 });
 
@@ -1164,38 +1195,6 @@ describe("selectionGroupLabel", () => {
   });
   it("title-cases an unknown key as a fallback", () => {
     expect(fmt.selectionGroupLabel("some-other-group")).toBe("Some Other Group");
-  });
-});
-
-describe("addOnCategoryGroups", () => {
-  it("returns null when the venue has no curated add_on_categories", () => {
-    expect(fmt.addOnCategoryGroups(makeVenue())).toBeNull();
-  });
-
-  it("groups add-ons by category, joining on the category name; excludes selection_group items from `items`", () => {
-    const bronze = addOn({ id: "bronze", category: "Food & beverage add-ons", selection_group: "food-package" });
-    const uplights = addOn({ id: "uplights", category: "Lighting & video add-ons" });
-    const ceremonyUpgrade = addOn({ id: "backdrop", category: "Ceremony" });
-    const d = makeVenue({
-      pricing: {
-        ...makeVenue().pricing,
-        add_ons: [bronze, uplights, ceremonyUpgrade],
-        add_on_categories: [
-          { category: "Food & beverage add-ons", blurb: "Food blurb", examples: ["Food package: $15.95-$35/guest"], evidence: { source_url: "https://example.com", snapshot_id: null } },
-          { category: "Lighting & video add-ons", blurb: "Lighting blurb", examples: [], evidence: { source_url: "https://example.com", snapshot_id: null } },
-        ],
-      },
-    });
-    const groups = fmt.addOnCategoryGroups(d)!;
-    const food = groups.find((g) => g.category === "Food & beverage add-ons")!;
-    expect(food.items).toEqual([]); // bronze excluded — it's a selection_group item
-    expect(food.examples).toEqual(["Food package: $15.95-$35/guest"]);
-    const lighting = groups.find((g) => g.category === "Lighting & video add-ons")!;
-    expect(lighting.items).toEqual([uplights]);
-    // A category the curated list doesn't name still gets a home, not silently dropped.
-    const ceremony = groups.find((g) => g.category === "Ceremony")!;
-    expect(ceremony.items).toEqual([ceremonyUpgrade]);
-    expect(ceremony.blurb).toBeNull();
   });
 });
 
@@ -1377,24 +1376,20 @@ describe("sameRentalRatesLine (fix round, 2026-09-19 review)", () => {
   });
 });
 
-describe("seasonLabelWithMonths (rule 16)", () => {
-  it("appends the venue's own months in parens", () => {
-    expect(fmt.seasonLabelWithMonths("off", { peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("Off-season (Jan, Feb, Mar, Nov)");
-    expect(fmt.seasonLabelWithMonths("peak", { peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("Peak season (Apr–Oct, Dec)");
+describe("pathSubtitle (round 6 rule 3)", () => {
+  it("uses the venue's own subtitle when the importer set one, regardless of the description", () => {
+    const path = fixedFeePath({ subtitle: "Hall Rental Only", description: "Flat fee, bring your own everything." });
+    expect(fmt.pathSubtitle(path)).toBe("Hall Rental Only");
   });
-  it("falls back to the plain label with no months stated", () => {
-    expect(fmt.seasonLabelWithMonths("peak", undefined)).toBe("Peak season");
-  });
-});
 
-describe("seasonMonthsOnly", () => {
-  it("returns just the months half, for rendering the season name and months on two lines", () => {
-    expect(fmt.seasonMonthsOnly("off", { peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("Jan, Feb, Mar, Nov");
-    expect(fmt.seasonMonthsOnly("peak", { peak: "Apr–Oct, Dec", off: "Jan, Feb, Mar, Nov" })).toBe("Apr–Oct, Dec");
+  it("falls back to the description's leading 'X:' phrase when there's no subtitle", () => {
+    const path = fixedFeePath({ description: "Hall Rental Only: everything you need for a DIY reception." });
+    expect(fmt.pathSubtitle(path)).toBe("Hall Rental Only");
   });
-  it("is null when the venue doesn't state months for that season, or at all", () => {
-    expect(fmt.seasonMonthsOnly("peak", undefined)).toBeNull();
-    expect(fmt.seasonMonthsOnly("any", { peak: "Apr", off: "Jan" })).toBeNull();
+
+  it("is null when there's no subtitle and the description has no leading label phrase", () => {
+    expect(fmt.pathSubtitle(fixedFeePath({ description: "Flat per-event rental; the venue's only real pricing path." }))).toBeNull();
+    expect(fmt.pathSubtitle(fixedFeePath({ description: null }))).toBeNull();
   });
 });
 
@@ -1420,75 +1415,64 @@ describe("humanizeCondition via buildAddOnTable (rule 10)", () => {
   });
 });
 
-describe("resolvedAddOnCategoryGroups / buildAddOnCategoryTables (rule 17)", () => {
-  it("falls back to plain distinct-category grouping when there are no curated categories", () => {
-    const a = addOn({ id: "a1", category: "Parking" });
-    const b = addOn({ id: "a2", category: "Rehearsal" });
-    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [a, b] } });
-    const groups = fmt.resolvedAddOnCategoryGroups(d);
-    expect(groups.map((g) => g.category).sort()).toEqual(["Parking", "Rehearsal"]);
+describe("addOnsMode (round 6 rule 1)", () => {
+  it("is 'cards' at exactly 5 real add-ons", () => {
+    const addOns = Array.from({ length: 5 }, (_, i) => addOn({ id: `a${i}` }));
+    expect(fmt.addOnsMode(addOns)).toBe("cards");
   });
 
-  it("builds an Item|Price table per category, folding variant/condition into the item label", () => {
-    const dj = addOn({ id: "dj", category: "Entertainment", name: "DJ upgrade", variant: "Premium package" });
-    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [dj] } });
-    const tables = fmt.buildAddOnCategoryTables(d);
-    const entertainment = tables.find((t) => t.category === "Entertainment")!;
-    expect(entertainment.columnLabels).toEqual(["Price"]);
-    expect(entertainment.rows[0].itemLabel).toBe("DJ upgrade (Premium package)");
+  it("is 'tables' at exactly 6 real add-ons", () => {
+    const addOns = Array.from({ length: 6 }, (_, i) => addOn({ id: `a${i}` }));
+    expect(fmt.addOnsMode(addOns)).toBe("tables");
+  });
+
+  it("doesn't count selection_group items (calculator-only single-select options) toward the threshold", () => {
+    const addOns = [...Array.from({ length: 6 }, (_, i) => addOn({ id: `g${i}`, selection_group: "food-package" })), addOn({ id: "real" })];
+    expect(fmt.addOnsMode(addOns)).toBe("cards");
+  });
+});
+
+describe("buildAddOnCategoryStdTable (round 6 rule 1 — one table per WHOLE standard category, replacing the old per-sub-group cards/table split)", () => {
+  it("merges every sub-category's items into one table, folding variant/condition into the item label", () => {
+    const dj: fmt.AddOnSubgroup = { category: "Entertainment", blurb: null, examples: [], items: [addOn({ id: "dj", category: "Entertainment", name: "DJ upgrade", variant: "Premium package" })] };
+    const table = fmt.buildAddOnCategoryStdTable([dj], []);
+    expect(table.columnLabels).toEqual(["Price"]);
+    expect(table.rows[0].itemLabel).toBe("DJ upgrade (Premium package)");
   });
 
   it("skips the redundant '(X)' when the add-on's own name already says X (Marchetti's 'Dance floor: White' + variant 'White')", () => {
-    const danceFloor = addOn({ id: "df1", category: "Dance floor", name: "Dance floor: White", variant: "White" });
-    const ceremony = addOn({ id: "c1", category: "Ceremony fee", name: "On-site ceremony", group: "ceremony", condition: "ceremony_on_site", variant: null });
-    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [danceFloor, ceremony] } });
-    const tables = fmt.buildAddOnCategoryTables(d);
-    expect(tables.find((t) => t.category === "Dance floor")!.rows[0].itemLabel).toBe("Dance floor: White");
-    expect(tables.find((t) => t.category === "Ceremony fee")!.rows[0].itemLabel).toBe("On-site ceremony");
+    const danceFloor: fmt.AddOnSubgroup = { category: "Dance floor", blurb: null, examples: [], items: [addOn({ id: "df1", category: "Dance floor", name: "Dance floor: White", variant: "White" })] };
+    const ceremony: fmt.AddOnSubgroup = {
+      category: "Ceremony fee",
+      blurb: null,
+      examples: [],
+      items: [addOn({ id: "c1", category: "Ceremony fee", name: "On-site ceremony", group: "ceremony", condition: "ceremony_on_site", variant: null })],
+    };
+    const table = fmt.buildAddOnCategoryStdTable([danceFloor, ceremony], []);
+    expect(table.rows[0].itemLabel).toBe("Dance floor: White");
+    expect(table.rows[1].itemLabel).toBe("On-site ceremony");
   });
 
-  it("uses per-space columns when the category's items carry per_space_prices", () => {
+  it("uses per-space columns as soon as any item carries per_space_prices, repeating a flat item's price across every column (Marchetti's mixed 'Space & rentals' shape)", () => {
     const spaces = [space({ id: "s1", name: "La Pergola" }), space({ id: "s2", name: "The Pavilion" })];
-    const a = addOn({ id: "d1", category: "Dance floor", per_space_prices: { s1: 1000, s2: 1200 } });
-    const d = makeVenue({ spaces, pricing: { ...makeVenue().pricing, add_ons: [a] } });
-    const table = fmt.buildAddOnCategoryTables(d).find((t) => t.category === "Dance floor")!;
+    const danceFloor: fmt.AddOnSubgroup = { category: "Dance floor", blurb: null, examples: [], items: [addOn({ id: "d1", category: "Dance floor", per_space_prices: { s1: 1000, s2: 1200 } })] };
+    const chairs: fmt.AddOnSubgroup = { category: "Chiavari chairs", blurb: null, examples: [], items: [addOn({ id: "c1", category: "Chiavari chairs", price: 10 })] };
+    const table = fmt.buildAddOnCategoryStdTable([danceFloor, chairs], spaces);
     expect(table.columnLabels).toEqual(["La Pergola", "The Pavilion"]);
     expect(table.rows[0].prices).toEqual(["$1,000", "$1,200"]);
+    expect(table.rows[1].prices).toEqual(["$10", "$10"]);
+  });
+
+  it("captions each row with the venue's own sub-category, omitted when it would just repeat the name", () => {
+    const chargers: fmt.AddOnSubgroup = { category: "Chargers", blurb: null, examples: [], items: [addOn({ id: "ch1", category: "Chargers", name: "Gold chargers" })] };
+    const chef: fmt.AddOnSubgroup = { category: "Chef Experiences", blurb: null, examples: [], items: [addOn({ id: "cx1", category: "Chef Experiences", name: "Chef Experiences" })] };
+    const table = fmt.buildAddOnCategoryStdTable([chargers, chef], []);
+    expect(table.rows[0].caption).toBe("Chargers");
+    expect(table.rows[1].caption).toBeNull();
   });
 });
 
-describe("isCompactAddOnsLayout / addOnsLayout (rules 12, 17)", () => {
-  it("is compact for 2 or fewer real add-ons and no curated categories", () => {
-    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [addOn({ id: "a" }), addOn({ id: "b" })] } });
-    expect(fmt.isCompactAddOnsLayout(d)).toBe(true);
-    expect(fmt.addOnsLayout(d)).toBe("compact");
-  });
-
-  it("is 'cards' for a single, uncurated flat category with more than 2 items", () => {
-    const d = makeVenue({ pricing: { ...makeVenue().pricing, add_ons: [addOn({ id: "a", category: "Extras" }), addOn({ id: "b", category: "Extras" }), addOn({ id: "c", category: "Extras" })] } });
-    expect(fmt.addOnsLayout(d)).toBe("cards");
-  });
-
-  it("is 'tables' once there are 2+ distinct categories, even uncurated", () => {
-    const d = makeVenue({
-      pricing: { ...makeVenue().pricing, add_ons: [addOn({ id: "a", category: "Parking" }), addOn({ id: "b", category: "Rehearsal" }), addOn({ id: "c", category: "Rehearsal" })] },
-    });
-    expect(fmt.addOnsLayout(d)).toBe("tables");
-  });
-
-  it("is 'tables' whenever curated add_on_categories exist, regardless of item count", () => {
-    const d = makeVenue({
-      pricing: {
-        ...makeVenue().pricing,
-        add_ons: [addOn({ id: "a", category: "Food" })],
-        add_on_categories: [{ category: "Food", blurb: null, examples: [], evidence: { source_url: "https://example.com", snapshot_id: null } }],
-      },
-    });
-    expect(fmt.addOnsLayout(d)).toBe("tables");
-  });
-});
-
-describe("resolveCategoryStd / groupAddOnsByCategoryStd / addOnSubgroupLayout (round 5 rule 7)", () => {
+describe("resolveCategoryStd / groupAddOnsByCategoryStd (round 5 rule 7, reworked by round 6 rule 1)", () => {
   it("uses the add-on's own category_std when set", () => {
     expect(fmt.resolveCategoryStd(addOn({ group: "other", category_std: "decor_lighting" }))).toBe("decor_lighting");
   });
@@ -1528,26 +1512,9 @@ describe("resolveCategoryStd / groupAddOnsByCategoryStd / addOnSubgroupLayout (r
     expect(fmt.groupAddOnsByCategoryStd(d)).toEqual([]);
   });
 
-  it("addOnSubgroupLayout is 'table' for a genuine variant × per-space 2-axis category", () => {
-    const items = [
-      addOn({ id: "a", variant: "7 swags", per_space_prices: { main: 100, hall: 200 } }),
-      addOn({ id: "b", variant: "13 swags", per_space_prices: { main: 150, hall: 250 } }),
-    ];
-    expect(fmt.addOnSubgroupLayout(items)).toBe("table");
-  });
-
-  it("addOnSubgroupLayout is 'table' for 6+ priced rows sharing the same (flat) columns", () => {
-    const items = Array.from({ length: 6 }, (_, i) => addOn({ id: `p${i}`, price: 100 + i }));
-    expect(fmt.addOnSubgroupLayout(items)).toBe("table");
-  });
-
-  it("addOnSubgroupLayout is 'cards' for a handful of independent, single-axis items", () => {
-    const items = [addOn({ id: "a", price: 100 }), addOn({ id: "b", price: 200 })];
-    expect(fmt.addOnSubgroupLayout(items)).toBe("cards");
-  });
 });
 
-describe("addOnCardCaption (round 6 fix, 2026-09-19)", () => {
+describe("addOnCardCaption", () => {
   it("returns the venue's own category when it differs from the item's name", () => {
     expect(fmt.addOnCardCaption(addOn({ category: "Chargers", name: "Gold chargers" }))).toBe("Chargers");
   });
@@ -1555,55 +1522,6 @@ describe("addOnCardCaption (round 6 fix, 2026-09-19)", () => {
   it("omits the caption when the category just repeats the item's own name (case-insensitive)", () => {
     expect(fmt.addOnCardCaption(addOn({ category: "Chef Experiences", name: "Chef Experiences" }))).toBeNull();
     expect(fmt.addOnCardCaption(addOn({ category: "chef experiences", name: "Chef Experiences" }))).toBeNull();
-  });
-});
-
-describe("partitionCategoryItems (round 6 fix, 2026-09-19)", () => {
-  it("flattens every 'cards'-layout sub-group's items into one shared cards array, in sub-group order", () => {
-    const chairs = addOn({ id: "chairs", category: "Chiavari chairs", price: 10 });
-    const stage = addOn({ id: "stage", category: "Stage", price: 175 });
-    const subgroups: fmt.AddOnSubgroup[] = [
-      { category: "Chiavari chairs", blurb: null, examples: [], items: [chairs] },
-      { category: "Stage", blurb: null, examples: [], items: [stage] },
-    ];
-    const { cards, tables } = fmt.partitionCategoryItems(subgroups);
-    expect(cards).toEqual([chairs, stage]);
-    expect(tables).toEqual([]);
-  });
-
-  it("keeps a 'table'-layout sub-group whole (not flattened into cards) instead of giving it its own single-item grid", () => {
-    const danceFloor: fmt.AddOnSubgroup = {
-      category: "Dance floor",
-      blurb: null,
-      examples: [],
-      items: [
-        addOn({ id: "df-white", variant: "White", per_space_prices: { main: 625, hall: 1725 } }),
-        addOn({ id: "df-bw", variant: "Black & white", per_space_prices: { main: 1000, hall: 2500 } }),
-      ],
-    };
-    const chairs = addOn({ id: "chairs", category: "Chiavari chairs", price: 10 });
-    const subgroups: fmt.AddOnSubgroup[] = [danceFloor, { category: "Chiavari chairs", blurb: null, examples: [], items: [chairs] }];
-    const { cards, tables } = fmt.partitionCategoryItems(subgroups);
-    expect(cards).toEqual([chairs]);
-    expect(tables).toEqual([danceFloor]);
-  });
-
-  it("splits a mix of table and card sub-groups correctly (Diamond Garden's decor_lighting shape)", () => {
-    const decoration: fmt.AddOnSubgroup = {
-      category: "Decoration add-ons",
-      blurb: "Ceremony structure, tabletop décor, and linen.",
-      examples: ["Centerpieces ($25-35 each)"],
-      items: [addOn({ id: "d1", price: 9.95 }), addOn({ id: "d2", price: 650 }), addOn({ id: "d3", price: 25 })],
-    };
-    const lighting: fmt.AddOnSubgroup = {
-      category: "Lighting & video add-ons",
-      blurb: "Uplighting and projection for the reception.",
-      examples: ["Uplights, 8 minimum ($25 each)"],
-      items: [addOn({ id: "l1", price: 25 }), addOn({ id: "l2", price: 180 }), addOn({ id: "l3", price: 180 }), addOn({ id: "l4", price: 400 })],
-    };
-    const { cards, tables } = fmt.partitionCategoryItems([decoration, lighting]);
-    expect(cards.map((a) => a.id)).toEqual(["d1", "d2", "d3", "l1", "l2", "l3", "l4"]);
-    expect(tables).toEqual([]);
   });
 });
 

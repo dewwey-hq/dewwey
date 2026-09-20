@@ -287,9 +287,10 @@ export function VenueDetailsView({ venue, feed, photos, address, lastChangedAt }
             <SectionHeading title="Pricing" />
             {/* Grid class is purely by path count (fixed round 2026-09-19: the old full-width
                 fallback for tall/bulleted cards turned Diamond Garden's three cards into one per
-                row). `items-start` so a short card ("Same rental rates as X.") doesn't stretch to
-                match a taller sibling; cards may be tall, nothing scrolls internally. */}
-            <div className={`${fmt.pricingGridClass(venue.pricing.paths.length)} items-start`}>
+                row). `items-stretch` (round 6 rule 3) so every card's border reaches the same row
+                height — each card is a flex column itself, so nothing is force-centered or
+                spacer-padded, it just naturally has room at the bottom when a sibling is taller. */}
+            <div className={`${fmt.pricingGridClass(venue.pricing.paths.length)} items-stretch`}>
               {venue.pricing.paths.map((p, i) => (
                 <PricingPathCard key={p.id} path={p} paths={venue.pricing.paths} index={i} seasons={venue.pricing.seasons} capturedAt={venue.sources.crawled_at} />
               ))}
@@ -781,14 +782,14 @@ function FbCalloutLine({ label, text, fact, capturedAt }: { label: string; text:
   );
 }
 
-/** Round 5 rule 5: Food & Beverage is single-column, grouped — resource buttons in the heading,
- * then pill row(s), tier cards, menus table, bar table, and finally the labeled callout lines, in
- * that order, regardless of whether the Food/Bar pills happen to match. */
+/** Round 6 rule 2: Food & Beverage is one column, in two clearly separated FOOD/BAR blocks —
+ * resource buttons in the heading, then package-level tier cards, then the two blocks (each its
+ * own micro-header, pills, note and side-specific table), then the shared callout lines that apply
+ * regardless of side. A single shared pill row (no micro-headers) replaces the two blocks only
+ * when the pills match and neither side has a note or a table (`fmt.fbBlocks`). */
 function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetailsV3; defaultPath: PricingPath | undefined; placed: fmt.PlacedResources }) {
   const { food, bar } = fbPills(venue); // round 4 rule 13: already BYO -> à la carte -> All-Inclusive order
-  // Round 5 rule 5: this now decides ONLY whether the pill row is one shared row or two labeled
-  // Food/Bar rows — resource placement and the callout lines below never split by side anymore.
-  const pillsShared = fmt.fbLayout(venue) === "shared";
+  const blocks = fmt.fbBlocks(venue);
 
   const foodNote = fmt.fbSideNote(venue.food_beverage, "food");
   const barNote = fmt.fbSideNote(venue.food_beverage, "bar");
@@ -806,33 +807,13 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
     <section id="food-beverage">
       <SectionHeading title="Food & Beverage" actions={resourceButtons(placed.fbShared, "Menus")} />
 
-      {pillsShared ? (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {food.length > 0 ? food.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
-        </div>
-      ) : (
-        <div className="mb-4 space-y-3">
-          <div>
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">Food</p>
-            <div className="flex flex-wrap gap-2">
-              {food.length > 0 ? food.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
-            </div>
-          </div>
-          <div>
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">Bar</p>
-            <div className="flex flex-wrap gap-2">
-              {bar.length > 0 ? bar.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* Round 6 rule 2: tier cards are package-level, so they sit above the FOOD/BAR blocks. */}
       {tiers.length > 0 && (
         // A single collapsed tier (Diamond Garden: 8 same-named "All-Inclusive" day/season rows
         // collapse to exactly one card) reads as sparse/orphaned inside a grid meant for several
         // side-by-side tiers (Marchetti's Argento/Oro/Platino) — round-3 fix: one real card gets a
         // plain single-column layout instead of floating alone in a 3-column grid.
-        <div className={tiers.length > 1 ? "mt-6 grid gap-5 sm:grid-cols-3" : "mt-6 max-w-sm"}>
+        <div className={tiers.length > 1 ? "grid gap-5 sm:grid-cols-3" : "max-w-sm"}>
           {tiers.map((t) => {
             const rep = t.representative;
             const priceParts = fmt.tierPriceParts(t.minPerGuest, t.maxPerGuest);
@@ -869,17 +850,50 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
         </div>
       )}
 
-      {/* Round 5 rule 5: menus table, then bar table — single column, shared regardless of the
-          pill-row layout above (bar minimum stays under the bar table). */}
-      {venue.food_beverage.menus.length > 0 && <FbMenusTable menus={venue.food_beverage.menus} />}
-      {venue.food_beverage.bar_ladders.length > 0 && (
-        <FbBarLaddersTable barLadders={venue.food_beverage.bar_ladders} barMinGuests={venue.food_beverage.bar_min_guests} />
+      {/* Round 6 rule 2: a single shared pill row (rare — matching pills, no note, no table on
+          either side) vs. two clearly separated FOOD/BAR blocks, each mt-8, tables mt-4 with a
+          max-w-3xl cap so a wide table never stretches the whole single-column section. */}
+      {blocks === "shared" ? (
+        <div className={tiers.length > 0 ? "mt-8 flex flex-wrap gap-2" : "flex flex-wrap gap-2"}>
+          {food.length > 0 ? food.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
+        </div>
+      ) : (
+        <>
+          <div className={tiers.length > 0 ? "mt-8" : ""}>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Food</p>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {food.length > 0 ? food.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
+            </div>
+            {foodNote && (
+              <p className="mt-2 text-sm text-gray-700">
+                {foodNote.value}
+                <FactSource quote={foodNote.quote} source_url={foodNote.source_url} snapshot_id={foodNote.snapshot_id} capturedAt={venue.sources.crawled_at} />
+              </p>
+            )}
+            {venue.food_beverage.menus.length > 0 && <FbMenusTable menus={venue.food_beverage.menus} className="mt-4 max-w-3xl" />}
+          </div>
+          <div className="mt-8">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Bar</p>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {bar.length > 0 ? bar.map((p) => <PillSpan key={p}>{fmt.fbPillLabel(p)}</PillSpan>) : <span className="text-xs italic text-gray-400">Not stated</span>}
+            </div>
+            {barNote && (
+              <p className="mt-2 text-sm text-gray-700">
+                {barNote.value}
+                <FactSource quote={barNote.quote} source_url={barNote.source_url} snapshot_id={barNote.snapshot_id} capturedAt={venue.sources.crawled_at} />
+              </p>
+            )}
+            {venue.food_beverage.bar_ladders.length > 0 && (
+              <FbBarLaddersTable barLadders={venue.food_beverage.bar_ladders} barMinGuests={venue.food_beverage.bar_min_guests} className="mt-4 max-w-3xl" />
+            )}
+          </div>
+        </>
       )}
 
-      {/* Round 5 rule 5: the labeled callout lines, one uniform "Label: text" format. */}
+      {/* Round 6 rule 2: the shared lines that apply after both blocks regardless of side —
+          food_note/bar_note moved into their own blocks above, so this list is shorter than
+          round 5's. */}
       <div className="mt-4 space-y-1.5">
-        {foodNote && <FbCalloutLine label="Food" text={foodNote.value} fact={foodNote} capturedAt={venue.sources.crawled_at} />}
-        {barNote && <FbCalloutLine label="Bar" text={barNote.value} fact={barNote} capturedAt={venue.sources.crawled_at} />}
         {barByo && <FbCalloutLine label="Bar BYO option" text={barByo.value} fact={barByo} capturedAt={venue.sources.crawled_at} />}
         {fbMinimum && <FbCalloutLine label="Food & beverage minimum" text={fbMinimum} capturedAt={venue.sources.crawled_at} />}
         {chargesTax && <FbCalloutLine label="Charges & tax" text={chargesTax} capturedAt={venue.sources.crawled_at} />}
@@ -936,41 +950,51 @@ function WhatsIncludedSection({ inclusions, capturedAt }: { inclusions: Inclusio
 // Pricing (standalone section, 2+ paths)
 // ---------------------------------------------------------------------------
 
+/** Round 6 rule 3: no `min-w` — with short season row labels and calendar day columns already
+ * ≤ 4, this table fits a 1/3-width Pricing card at normal widths without scrolling. `overflow-x-auto`
+ * stays on the table's own wrapper (not the months line below it) purely as a local containment
+ * fallback at very narrow widths: with no `min-w` forcing it, the table only ever scrolls instead
+ * of forcing the whole card — and the page — wider than the viewport. The per-guest tier grid's
+ * unit used to repeat "/guest" in all 8 cells, which alone was wide enough to force a horizontal
+ * scroll inside a 1/3-width Pricing card even with the fixes above — it now states the unit once,
+ * beside the months line, matching the "Cost (4 or 5 hours)"-in-the-header idiom the bar-ladder
+ * table already uses instead of repeating a unit per row. */
 function MergedPriceGridTable({ grid, moneySuffix, seasons }: { grid: fmt.MergedPriceGrid; moneySuffix?: string; seasons?: Pricing["seasons"] }) {
+  const monthsLine = fmt.seasonMonthsLine(seasons);
   return (
-    <div className="mt-3 overflow-x-auto">
-      {/* min-w so a narrow 3-column Pricing card (fixed 2026-09-19: cards are no longer forced
-          full-width) scrolls this grid horizontally instead of every column shrinking to exactly
-          its content's width; `pl-3` on each price column keeps adjacent same-length values (e.g.
-          two `$68.95/guest` cells back to back) from visually touching once columns are that
-          snug. */}
-      <table className="w-full min-w-[420px] text-xs text-gray-600">
-        <thead>
-          <tr className="text-gray-400">
-            <th className="pb-1.5 text-left font-normal">Season</th>
-            {grid.columns.map((c) => (
-              <th key={c.label} className="pb-1.5 pl-3 text-right font-normal">
-                {c.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {grid.seasons.map((s, si) => (
-            <tr key={s} className="border-t border-black/[0.05]">
-              {/* Round 5 rule 4 (supersedes round 4's two-line rendering): the season name and its
-                  months (when the venue states them) render inline on one line, "Off-season
-                  (Jan – Mar)" — no second line. */}
-              <td className="py-1 align-top">{fmt.seasonLabelWithMonths(s, seasons)}</td>
-              {grid.grid[si].map((amount, ci) => (
-                <td key={ci} className="py-1 pl-3 text-right">
-                  {amount != null ? `${fmt.money(amount)}${moneySuffix ?? ""}` : <span className="text-gray-300">—</span>}
-                </td>
+    <div className="mt-3 min-w-0">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs text-gray-600">
+          <thead>
+            <tr className="text-gray-400">
+              <th className="pb-1.5 text-left font-normal">Season</th>
+              {grid.columns.map((c) => (
+                <th key={c.label} className="pb-1.5 pl-2 text-right font-normal">
+                  {c.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {grid.seasons.map((s, si) => (
+              <tr key={s} className="border-t border-black/[0.05]">
+                <td className="py-1 align-top">{fmt.seasonShortLabel(s)}</td>
+                {grid.grid[si].map((amount, ci) => (
+                  <td key={ci} className="py-1 pl-2 text-right text-xs">
+                    {amount != null ? fmt.money(amount) : <span className="text-gray-300">—</span>}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {(moneySuffix || monthsLine) && (
+        <div className="mt-2 space-y-0.5 text-[11px] text-gray-400">
+          {moneySuffix && <p>Prices shown are {moneySuffix.replace(/^\//, "per ")}.</p>}
+          {monthsLine && <p>{monthsLine}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -994,20 +1018,24 @@ function PricingPathCard({
   // + à la carte" reusing "Hall Rental Only"'s grid) says so in one sentence instead of repeating
   // the grid.
   const sameAs = fmt.samePricingAsEarlierPath(paths, index);
+  // Round 6 rule 3: the venue's own light-gray term under the title — `path.subtitle` when the
+  // importer set one, else the leading "X:" phrase of `path.description`.
+  const subtitle = fmt.pathSubtitle(path);
 
-  // Fix round (2026-09-19 review): the fees are identical to `sameAs` by definition, so the price
-  // line, includes/tier bullets, grid, and staffing/surcharge/promotion notes below would just be
-  // exact repeats — the card renders ONLY its title, its own description (its own sentence, never
-  // concatenated onto the "Same rental rates" line), and that one line.
+  // Fix round (2026-09-19 review), reordered by round 6 rule 3: the fees are identical to `sameAs`
+  // by definition, so the price line, includes/tier bullets, grid, and staffing/surcharge/promotion
+  // notes below would just be exact repeats — the card renders only its title, subtitle, the "Same
+  // rental rates" sentence, and its own description, in that order.
   if (sameAs) {
     return (
-      <div className="rounded-2xl border border-black/[0.06] p-5">
+      <div className="flex min-w-0 flex-col rounded-2xl border border-black/[0.06] p-5">
         <div className="flex items-center gap-1.5">
           <h3 className={`text-lg text-gray-900 ${uiHeadingClassName}`}>{path.name}</h3>
           <FactSource quote={path.quote} source_url={path.source_url} snapshot_id={path.snapshot_id} capturedAt={capturedAt} />
         </div>
+        {subtitle && <p className="mt-0.5 text-sm text-gray-400">{subtitle}</p>}
+        <p className="mt-2 text-sm text-gray-600">{fmt.sameRentalRatesLine(sameAs.name)}</p>
         {path.description && <p className="mt-1 text-sm text-gray-600">{path.description}</p>}
-        <p className="mt-1 text-sm text-gray-600">{fmt.sameRentalRatesLine(sameAs.name)}</p>
       </div>
     );
   }
@@ -1024,15 +1052,15 @@ function PricingPathCard({
   const fbMins = path.minimums.filter((m) => m.kind === "fb_minimum");
 
   return (
-    <div className="rounded-2xl border border-black/[0.06] p-5">
-      {/* Round 5 rule 6: header -> subtitle -> price -> includes/tier bullets -> grid -> notes. */}
+    <div className="flex min-w-0 flex-col rounded-2xl border border-black/[0.06] p-5">
+      {/* Round 6 rule 3: header -> subtitle -> price -> description -> includes/tier bullets ->
+          grid -> notes. */}
       <div className="flex items-center gap-1.5">
         <h3 className={`text-lg text-gray-900 ${uiHeadingClassName}`}>{path.name}</h3>
         <FactSource quote={path.quote} source_url={path.source_url} snapshot_id={path.snapshot_id} capturedAt={capturedAt} />
       </div>
 
-      {/* Subtitle: the plain description. */}
-      {path.description && <p className="mt-1 text-sm text-gray-600">{path.description}</p>}
+      {subtitle && <p className="mt-0.5 text-sm text-gray-400">{subtitle}</p>}
 
       {/* Round 5 rule 6 / rule 8: price bold, unit small grey — same typography as the F&B tier
           cards' headline price. */}
@@ -1042,6 +1070,9 @@ function PricingPathCard({
           {priceParts.unit && <span className="text-sm font-normal text-gray-500"> {priceParts.unit}</span>}
         </p>
       )}
+
+      {/* Round 6 rule 3: the description sentence sits after the price, before the bullets. */}
+      {path.description && <p className="mt-2 text-sm text-gray-600">{path.description}</p>}
 
       {/* Includes / tier-inclusion bullets, both above the grid. */}
       {path.includes && path.includes.length > 0 && (
@@ -1169,35 +1200,14 @@ function AddOnCard({ addOn, capturedAt }: { addOn: AddOn; capturedAt: string | n
   );
 }
 
-/** Round 4 rule 12: a couple of real add-ons and no curated categories -> one compact row each,
- * not a card grid (Field Museum's two photo sessions). */
-function CompactAddOnRow({ addOn, capturedAt }: { addOn: AddOn; capturedAt: string | null }) {
-  const note = addOn.note ? fmt.truncateNote(addOn.note) : null;
-  return (
-    <div className="flex items-center justify-between gap-3 border-t border-black/[0.05] py-2.5 text-sm first:border-t-0">
-      <div className="min-w-0">
-        <span className="text-gray-800">{addOn.name}</span>
-        {note && (
-          <span className="ml-2 text-xs text-gray-500" title={note.truncated ? note.full : undefined}>
-            {note.display}
-          </span>
-        )}
-      </div>
-      <span className="shrink-0 font-medium text-gray-900">
-        {fmt.addOnPriceString(addOn)}
-        <FactSource quote={addOn.quote} source_url={addOn.source_url} snapshot_id={addOn.snapshot_id} capturedAt={capturedAt} />
-      </span>
-    </div>
-  );
-}
-
-/** An Item|Price table for one category/sub-group, built from `fmt.buildAddOnCategoryTables` or
- * (round 5 rule 7) `fmt.buildAddOnSubgroupTable` — variant/condition already folded into the item
- * label. Only needs columnLabels/rows: the caller renders the category heading/blurb/examples. */
+/** An Item|Price table for one whole standard category, built from `fmt.buildAddOnCategoryStdTable`
+ * — variant/condition already folded into the item label; a small caption line above the label
+ * shows the venue's own sub-category when it differs from the item's name (round 6 rule 1). Only
+ * needs columnLabels/rows: the caller renders the category heading/blurb/examples. */
 function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; rows: fmt.AddOnCategoryTableRow[] } }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[360px] text-sm text-gray-600">
+      <table className="w-full text-sm text-gray-600">
         <thead>
           <tr className="text-xs text-gray-400">
             <th className="pb-2 text-left font-normal">Item</th>
@@ -1214,6 +1224,7 @@ function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; ro
             return (
               <tr key={row.key} className="border-t border-black/[0.05] align-top">
                 <td className="py-2">
+                  {row.caption && <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{row.caption}</div>}
                   {row.itemLabel}
                   {note && (
                     <div className="mt-0.5 text-xs text-gray-400" title={note.truncated ? note.full : undefined}>
@@ -1235,23 +1246,21 @@ function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; ro
   );
 }
 
-/** Round 4 rule 12: a couple of real add-ons and no curated categories -> compact rows, unchanged.
- * Everything else (round 6 fix, 2026-09-19): under one standard `category_std` header, ALL
- * card-shaped sub-categories share ONE grid (`fmt.partitionCategoryItems`) instead of each getting
- * its own grid — that used to orphan a single-item sub-category onto its own row at a third of the
- * grid's width. The venue's own sub-category shows as a caption inside the card
- * (`fmt.addOnCardCaption`); a sub-category that genuinely needs a table (2 pricing axes, or 6+
- * priced rows sharing columns) still gets one, named by its own sub-category, after the shared
- * grid. */
+/** Round 6 rule 1: exactly two modes, decided ONLY by the venue's total add-on count, never mixed
+ * within a section — the old "compact rows" mode and per-sub-group cards/table hybrid are both
+ * gone. `<= 5` -> a flat, unheaded card grid (the Greenhouse concept's shape). `> 5` -> one table
+ * per standard category (`fmt.groupAddOnsByCategoryStd`'s fixed order), covering every venue
+ * sub-category under that header, with the curated blurb(s) above and example bullets below. */
 function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: ReactNode }) {
-  if (fmt.isCompactAddOnsLayout(venue)) {
-    const items = venue.pricing.add_ons.filter((a) => !a.selection_group);
+  const items = venue.pricing.add_ons.filter((a) => !a.selection_group);
+
+  if (fmt.addOnsMode(items) === "cards") {
     return (
       <section id="add-ons">
         <SectionHeading title="Add-ons & extras" actions={actions} />
-        <div className="rounded-2xl border border-black/[0.06] px-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           {items.map((a) => (
-            <CompactAddOnRow key={a.id} addOn={a} capturedAt={venue.sources.crawled_at} />
+            <AddOnCard key={a.id} addOn={a} capturedAt={venue.sources.crawled_at} />
           ))}
         </div>
       </section>
@@ -1263,13 +1272,9 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
     <section id="add-ons">
       <SectionHeading title="Add-ons & extras" actions={actions} />
       {groups.map((g, gi) => {
-        const { cards, tables } = fmt.partitionCategoryItems(g.subgroups);
-        // Curated blurb/examples attach per venue sub-category — collected once, up front (blurbs)
-        // and once, after the shared grid (examples), instead of interleaved between per-subgroup
-        // grids the way they used to be.
         const blurbSubgroups = g.subgroups.filter((sg) => sg.blurb);
-        const cardCategories = new Set(tables.map((sg) => sg.category));
-        const cardExamples = [...new Set(g.subgroups.filter((sg) => !cardCategories.has(sg.category)).flatMap((sg) => sg.examples))];
+        const examples = [...new Set(g.subgroups.flatMap((sg) => sg.examples))];
+        const table = fmt.buildAddOnCategoryStdTable(g.subgroups, venue.spaces);
         return (
           <div key={g.category_std} className={gi === 0 ? "" : "mt-8"}>
             <h3 className={`text-base text-gray-900 ${uiHeadingClassName}`}>{g.label}</h3>
@@ -1282,16 +1287,12 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
                 ))}
               </div>
             )}
-            {cards.length > 0 && (
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                {cards.map((a) => (
-                  <AddOnCard key={a.id} addOn={a} capturedAt={venue.sources.crawled_at} />
-                ))}
-              </div>
-            )}
-            {cardExamples.length > 0 && (
+            <div className="mt-3">
+              <AddOnCategoryTableView table={table} />
+            </div>
+            {examples.length > 0 && (
               <ul className="mt-2 space-y-1 text-xs text-gray-600">
-                {cardExamples.map((ex) => (
+                {examples.map((ex) => (
                   <li key={ex} className="flex gap-1.5">
                     <span className="text-rose-400">·</span>
                     {ex}
@@ -1299,22 +1300,6 @@ function AddOnsSection({ venue, actions }: { venue: VenueDetailsV3; actions?: Re
                 ))}
               </ul>
             )}
-            {tables.map((sg) => (
-              <div key={sg.category} className="mt-5">
-                <p className="mb-2 text-xs font-medium text-gray-700">{sg.category}</p>
-                <AddOnCategoryTableView table={fmt.buildAddOnSubgroupTable(sg.items, venue.spaces)} />
-                {sg.examples.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-xs text-gray-600">
-                    {sg.examples.map((ex) => (
-                      <li key={ex} className="flex gap-1.5">
-                        <span className="text-rose-400">·</span>
-                        {ex}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
           </div>
         );
       })}

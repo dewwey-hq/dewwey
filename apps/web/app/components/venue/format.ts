@@ -524,33 +524,43 @@ export function sameRentalRatesLine(earlierPathName: string): string {
   return `Same rental rates as ${earlierPathName}.`;
 }
 
-/** The season-months line, rendered once under the Pricing section's whole card grid (not
- * per-card, since the two definitions are always identical across every path on the same
- * venue): "off-season is Jan, Feb, Mar, Nov; peak season is Apr–Oct, Dec". Null when a venue
- * doesn't state season months at all. */
-export function seasonsMonthsLine(seasons: Pricing["seasons"]): string | null {
+// Matches a short leading label ending in ": " at the very start of a sentence ("Hall Rental
+// Only: everything you need…" -> "Hall Rental Only") — bounded so a stray colon deep in a real
+// sentence never gets mistaken for one.
+const LEADING_TERM_PHRASE = /^([^:]{1,48}):\s+/;
+
+/** The light-gray venue term shown under a Pricing card's title (round 6 rule 3): the venue's own
+ * `PricingPath.subtitle` when the importer set one, else the leading "X:" phrase of the path's own
+ * `description`, else null. */
+export function pathSubtitle(path: PricingPath): string | null {
+  if (path.subtitle) return path.subtitle;
+  const m = path.description ? LEADING_TERM_PHRASE.exec(path.description) : null;
+  return m ? m[1] : null;
+}
+
+/** Short season row label for a price grid — "Peak" / "Off" / "Any" (round 6 rule 3: the grid row
+ * itself carries no months anymore; see `seasonMonthsLine`). */
+const SEASON_SHORT_LABELS: Record<Season, string> = { peak: "Peak", off: "Off", any: "Any" };
+
+export function seasonShortLabel(s: Season): string {
+  return SEASON_SHORT_LABELS[s];
+}
+
+/** The season-months line, rendered once under a price grid (round 6 rule 3 — replaces the old
+ * per-row "Off-season (Jan, Feb, Mar, Nov)" inline months, which crowded a narrow 1/3-width
+ * Pricing card): "Peak: Apr–Oct, Dec · Off: Jan, Feb, Mar, Nov", in the same chronological order
+ * (`seasonOrderFor`) the grid's own rows already use, so the line above and the summary below it
+ * never disagree on which season comes first. Null when the venue states no season months at all. */
+export function seasonMonthsLine(seasons: Pricing["seasons"] | undefined): string | null {
   if (!seasons || (!seasons.peak && !seasons.off)) return null;
-  const parts: string[] = [];
-  if (seasons.off) parts.push(`off-season is ${seasons.off}`);
-  if (seasons.peak) parts.push(`peak season is ${seasons.peak}`);
-  return parts.join("; ");
-}
-
-/** A season row's own label with its months folded in — "Off-season (Jan, Feb, Mar, Nov)" /
- * "Peak season (Apr–Oct, Dec)" — round 4 rule 16's Pricing-card grid rows. Falls back to the plain
- * `seasonLabel` when the venue doesn't state months for that season (or at all). */
-export function seasonLabelWithMonths(s: Season, seasons: Pricing["seasons"] | undefined): string {
-  const base = seasonLabel(s);
-  const months = s === "peak" ? seasons?.peak : s === "off" ? seasons?.off : null;
-  return months ? `${base} (${months})` : base;
-}
-
-/** Just the months half of `seasonLabelWithMonths`, for callers that want to render the season
- * name and its months as two separate lines (a Pricing card's grid row, round 4 follow-up: the
- * inline "(Jan, Feb, Mar, Nov)" form crowded a 3-column card) — null when the venue doesn't state
- * months for that season. */
-export function seasonMonthsOnly(s: Season, seasons: Pricing["seasons"] | undefined): string | null {
-  return (s === "peak" ? seasons?.peak : s === "off" ? seasons?.off : null) ?? null;
+  const parts = seasonOrderFor(seasons)
+    .filter((s): s is "peak" | "off" => s === "peak" || s === "off")
+    .map((s) => {
+      const months = s === "peak" ? seasons.peak : seasons.off;
+      return months ? `${seasonShortLabel(s)}: ${months}` : null;
+    })
+    .filter((p): p is string => p != null);
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 export interface CollapsedTier {
@@ -901,109 +911,32 @@ export function buildAddOnTable(addOns: AddOn[], spaces: Space[]): AddOnTable {
   return { columnLabels, rows };
 }
 
-export interface AddOnCategoryGroup {
-  category: string;
-  blurb: string | null;
-  /** Curated example bullets (`Pricing.add_on_categories[].examples`) — always shown; the section
-   * falls back to these when `items` is empty (a category whose real add-ons are all single-select
-   * calculator PillGroup options, so there's nothing left to show as an independent card/table). */
-  examples: string[];
-  /** Independently-selectable add-ons in this category (excludes anything with a
-   * `selection_group` — those are single-select calculator options already fully described by
-   * `examples`, and would otherwise show as a duplicate, individually-toggleable card). */
-  items: AddOn[];
-}
-
-/** Category-level grouping for the Add-ons & extras section, built from `Pricing.add_on_categories`
- * (round-3 addition) — null when a venue doesn't carry curated categories, so the renderer falls
- * back to the plain fb/rental split every other golden fixture already uses (this never changes
- * rendering for a venue without `add_on_categories`). */
-export function addOnCategoryGroups(d: VenueDetailsV3): AddOnCategoryGroup[] | null {
-  const categories = d.pricing.add_on_categories;
-  if (!categories || categories.length === 0) return null;
-  const itemsFor = (category: string) => d.pricing.add_ons.filter((a) => a.category === category && !a.selection_group);
-  const groups: AddOnCategoryGroup[] = categories.map((c) => ({ category: c.category, blurb: c.blurb, examples: c.examples, items: itemsFor(c.category) }));
-  // Any add-on in a category the curated list doesn't name (Diamond Garden's "Ceremony" upgrades)
-  // still needs a home — appended as its own uncurated group rather than silently dropped.
-  const known = new Set(categories.map((c) => c.category));
-  const leftover = [...new Set(d.pricing.add_ons.filter((a) => !known.has(a.category) && !a.selection_group).map((a) => a.category))];
-  for (const category of leftover) groups.push({ category, blurb: null, examples: [], items: itemsFor(category) });
-  return groups;
-}
-
-/** `addOnCategoryGroups` when the venue has curated categories, else the same shape built from
- * plain distinct `category` values — every venue's add-ons land in SOME category group (round 4
- * rule 17), curated or not. */
-export function resolvedAddOnCategoryGroups(d: VenueDetailsV3): AddOnCategoryGroup[] {
-  const curated = addOnCategoryGroups(d);
-  if (curated) return curated;
-  const byCategory = new Map<string, AddOn[]>();
-  for (const a of d.pricing.add_ons) {
-    if (a.selection_group) continue;
-    if (!byCategory.has(a.category)) byCategory.set(a.category, []);
-    byCategory.get(a.category)!.push(a);
-  }
-  return [...byCategory.entries()].map(([category, items]) => ({ category, blurb: null, examples: [], items }));
-}
-
 export interface AddOnCategoryTableRow {
   key: string;
   itemLabel: string;
+  /** The venue's own sub-category, shown as a small caption above the item name — reuses
+   * `addOnCardCaption`'s rule, so it's omitted when it would just repeat the name back (round 6
+   * rule 1). */
+  caption: string | null;
   prices: string[];
   note: string | null;
 }
 
-export interface AddOnCategoryTable {
-  category: string;
-  blurb: string | null;
-  examples: string[];
-  columnLabels: string[];
-  rows: AddOnCategoryTableRow[];
-}
-
-/** One Item|Price table per category (round 4 rule 17) — variant/condition folded into the item
- * label (`addOnItemLabel`), per-space columns when the category's items carry `per_space_prices`. */
-export function buildAddOnCategoryTables(d: VenueDetailsV3): AddOnCategoryTable[] {
-  return resolvedAddOnCategoryGroups(d).map((g) => {
-    const spaceIds = [...new Set(g.items.flatMap((a) => (a.per_space_prices ? Object.keys(a.per_space_prices) : [])))];
-    const spaceName = (id: string) => d.spaces.find((s) => s.id === id)?.name ?? id;
-    const columnLabels = spaceIds.length > 0 ? spaceIds.map(spaceName) : ["Price"];
-    const rows: AddOnCategoryTableRow[] = g.items.map((a) => ({
-      key: a.id,
-      itemLabel: addOnItemLabel(a),
-      prices: spaceIds.length > 0 ? spaceIds.map((sid) => (a.per_space_prices?.[sid] != null ? money(a.per_space_prices[sid]) : addOnPriceString(a))) : [addOnPriceString(a)],
-      note: a.note,
-    }));
-    return { category: g.category, blurb: g.blurb, examples: g.examples, columnLabels, rows };
-  });
-}
-
-/** Round 4 rule 12: 2 or fewer real add-ons and no curated categories at all -> compact rows
- * instead of cards/tables (Field Museum's two photo sessions). `selection_group` items are
- * calculator-only options, not counted here. */
-export function isCompactAddOnsLayout(d: VenueDetailsV3): boolean {
-  const real = d.pricing.add_ons.filter((a) => !a.selection_group);
-  return !d.pricing.add_on_categories?.length && real.length <= 2;
-}
-
-export type AddOnsLayout = "compact" | "cards" | "tables";
-
-/** The Add-ons & extras section's overall shape (round 4 rules 12 + 17): compact rows for a
- * couple of items and no categories; a plain card grid for a genuinely single, uncategorized flat
- * list; grouped category tables otherwise (curated `add_on_categories`, or 2+ distinct `category`
- * values). */
-export function addOnsLayout(d: VenueDetailsV3): AddOnsLayout {
-  if (isCompactAddOnsLayout(d)) return "compact";
-  const hasCurated = !!d.pricing.add_on_categories?.length;
-  const groups = resolvedAddOnCategoryGroups(d);
-  if (!hasCurated && groups.length <= 1) return "cards";
-  return "tables";
+/** Round 6 rule 1: exactly two Add-ons & extras layouts, decided purely by the venue's total
+ * add-on count — never mixed within a section. `<= 5` real (non-`selection_group`) add-ons -> a
+ * flat, unheaded card grid (the Greenhouse concept's shape, including a couple of items — the old
+ * separate "compact rows" mode for 1-2 items is gone). `> 5` -> one table per standard category
+ * (`groupAddOnsByCategoryStd`). */
+export function addOnsMode(addOns: AddOn[]): "cards" | "tables" {
+  const real = addOns.filter((a) => !a.selection_group);
+  return real.length <= 5 ? "cards" : "tables";
 }
 
 // ---------------------------------------------------------------------------
-// Add-ons grouped by category_std (round 5 rule 7 — restores the round-3 card look under round-4's
-// grouping: top-level headers are the 8 standard categories, the venue's own `category` becomes a
-// sub-line, and a table only earns its place per SUB-group, not per section.)
+// Add-ons grouped by category_std (round 5 rule 7, reworked by round 6 rule 1: top-level headers
+// are the 8 standard categories, the venue's own `category` becomes a sub-line/caption; every
+// category_std with any items renders as ONE table covering all its sub-categories — the old
+// per-sub-group cards/table split is gone.)
 // ---------------------------------------------------------------------------
 
 const CATEGORY_STD_DEFAULT_FROM_GROUP: Record<AddOn["group"], AddOnCategoryStd> = {
@@ -1074,64 +1007,29 @@ export function groupAddOnsByCategoryStd(d: VenueDetailsV3): AddOnStdGroup[] {
   });
 }
 
-function sameColumnShape(items: AddOn[]): boolean {
-  const shapes = new Set(items.map((a) => (a.per_space_prices ? [...Object.keys(a.per_space_prices)].sort().join(",") : "")));
-  return shapes.size <= 1;
-}
-
-/** Round 5 rule 7: a sub-group renders as a table only when it has 2 genuine pricing axes
- * (variant × per-space) or ≥ 6 priced rows sharing the same columns; cards otherwise (the round-3
- * look). */
-export function addOnSubgroupLayout(items: AddOn[]): "cards" | "table" {
-  const hasVariantAxis = new Set(items.map((a) => a.variant).filter((v) => v != null)).size > 1;
-  const hasSpaceAxis = items.some((a) => a.per_space_prices != null && Object.keys(a.per_space_prices).length > 1);
-  if (hasVariantAxis && hasSpaceAxis) return "table";
-  const pricedRows = items.filter((a) => a.price != null || (a.per_space_prices != null && Object.keys(a.per_space_prices).length > 0));
-  if (pricedRows.length >= 6 && sameColumnShape(pricedRows)) return "table";
-  return "cards";
-}
-
-/** Round 6 fix (2026-09-19): the venue's own sub-category (`AddOn.category`), shown as a small
- * caption inside the merged card grid instead of a separate sub-header — omitted when it would
- * just repeat the item's own name back (Marchetti's "Chef Experiences" category on a "Chef
- * Experiences" add-on). */
+/** The venue's own sub-category (`AddOn.category`), shown as a small caption above the item name
+ * — omitted when it would just repeat the item's own name back (Marchetti's "Chef Experiences"
+ * category on a "Chef Experiences" add-on). Used by both the card grid and, round 6 rule 1, every
+ * table row. */
 export function addOnCardCaption(a: AddOn): string | null {
   return a.category.trim().toLowerCase() === a.name.trim().toLowerCase() ? null : a.category;
 }
 
-export interface AddOnCategoryPartition {
-  /** Every item from a "cards"-layout sub-group, flattened in subgroup order — these all flow
-   * into ONE shared grid per standard category, fixing the bug where a single-item sub-category
-   * used to get its own one-card row at a third of the grid's width. */
-  cards: AddOn[];
-  /** Sub-groups whose own items force a table (`addOnSubgroupLayout(sg.items) === "table"`) —
-   * kept as whole subgroups (not flattened) so the caller can render each one as its own
-   * full-width table block, named by its own sub-category, after the shared card grid. */
-  tables: AddOnSubgroup[];
-}
-
-/** Splits one standard category's sub-groups into the shared card grid vs. the sub-groups that
- * must render as their own table (round 6 fix, 2026-09-19) — replaces rendering one card grid
- * PER sub-group, which orphaned single-item sub-categories onto their own fragmented row. */
-export function partitionCategoryItems(subgroups: AddOnSubgroup[]): AddOnCategoryPartition {
-  const cards: AddOn[] = [];
-  const tables: AddOnSubgroup[] = [];
-  for (const sg of subgroups) {
-    if (addOnSubgroupLayout(sg.items) === "table") tables.push(sg);
-    else cards.push(...sg.items);
-  }
-  return { cards, tables };
-}
-
-/** Item|Price table for ONE sub-group (round 5 rule 7) — same shape `buildAddOnCategoryTables`
- * builds per venue-category, just scoped to a single already-resolved item list. */
-export function buildAddOnSubgroupTable(items: AddOn[], spaces: Space[]): { columnLabels: string[]; rows: AddOnCategoryTableRow[] } {
+/** One Item|Price table for a WHOLE standard category (round 6 rule 1 — replaces the old
+ * per-sub-group cards/table split): every sub-category's items share one table, in subgroup
+ * order, each row captioned with its own venue sub-category (`addOnCardCaption`). Per-space
+ * columns appear as soon as any item carries `per_space_prices`; an item with a flat price instead
+ * repeats that price across every space column (Marchetti's Chiavari chairs/Stage rows sit beside
+ * its per-space Dance floor rows in the same "Space & rentals" table). */
+export function buildAddOnCategoryStdTable(subgroups: AddOnSubgroup[], spaces: Space[]): { columnLabels: string[]; rows: AddOnCategoryTableRow[] } {
+  const items = subgroups.flatMap((sg) => sg.items);
   const spaceIds = [...new Set(items.flatMap((a) => (a.per_space_prices ? Object.keys(a.per_space_prices) : [])))];
   const spaceName = (id: string) => spaces.find((s) => s.id === id)?.name ?? id;
   const columnLabels = spaceIds.length > 0 ? spaceIds.map(spaceName) : ["Price"];
   const rows: AddOnCategoryTableRow[] = items.map((a) => ({
     key: a.id,
     itemLabel: addOnItemLabel(a),
+    caption: addOnCardCaption(a),
     prices: spaceIds.length > 0 ? spaceIds.map((sid) => (a.per_space_prices?.[sid] != null ? money(a.per_space_prices[sid]) : addOnPriceString(a))) : [addOnPriceString(a)],
     note: a.note,
   }));
@@ -1180,14 +1078,18 @@ export function fbSharedRow(food: FbPill[], bar: FbPill[], hasCaption: boolean):
   return !hasCaption && sameFbSet(food, bar);
 }
 
-/** "shared" | "split" pill-row layout (round 5 rule 5, supersedes round 4 rule 7: the F&B section
- * itself is single-column now, so resource placement and the food_note/bar_note/caption callout
- * lines no longer depend on this at all — they always render). Purely whether the Food and Bar
- * pill SETS match: one shared pill row when they do, two labeled Food/Bar pill rows when they
- * genuinely differ. */
-export function fbLayout(d: VenueDetailsV3): "shared" | "split" {
+/** The F&B section's block shape (round 6 rule 2, supersedes round 5 rule 5's pill-row-only
+ * decision): "shared" collapses to one plain pill row with no Food/Bar micro-headers; "split"
+ * renders two clearly separated FOOD/BAR blocks, each with its own pills, note and table. A single
+ * shared block only when the pill SETS match AND neither side has a note (`fbSideNote`, which
+ * already covers both the explicit `food_note`/`bar_note` fields and a `notes[]` entry attributed
+ * to that side) AND there's no menus/bar-ladders table on either side — any of those three earns
+ * the venue its own two-block layout. */
+export function fbBlocks(d: VenueDetailsV3): "shared" | "split" {
   const { food, bar } = fbPills(d);
-  return fbSharedRow(food, bar, false) ? "shared" : "split";
+  const hasNote = fbSideNote(d.food_beverage, "food") != null || fbSideNote(d.food_beverage, "bar") != null;
+  const hasTable = d.food_beverage.menus.length > 0 || d.food_beverage.bar_ladders.length > 0;
+  return fbSharedRow(food, bar, hasNote || hasTable) ? "shared" : "split";
 }
 
 // ---------------------------------------------------------------------------
@@ -1354,8 +1256,9 @@ export function showPricingSection(d: VenueDetailsV3): boolean {
  * third card onto its own row) for exactly 3, and back to 2 (wrapping 2x2) for 4+ — round-3 fix.
  * Purely a function of path count (the round 5 rule 6 full-width fallback for tall/bulleted cards
  * is removed — a fixed 2026-09-19 review: it turned Diamond Garden's three cards into one per row.
- * Cards may be tall; the grid uses `items-start` so a short card doesn't stretch, and nothing
- * scrolls internally). */
+ * Round 6 rule 3: the grid now uses `items-stretch` so every card's border reaches the same row
+ * height instead of a short card leaving a visible gap beside a tall sibling; nothing scrolls
+ * internally). */
 export function pricingGridClass(pathCount: number): string {
   return `grid gap-5 sm:grid-cols-2${pathCount === 3 ? " lg:grid-cols-3" : ""}`;
 }
