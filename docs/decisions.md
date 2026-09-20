@@ -162,8 +162,8 @@ Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-
   (created 2026-08-20, pre-loop) is a "vintage cinema shoot we produced"** — a LIKELY styled post that became a
   wedding before the signal existed; flagged to the user, not retired unilaterally.
 - *Remainder tiers* in `targets.ts`: `probe6` (6-15-bucket metro venues never tagged-crawled, 55) and
-  `discovered` (hop-1 `crawl_frontier` pending, venue role + metro, 39); `deepen` = 8 measured-promising venues
-  to 100. Estimated ≈ $7.3 of the ≈ $9.0 left before the $28.50 stop.
+  `discovered` (hop-1 `crawl_frontier` pending, venue role + metro, 39, of which 22 are not already in `probe6`);
+  `deepen` = 8 measured-promising venues to 100. Estimated ≈ $6.3 of the ≈ $8.8 left before the $28.50 stop.
 
 ---
 
@@ -430,6 +430,28 @@ order of importance:
 - The gate is not met; the six are compare-ready on their runs but NOT served. Decisions for the
   user before c5: the four taxonomy conventions above and whether to serve the six at ~90% critical
   for lab review. Spend resumes only with a fresh cap.
+
+**Addendum 2026-09-20 (day: c5–c6, served, reviewed).** The user decided the taxonomy (setting `both`
+only for a real outdoor event space; hotel + per-person packages = `hotel_package`, a pricing style,
+never room rates; new bar value `in_house_or_byo`; Greenhouse's service charge 0 tagged human_only),
+approved $10 more, and asked to serve after the pass. Those decisions became deterministic validator
+rules, not prompt hopes (setting demoted without an outdoor space; hotel archetype; bar consistency incl.
+nonprofit-only corkage; flat_fee vs flat_plus_per_guest from the extracted paths; price_from never above
+the smallest fee; archetype derived from the cost model; invalid enums demoted). Resources capture landed
+(embeds, floor-plan images, PDF anchor labels in an ASSETS block on each snapshot; deterministic resource
+augmentation; canonical video URLs; a Sonnet escalation after two malformed cheap-model replies).
+Calibration stopped at the plan's stop rule (v3.5 = sixth prompt): critical 61/65 = 93.8%, resources
+21/32 = 65.6% at c6, then **the six were served** (`vd-serve-c6`) on the user's call. The review of the
+served pages produced only rules and one correction: food vs bar menu buttons, card fee in the charges
+line and payment pill, parking space count from the inclusion, "tiered food packages have their own
+N-guest minimum", daytime specials never summed into the estimate, capacity tiles and guest range ignore
+gala rows, request card for unpriced inquire-only paths; and the first human correction
+(`vd-corr-1`: Diamond Garden's "Not included in package price…" read from its image-only bar PDF; a
+`/food_beverage/notes` correction path was added for it). A golden resources refresh (import-time
+overrides for URLs the venues no longer serve) took resources recall to 27/29 = 93.1% — both gates are
+green on the served runs. Spend: second cap $3.61 + $1.86 (c6) ≈ $5.5; key usage ≈ $17 for the day
+including the D061 window. **Next: Phase 3 fill tick f1** (30 venues, 20+ weddings, `$40` Phase 3 cap
+proposed) — waiting on the user's go.
 
 ## D059 — 2026-09-13 — Attire split: dress/suit/bridesmaid/veil/shoes broken out of generic "Attire"
 

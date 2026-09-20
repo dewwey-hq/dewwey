@@ -5,54 +5,55 @@ session; history lives in `decisions.md`, preferences in Claude's memory, in-fli
 If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-20 ~01:30 (machine clock)** by the D060 window after calibration ticks c0–c4.
-Two windows commit to local `main` in parallel (this one = D060 VenueDetails; the other = D061
-acquisition loop, see "Second mission"). **`origin/main` was pushed by the user at `f145277` (2026-09-20);
-everything after that is local only** — run `git log --oneline origin/main..HEAD` to see how many. The
-`apps/web/scripts/graph/tmp_analysis/*` untracked files belong to the D061 window — leave them.
+Last rewritten: **2026-09-20 ~11:45 (machine clock)** by the D060 window, hand-off for a new session
+(the user is switching models). Two windows commit to local `main` in parallel (this one = D060
+VenueDetails; the other = D061 acquisition loop, see "Second mission"). Check
+`git log --oneline origin/main..HEAD` for what is unpushed; the user pushes.
 
 ## How to resume (5 minutes)
 
-1. `git log --oneline -15`, `git status`, `git log --oneline origin/main..HEAD | wc -l`.
-2. `docs/engineering/venue-enrichment/loop/ticks.md` — the last row is where the loop stopped (c4) and why.
-3. Re-check one live number: `bun run scripts/venue-details/reportVenueDetailsFunnel.ts` from `apps/web`
-   (runs, validated, served = 0) and the OpenRouter key's `usage_daily`.
-4. Then the "Blocked on the user" list. **No model spend until the user sets a fresh calibration cap**
-   (the $10 cap is treated as reached; see the c4 row).
+1. `git log --oneline -10`, `git status`, `git log --oneline origin/main..HEAD | wc -l` from the repo root.
+2. Read `docs/engineering/venue-enrichment/loop/README.md` (protocol) and the last three rows of
+   `loop/ticks.md` (c6, serve-c6, review-1, refresh-1). The plan of record is
+   `~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md` ("Execution loop for Phases 2–3").
+3. Re-check one live number: from `apps/web`, `bun run scripts/venue-details/reportVenueDetailsFunnel.ts`
+   should show 6 served / 6 compare-ready; `bunx --bun vitest run lib/venueDetails app/components/venue
+   scripts/venue-details` should be ~890 green. Dev server: `nohup bun run dev` from `apps/web`
+   (`/lab/venue?u=<username>` renders the served six).
+4. Then the "Blocked on the user" list. **No model spend without the user's go on the Phase 3 cap.**
 
-## Mission in flight — D060 VenueDetails v3 (2026-09-13 →): calibration loop, gate not yet met
+## Mission in flight — D060 VenueDetails v3: calibration done and served; Phase 3 fill loop teed up
 
 The venue Details tab becomes one typed schema (comparison spine + detail layer) filled by a
-provenance-first loop for every listed venue, rendered by one generic component. Plan of record:
-`~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md` ("Execution loop for Phases 2–3"); loop
-protocol `docs/engineering/venue-enrichment/loop/README.md`; tick log `loop/ticks.md`; per-tick reports
-`loop/reports/<tick>/`; narrative `docs/decisions.md` D060 + addenda (the 2026-09-20 addendum is the
-calibration story).
+provenance-first loop for every listed venue, rendered by one generic component. Narrative:
+`docs/decisions.md` D060 + its 2026-09-19/20 addenda. Product doc: `docs/product/venue-details.md`.
 
-**Done:** Phases 0–2 code; seven golden-render rounds; schema applied (user, 09-19); discovery applied
-(421 listed → 307 candidates → 257 verified, batch `vd-discovery-1`); calibration crawl c0 (16 venues,
-gate passed); four extraction passes c1–c4 (prompt v3.0 → v3.3) with the fixes listed in the D060
-addendum; 820+ tests.
+**Done (all committed):** Phases 0–2; seven golden-render rounds; schema applied; discovery applied
+(421 listed → 307 candidates → 257 verified, `vd-discovery-1`); calibration ticks c0–c6 (prompt v3.0 →
+v3.5, stop rule reached); **the six goldens are served** (`vd-serve-c6`; Geraghty v3 and Diamond Garden
+v2 after the review, Diamond Garden carrying human correction #1 from `vd-corr-1`); the user's review of
+the served pages folded into general rules; golden resources refreshed. Gates on the served runs:
+critical 61/65 = 93.8% (95% gate, missed by run-to-run variance; c5 re-validated at 96.9% on the same
+prompt family), resources 27/29 = 93.1% (80% gate, green), all six compare-ready, cost delta 0% where a
+golden total exists. Spend: first $10 cap spent, second cap ≈ $5.5 of $10 used.
 
-**Where the gate stands (c4, prompt v3.3, aligned scorer):**
-
-| venue | critical | important_core | headline | cost delta | resources found |
-|---|---|---|---|---|---|
-| Galleria Marchetti | 14/14 | 22/27 | 450 vs 425 (homepage vs brochure) | 0% | 1/8 |
-| Field Museum | 8/8 | 8/10 | 1,500 exact | n/a (inquire-only) | 2/6 |
-| Geraghty | 7/8 | 5/6 | 300 exact | n/a | 1/3 |
-| Greenhouse Loft | 10/11 | 11/23 (paths came back as a string) | 175 exact | none (same cause) | 5/5 |
-| LondonHouse | 10/12 | 13/16 | 275 vs 190 (cocktail rows tagged seated) | 0% | 3/3 |
-| Diamond Garden | 10/13 | 8/39 | 268 exact | path alignment (scorer) | 1/7 |
-
-Final calibration read (c6, v3.5): critical 61/65 = 93.8%, resources 21/32 = 65.6%. **All six are served** (batch `vd-serve-c6`, 2026-09-20) for lab review; the loop's tick log has the full c0–c6 story.
-
-**Nothing in flight.** Both resource builds and the scorer alignment landed and are committed.
-
-**Next tick (c5) needs, in order:** the user's taxonomy decisions (below) → a re-crawl of the six
-(`runTick.ts --tick c5 --account-ids <golden 6 + must-not 10> --crawl-only`; new snapshots because of
-the ASSETS block) → prompt v3.4 (the taxonomy rules + the ASSETS mention) → extraction under a fresh cap
-(~$1.50 for the six, $2.50 with the must-nots) → scorecard.
+**How to run the FIRST FILL TICK (f1) once the user says go** — from `apps/web`:
+```
+bun run scripts/venue-details/targets.ts --band 20+ --limit 30 --ids-file scripts/graph/tmp_analysis/vd_f1.ids
+OPENROUTER_FAIL_DIR=/tmp bun run scripts/venue-details/runTick.ts --tick f1 --ids-file scripts/graph/tmp_analysis/vd_f1.ids --max-cost-usd 10
+   # crawl → coverage → extract → validate → repair → validate → universal must-not → serve DRY-RUN → funnel → row
+   # read docs/engineering/venue-enrichment/loop/reports/f1/{coverage,validate-2,mustnot,serve-dry-run}.md
+bun run scripts/venue-details/runTick.ts --tick f1 --ids-file scripts/graph/tmp_analysis/vd_f1.ids --skip-crawl --apply-serve
+```
+Gate F (loop README): 0 critical grounding failures on the runs about to be served, universal must-nots
+green, only `validation.ok` runs served, tick spend ≤ cap. Then append the printed row to `loop/ticks.md`,
+rewrite this section, commit `vd tick f1: …`, and give the user 5 `/lab/venue?u=` URLs to spot-check.
+The 30 targets (2026-09-20): bridgeportartcenter 202 weddings, the.arbory 149, rockwellontheriver 143,
+waldenchicago 111, thedalcy 97, adlerplanet 97, chicagowinery 95, mortonarb 95, fairliechicago 84,
+chicagobotanic 75 … lmstudiochi 44. Run the targets command again rather than trusting the ids file (it is
+untracked scratch). Expect ≈ $6/tick; the Phase 3 cap the plan proposes is $40 (top two bands).
+Landmines for the tick: run it as ONE background command with absolute paths (a cwd slip made a tick
+fail before it started); never chain on `pgrep`; count spend from the OpenRouter key's `usage_daily`.
 
 ## Numbers (live DB, unchanged by this mission so far)
 
@@ -86,16 +87,11 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
 
 ## Blocked on the user
 
-1. **Review the six served pages** on `localhost:3000/lab/venue?u=<username>` (galleriamarchetti,
-   greenhouseloft, diamondgardenbanquet, lhchicago, fieldmuseum, thegeraghty) — served 2026-09-20 09:35
-   at the c6 numbers (critical 93.8%, resources 65.6%) on the user's call. Fixes: `addCorrection.ts`
-   (append-only, stable field paths) or tell Claude what is wrong and where. Revert the whole batch:
-   `rollbackVenueDetails.ts --undo-batch vd-serve-c6 --apply`.
-2. **Golden resources refresh** (small, human): re-collect the resource URLs for Marchetti, Geraghty and
-   Field Museum from the live pages so the resources gate measures the crawler, not link rot.
-3. **Fresh cap for Phase 3 fill ticks** when the review is done ($40 was the plan; ~$6.40 of the second
-   calibration $10 is unspent).
-4. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
+1. **"Go" for Phase 3 fill tick f1** with the cap (plan: $40 for the 20+ and 6–19 bands, ~$6 per tick of
+   30). The command sequence is in the mission section above; the first tick returns 5 lab URLs to
+   spot-check.
+2. **Push** (`git push origin main`) — the classifier blocks Claude from pushing.
+3. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
 
 ## Second mission (parallel window) — D061 Acquisition loop: month-1 ticks DONE; reader v1.3 shipped (2026-09-20 morning)
 
@@ -120,9 +116,11 @@ re-anchored, not added; 1 retired after spot-check). Spend: **Apify $19.48** of 
 | Low-types (hotels/restaurants/churches at 1-5) | 41 | 2.26 | 900 | 49 | 0.050 | 33 | 7 |
 | Probes B (zero-wedding venues) | 60 | 2.87 | 1,201 | 18 | 0.015 | 14 | 0 (3 venues 0 → 1; 39 dead) |
 | Vendor tick (tier-A planners/florists) | 22 | 1.27 | 425 | 103 | 0.188 | 5 | 0 |
+| **Probe6** (6-15 venues, own feed never crawled; 2026-09-20 afternoon, reader v1.3) | 55 | 3.00 | 1,149 | **180** | 0.138 | 1 | 1 (15 venues 6-15 → 16-49) |
 
 Coverage (metro venue accounts, morning → end of night): 0: 170 → **165** · 1-5: 302 → **270** · 6-15: 78 → **108**
-· 16-49: 64 → 64 · 50+: 27 → **33**.
+· 16-49: 64 → 64 · 50+: 27 → **33**. After probe6 (2026-09-20 afternoon): 6-15 **93**, 16-49 **79**, others unchanged;
+weddings **6,751** (probe6: 47 of 55 targets promising, 5 dead, 23 candidates to the human queue, HUMAN_STYLED 0).
 
 **Gates:** Gate 0 PASS (pilot), pilot spot-check **95.7% PASS**, Gate 1a PASS (canary 0.076), Gate 1 PASS
 (probes A 0.072 vs 0.03). **Probes A spot-check DONE (user, 97 posts): model THIS_VENUE precision 65/67 =
@@ -135,7 +133,7 @@ spot-checks: THIS_VENUE precision **52/52** (v1.2 40/41), recall **52/62** (v1.2
 agreed posts kept; four rounds, ≈ $1.05 (`tmp_analysis/d061_reader_v13_{evalset,score}.sql`, `runExtract.ts
 --eval-urls-file`). Alias-family fold in `decideVerdictWrite` + `venue_same_family_handles` in the prompt.
 **Styled-shoot auto-create gate** live (`HUMAN_STYLED` in the creation summary; probes A dry-run 0). Remainder
-tiers `probe6` (55) / `discovered` (39) / `deepen` (8 → 100 posts) added to `targets.ts`, ≈ $7.3 of ≈ $9.0 left.
+tiers `probe6` (55) / `discovered` (22 unique after `probe6`) / `deepen` (8 → 100 posts) added to `targets.ts`, ≈ $6.3 of ≈ $8.8 left.
 **Nothing in flight** unless the remainder ticks below are running (check `acq_logs/` and `ops.crawl_runs`).
 
 **Blocked on the user:** (1) **wedding 725 at @thelogantheatre** (created 2026-08-20, before the loop) is a
@@ -172,11 +170,13 @@ invariants (D059 owner); the user's 164-post human queue (`/label/candidates?bat
 
 ## Next actions (Claude, when unblocked)
 
-1. Land the two in-flight builds (resources; scorer path alignment), suites green, commit.
-2. c5: re-crawl the 16 (ASSETS block) → prompt v3.4 with the user's taxonomy rules → extract the six
-   under the new cap → score (critical, important_core, resources recall) → if green, serve the six
-   (`--apply-serve`) and hand the lab URLs to the user; must-not slate extracted once on the final prompt.
-3. F2 repeatability check (10 venues × `--force`) before any fill tick; then `targets.ts --band 20+`.
+1. f1 as above → gate F → `--apply-serve` → row, STATE.md, commit → 5 spot-check URLs to the user.
+2. f2: F2 repeatability check (10 venues re-extracted with `--force`, ≥ 90% agreement on the four closed
+   enums) alongside the tick; then f3… through the 20+ band and the 6–19 band until ≥ 50 compare-ready
+   or the cap; Phase 3 report; one `--undo-batch` rollback rehearsal.
+3. Punch list (no spend): Marchetti headline 450 (homepage) vs 425 (brochure) — a "wedding page beats
+   homepage" tuple-conflict rule at validation; Diamond Garden's per-guest floor picks the lunch special;
+   "All-Inclusive" bar pill wording; LondonHouse corkage surfaced only on some runs.
 
 ## Landmines (things that bit us; check before repeating)
 
