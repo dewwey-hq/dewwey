@@ -92,8 +92,13 @@ async function main() {
          count(distinct wp.wedding_id) filter (where vb.n_before < 6) weddings_thin
        from fo
        left join jeremy_wedding_candidate_posts cp on cp.source_post_url = fo.url
-       left join wedding_posts wp on wp.post_id = fo.post_id
-       left join weddings w on w.id = wp.wedding_id
+       -- only weddings created AFTER this run was ingested count as this run's yield: a legacy
+       -- registration (Ben's crawl posts) carries wedding_posts links that predate the batch, and
+       -- those are not new weddings (2026-09-20: 57 phantom weddings on legacy-ben-crawl1-zero-venues)
+       left join wedding_posts wp0 on wp0.post_id = fo.post_id
+       left join weddings w on w.id = wp0.wedding_id
+         and w.created_at >= (select coalesce(r2.ingested_at, r2.started_at) from ops.crawl_runs r2 where r2.id = fo.run_id)
+       left join lateral (select w.id as wedding_id) wp on w.id is not null
        left join lateral (
          select count(*) n_before from weddings w2
          where w2.venue_id = w.venue_id
