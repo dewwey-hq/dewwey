@@ -5,20 +5,22 @@ session; history lives in `decisions.md`, preferences in Claude's memory, in-fli
 If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-18** (session resumed; wedding-page finder + renderer punch list landed). Local
-`main` is **twenty-four commits ahead of `origin/main` (`dd5bd44`), not pushed** (the user has not asked
-for a push): `07bcd4e` D060 docs · `1dd161a` Phase 1a libs · `6161c13` fixtures + renderer ·
-`ef5f4ce` Phase 2 infra · `de1c8f9` crawler seeds + `<base href>` · `4b1909e` LLM half · `6f649a0`
-dry-run checkpoint · then this docs commit. Run `git log --oneline -10` and `git status` to confirm.
+Last rewritten: **2026-09-19 ~21:00 CT** (D060 window; golden-render round 7 landed as `36295c5`). Two
+windows are committing to local `main` in parallel (this one = D060 VenueDetails; the other = D061
+acquisition loop, see "Second mission"); **local `main` is ~54 commits ahead of `origin/main`
+(`dd5bd44`), not pushed** (the user has not asked for a push). Run `git log --oneline -15` and
+`git status` to confirm; the `apps/web/scripts/graph/tmp_analysis/*` untracked files belong to the D061
+window — leave them.
 
 ## How to resume (5 minutes)
 
-1. `git log --oneline -14` and `git status` from the repo root. Everything through the wedding-page
-   finder and its ranking fix (`d7a9629`) is committed; the working tree was clean at hand-off and no
-   builder was running.
-2. Re-check one live number: `bun run scripts/venue-details/discoverWebsites.ts --batch-id x
-   --dry-run --limit 20` from `apps/web` should still print `listed: 421`.
-3. Then work the "Blocked on the user" list below, top to bottom. Nothing in the pipeline has
+1. `git log --oneline -15` and `git status` from the repo root. Everything through add-ons round 7
+   (`36295c5`) is committed; no builder was running at hand-off. Dev server may still be up on :3000
+   (`nohup bun run dev` from `apps/web` if not).
+2. Re-check one live number: `bun run scripts/venue-details/importGoldenSet.ts --check` from `apps/web`
+   prints six `[OK]` lines, and `bunx --bun vitest run lib/venueDetails app/components/venue
+   scripts/venue-details` is 765 green.
+3. Then work the "Blocked on the user" list below, top to bottom. Nothing in the D060 pipeline has
    written to the database, R2, or OpenRouter yet, so there is nothing to undo.
 
 ## Mission in flight — D060 VenueDetails v3 (2026-09-13 →)
@@ -40,27 +42,22 @@ totals pinned to the concept calculators: Marchetti 55,240 / 57,475; Greenhouse 
 `vendorId`s are wrong): galleriamarchetti 31, greenhouseloft 477, thegeraghty 507, fieldmuseum 1131
 (alias 5172), lhchicago 2785, diamondgardenbanquet 27389.
 
-**Phase 1b — done, committed; three review rounds landed 2026-09-18 (`3d8e709`, `5a6e346`).** Round 2:
-every resource kind routed (`placeResources`, invariant-tested), concept spacing, as-stated sizes. Round 3
-(Diamond Garden as the proving venue, all rules data-driven): four optional schema fields
-(`add_on_categories`, `PricingPath.includes`, `Pricing.seasons`, `AddOn.selection_group`), multi-path
-pricing cards, curated add-on categories, single-select calculator extras, `path_ids` honored, tier axis
-only on distinct names, grouped What's Included. Nits landed (`9bea7d8`) and the extractor tool schema +
-assembler + scorer learned the new fields (`01fde35`, SPINE_TOOL ≈ 12k tokens, PRICING_TOOL ≈ 3.2k).
-614 tests. **Round 4 (2026-09-19, user's six-venue review) landed as `d88f49f` (extractor: rental terms +
-sided food/bar notes), `7478ca6` (fixtures: notes for all six, Greenhouse terms/seasons, Diamond Garden
-concept path names, trimmed Marchetti note, Geraghty nonprofit fee moved into the bar note), `a6bfef1`
-(renderer/calculator: guest range from the venue's own max, calendar day order + chronological seasons
-with months, terms lines, standard resource labels, single-space resources in the card, a Venue rental
-line on every space card incl. "on request" + Ask about pricing, two-column F&B with sided notes and
-tables in their column, fixed pill order, F&B minimum line, money in calculator pills, Live band axis,
-extras collapsed by category, add-ons as category tables, uniform inclusion rows, concept-shaped pricing
-cards). 704 tests. Pushbacks kept (Field Museum 1,500 not "1,000+"; LondonHouse range not 60–190; all 13
-policy rows; LondonHouse ceremony stays an add-on with a Yes/No toggle). `apps/web/app/components/venue/*` (`VenueDetailsView`, `FactSource`
-popover, `CostEstimate`, `PoliciesList`, `FaqList`, `ResourceMenuButton`, `format.ts`) and
-`apps/web/app/lab/venue/page.tsx` (`?golden=<slug>`, `?u=<username>`, `?compare=1`, noindex). All six
-goldens render at desktop and phone width; screenshots reviewed by Claude (user review still open).
-235 tests: `bunx vitest run lib/venueDetails app/components/venue scripts/venue-details`.
+**Phase 1b — done, committed; SEVEN review rounds landed 2026-09-18 → 09-19 (narrative: D060 addendum
+in `decisions.md`; per-round spec: the plan file's "Round 2…7" sections).** Latest commits: `65fd615`
+(decor / lighting_av split), `36295c5` (round 7: `AddOn.day/season`, extra-hours grid, Diamond Garden
+fixture completed against the venue's 2024 add-ons sheet, 34 → 59 add-ons; example folding dedupes
+across the whole card; importer money() shows cents). 765 tests. Schema fields added by the rounds
+(all optional, all in the extractor tool schema): `add_on_categories`, `PricingPath.includes/terms/
+subtitle`, `Pricing.seasons`, `AddOn.selection_group/category_std/day/season`, `food_note/bar_note`,
+`capacity_max_guests`, `EstimateInput.band`. Pushbacks kept (Field Museum 1,500 not "1,000+";
+LondonHouse range not 60–190; all 13 policy rows; LondonHouse ceremony stays an add-on with a Yes/No
+toggle). Open: Top Shelf bar $35 (add-ons sheet) vs $30/$40 (bar PDF) — verify against the bar PDF
+before it matters. `apps/web/app/components/venue/*` (`VenueDetailsView`, `FactSource` popover,
+`CostEstimate`, `PoliciesList`, `FaqList`, `ResourceMenuButton`, `format.ts`, `icons.ts`) and
+`apps/web/app/lab/venue/page.tsx` (`?golden=<slug>`, `?u=<username>`, `?compare=1`, noindex). Headless
+screenshots: chrome at `~/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome` (full page) or the
+playwright install at `/tmp/bunx-1000-playwright@latest/node_modules/playwright/index.mjs` for
+element-scoped shots (`locator(sel).screenshot`), imported by absolute path.
 
 **Phase 2 — code complete and committed (`ef5f4ce`, `de1c8f9`, `4b1909e`); nothing applied to the DB
 or R2, zero OpenRouter calls.** `apps/web/scripts/venue-details/`: `applyVenueDetailsSchema.ts` (DDL,
@@ -198,14 +195,16 @@ before that spend.
 
 ## Next actions (Claude, when unblocked)
 
-1. Land Phase 2 infra (in flight) → dry-run crawl on the golden six → coverage table.
-2. Build the LLM half: prompt module (two tools), extract (input_hash, `--max-cost-usd`), validate
-   (grounding + gates + `repairs[]`), repair, serve (versions + pointer), rollback, addCorrection,
-   tier-weighted scorer with the rubric's 15 must-not assertions, funnel report.
-3. Calibrate on the golden six as live venues until critical accuracy ≥ 95% and critical numeric
-   grounding = 100% on extractor-tagged fields; then Phase 3 (the 109) behind the crawl-only checkpoint.
-4. Renderer punch list (plan "Build log"): Greenhouse F&B sub-rows, "book both" day order, lightbox,
-   band axis, last-changed date.
+1. After approval 2 (schema) and 3 (writes): discovery apply → calibration crawl → coverage table →
+   `extractVenueDetails.ts --golden --max-cost-usd 5` → validate → repair → `scoreAgainstGolden.ts
+   --source runs --mustnot`; iterate the prompt until critical accuracy ≥ 95% and critical numeric
+   grounding = 100% on extractor-tagged fields; then Phase 3 (the 146) behind the crawl-only checkpoint.
+2. Fixture/render punch list (plan "Build log" + rounds): lightbox (new-tab links until
+   `checkResourceEmbeddability.ts`), Photos slot (production only), Marchetti real-wedding decks,
+   version `created_at` in the footer once versions exist, Top Shelf bar price check, the Field Museum
+   1,400-with-stage capacity as a tuple, the Cupola non-bookable spot.
+3. Extractor schema is ahead of any run: re-measure SPINE_TOOL/PRICING_TOOL token counts before the
+   first extraction (`venueDetailsPrompt.test.ts` pins them).
 
 ## Landmines (things that bit us; check before repeating)
 
@@ -223,6 +222,12 @@ before that spend.
 - `accounts.venue_type` is `park_outdoor` for Marchetti and Greenhouse (keyword-rule misfire; D056
   round-2 territory).
 - `weekday` in the cost model means Mon-Thu; a Fri/Sun shared price is two explicit rows.
+- **Selection-group add-ons are single-select in the calculator AND must still render in the static
+  Add-ons section** unless the same facts already render elsewhere (bar ladders, menus); hiding them
+  wholesale silently dropped Diamond Garden's extra hours for six rounds. Add-ons priced by day/season
+  carry `day`/`season` per row; the calculator filters by the chosen axes.
+- The importer has its own `money()`; keep it identical to the renderer's (cents when fractional) or
+  fixtures print "$1.5/guest".
 - Everything from the 2026-09-13 19:00 rewrite still applies (D059 migration invariant, IG embed rules,
   `/venues` listing bar, verify-logged-inserts, enum casts, `!` for bulk writes, `--limit` semantics,
   pgrep self-match, `vendors.city` default, brand handles, promo-only venues, wedding counting, hashtag

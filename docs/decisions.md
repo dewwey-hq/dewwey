@@ -250,6 +250,34 @@ builder runs).** Commits `07bcd4e` → `6f649a0` on `main` (unpushed at the time
   (carried in the document's `provenance` and `created_by` respectively). Three devDependencies added,
   not one: `unpdf`, `@types/bun`, `pdf-lib` (test fixtures only).
 
+**Addendum 2026-09-18 → 09-19 (golden-render rounds 2–7; the "fixture exercise" before any LLM spend).**
+The user reviewed all six `/lab/venue?golden=<slug>` renders against the concept pages across seven
+rounds; every fix is a general rule or an optional schema field, never a per-venue branch. What the
+schema gained (all optional-safe, all carried by the extractor tool schema + assembler): round 3
+`Pricing.add_on_categories`, `PricingPath.includes`, `Pricing.seasons`, `AddOn.selection_group`;
+round 4 `PricingPath.terms[]`, `FoodBeverage.food_note/bar_note`, `EstimateInput.band`; round 5
+`VenueSpine.capacity_max_guests` (important tier) and `AddOn.category_std` (standard taxonomy for
+Add-ons + Cost Estimate grouping, split into `decor` and `lighting_av` on 09-19); round 6
+`PricingPath.subtitle`; round 7 `AddOn.day/season` (day- and season-priced extras such as extra hours;
+one row per combination, the calculator keeps only rows matching the chosen axes, the static section
+renders the group as one season × day grid). Renderer rules locked by the rounds: guest pill = the
+venue's own stated range else "Up to {seated headline}"; calendar day order, chronological seasons
+with inline months; standard resource labels by kind and Virtual tour → Gallery → Floor plan → Video
+order; a Venue rental line on every space card ("on request" + Ask about pricing when unpriced);
+F&B single column as FOOD then BAR blocks with labeled callout lines; pricing cards equal-height,
+title → venue term → price → description → bullets → grid → bold notes; Add-ons ≤ 5 items = flat
+cards, > 5 = one card per standard category with a compact table (sub-headers only when the venue's
+sub-category adds information, priced example bullets folded into rows, duplicates dropped across the
+whole card, notes ≤ 140 chars); selection-group items hidden from the static section ONLY when the
+same facts already render elsewhere (bar tiers under the bar ladder, food packages under the menus);
+money shows cents when fractional. Pushbacks the user accepted: Field Museum keeps 1,500 (specific
+beats generic; the fix was the thousands separator); LondonHouse's range is not 60–190 (60 is one
+room's max); all 13 policy rows stay; LondonHouse's ceremony stays an add-on with a Yes/No toggle.
+Diamond Garden's fixture was completed against the venue's own 2024 add-ons sheet (34 → 59 add-ons),
+which exposed that extra hours had been in the fixture but never rendered. Open discrepancy: the sheet
+prices Top Shelf open bar at $35/4 hr vs $30/$40 in the bar-packages PDF; left as-is pending that PDF.
+765 tests. Still zero DB/R2/OpenRouter writes; the three user approvals in STATE.md are unchanged.
+
 ## D059 — 2026-09-13 — Attire split: dress/suit/bridesmaid/veil/shoes broken out of generic "Attire"
 
 **Context.** Every dress shop, suit shop, bridesmaid-dress brand, veil seller, and shoe vendor
