@@ -12,7 +12,7 @@
  * Usage (from apps/web):
  *   bun run scripts/acquire/runTick.ts --tick <name> --feed tagged|own|profile \
  *     (--account-ids 1,2,3 | --usernames a,b,c) [--results-limit 25] \
- *     [--tier pilot|probe|canary|vendor|alias|deepen|recency_a|profile] \
+ *     [--tier pilot|probe|probe6|discovered|canary|vendor|alias|deepen|recency_a|profile] \
  *     [--max-cost-usd 1.0] [--only-newer-than 2026-08-20] [--note "why"] \
  *     [--dry-run] [--resume]
  */
@@ -41,6 +41,8 @@ const SLEEP_BETWEEN_RUNS_MS = 20_000;
 export const PRIOR_BY_TIER: Record<string, number> = {
   pilot: 0.35,
   probe: 0.08,
+  probe6: 0.12, // 6-15 bucket venues: documented elsewhere, own feed never crawled (2026-09-20 remainder tick)
+  discovered: 0.08, // hop-1 frontier venues, same unknown as a probe
   canary: 0.08,
   vendor: 0.35,
   alias: 0.2,
@@ -90,7 +92,7 @@ function usage(): never {
     "[run-tick] Usage:\n" +
       "  bun run scripts/acquire/runTick.ts --tick <name> --feed tagged|own|profile \\\n" +
       "    (--account-ids 1,2,3 | --usernames a,b,c) [--results-limit 25] \\\n" +
-      "    [--tier pilot|probe|canary|vendor|alias|deepen|recency_a|profile] \\\n" +
+      "    [--tier pilot|probe|probe6|discovered|canary|vendor|alias|deepen|recency_a|profile] \\\n" +
       "    [--max-cost-usd 1.0] [--batch-size 10] [--only-newer-than 2026-08-20] [--note \"why\"] \\\n" +
       "    [--dry-run] [--resume]\n"
   );

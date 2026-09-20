@@ -54,6 +54,14 @@ describe("decideAcquisitionCreation (unit) -- D061 month-1 reconciliation rule",
     expect(decideAcquisitionCreation(0.6999)).toBe("CREATE_WEAK_MATCH");
   });
 
+  it("styled-shoot gate (2026-09-20): CONFIRMED/LIKELY -> HUMAN before any reconciliation rule; POSSIBLE/NO_SIGNAL do not gate", () => {
+    expect(decideAcquisitionCreation(null, "CONFIRMED")).toBe("HUMAN");
+    expect(decideAcquisitionCreation(0.95, "LIKELY")).toBe("HUMAN");
+    expect(decideAcquisitionCreation(0.6, "POSSIBLE")).toBe("CREATE_WEAK_MATCH");
+    expect(decideAcquisitionCreation(null, "NO_SIGNAL")).toBe("CREATE");
+    expect(decideAcquisitionCreation(0.8, null)).toBe("WOULD_ATTACH");
+  });
+
   it("CREATE just below the 0.5 boundary", () => {
     expect(decideAcquisitionCreation(0.4999)).toBe("CREATE");
   });

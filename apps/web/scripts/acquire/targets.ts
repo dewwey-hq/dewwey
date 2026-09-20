@@ -8,6 +8,10 @@
  *   vendor  Chicago planners / caterers / DJs / florists / officiants / photo booths whose OWN posts
  *           had a >= 0.3 wedding yield in Jeremy's corpus (tagged feeds out-yield venue feeds 0.37 vs 0.14)
  *   deepen  venues already crawled with a measured prior >= 0.2 (status promising), for a deeper pull
+ *   probe6  (2026-09-20, remainder tick) metro venue accounts at 6-15 documented weddings never tagged-crawled
+ *           -- documented from Jeremy's corpus / vendor feeds only, their own tagged feed is untouched
+ *   discovered (2026-09-20) hop-1 `ops.crawl_frontier` rows still pending (co-tagged by crawl no.1's venues),
+ *           venue role + in_metro, never crawled -- the "discovered venues" Ben's crawler queued but never ran
  * Prior per target = the LATEST ops.crawl_targets row for (account, feed) when one exists (measured by
  * measure.ts), else the lookup prior from features: venue_type class, follower band, Places reviews /
  * primary_type (venues) or role (vendors). Excluded always: status dead/excluded, private, brand
@@ -20,7 +24,7 @@
 import { writeFileSync } from "node:fs";
 import { getPool, closePool } from "../classify/db";
 
-export type Tier = "probe" | "alias" | "vendor" | "deepen";
+export type Tier = "probe" | "probe6" | "discovered" | "alias" | "vendor" | "deepen";
 
 /** Pure: the README §1a lookup prior for a venue's tagged feed (weddings per post). */
 export function venueLookupPrior(f: { venue_type: string | null; followers: number | null; reviews: number | null; ptype: string | null }): number {
@@ -81,6 +85,17 @@ const ALIAS_POOL = `
     and exists (select 1 from v_account_role r join account_locations l on l.account_id=r.account_id and l.in_metro
                 where r.account_id=x.canonical_account_id and r.role='venue')`;
 
+const DISCOVERED_POOL = `
+  select a.id, a.username::text username, 'frontier hop-1 pending (co-tagged by crawl no.1)' why, a.followers, a.venue_type,
+    (select (v.raw->>'review_count')::int from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) reviews,
+    (select v.raw->>'primary_type' from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) ptype,
+    null::text role, null::numeric own_yield,
+    (select count(*) from weddings w where w.venue_id=a.id)::int nw
+  from ops.crawl_frontier f join accounts a on a.id=f.account_id
+  join v_account_role r on r.account_id=a.id and r.role='venue'
+  join account_locations al on al.account_id=a.id and al.in_metro
+  where f.hops=1 and f.status='pending' and coalesce(a.is_private,false)=false`;
+
 const VENDOR_POOL = `
   with sp as (select sp.post_url, lower(sp.owner_username) u from staging.instagram_posts sp),
        j as (select url from posts where source='jeremy_evidence'),
@@ -99,12 +114,12 @@ async function main() {
   const tier = get("--tier") as Tier | undefined;
   const limit = Number(get("--limit") ?? "50");
   const idsFile = get("--ids-file");
-  if (!tier || !["probe", "alias", "vendor", "deepen"].includes(tier)) {
-    console.error("Usage: bun run scripts/acquire/targets.ts --tier probe|alias|vendor|deepen [--limit N] [--ids-file path]");
+  if (!tier || !["probe", "probe6", "discovered", "alias", "vendor", "deepen"].includes(tier)) {
+    console.error("Usage: bun run scripts/acquire/targets.ts --tier probe|probe6|discovered|alias|vendor|deepen [--limit N] [--ids-file path]");
     process.exit(2);
   }
   const pool = getPool();
-  const poolSql = tier === "vendor" ? VENDOR_POOL : tier === "alias" ? ALIAS_POOL : VENUE_POOL;
+  const poolSql = tier === "vendor" ? VENDOR_POOL : tier === "alias" ? ALIAS_POOL : tier === "discovered" ? DISCOVERED_POOL : VENUE_POOL;
   const { rows } = await pool.query<Row>(
     `with pool as (${poolSql}),
      latest as (
@@ -116,7 +131,7 @@ async function main() {
      select p.*, l.prior_w_per_post::float measured_prior, l.status measured_status
      from pool p left join latest l on l.account_id = p.id
      where ${tier === "deepen" ? "l.status = 'promising' and l.prior_w_per_post >= 0.2" : "not exists (select 1 from crawled c where c.account_id = p.id)"}
-       ${tier === "probe" ? "and p.nw <= 5" : ""}
+       ${tier === "probe" ? "and p.nw <= 5" : tier === "probe6" ? "and p.nw between 6 and 15" : ""}
        and coalesce(l.status,'') not in ('dead','excluded')`
   );
   const ranked = rows

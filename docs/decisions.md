@@ -135,6 +135,36 @@ Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-
   OpenRouter $5.35, 7,851 posts fetched.** Coverage: 1-5 bucket 302 → 270, 6-15 78 → 108,
   50+ 27 → 33, zero bucket 170 → 165. Pushed to `origin/main` on the user's word.
 
+**Addendum 2026-09-20 (morning, user approved items 2-4: reader `extract-v1.3`, spend the remainder, push).**
+- *Reader `extract-v1.3` shipped after four eval rounds (~$1.05 OpenRouter).* Eval set = the 79 posts the user
+  labeled in the two blind spot-checks with a v1.2 verdict (25 disagreements, 40 agreed THIS_VENUE, 14 agreed
+  NOT_WEDDING; `tmp_analysis/d061_reader_v13_evalset.sql`, scorer `d061_reader_v13_score.sql`,
+  `runExtract.ts --eval-urls-file`). Bar: THIS_VENUE precision at the 0.8 write line ≥ v1.2's on the same set,
+  no agreed post lost, recall up. **v1.2: precision 40/41, recall 40/62. v1.3: precision 52/52, recall 52/62,
+  0 false THIS_VENUE on the 15 human NOT_WEDDING, 40/40 agreed kept.** What changed, by miss class: (1) date
+  arithmetic — US short dates read as month.day.year, on-or-before posted_at = past ("9.12.2026" posted 09-14
+  was read as future); (2) **alias family** — the prompt now lists the anchored venue's `account_aliases`
+  siblings (`venue_same_family_handles`) and `decideVerdictWrite` folds an OTHER_VENUE whose handle resolves to
+  the anchored venue's canonical account into THIS_VENUE (`foldedFromAlias`, noted in the verdict) — 10 of the
+  12 v1.2 OTHER_VENUE inversions were @artinstitutespecialevents / @cbgweddings / @totlspecialevents / the
+  anchored handle itself; (3) side-event narrative (sangeet "set inside" a venue) loses to the `Venue:` credit;
+  two venues on one credit line → THIS_VENUE for either; (4) the user's standard — a named-couple recap by any
+  vendor, a `Venue:`-credited showcase with wedding imagery (0.8 unless a styled-shoot cue), a first-person
+  "our 7/11 wedding!!" — is THIS_VENUE; vendor marketing that credits this venue is a 0.6-0.7 NOT_WEDDING
+  (human queue), a named couple in a walkthrough / "cannot wait" post stays upcoming. The 10 remaining misses
+  are rubric conflicts the user labeled THIS_VENUE (bridal shower, gender reveal, engagement shoot, five
+  vendor pitches, a harpist testimonial, an emoji post, a venue promo): the model keeps rejecting non-wedding
+  events; the pitches now land in the human queue instead of being written NOT_WEDDING. Older
+  `extract-v1.2` rows are kept; `findVenueAliasCandidates.ts` reads both versions.
+- *Styled-shoot auto-create gate* (`decideAcquisitionCreation(match, styledSignal)`): any included post at
+  D049 CONFIRMED/LIKELY → `HUMAN`, logged to `ops.creation_decisions` with the post; POSSIBLE not gated.
+  Dry-run over probes A: HUMAN_STYLED=0 (as sized). Found on the way: **wedding 725 at @thelogantheatre
+  (created 2026-08-20, pre-loop) is a "vintage cinema shoot we produced"** — a LIKELY styled post that became a
+  wedding before the signal existed; flagged to the user, not retired unilaterally.
+- *Remainder tiers* in `targets.ts`: `probe6` (6-15-bucket metro venues never tagged-crawled, 55) and
+  `discovered` (hop-1 `crawl_frontier` pending, venue role + metro, 39); `deepen` = 8 measured-promising venues
+  to 100. Estimated ≈ $7.3 of the ≈ $9.0 left before the $28.50 stop.
+
 ---
 
 ## D060 — 2026-09-13 — VenueDetails v3: the venue Details tab becomes one typed schema (comparison spine + detail layer) filled by a provenance-first loop

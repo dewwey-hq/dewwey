@@ -10,7 +10,11 @@
  * testable (extractPrompt.test.ts). runExtract.ts wires it to the DB.
  */
 
-export const EXTRACT_PROMPT_VERSION = "extract-v1.2";
+// extract-v1.3 (D061, 2026-09-20): date arithmetic for "upcoming", two-venue credit lines, side-event
+// narratives (sangeet / rehearsal / welcome party) vs the Venue: credit, and named-couple recaps by any
+// vendor. Calibrated on the 79-post eval set from the pilot + probes A blind spot-checks
+// (apps/web/scripts/graph/tmp_analysis/d061_reader_v13_evalset.sql). Rows under "extract-v1.2" are kept.
+export const EXTRACT_PROMPT_VERSION = "extract-v1.3";
 
 export const EXTRACT_VERDICTS = ["THIS_VENUE", "OTHER_VENUE", "NOT_WEDDING", "UNSURE"] as const;
 export type ExtractVerdict = (typeof EXTRACT_VERDICTS)[number];
@@ -49,6 +53,11 @@ export interface ExtractPostContext {
   stack: StackEntry[];
   couple_guess: string | null;
   has_non_wedding_event_keyword: boolean;
+  /** extract-v1.3: the anchored venue's account_aliases family (events/weddings sub-accounts, old
+   *  handles, typos) so a "Venue: @totlspecialevents" credit on a theateronthelakechicago candidate
+   *  reads as THIS venue, not OTHER_VENUE. Filled by runExtract from the handle resolver; optional so
+   *  the fixtures and older callers keep working (absent = "(none known)"). */
+  venue_alias_handles?: string[];
 }
 
 export interface ExtractResult {
@@ -202,25 +211,90 @@ CHICAGO / MARKET HASHTAGS ARE NOT VENUE EVIDENCE: a vendor's own hashtags naming
 specific wedding happened. Never use a hashtag alone to decide THIS_VENUE vs OTHER_VENUE -- use
 what the caption actually says about the event and where it took place.
 
-UPCOMING IS NOT DOCUMENTED: a post announcing a wedding that has not happened yet ("can't wait
-to celebrate X + Y next weekend", "it's here!", "wedding weekend is finally here", a welcome
-party or rehearsal the night before, an engagement session before the wedding) is NOT a
-documented wedding at this venue -- answer verdict NOT_WEDDING with event_type "pre_wedding", even
-when the couple is named and the venue is credited. (The verdict field only ever takes THIS_VENUE,
-OTHER_VENUE, NOT_WEDDING, or UNSURE -- "pre_wedding" is an event_type, never a verdict.)
+UPCOMING IS NOT DOCUMENTED -- BUT DO THE DATE ARITHMETIC: a post announcing a wedding that has
+not happened yet ("can't wait to celebrate X + Y next weekend", "it's here!", "wedding weekend is
+finally here", an engagement session before the wedding) is NOT a documented wedding at this
+venue -- answer verdict NOT_WEDDING with event_type "pre_wedding", even when the couple is named
+and the venue is credited. Decide "not yet happened" from the TEXT and the DATES, never from the
+mere presence of a date: compare any stated wedding date with posted_at, reading US short dates
+as month.day.year ("9.12.2026" = September 12, 2026; "10/4/24" = October 4, 2024). A date ON OR
+BEFORE posted_at is a PAST wedding ("dani & tyler 9.12.2026" with posted_at 2026-09-14 is
+September 12 posted on September 14 -- a recap two days later, THIS_VENUE), and a caption written
+in the past tense ("was", "celebrated", "tied the knot",
+"congrats") documents a wedding that happened. Only a date AFTER posted_at, or explicit future
+tense ("next weekend", "tomorrow", "can't wait"), makes it upcoming. (The verdict field only ever
+takes THIS_VENUE, OTHER_VENUE, NOT_WEDDING, or UNSURE -- "pre_wedding" is an event_type, never a
+verdict.)
+
+THE WEDDING WEEKEND HAS SEVERAL EVENTS -- THE "Venue:" CREDIT WINS: multi-day weddings (a
+sangeet, mehndi, haldi, baraat, rehearsal dinner, welcome party, farewell brunch) are often posted
+from the SIDE event's location ("Set inside @thewellsley, their sangeet ...") while the credit stack
+says "Venue: @thedalcy" and "Sangeet: @thewellsley". The wedding's venue is the one credited as
+"Venue:" / reception; the side-event location is NOT the venue even when the whole caption is about
+that night. So: if the anchored venue IS the "Venue:" credit, answer THIS_VENUE (event_type
+"wedding" -- the post documents part of that real wedding weekend), never OTHER_VENUE pointing at
+the side-event site. If the anchored venue is the side-event site and the credits name the real
+venue, answer OTHER_VENUE with that handle (the existing rule).
+
+ONE VENUE, SEVERAL HANDLES: many venues run an events/weddings sub-account
+(@artinstitutespecialevents for @artinstitutechi, @cbgweddings for @chicagobotanic,
+@totlspecialevents for @theateronthelakechicago) or changed handles. The user prompt lists the
+anchored venue's known same-family handles. A "Venue:" credit or a "set inside @..." to any of them
+is THIS venue -- answer THIS_VENUE, never OTHER_VENUE with the sibling handle. Same when the credited
+handle is plainly the venue's name plus/minus "events", "weddings", "specialevents", "chicago", or an
+obvious one-letter typo, even if the list does not include it.
+
+TWO VENUES ON ONE CREDIT LINE ("Venue: @wildermansion @sarabandechicago"): the caption is crediting
+a ceremony site and a reception site (or two spaces of one wedding), not correcting one with the
+other. If the anchored venue is EITHER of the credited venues and nothing in the text says it was
+ceremony-only, answer THIS_VENUE. Do not answer OTHER_VENUE just because the other handle is listed
+first.
 
 VENDOR SHOWCASE WITHOUT A COUPLE: a florist/planner/photographer/rental company showing off
 their own work ("the tablescape", "bridal beauty, frame one", "a living ceiling") with a full
 vendor credit stack but NO couple name and NO narrative of an actual event (no date, no
 "their day", no ceremony/reception story) may be a real wedding or a styled shoot -- the
 caption cannot tell you which, and only the photos could. Answer THIS_VENUE if the stack and
-venue are credited, but cap confidence at 0.7 so a human looks at the photos.
+venue are credited. Confidence: 0.8 when the credits name THIS venue as "Venue:"/"Location:" and
+the caption or credits carry wedding imagery (bride, bridal party, bouquet, ceremony, reception,
+first dance) with no styled-shoot cue; cap at 0.7 only when a styled-shoot cue is present ("styled",
+"shoot", "editorial", "inspiration", "models", "featured in", "workshop", several designers/dress
+shops credited) so a human looks at the photos. The cap applies ONLY when there is no event narrative
+at all: a caption that narrates a real day's moments
+("this kiss", "cocktail hour is for hugs and clinking glasses", "our bride's outdoor ceremony
+look", "heading into my last wedding of June" with a venue credit) is a documented wedding
+even without a couple's name -- answer THIS_VENUE at normal confidence.
+
+A NAMED COUPLE DOES NOT MAKE A FUTURE EVENT PAST: a walkthrough, site visit, tasting, planning
+meeting, "we cannot wait to celebrate with them", "coming up this weekend", "countdown", "final
+details" with a named couple is an UPCOMING wedding -- NOT_WEDDING, event_type pre_wedding, even
+with a full team list. The named-couple rule above applies to recaps of a day that has happened.
+
+THE COUPLE'S OR A GUEST'S OWN POST NEEDS NO NARRATIVE: "our 7/11 wedding!!", "married!", "Mr & Mrs
+Lopez", "best day ever" from a personal account, with THIS venue as the IG location tag or a credit,
+IS a documented wedding at this venue -- THIS_VENUE at normal confidence. A one-line caption is not
+a reason to doubt a first-person wedding post; the "no narrative" caution above is for VENDOR
+showcases only.
+
+VENDOR MARKETING THAT CREDITS THIS VENUE IS A HUMAN CALL, NOT A CONFIDENT NO: when a vendor's
+pitch, testimonial, checklist or "book us" post carries a "Venue:" credit for THIS venue and
+wedding imagery (a bridal party, a ceremony setup, a reception room), answer NOT_WEDDING with
+event_type "marketing" but confidence 0.6-0.7 -- below the auto-write line, so a reviewer
+decides whether the depicted wedding counts. Reserve confidence >= 0.9 NOT_WEDDING for events
+that are clearly not a wedding at all (a shower, gender reveal, mitzvah, corporate function, an
+engagement session) and for pitches with no wedding depicted.
 
 STRONG SIGNAL for THIS_VENUE/OTHER_VENUE: the caption names the couple, or gives a specific
 wedding day/date tied to this event, or tells the story of the day. That is real evidence of a
 documented wedding. A vendor's recap of a specific past wedding ("beautiful wedding at X, Anna
 and Joe", "loved working with this client at X for their summertime wedding") is THIS_VENUE
-even when the vendor is promoting themselves -- the promotion does not undo the wedding.
+even when the vendor is promoting themselves -- the promotion does not undo the wedding. This
+holds when the vendor's angle is oblique: a signage company's seating chart "for bride @x and
+groom y's wedding at The Library", a pet-care service's "Maxine, our tiniest princess, prancing
+down the aisle to her King and Queen", a DJ's "Nicole and Edgar's wedding was one for the books"
+-- a named couple plus a real event at this venue is a documented wedding, whatever product the
+poster sells. Vendor self-promotion is only NOT_WEDDING when there is NO specific event behind it
+("book us", "our packages", a checklist, a tip list).
 
 WEAK SIGNAL -- prefer UNSURE: if the post is generic (no couple named, no specific day, no real
 description of an event) and the ONLY thing tying it to a wedding at all is a photo credit line
@@ -268,6 +342,11 @@ export function buildExtractUserPrompt(ctx: ExtractPostContext): string {
   lines.push(`venue_full_name: ${ctx.venue_full_name ?? "unknown"}`);
   lines.push(`venue_bio: ${ctx.venue_biography ?? "(none)"}`);
   lines.push(
+    `venue_same_family_handles (other @handles of THIS SAME venue -- its events/weddings sub-account, ` +
+      `an old handle, or a typo; a "Venue:" credit to any of them IS this venue): ` +
+      (ctx.venue_alias_handles && ctx.venue_alias_handles.length > 0 ? ctx.venue_alias_handles.map((h) => `@${h}`).join(", ") : "(none known)")
+  );
+  lines.push(
     `venue_anchor_source (how this candidate was anchored to the venue -- not evidence of correctness, ` +
       `just provenance): ${ctx.venue_anchor_source ?? "unknown"}`
   );
@@ -309,6 +388,8 @@ export interface VerdictWriteDecision {
   /** Only THIS_VENUE/OTHER_VENUE/NOT_WEDDING are ever written -- UNSURE never is. */
   verdict?: "THIS_VENUE" | "OTHER_VENUE" | "NOT_WEDDING";
   correctedVenueAccountId?: number | null;
+  /** extract-v1.3: the model said OTHER_VENUE but the handle is the anchored venue's own alias family. */
+  foldedFromAlias?: boolean;
   skipReason?: "unsure" | "below_threshold" | "other_venue_no_handle" | "other_venue_unresolved";
 }
 
@@ -326,7 +407,11 @@ function normalizeHandle(handle: string): string {
 export function decideVerdictWrite(
   result: ExtractResult,
   threshold: number,
-  resolveVenueHandle: (handle: string) => number | null
+  resolveVenueHandle: (handle: string) => number | null,
+  /** extract-v1.3: the anchored venue's CANONICAL account id (alias-resolved). An OTHER_VENUE whose
+   *  corrected handle resolves to this same canonical account is the venue's own sub-account /
+   *  old handle -- it is written as THIS_VENUE (`foldedFromAlias`), not as a self-correction. */
+  anchoredCanonicalAccountId: number | null = null
 ): VerdictWriteDecision {
   if (result.verdict === "UNSURE") {
     return { shouldWrite: false, skipReason: "unsure" };
@@ -344,6 +429,9 @@ export function decideVerdictWrite(
   const accountId = resolveVenueHandle(normalizeHandle(result.corrected_venue_handle));
   if (accountId == null) {
     return { shouldWrite: false, skipReason: "other_venue_unresolved" };
+  }
+  if (anchoredCanonicalAccountId != null && accountId === anchoredCanonicalAccountId) {
+    return { shouldWrite: true, verdict: "THIS_VENUE", correctedVenueAccountId: null, foldedFromAlias: true };
   }
   return { shouldWrite: true, verdict: "OTHER_VENUE", correctedVenueAccountId: accountId };
 }

@@ -97,7 +97,7 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
    calibration $10 is unspent).
 4. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
 
-## Second mission (parallel window) — D061 Acquisition loop: ALL month-1 ticks DONE (2026-09-20 07:00 UTC)
+## Second mission (parallel window) — D061 Acquisition loop: month-1 ticks DONE; reader v1.3 shipped (2026-09-20 morning)
 
 Decision + narrative: `docs/decisions.md` D061 and its addenda. Plan of record
 `~/.claude/plans/on-1-what-do-joyful-church.md` (rev 2). README `docs/engineering/acquisition-loop/README.md`.
@@ -130,20 +130,28 @@ Coverage (metro venue accounts, morning → end of night): 0: 170 → **165** ·
 patterns as the pilot (NOT_WEDDING on real recaps ×7, OTHER_VENUE inversion ×8) → `extract-v1.3` backlog.
 Probes B and the vendor tick are **released to auto-create**.
 
-**Nothing in flight.** Probes B and the vendor tick fetched, chained, created and measured overnight (rows above).
-Remaining month-1 items: deepen calibration (8 measured-promising venues, ≈$0.5), alias-family feeds, monthly
-recency at promising targets (`targets.ts --tier deepen`; `measure.ts` priors now drive the picks), with ≈$9.50
-of credit. Then `extract-v1.3` (backlog) and the styled-shoot auto-create gate.
+**2026-09-20 morning (user approved items 2-4):** reader **`extract-v1.3` shipped** — 79-post eval from the two
+spot-checks: THIS_VENUE precision **52/52** (v1.2 40/41), recall **52/62** (v1.2 40/62), 0 false positives, all 40
+agreed posts kept; four rounds, ≈ $1.05 (`tmp_analysis/d061_reader_v13_{evalset,score}.sql`, `runExtract.ts
+--eval-urls-file`). Alias-family fold in `decideVerdictWrite` + `venue_same_family_handles` in the prompt.
+**Styled-shoot auto-create gate** live (`HUMAN_STYLED` in the creation summary; probes A dry-run 0). Remainder
+tiers `probe6` (55) / `discovered` (39) / `deepen` (8 → 100 posts) added to `targets.ts`, ≈ $7.3 of ≈ $9.0 left.
+**Nothing in flight** unless the remainder ticks below are running (check `acq_logs/` and `ops.crawl_runs`).
 
-**Blocked on the user:** nothing. (Spot-check follow-up: wedding 12804 Chicago Forte promo retired via
+**Blocked on the user:** (1) **wedding 725 at @thelogantheatre** (created 2026-08-20, before the loop) is a
+"vintage cinema shoot we produced" — a D049 LIKELY styled post that is a wedding row; retire it? (2) the 10
+rubric conflicts from the eval (bridal shower, gender reveal, engagement shoot, vendor pitches labeled THIS_VENUE
+by you): the reader keeps rejecting non-wedding events and sends credited pitches to your queue — say if you
+want them auto-accepted instead. (Spot-check follow-up: wedding 12804 Chicago Forte promo retired via
 `retireNonWeddingPosts.ts --from-audit`, batch `acq-20260919-probesA-spotcheck-retire-1`; 12866 Sable Creek kept,
 verdict flipped under `jeremy`, `tmp_analysis/d061_spotcheck2_keep_one.sql`; 5 more probes A weddings created
 from the user's confirmations. Weddings **6,450**.)
 
-**Next (Claude):** after the spot-check: create probes B + vendor batches, measure, coverage table; then the
-deepen calibration (8 measured-promising venues, ≈$0.5) and alias-family feeds with the remaining ≈$8;
-reader prompt `extract-v1.3` (backlog: multi-day weddings, future-date misread, user's vendor-post standard);
-alias-candidate rule for typo handles; re-pin the two pre-D061 `graphStrengthening` invariants (D059 owner).
+**Next (Claude):** remainder ticks, one at a time: `acq-20260920-probe6` (tagged × 25) → chain → create →
+measure; `acq-20260920-discovered` (profile the 1 unprofiled first) → same; `acq-20260920-deepen` (8 venues,
+`--results-limit 100`, re-pays their first 25) → same; coverage table; STATE. Then: typo-handle alias rule;
+`event_context` credit for side-event posts at creation; re-pin the two pre-D061 `graphStrengthening`
+invariants (D059 owner); the user's 164-post human queue (`/label/candidates?batch=…`).
 
 **D061 landmines (all still apply):**
 - Pooler is transaction-mode: only `begin; set local statement_timeout …` lengthens the 2-min limit.

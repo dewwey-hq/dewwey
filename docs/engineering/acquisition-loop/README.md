@@ -2,7 +2,9 @@
 
 **Status: month-1 ticks all run (2026-09-19 → 20). Day 1: weddings 5,972 → 6,571 (600 created by the loop),
 Apify $19.48 of $29, OpenRouter $5.35, 7,851 posts fetched; Gates 0 / 1a / 1 and two blind spot-checks (95.7%,
-97%) passed. Live status: `docs/STATE.md` "Second mission"; history: `docs/decisions.md` D061 + addenda.**
+97%) passed. Reader `extract-v1.3` shipped 2026-09-20 (precision 52/52, recall 52/62 on the 79-post eval; v1.2 40/41,
+40/62) with the styled-shoot auto-create gate; remainder tiers `probe6` / `discovered` / `deepen` next.
+Live status: `docs/STATE.md` "Second mission"; history: `docs/decisions.md` D061 + addenda.**
 Plan of record: `~/.claude/plans/on-1-what-do-joyful-church.md` (this README is
 kept in line with it). Yield queries:
 `apps/web/scripts/graph/tmp_analysis/d061_acquisition_yield_baselines.sql`. Prior Apify threads this
@@ -287,6 +289,13 @@ profile scrape's `external_url`; its frozen discovery counts move when profiles 
 `docs/pipeline-plan.md` (the original frontier design and $29 budget math this recalibrates).
 
 ## Backlog (user-caught during the pilot spot-check, 2026-09-19)
+
+**Done 2026-09-20 in `extract-v1.3` + the creation gate (decisions.md D061 addendum):** the multi-day / side-event
+rule (reader side; the `event_context` credit-writing and the labeling copy are still open), the reader recall
+classes (date arithmetic, alias-family OTHER_VENUE fold, the user's vendor-post standard), the styled-shoot
+auto-create gate. **Still open:** typo-handle alias rule; `event_context` for side-event credits at creation;
+`/label/candidates` labeling guidance for side-event posts; the 10 rubric conflicts (shower / gender reveal /
+engagement / pitches labeled THIS_VENUE by the user) stay a human call.
 
 - **Multi-day / multi-venue weddings (South Asian pre-events, rehearsal dinners, welcome parties).**
   Example: "For Alexa and Kunal, the night before the wedding... Set inside @thewellsley, their

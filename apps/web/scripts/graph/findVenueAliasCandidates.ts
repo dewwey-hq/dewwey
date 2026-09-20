@@ -55,7 +55,7 @@ import {
 
 const OUT_DIR = new URL("./tmp_analysis/", import.meta.url).pathname;
 const STACK_PARSER_VERSION = "stack-parser-ts-v9";
-const EXTRACT_PROMPT_PREFIX = "extract-v1.2"; // matches 'extract-v1.2%' (base, +sonnet, -venuecal)
+const EXTRACT_PROMPT_PREFIXES = ["extract-v1.2%", "extract-v1.3%"]; // base, +sonnet, -venuecal; v1.3 since 2026-09-20 (D061)
 const S5_MIN_POSTS = 2;
 const S7_MIN_POSTS = 2;
 const S6_MIN_HANDLE_LEN = 8;
@@ -446,9 +446,9 @@ async function main() {
   const { rows: readerRows } = await pool.query<{ post_url: string; candidate_id: string | null; guess: string | null }>(
     `select post_url, candidate_id, result->>'venue_handle_guess' as guess
      from post_extraction_runs
-     where prompt_version like $1 and verdict = 'THIS_VENUE' and confidence >= 0.8
+     where prompt_version like any($1::text[]) and verdict = 'THIS_VENUE' and confidence >= 0.8
        and result->>'venue_handle_guess' is not null`,
-    [`${EXTRACT_PROMPT_PREFIX}%`]
+    [EXTRACT_PROMPT_PREFIXES]
   );
   const s7PairPosts = new Map<string, { idA: number; idB: number; posts: Set<string> }>();
   for (const row of readerRows) {

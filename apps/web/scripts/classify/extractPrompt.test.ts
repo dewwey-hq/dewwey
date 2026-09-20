@@ -191,6 +191,23 @@ describe("decideVerdictWrite", () => {
     expect(decision.skipReason).toBe("other_venue_unresolved");
   });
 
+  it("extract-v1.3: folds OTHER_VENUE into THIS_VENUE when the handle is the anchored venue's own alias family", () => {
+    const familyResolver = new Map<string, number>([["theateronthelakechicago", 7], ["totlspecialevents", 7], ["realvenue", 101]]);
+    const resolveFamily = (handle: string) => familyResolver.get(normalizeHandle(handle)) ?? null;
+    const sibling = baseResult({ verdict: "OTHER_VENUE", confidence: 0.95, corrected_venue_handle: "@totlspecialevents" });
+    const folded = decideVerdictWrite(sibling, 0.8, resolveFamily, 7);
+    expect(folded.shouldWrite).toBe(true);
+    expect(folded.verdict).toBe("THIS_VENUE");
+    expect(folded.correctedVenueAccountId).toBeNull();
+    expect(folded.foldedFromAlias).toBe(true);
+    // a genuinely different venue still writes OTHER_VENUE
+    const other = decideVerdictWrite(baseResult({ verdict: "OTHER_VENUE", confidence: 0.95, corrected_venue_handle: "@RealVenue" }), 0.8, resolveFamily, 7);
+    expect(other.verdict).toBe("OTHER_VENUE");
+    expect(other.correctedVenueAccountId).toBe(101);
+    // no anchor id passed (older callers) -> old behaviour
+    expect(decideVerdictWrite(sibling, 0.8, resolveFamily).verdict).toBe("OTHER_VENUE");
+  });
+
   it("does not write OTHER_VENUE below the threshold even with a resolvable handle", () => {
     const belowThreshold = baseResult({ verdict: "OTHER_VENUE", confidence: 0.5, corrected_venue_handle: "@RealVenue" });
     const decision = decideVerdictWrite(belowThreshold, 0.8, resolve);

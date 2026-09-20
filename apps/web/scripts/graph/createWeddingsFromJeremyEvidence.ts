@@ -848,7 +848,19 @@ export function shortcodeFromUrl(url: string): string | null {
  * number until mergeDuplicateWeddings.ts clears it). Anything weaker, or no reconciliation row at
  * all (null), creates outright -- D030's magnet pattern (same venue, reused vendors, different
  * date) is exactly the thin-venue wedding this loop exists to document, not a false merge. */
-export function decideAcquisitionCreation(matchConfidence: number | null): "WOULD_ATTACH" | "CREATE_WEAK_MATCH" | "CREATE" {
+export type StyledSignalConfidence = "CONFIRMED" | "LIKELY" | "POSSIBLE" | "NO_SIGNAL";
+
+/** D061 styled-shoot gate (2026-09-20, user check on the month-1 ticks): D049's
+ * post_styled_shoot_signal is non-gating by design, and on 5,342 acquired posts it fired
+ * CONFIRMED/LIKELY on 10, of which the reader rejected 6 and the spot-check caught the 1 slip.
+ * Belt and braces for the auto-create path only: any included post at CONFIRMED or LIKELY sends the
+ * candidate to HUMAN (never auto-created, logged as such). POSSIBLE (438 posts, 28 of 35 real
+ * weddings by the user's labels) is deliberately NOT gated. */
+export function decideAcquisitionCreation(
+  matchConfidence: number | null,
+  styledSignal: StyledSignalConfidence | null = null
+): "HUMAN" | "WOULD_ATTACH" | "CREATE_WEAK_MATCH" | "CREATE" {
+  if (styledSignal === "CONFIRMED" || styledSignal === "LIKELY") return "HUMAN";
   if (matchConfidence != null && matchConfidence >= 0.7) return "WOULD_ATTACH";
   if (matchConfidence != null && matchConfidence >= 0.5) return "CREATE_WEAK_MATCH";
   return "CREATE";
@@ -1044,7 +1056,7 @@ async function runFromConfirmedCandidates(
   // function -- never a special-cased "skip the insert" branch.
   const recordDecision = async (params: {
     candidateId: number;
-    decision: "CREATE" | "CREATE_WEAK_MATCH" | "WOULD_ATTACH" | "SKIP";
+    decision: "CREATE" | "CREATE_WEAK_MATCH" | "WOULD_ATTACH" | "HUMAN" | "SKIP";
     matchConfidence: number | null;
     matchedWeddingId: number | null;
     createdWeddingId: number | null;
@@ -1178,7 +1190,20 @@ async function runFromConfirmedCandidates(
       reconMatchedWeddingId = reconRows[0]?.matched_wedding_id ?? null;
       reconMatchConfidence = reconRows[0]?.match_confidence ?? null;
     }
-    const acquisitionDecision = opts.acquisitionBatch ? decideAcquisitionCreation(reconMatchConfidence) : null;
+    // D061 styled-shoot gate: the strongest D049 signal over this candidate's INCLUDED posts.
+    let styledSignal: StyledSignalConfidence | null = null;
+    let styledPostUrl: string | null = null;
+    if (opts.acquisitionBatch && includedUrls.length > 0) {
+      const { rows: styledRows } = await client.query<{ post_url: string; confidence: StyledSignalConfidence }>(
+        `select post_url, confidence from post_styled_shoot_signal
+         where post_url = any($1::text[]) and confidence in ('CONFIRMED','LIKELY')
+         order by case confidence when 'CONFIRMED' then 0 else 1 end limit 1`,
+        [includedUrls]
+      );
+      styledSignal = styledRows[0]?.confidence ?? null;
+      styledPostUrl = styledRows[0]?.post_url ?? null;
+    }
+    const acquisitionDecision = opts.acquisitionBatch ? decideAcquisitionCreation(reconMatchConfidence, styledSignal) : null;
 
     // Display and anchor: the canonical account when the effective venue is an alias (D061).
     const anchorVenueAccountId =
@@ -1262,6 +1287,22 @@ async function runFromConfirmedCandidates(
     // (WOULD_ATTACH), never a CREATE, regardless of what the structural gate decided. Checked
     // BEFORE the duplicate-post guard below (a would-be-duplicate check is moot if we're not
     // creating at all).
+    if (gate.action === "CREATE" && acquisitionDecision === "HUMAN") {
+      console.log(
+        `[create-weddings] candidate=${cand.candidate_id} venue=@${venueUsername} decision=${cand.decision} posts=${includedUrls.length} vendors=${vendorsForPrint} -> HUMAN (styled_shoot_signal=${styledSignal} on ${styledPostUrl}; never auto-created)`
+      );
+      bump("HUMAN_STYLED");
+      await recordDecision({
+        candidateId: cand.candidate_id,
+        decision: "HUMAN",
+        matchConfidence: reconMatchConfidence,
+        matchedWeddingId: reconMatchedWeddingId,
+        createdWeddingId: null,
+        note: `styled_shoot_signal=${styledSignal} post=${styledPostUrl}`,
+      });
+      continue;
+    }
+
     if (gate.action === "CREATE" && acquisitionDecision === "WOULD_ATTACH") {
       console.log(
         `[create-weddings] candidate=${cand.candidate_id} venue=@${venueUsername} decision=${cand.decision} posts=${includedUrls.length} vendors=${vendorsForPrint} -> WOULD_ATTACH (match_confidence=${reconMatchConfidence}, matched_wedding=${reconMatchedWeddingId})`
@@ -1482,7 +1523,7 @@ async function runFromConfirmedCandidates(
     console.log(
       `[create-weddings] --acquisition-batch ${opts.acquisitionBatch} summary: ` +
         `CREATE=${outcomeCounts["CREATE"] ?? 0} CREATE_WEAK_MATCH=${outcomeCounts["CREATE_WEAK_MATCH"] ?? 0} ` +
-        `WOULD_ATTACH=${outcomeCounts["WOULD_ATTACH"] ?? 0} HUMAN=${humanCount} SKIP=${skipTotal}`
+        `WOULD_ATTACH=${outcomeCounts["WOULD_ATTACH"] ?? 0} HUMAN=${humanCount} HUMAN_STYLED=${outcomeCounts["HUMAN_STYLED"] ?? 0} SKIP=${skipTotal}`
     );
   }
 

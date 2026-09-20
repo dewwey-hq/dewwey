@@ -125,6 +125,7 @@
  * Refused with any mode other than corpus.
  */
 import type { Pool } from "pg";
+import { readFileSync } from "node:fs";
 import { getPool, closePool } from "./db";
 import { fetchPostsFromPublic } from "./source";
 import { MODEL_CHEAP, MODEL_EXPENSIVE } from "./llmClassifier";
@@ -204,6 +205,11 @@ interface Args {
    *  no staging.instagram_posts row (public-only, i.e. venue_tagged/own_profile) is fetched via
    *  fetchPostsFromPublic instead of the staging query -- see fetchExtractContextsFromPublic. */
   acquisitionBatch: string | null;
+  /** --eval-urls-file <path> (D061 prompt calibration, --mode corpus only): read EXACTLY these
+   *  post urls (one per line) under the current EXTRACT_PROMPT_VERSION, regardless of existing
+   *  verdicts or prior runs, to score a new prompt version against human labels. Never writes
+   *  verdicts (refused with --write-verdicts). Contexts are fetched like --acquisition-batch. */
+  evalUrlsFile: string | null;
 }
 
 function parseArgs(): Args {
@@ -237,6 +243,7 @@ function parseArgs(): Args {
     escalateBand: parseEscalateBand(get("--escalate-band")),
     escalateModel: get("--escalate-model") ?? MODEL_EXPENSIVE,
     acquisitionBatch: get("--acquisition-batch") ?? null,
+    evalUrlsFile: get("--eval-urls-file") ?? null,
   };
 }
 
@@ -352,6 +359,29 @@ async function selectCorpusMeta(
        cp.source_post_url asc
      limit $1`,
     [limit, force, EXTRACT_PROMPT_VERSION, clusteringVersion, chicagoStatuses, acquisitionBatchUrls]
+  );
+  return rows.map((r) => ({
+    post_url: r.post_url,
+    candidate_id: Number(r.candidate_id),
+    venue_account_id: r.venue_account_id != null ? Number(r.venue_account_id) : null,
+    venue_anchor_source: r.venue_anchor_source,
+    human_verdict: null,
+  }));
+}
+
+/** D061 prompt calibration: one PostMeta per listed url, preferring the structural-v2 candidate over
+ * v3-a1 when a post sits in both. No verdict / prior-run exclusions at all -- this is for re-reading
+ * already-labeled posts under a new EXTRACT_PROMPT_VERSION and comparing against the human labels. */
+async function selectEvalMeta(pool: Pool, urls: string[]): Promise<PostMeta[]> {
+  const { rows } = await pool.query(
+    `select distinct on (cp.source_post_url)
+            cp.source_post_url as post_url, cp.candidate_id, jwc.venue_account_id, jwc.venue_anchor_source,
+            null::text as human_verdict
+     from jeremy_wedding_candidate_posts cp
+     join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
+     where cp.source_post_url = any($1::text[])
+     order by cp.source_post_url, (jwc.clustering_version = 'structural-v2') desc, cp.candidate_id`,
+    [urls]
   );
   return rows.map((r) => ({
     post_url: r.post_url,
@@ -574,6 +604,20 @@ async function loadHandleResolver(pool: Pool): Promise<Map<string, number>> {
   );
   const m = new Map<string, number>();
   for (const r of rows) m.set(r.username, Number(r.account_id));
+  return m;
+}
+
+/** canonical account_id -> every handle that resolves to it (the account's own plus its
+ * account_aliases siblings), from the same resolver -- what the prompt's venue_same_family_handles
+ * line prints. */
+function aliasFamilyByCanonical(resolver: Map<string, number>): Map<number, string[]> {
+  const m = new Map<number, string[]>();
+  for (const [handle, id] of resolver) {
+    const arr = m.get(id);
+    if (arr) arr.push(handle);
+    else m.set(id, [handle]);
+  }
+  for (const arr of m.values()) arr.sort();
   return m;
 }
 
@@ -911,7 +955,9 @@ async function writeVerdictIfEligible(
   resolver: Map<string, number>,
   onlyThisVenue = false
 ): Promise<{ written: boolean; skipReason?: string }> {
-  const decision = decideVerdictWrite(r.result, threshold, (handle) => resolver.get(normalizeHandle(handle)) ?? null);
+  const anchoredCanonical =
+    (r.ctx.venue_username ? resolver.get(normalizeHandle(r.ctx.venue_username)) : undefined) ?? meta.venue_account_id ?? null;
+  const decision = decideVerdictWrite(r.result, threshold, (handle) => resolver.get(normalizeHandle(handle)) ?? null, anchoredCanonical);
   if (!decision.shouldWrite) return { written: false, skipReason: decision.skipReason };
   if (onlyThisVenue && decision.verdict !== "THIS_VENUE") return { written: false, skipReason: "only_this_venue" };
 
@@ -926,7 +972,7 @@ async function writeVerdictIfEligible(
       decision.verdict,
       decision.correctedVenueAccountId ?? null,
       "haiku-extract-v1",
-      `${EXTRACT_PROMPT_VERSION} conf=${r.result.confidence.toFixed(2)}: ${r.result.evidence}`,
+      `${EXTRACT_PROMPT_VERSION} conf=${r.result.confidence.toFixed(2)}${decision.foldedFromAlias ? ` [alias-family fold: model said OTHER_VENUE=@${r.result.corrected_venue_handle}]` : ""}: ${r.result.evidence}`,
     ]
   );
   return { written: true };
@@ -1758,16 +1804,28 @@ async function main() {
 
   // D061: resolve the acquisition tick's first-observed post urls BEFORE selecting the corpus
   // set, so selectCorpusMeta can scope with a SQL `= any(...)` (never a JS-side filter).
-  const acquisitionBatchUrls =
+  let acquisitionBatchUrls =
     args.mode === "corpus" && args.acquisitionBatch ? await resolveAcquisitionBatchUrls(pool, args.acquisitionBatch) : null;
   if (acquisitionBatchUrls) {
     console.log(`[extract] --acquisition-batch ${args.acquisitionBatch}: scoping to ${acquisitionBatchUrls.length} first-observed post(s)`);
+  }
+  // D061 prompt calibration: an explicit url list, read under the current prompt version whatever
+  // its verdict state; contexts fetched exactly like an acquisition batch (public rows via posts).
+  let evalUrls: string[] | null = null;
+  if (args.evalUrlsFile) {
+    if (args.mode !== "corpus") throw new Error("--eval-urls-file is only valid with --mode corpus");
+    if (args.writeVerdicts) throw new Error("--eval-urls-file never writes verdicts; drop --write-verdicts");
+    evalUrls = readFileSync(args.evalUrlsFile, "utf8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    acquisitionBatchUrls = evalUrls;
+    console.log(`[extract] --eval-urls-file: ${evalUrls.length} url(s) under ${EXTRACT_PROMPT_VERSION}`);
   }
 
   const metaRows =
     args.mode === "calibration"
       ? await selectCalibrationMeta(pool, args.limit, args.force)
-      : await selectCorpusMeta(pool, args.limit, args.force, args.clusteringVersion, args.includeAmbiguous, acquisitionBatchUrls);
+      : evalUrls
+        ? await selectEvalMeta(pool, evalUrls)
+        : await selectCorpusMeta(pool, args.limit, args.force, args.clusteringVersion, args.includeAmbiguous, acquisitionBatchUrls);
   console.log(`[extract] selected ${metaRows.length} posts`);
   if (metaRows.length === 0) {
     console.log("[extract] nothing to do (all posts already extracted for this prompt_version, or the queue is empty)");
@@ -1816,7 +1874,16 @@ async function main() {
     return;
   }
 
-  const resolver = args.writeVerdicts ? await loadHandleResolver(pool) : new Map<string, number>();
+  // extract-v1.3: the resolver is loaded in every mode now (one ~11k-row query) -- the anchored
+  // venue's alias family goes INTO the prompt (venue_same_family_handles), not just into the
+  // OTHER_VENUE write decision.
+  const resolver = await loadHandleResolver(pool);
+  const aliasFamily = aliasFamilyByCanonical(resolver);
+  for (const ctx of contexts) {
+    const canonical = ctx.venue_username ? resolver.get(normalizeHandle(ctx.venue_username)) : undefined;
+    const self = ctx.venue_username ? normalizeHandle(ctx.venue_username) : null;
+    ctx.venue_alias_handles = canonical != null ? (aliasFamily.get(canonical) ?? []).filter((h) => h !== self) : [];
+  }
 
   const spendState = { total: 0 };
   let processed = 0;
