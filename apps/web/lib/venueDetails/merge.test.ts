@@ -4,6 +4,15 @@ import { NOT_STATED } from "./types";
 import { fact, makeVenue, spineWith } from "./testHelpers";
 
 describe("applyCorrections", () => {
+  it("sets a whole food_beverage field (notes) from a correction and clears it on retire", () => {
+    const base = makeVenue();
+    const note = { value: "Not included in package price: bartenders.", quote: "Not included in package price: bartenders.", source_url: "u", snapshot_id: 415 };
+    const set = applyCorrections(base, [{ id: 1, field_path: "/food_beverage/notes", action: "set", value: [note], created_at: "2026-09-20T00:00:00Z" }]);
+    expect(set.details.food_beverage.notes).toHaveLength(1);
+    const cleared = applyCorrections(base, [{ id: 2, field_path: "/food_beverage/notes", action: "retire", value: null, created_at: "2026-09-20T00:00:01Z" }]);
+    expect(cleared.details.food_beverage.notes).toEqual([]);
+  });
+
   it("sets a spine field", () => {
     const venue = makeVenue({ spine: spineWith({ catering: NOT_STATED }) });
     const corrections: Correction[] = [{ id: 1, field_path: "/spine/catering", action: "set", value: "open", created_at: "2026-01-01T00:00:00Z" }];

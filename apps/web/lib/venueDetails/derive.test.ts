@@ -119,6 +119,17 @@ describe("deriveStandardFaqs", () => {
 // headlineCapacity
 // ---------------------------------------------------------------------------
 
+describe("daytime specials are alternatives (served pages, 2026-09-20)", () => {
+  it("estimateCost does not add a lunch/early-bird fee on top of the evening rental", () => {
+    const base = makeVenue();
+    const fee = (label: string, amount: number, day: "sat" | "any") => ({ applies_to: "whole_venue" as const, space_id: null, day, season: "any" as const, amount, unit: "flat" as const, label, quote: "q", source_url: "u", snapshot_id: null });
+    const path = { id: "p", name: "P", description: null, applies_to_spaces: "all" as const, fixed_fees: [fee("6-Hour Rental (Saturday)", 12742.5, "sat"), fee("Early Bird / Lunch Special", 7942.5, "any")], per_guest_tiers: [], minimums: [], required_staffing: null, rental_hours: null, year_surcharges: [], promotions: [], quote: "q", source_url: "u", snapshot_id: null };
+    const v = { ...base, pricing: { ...base.pricing, archetype: "mixed", paths: [path] } } as unknown as VenueDetailsV3;
+    const est = estimateCost(v, { ...defaultAxes(v), day: "sat", season: "peak" });
+    expect(est.total).toBe(12742.5);
+  });
+});
+
 describe("inquire-only and gala-max rules (served pages, 2026-09-20)", () => {
   it("estimateCost returns no_path when no path carries numbers or the archetype is inquire_only", () => {
     const base = makeVenue();

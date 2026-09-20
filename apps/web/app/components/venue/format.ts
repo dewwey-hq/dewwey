@@ -1415,7 +1415,7 @@ export function fbNoteSide(text: string): "food" | "bar" | null {
  * sentence that only says "no service charge" and nothing else useful. */
 export function fbRateSentence(rates: Rates): string | null {
   const taxIncluded = rates.sales_tax_source === "included";
-  if (rates.service_charge_pct === 0 && taxIncluded) return null;
+  if (rates.service_charge_pct === 0 && taxIncluded && !(rates.cc_fee_pct != null && rates.cc_fee_pct > 0)) return null;
 
   const taxParts: string[] = [];
   if (rates.sales_tax_pct != null && rates.sales_tax_source !== "unknown" && !taxIncluded) {
@@ -1426,14 +1426,31 @@ export function fbRateSentence(rates: Rates): string | null {
   }
 
   if (rates.service_charge_pct === 0) {
-    if (taxParts.length === 0) return "No service charge.";
-    return `No service charge, plus ${taxParts.join(", plus ")}.`;
+    const cc = rates.cc_fee_pct != null && rates.cc_fee_pct > 0 ? [`a ${rates.cc_fee_pct}% fee when paying by credit card`] : [];
+    const rest = [...taxParts, ...cc];
+    if (rest.length === 0) return "No service charge.";
+    return `No service charge, plus ${rest.join(", plus ")}.`;
   }
 
   const parts: string[] = [];
   if (rates.service_charge_pct != null) parts.push(`${rates.service_charge_pct}% service charge on food & beverage`);
   parts.push(...taxParts);
+  // A card-processing fee is a real charge a couple pays (Greenhouse 3.5%; user review 2026-09-20).
+  if (rates.cc_fee_pct != null && rates.cc_fee_pct > 0) parts.push(`a ${rates.cc_fee_pct}% fee when paying by credit card`);
   return parts.length > 0 ? `Plus ${parts.join(", plus ")}.` : null;
+}
+
+/** "Tiered food packages have their own 100-guest minimum (see Add-ons & extras)." -- when the
+ * venue's food-package add-ons (a selection group in the F&B category) carry a minimum guest count
+ * that is not the venue-wide minimum. Null when there is no such group. */
+export function addOnGroupMinimumLine(d: VenueDetailsV3): string | null {
+  const grouped = d.pricing.add_ons.filter((a) => a.selection_group && (a.category_std === "fb" || a.group === "fb") && a.min_guests != null);
+  if (grouped.length === 0) return null;
+  const mins = [...new Set(grouped.map((a) => a.min_guests as number))].sort((x, y) => x - y);
+  const groupNames = [...new Set(grouped.map((a) => a.selection_group as string))];
+  const noun = groupNames.some((g) => /food|package|menu|dinner/i.test(g)) ? "Tiered food packages" : "Package add-ons";
+  const minText = mins.length === 1 ? `${int(mins[0])}-guest minimum` : `minimums of ${mins.map(int).join(" / ")} guests`;
+  return `${noun} have their own ${minText} (see Add-ons & extras).`;
 }
 
 /** "Food & beverage minimum: $3,000" / "...: amount not published" (round 4 rule 7) — the value

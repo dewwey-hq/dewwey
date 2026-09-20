@@ -797,6 +797,7 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
   const notIncluded = fmt.notIncludedLine(venue.food_beverage);
   const chargesTax = fmt.fbRateSentence(venue.pricing.rates);
   const fbMinimum = fmt.fbMinimumLine(venue.spine.fb_minimum);
+  const addOnGroupMinimum = fmt.addOnGroupMinimumLine(venue);
 
   // Fix round: tiers that share a name and differ only by day/season (Diamond Garden's four
   // "All-Inclusive" rows) collapse into one card with a min-max price — the season x day
@@ -805,7 +806,19 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
 
   return (
     <section id="food-beverage">
-      <SectionHeading title="Food & Beverage" actions={resourceButtons(placed.fbShared, "Menus")} />
+      {/* User review 2026-09-20: food menus and the bar menu are two things -- "Food menus (3)" and
+          "Bar menu", never one "Menus (4)" pile. Anything else in the shared slot (catering
+          guidelines) keeps its own button. */}
+      <SectionHeading
+        title="Food & Beverage"
+        actions={
+          <>
+            {resourceButtons(placed.fbShared.filter((r) => r.kind === "menu"), "Food menus")}
+            {resourceButtons(placed.fbShared.filter((r) => r.kind === "bar_menu"), "Bar menus")}
+            {resourceButtons(placed.fbShared.filter((r) => r.kind !== "menu" && r.kind !== "bar_menu"), "Resources")}
+          </>
+        }
+      />
 
       {/* Round 6 rule 2: tier cards are package-level, so they sit above the FOOD/BAR blocks. */}
       {tiers.length > 0 && (
@@ -896,6 +909,7 @@ function FoodBeverageSection({ venue, defaultPath, placed }: { venue: VenueDetai
       <div className="mt-4 space-y-1.5">
         {barByo && <FbCalloutLine label="Bar BYO option" text={barByo.value} fact={barByo} capturedAt={venue.sources.crawled_at} />}
         {fbMinimum && <FbCalloutLine label="Food & beverage minimum" text={fbMinimum} capturedAt={venue.sources.crawled_at} />}
+        {addOnGroupMinimum && <FbCalloutLine label="Food packages" text={addOnGroupMinimum} capturedAt={venue.sources.crawled_at} />}
         {chargesTax && <FbCalloutLine label="Charges & tax" text={chargesTax} capturedAt={venue.sources.crawled_at} />}
         {notIncluded && <FbCalloutLine label="Not included in package price" text={notIncluded} capturedAt={venue.sources.crawled_at} />}
       </div>

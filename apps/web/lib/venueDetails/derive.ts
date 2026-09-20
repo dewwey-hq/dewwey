@@ -447,6 +447,9 @@ function groupTotal(lines: EstimateLine[]): number {
  * paths carry no fees, tiers or minimums (an extracted "pricing on request" path). The renderer
  * shows the request card in exactly these cases. An EMPTY path on a priced archetype is legitimate
  * ("venue rental included in the package"; extras still price). */
+/** Labels that mark a daytime alternative package rather than a charge on top of the reception. */
+export const DAYTIME_SPECIAL_RE = /\b(lunch|brunch|early[- ]bird|daytime|morning|afternoon special)\b/i;
+
 export function hasNoPricedPath(d: VenueDetailsV3): boolean {
   const pathHasNumbers = (pth: PricingPath) => pth.fixed_fees.length > 0 || pth.per_guest_tiers.length > 0 || pth.minimums.length > 0;
   return d.pricing.paths.length === 0 || (d.pricing.archetype === "inquire_only" && !d.pricing.paths.some(pathHasNumbers));
@@ -493,6 +496,9 @@ export function estimateCost(d: VenueDetailsV3, input: EstimateInput): CostEstim
     chosenSpaceId !== "whole_venue" &&
     path.fixed_fees.some((f) => f.applies_to === "space" && f.space_id === chosenSpaceId);
   for (const fee of path.fixed_fees) {
+    // A daytime/lunch/brunch special is an ALTERNATIVE to the evening package, never added on top
+    // of it (Diamond Garden's "Early Bird / Lunch Special", served 2026-09-20).
+    if (DAYTIME_SPECIAL_RE.test(fee.label ?? "")) continue;
     if (fee.applies_to !== "space" && fee.applies_to !== "whole_venue") continue;
     if (fee.applies_to === "whole_venue" && chosenSpaceHasOwnFee) continue;
     if (fee.day && !dayMatches(fee.day, input.day)) continue;
@@ -997,7 +1003,11 @@ export function policyRows(d: VenueDetailsV3): PolicyRow[] {
       const detail = `${tri.candidates.map((c) => describePolicyValue(key, c.value, ctx)).join(" vs. ")}. Confirm which applies.`;
       return { key, label, pill: "Conflicting sources", detail, stated: false };
     }
-    return { key, label, pill: describePolicyValue(key, tri.value, ctx), detail: policyDetail(key, tri.value, tri.quote), stated: true };
+    // Parking: the venue's own inclusion line ("30 spaces included; 75 more underground for $500")
+    // beats the policy quote when it exists (user review 2026-09-20: "is it 30 spaces?").
+    const parkingInclusion = key === "parking" ? d.inclusions.find((i) => /park/i.test(`${i.label} ${i.label_raw ?? ""}`) && i.detail) ?? null : null;
+    const detail = parkingInclusion?.detail ?? policyDetail(key, tri.value, tri.quote);
+    return { key, label, pill: describePolicyValue(key, tri.value, ctx), detail, stated: true };
   });
 }
 

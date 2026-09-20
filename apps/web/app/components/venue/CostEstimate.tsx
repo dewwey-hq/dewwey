@@ -338,7 +338,7 @@ export function CostEstimate({ venue }: { venue: VenueDetailsV3 }) {
                 onChange={setPayment}
                 options={[
                   { value: "cash_check", label: "Cash / check" },
-                  { value: "credit_card", label: "Credit card" },
+                  { value: "credit_card", label: venue.pricing.rates.cc_fee_pct ? `Credit card (+${venue.pricing.rates.cc_fee_pct}%)` : "Credit card" },
                 ]}
               />
             </AxisColumn>

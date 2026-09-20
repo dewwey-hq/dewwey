@@ -130,6 +130,19 @@ function applyOne(d: VenueDetailsV3, c: Correction): boolean {
     return false;
   }
 
+  // `/food_beverage/<field>` and `/pricing/notes`: whole-field set/unset (a human reading of an
+  // image-only PDF lands here -- Diamond Garden's "Not included in package price" line, 2026-09-20).
+  if (root === "food_beverage" && id && !propOrSub) {
+    const fb = d.food_beverage as unknown as Record<string, unknown>;
+    if (!(id in fb)) return false;
+    fb[id] = isClearing(c.action) ? (Array.isArray(fb[id]) ? [] : null) : c.value;
+    return true;
+  }
+  if (root === "pricing" && id === "notes" && !propOrSub) {
+    d.pricing.notes = isClearing(c.action) ? [] : (c.value as typeof d.pricing.notes);
+    return true;
+  }
+
   if (root === "faqs") {
     const idx = d.faqs.findIndex((f) => slugify(f.question) === id);
     if (idx === -1) return false;
