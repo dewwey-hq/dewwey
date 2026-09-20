@@ -1207,9 +1207,9 @@ function AddOnCard({ addOn, capturedAt }: { addOn: AddOn; capturedAt: string | n
 function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; rows: fmt.AddOnCategoryTableRow[] } }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm text-gray-600">
+      <table className="w-full text-xs text-gray-600">
         <thead>
-          <tr className="text-xs text-gray-400">
+          <tr className="text-[11px] text-gray-400">
             <th className="pb-2 text-left font-normal">Item</th>
             {table.columnLabels.map((c) => (
               <th key={c} className="pb-2 text-right font-normal">
@@ -1225,7 +1225,7 @@ function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; ro
             return groups.flatMap((g, gi) => [
               showHeaders && g.caption ? (
                 <tr key={`cap-${gi}`}>
-                  <td colSpan={1 + table.columnLabels.length} className={`${gi === 0 ? "pt-1" : "pt-4"} pb-1 text-[11px] font-medium uppercase tracking-wide text-gray-400`}>
+                  <td colSpan={1 + table.columnLabels.length} className={`${gi === 0 ? "pt-1" : "pt-3"} pb-1 text-[10px] font-medium uppercase tracking-wide text-gray-400`}>
                     {g.caption}
                   </td>
                 </tr>
@@ -1237,7 +1237,7 @@ function AddOnCategoryTableView({ table }: { table: { columnLabels: string[]; ro
                 <td className="py-2">
                   {row.itemLabel}
                   {note && (
-                    <div className="mt-0.5 text-xs text-gray-400" title={note.truncated ? note.full : undefined}>
+                    <div className="mt-0.5 text-[11px] text-gray-400" title={note.truncated ? note.full : undefined}>
                       {note.display}
                     </div>
                   )}

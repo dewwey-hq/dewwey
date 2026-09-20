@@ -1031,10 +1031,22 @@ export function captionForCategoryCard(a: AddOn, stdLabel: string, singleSubcate
   const base = addOnCardCaption(a);
   if (!base) return null;
   if (singleSubcategory) return null;
-  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const norm = (x: string) =>
+    x
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
   const c = norm(base);
   const l = norm(stdLabel);
   if (c === l || c.startsWith(l) || c.replace(/ add ?ons?$/, "") === l) return null;
+  // Self-explanatory sub-categories: any significant word of the caption that shares a 4-letter stem
+  // with a word of the card title ("Decoration" ~ "Decor", "Lighting" ~ "lighting") adds nothing.
+  const stem = (w: string) => w.slice(0, 4);
+  const titleStems = new Set(l.split(" ").filter((w) => w.length >= 4).map(stem));
+  const captionWords = c.split(" ").filter((w) => w.length >= 4 && !["add", "ons", "addons", "extras"].includes(w));
+  if (captionWords.some((w) => titleStems.has(stem(w)))) return null;
   return base;
 }
 

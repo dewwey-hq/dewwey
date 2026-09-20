@@ -1619,3 +1619,12 @@ describe("category card tables — sub-headers and example folding", () => {
     expect(groups.map((g) => [g.caption, g.rows.length])).toEqual([["Decoration", 2], ["Lighting", 1]]);
   });
 });
+
+describe("captionForCategoryCard — self-explanatory sub-categories", () => {
+  const base = { id: "x", name: "Uplights", category: "Lighting & video add-ons", variant: null, group: "other" as const, price: 25, price_max: null, unit: "per_unit" as const, per_space_prices: null, applies_to: null, path_ids: null, condition: null, priceable: true, tax_pct_override: null, min_guests: null, as_stated_price: null, note: null, quote: "q", source_url: "u", snapshot_id: null };
+  it("drops captions whose words share a stem with the card title, keeps unrelated ones", () => {
+    expect(fmt.captionForCategoryCard(base, "Décor & lighting", false)).toBeNull();
+    expect(fmt.captionForCategoryCard({ ...base, category: "Decoration add-ons" }, "Décor & lighting", false)).toBeNull();
+    expect(fmt.captionForCategoryCard({ ...base, category: "Extra hours" }, "Space & rentals", false)).toBe("Extra hours");
+  });
+});
