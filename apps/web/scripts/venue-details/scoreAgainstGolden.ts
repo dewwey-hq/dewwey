@@ -210,7 +210,9 @@ async function runGoldenScoring(args: Args) {
       `    crit. grounding  ${result.criticalGrounding.withQuote}/${result.criticalGrounding.statedCriticalNumerics}  (${(result.criticalGrounding.rate * 100).toFixed(1)}%, gate = 100%)  ${result.gates.criticalGrounding ? "PASS" : "FAIL"}`
     );
     printExclusions(result.excluded);
-    console.log(`    OVERALL: ${result.gates.overall ? "PASS" : "FAIL"}  (critical >= 95%, important_core >= 85%)\n`);
+    const res = result.inventory.by_kind.resources;
+    console.log(`    resources   ${res.found}/${res.golden_items} found (gate >= 80%)  ${result.gates.resourcesRecall ? "PASS" : "FAIL"}`);
+    console.log(`    OVERALL: ${result.gates.overall ? "PASS" : "FAIL"}  (critical >= 95%, important_core >= 85%, headline exact, cost <= 2%, grounding 100%, resources >= 80%; secondary informational)\n`);
   }
 
   const scored = results.filter((r) => r.result != null).map((r) => r.result as VenueScoreResult);

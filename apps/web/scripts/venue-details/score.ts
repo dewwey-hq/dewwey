@@ -1178,11 +1178,15 @@ export interface Gates {
   headlineExact: boolean;
   costDelta: boolean; // <= 2%
   criticalGrounding: boolean; // === 1
+  /** Golden resources (brochure, menus, floor plans, tours, videos) found: >= 80%. The user's
+   * call (2026-09-20): a page that lost the add-ons PDF or the 3D tour is not calibrated. */
+  resourcesRecall: boolean;
   overall: boolean;
 }
 
 const GATE_THRESHOLDS: Record<SpineTier, number> = { critical: 0.95, important: 0.85, secondary: 0.7 };
 const IMPORTANT_CORE_GATE = 0.85;
+export const RESOURCES_RECALL_GATE = 0.8;
 
 /** Records exclusions for the facts important_core/inventory never touch: critical- and
  * secondary-tier spine fields, and the headline capacity tuple (its own EXACT gate covers scoring
@@ -1262,9 +1266,14 @@ export function scoreVenue(candidate: VenueDetailsV3, golden: VenueDetailsV3, cr
     headlineExact: capacities.headlineExact,
     costDelta: costDelta.withinGate,
     criticalGrounding: criticalGrounding.rate === 1,
+    resourcesRecall: (() => {
+      const r = inventory.by_kind.resources;
+      return r.golden_items === 0 ? true : r.found / r.golden_items >= RESOURCES_RECALL_GATE;
+    })(),
     overall: false,
   };
-  gates.overall = gates.critical && gates.important && gates.secondary && gates.headlineExact && gates.costDelta && gates.criticalGrounding;
+  // Secondary is informational (plan: "missing is fine"); it is reported, never gated.
+  gates.overall = gates.critical && gates.important && gates.headlineExact && gates.costDelta && gates.criticalGrounding && gates.resourcesRecall;
 
   return { tiers, spaces, capacities, pricingScalars, addOns, important_core, inventory, excluded, costDelta, criticalGrounding, gates };
 }
