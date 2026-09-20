@@ -45,7 +45,7 @@ addendum; 820+ tests.
 | LondonHouse | 10/12 | 13/16 | 275 vs 190 (cocktail rows tagged seated) | 0% | 3/3 |
 | Diamond Garden | 10/13 | 8/39 | 268 exact | path alignment (scorer) | 1/7 |
 
-Critical 59/66 = 89.4% (gate 95%). All six are `compare_ready` on their latest runs; **nothing is served**.
+Final calibration read (c6, v3.5): critical 61/65 = 93.8%, resources 21/32 = 65.6%. **All six are served** (batch `vd-serve-c6`, 2026-09-20) for lab review; the loop's tick log has the full c0–c6 story.
 
 **Nothing in flight.** Both resource builds and the scorer alignment landed and are committed.
 
@@ -86,15 +86,16 @@ Geraghty chose `/gallery/wedding`, Adler chose an inquiry form.
 
 ## Blocked on the user
 
-1. **Serve the six for lab review at the c6 numbers, or hold?** Calibration stopped at the plan's stop
-   rule (prompt v3.5 is the sixth version; second cap $3.61 of $10 spent): critical 61/65 = 93.8% (gate
-   95%), resources 21/32 = 65.6% (gate 80%, with a ceiling: Field Museum's wedding videos are JS-loaded
-   and two goldens cite floor-plan image URLs no longer on the pages). All six are compare-ready on their
-   v3.5 runs. Say "serve the six" → `runTick.ts --tick c6 --golden --skip-crawl --apply-serve` (dry-run
-   already printed in `loop/reports/c6/serve-dry-run.md`), then review `/lab/venue?u=<username>`.
+1. **Review the six served pages** on `localhost:3000/lab/venue?u=<username>` (galleriamarchetti,
+   greenhouseloft, diamondgardenbanquet, lhchicago, fieldmuseum, thegeraghty) — served 2026-09-20 09:35
+   at the c6 numbers (critical 93.8%, resources 65.6%) on the user's call. Fixes: `addCorrection.ts`
+   (append-only, stable field paths) or tell Claude what is wrong and where. Revert the whole batch:
+   `rollbackVenueDetails.ts --undo-batch vd-serve-c6 --apply`.
 2. **Golden resources refresh** (small, human): re-collect the resource URLs for Marchetti, Geraghty and
    Field Museum from the live pages so the resources gate measures the crawler, not link rot.
-3. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
+3. **Fresh cap for Phase 3 fill ticks** when the review is done ($40 was the plan; ~$6.40 of the second
+   calibration $10 is unspent).
+4. Carried over: re-anchor human queue (17 weddings) — see D055/D056.
 
 ## Second mission (parallel window) — D061 Acquisition loop: ALL month-1 ticks DONE (2026-09-20 07:00 UTC)
 
