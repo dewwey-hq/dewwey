@@ -73,6 +73,40 @@ writes it. Cosmetic: creation log now prints the effective clustering version. T
 `graphStrengthening.test.ts` invariants fail on `main` from before D061 (D059 moved the counts).
 Related: D031, D052, D053-D055, D060; memory `feedback-outside-reviews-and-tier-rigor`.
 
+**Addendum 2026-09-19/20 (same window, after Gate 0).**
+- *Blind spot-check (user, 55 posts, hidden verdicts):* model THIS_VENUE precision 45/47 = **95.7%,
+  PASS**; overall agreement 81.8%. User's calls on the disagreements: create all 8 human-confirmed
+  candidates (three were vendor posts with a venue credit and no couple -- the user's coverage standard,
+  recorded in memory), keep both weddings the human had first labeled NOT_WEDDING (superseding
+  THIS_VENUE rows under `jeremy`). Reader recall misses (6 at 0.95: a future-date misread, a dog-in-
+  the-wedding recap, vendor posts with a venue credit) → backlog for `extract-v1.3`.
+- *Tick 2 profiles:* 541 accounts, 11 runs, $1.24 (`--batch-size 50`); 539 profiled, 478 followers,
+  110 bios naming another handle, 460 avatars to R2.
+- *Canary:* vendor half (5 tier-A planners/florists × 25) $0.29 → 82 new posts, 23 weddings, 5 at thin
+  venues (0.18 w/post); venue half (20 thin venues × 25) $1.13 → **477 new posts (97% new)**, 53
+  stacks, 59 candidates, **37 weddings**, 9 thin venues gained, 5 crossed into 6+ (0.076 w/post).
+  **Gate 1a PASS** (bar 0.03). Probes A launched (223 targets, $12.82).
+- *Found and fixed:* (1) piping a script through `head` kills it with SIGPIPE before its later steps
+  (the canary's clustering wrote candidates but never resolved `chicago_status`; re-running repaired
+  it) -- `tail` only; (2) the creation gate was not alias-aware: a candidate anchored on a typo/sibling
+  handle failed the Chicago check even after the alias existed -- geography and the wedding anchor now
+  resolve through `account_aliases`; (3) alias round 8 (Acquaviva Winery: real weddings sibling + two
+  typo handles minted from a credit; profile scrape as the verifier); (4) **Tigerlily Events** (user-
+  caught): a catering / venue-management company credited as the venue for 64 weddings -- fact-checked
+  on tlilyevents.com (all 15 of its spaces are on Lincoln Park Zoo grounds); recredited via
+  `recreditManagementCompany.ts` (new `--exclude-wedding-ids` for reviewer-rejected credit re-anchors),
+  remaining 34 re-anchored by the user's rule (Café Brauer when the caption names it, else the zoo;
+  file-first SQL, provenance batch `d061-tigerlily-reanchor-1`): zoo 22 → 72, Café Brauer 12 → 26.
+- *Commit 2 landed:* `measure.ts` (per-target realized yield, prior update K=25, tri-state status,
+  `pipeline_versions` stamp; applied to pilot + canaries) and `targets.ts` (ranked targets per tier from
+  measured or lookup priors). `/label/candidates` gained `?spotcheck=<batch>&n=` and `?batch=<batch>`
+  modes plus `reportSpotCheck.ts`.
+- *Process lesson (user: "why is this taking so long?"):* a ~50-line UI/query edit went to a builder with
+  a full verification loop and mid-flight scope additions and took ~38 min; small edits are now done
+  directly with a typecheck and a page fetch as the gate, and a running builder never gets more scope.
+- *Spend to this point:* Apify $3.23 ingested + $12.82 in flight (probes A), OpenRouter ≈ $1.20;
+  weddings 5,972 → 6,085 (+113 from acquisition; +34 Tigerlily re-anchors moved, not added).
+
 ---
 
 ## D060 — 2026-09-13 — VenueDetails v3: the venue Details tab becomes one typed schema (comparison spine + detail layer) filled by a provenance-first loop
