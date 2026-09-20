@@ -132,7 +132,11 @@ export function sanitizeSpacesAndCapacities(rawSpaces: Space[], rawCapacities: C
     }
 
     if (max > REVIEW_CAPACITY_THRESHOLD) {
-      issues.push({ code: "capacity_gt_1000", path: `/capacities/${spaceId}:${c.layout}`, severity: "warning", tier: null, message: `Capacity ${max} exceeds 1000 -- kept, flagged for review` });
+      // A whole-venue or single-space figure over 1000 smells like a summed/combined total and goes
+      // to review; a NAMED room in a multi-space venue (Field Museum's Stanley Field Hall seats 1,500,
+      // quoted on its own page) is plausible and only noted (tick c3, 2026-09-20).
+      const plausibleNamedRoom = spaceId !== "whole_venue" && spaces.length > 1;
+      issues.push({ code: plausibleNamedRoom ? "capacity_gt_1000_named_room" : "capacity_gt_1000", path: `/capacities/${spaceId}:${c.layout}`, severity: "warning", tier: null, message: `Capacity ${max} exceeds 1000 -- kept${plausibleNamedRoom ? " (named room in a multi-space venue, not sent to review)" : ", flagged for review"}.` });
     }
 
     redirected.push({ ...c, space_id: spaceId, min, max });
