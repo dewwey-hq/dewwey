@@ -15,7 +15,7 @@ import {
 import { ACTORS, PRICE_USD, buildInput, estimateCostUsd } from "./apifyClient";
 import { formatBatchId } from "./runTick";
 import { computeSpotCheckAgreement, type SpotCheckPair } from "./reportSpotCheck";
-import { venueLookupPrior, vendorLookupPrior, disqualifyTarget, disqualifyVendorTarget } from "./targets";
+import { venueLookupPrior, vendorLookupPrior, disqualifyTarget, disqualifyVendorTarget, namesSomewhereElse } from "./targets";
 import { dateFilterHonoured, overlapStats } from "./compareActors";
 import { updatePrior, decideStatus, PRIOR_K } from "./measure";
 import { bucket, scoreCrossings } from "./compareArms";
@@ -715,5 +715,35 @@ describe("disqualifyVendorTarget (D065 -- the venue gate inverts on vendors)", (
 
   test("a church-like vendor handle is not excluded -- officiants are vendors", () => {
     expect(disqualifyVendorTarget({ biography: "Wedding officiant serving Chicagoland", full_name: "Rev. A" })).toBeNull();
+  });
+});
+
+describe("namesSomewhereElse (D065 -- Chicago landmarks that contain a foreign place name)", () => {
+  test("Lake Michigan is Chicago geography, not the state of Michigan", () => {
+    // @congressplazahotel and @sableatnavypier, both at 5 documented weddings -- ONE from crossing
+    // into 6+ -- were excluded from the coverage tick as out_of_area on exactly this.
+    expect(namesSomewhereElse("Historic hotel steps from Grant Park & Lake Michigan")).toBe(false);
+    expect(namesSomewhereElse("Views of Chicago and Lake Michigan")).toBe(false);
+  });
+
+  test("Michigan Avenue and Indiana Avenue are Chicago streets", () => {
+    expect(namesSomewhereElse("On North Michigan Ave")).toBe(false);
+    expect(namesSomewhereElse("Located on Indiana Avenue")).toBe(false);
+  });
+
+  test("the state of Michigan on its own still excludes", () => {
+    expect(namesSomewhereElse("Serving couples across Michigan")).toBe(true);
+    expect(namesSomewhereElse("Weddings in Indiana")).toBe(true);
+  });
+
+  test("every other out-of-area name is untouched by the landmark strip", () => {
+    expect(namesSomewhereElse("Nashville, TN wedding venue")).toBe(true);
+    expect(namesSomewhereElse("Miami + Chicago")).toBe(true);
+    expect(namesSomewhereElse("A Chicago event space")).toBe(false);
+  });
+
+  test("a bio naming a landmark AND a real other city still excludes", () => {
+    // The strip must not become a loophole: remove "Lake Michigan", Nashville is still there.
+    expect(namesSomewhereElse("Lake Michigan views. Also in Nashville.")).toBe(true);
   });
 });

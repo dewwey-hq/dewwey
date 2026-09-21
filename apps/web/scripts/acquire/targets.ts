@@ -13,6 +13,9 @@
  *   vendorthin (2026-09-21, D065 arm C) vendors already credited at a venue in the 1-5 band, never
  *           tagged-crawled -- selected by THIN-VENUE CONNECTION, not vendor quality, because the
  *           month-1 `vendor` tick put 88 of its 104 weddings at venues that were already thick
+ *   crossing (2026-09-21, D065) metro venue accounts at 1-5 documented weddings, ranked NEAREST the
+ *           6+ threshold first, INCLUDING ones already crawled -- the coverage play aimed at the
+ *           marginal cost of a crossing, (6 - n), rather than at thin-ness in general
  *   discovered (2026-09-20) hop-1 `ops.crawl_frontier` rows still pending (co-tagged by crawl no.1's venues),
  *           venue role + in_metro, never crawled -- the "discovered venues" Ben's crawler queued but never ran
  * Prior per target = the LATEST ops.crawl_targets row for (account, feed) when one exists (measured by
@@ -33,7 +36,7 @@ import {
   isChurchLikeUsername,
 } from "../graph/venueAliasSignals";
 
-export type Tier = "probe" | "probe6" | "discovered" | "alias" | "vendor" | "vendorthin" | "deepen" | "discover";
+export type Tier = "probe" | "probe6" | "discovered" | "alias" | "vendor" | "vendorthin" | "deepen" | "discover" | "crossing";
 
 /** Pure: lookup prior for a venue's tagged feed, in weddings per POST.
  *
@@ -180,6 +183,25 @@ const FAITH_TEXT_RE = /\b(community of faith|catholic|lutheran|methodist|presbyt
 const NOT_CHICAGO_RE =
   /\b(scottsdale|arizona|phoenix|panam[áa]|miami|florida|texas|austin|dallas|houston|nashville|denver|atlanta|boston|brooklyn|new york|nyc|california|los angeles|san diego|seattle|portland|maui|hawaii|fiji|anguilla|sorrento|italy|london|paris|toronto|vegas|charleston|savannah|milwaukee|wisconsin|indiana|michigan)\b/i;
 
+/** CHICAGO LANDMARKS THAT CONTAIN AN OUT-OF-AREA PLACE NAME. Stripped before NOT_CHICAGO_RE runs.
+ *
+ * D065: found because `--tier crossing` reported @congressplazahotel and @sableatnavypier as
+ * "out_of_area" -- two Chicago venues sitting at 5 documented weddings, i.e. ONE wedding from
+ * crossing into 6+, excluded from the coverage tick they were the best targets for. Both bios name
+ * **Lake Michigan**, and `\bmichigan\b` read it as the state. Chicago geography is full of these:
+ * Lake Michigan, Michigan Avenue, Indiana Avenue, New York Street out in Aurora.
+ *
+ * This is the exact failure mode D063's "report every exclusion with its reason" exists to surface,
+ * and it stayed invisible while the gate only ever ran over pools where those handles ranked low. */
+const CHICAGO_LANDMARK_RE =
+  /\b(lake\s+michigan|michigan\s+(ave|avenue|av)\b|n(orth)?\s+michigan\s+ave|indiana\s+(ave|avenue)\b|new\s+york\s+st(reet)?\b)/gi;
+
+/** Pure: strip Chicago landmarks, then ask whether the text names somewhere else. Exported for the
+ * tests that pin each landmark. */
+export function namesSomewhereElse(text: string): boolean {
+  return NOT_CHICAGO_RE.test(text.replace(CHICAGO_LANDMARK_RE, " "));
+}
+
 export type Disqualification =
   | "umbrella_brand"
   | "non_venue_trade"
@@ -220,7 +242,7 @@ export function disqualifyTarget(r: {
     // Measured 0.053 w/post with 50% returning nothing -- the weakest venue_type we have.
     return "house_of_worship";
   }
-  if (NOT_CHICAGO_RE.test(text)) return "out_of_area";
+  if (namesSomewhereElse(text)) return "out_of_area";
   if (r.in_metro === true) return null;
   // The HANDLE counts as geography evidence too. Caught in review of the first run: @msichicago --
   // the Griffin Museum of Science and Industry, a real Chicago venue -- was excluded as
@@ -252,7 +274,7 @@ export function disqualifyTarget(r: {
  * month-1 vendor tick simply never noticed how much of its pool it was silently discarding. */
 export function disqualifyVendorTarget(r: { biography: string | null; full_name: string | null }): Disqualification | null {
   const text = `${r.biography ?? ""} ${r.full_name ?? ""}`;
-  if (NOT_CHICAGO_RE.test(text)) return "out_of_area";
+  if (namesSomewhereElse(text)) return "out_of_area";
   return null;
 }
 
@@ -398,8 +420,8 @@ async function main() {
   const tier = get("--tier") as Tier | undefined;
   const limit = Number(get("--limit") ?? "50");
   const idsFile = get("--ids-file");
-  if (!tier || !["probe", "probe6", "discovered", "alias", "vendor", "vendorthin", "deepen", "discover"].includes(tier)) {
-    console.error("Usage: bun run scripts/acquire/targets.ts --tier probe|probe6|discovered|alias|vendor|vendorthin|deepen|discover [--limit N] [--ids-file path]");
+  if (!tier || !["probe", "probe6", "discovered", "alias", "vendor", "vendorthin", "deepen", "discover", "crossing"].includes(tier)) {
+    console.error("Usage: bun run scripts/acquire/targets.ts --tier probe|probe6|discovered|alias|vendor|vendorthin|deepen|discover|crossing [--limit N] [--ids-file path]");
     process.exit(2);
   }
   const pool = getPool();
@@ -420,8 +442,20 @@ async function main() {
        union select account_id from latest)
      select p.*, l.prior_w_per_post::float measured_prior, l.status measured_status
      from pool p left join latest l on l.account_id = p.id
-     where ${tier === "deepen" ? "l.status = 'promising' and l.prior_w_per_post >= 0.2" : "not exists (select 1 from crawled c where c.account_id = p.id)"}
-       ${tier === "probe" ? "and p.nw <= 5" : tier === "probe6" ? "and p.nw between 6 and 15" : ""}
+     where ${
+       tier === "deepen"
+         ? "l.status = 'promising' and l.prior_w_per_post >= 0.2"
+         : // D065: `crossing` deliberately does NOT exclude already-crawled venues. Every other
+           // coverage tier does, because their job is to reach untouched accounts -- but the whole
+           // point here is the venues nearest the 6+ threshold, and 28 of the 55 in the 4-5 band are
+           // already crawled AND measured `promising`. Those are the best targets we have, not the
+           // worst. A re-pull at 100 posts under the 2024 floor is new depth: arm A did exactly that
+           // and got 72% genuinely new posts back.
+           tier === "crossing"
+           ? "true"
+           : "not exists (select 1 from crawled c where c.account_id = p.id)"
+     }
+       ${tier === "probe" ? "and p.nw <= 5" : tier === "probe6" ? "and p.nw between 6 and 15" : tier === "crossing" ? "and p.nw between 1 and 5" : ""}
        and coalesce(l.status,'') not in ('dead','excluded')`
   );
   // D063: QUALIFY before ranking, and report every exclusion with its reason. The prior ranks; it
@@ -465,7 +499,12 @@ async function main() {
     // ceiling here would be the same unmeasured hand-tuning D062 had to undo -- measure.ts will
     // produce the per-account priors and the next tick can rank on them.
     .sort((a, b) =>
-      tier === "vendorthin"
+      tier === "crossing"
+        ? // Nearest the 6+ threshold first: a venue at 5 needs ONE wedding, a venue at 1 needs five,
+          // and arm A measured ~1.2 weddings per venue from a 100-post pull. Ranking by remaining
+          // distance is therefore ranking by probability of actually crossing. The prior breaks ties.
+          b.nw - a.nw || b.prior - a.prior || (b.followers ?? 0) - (a.followers ?? 0)
+      : tier === "vendorthin"
         ? (b.near_cross ?? 0) - (a.near_cross ?? 0) ||
           (b.thin_venues ?? 0) - (a.thin_venues ?? 0) ||
           b.prior - a.prior ||
