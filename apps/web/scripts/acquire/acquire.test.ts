@@ -19,6 +19,7 @@ import { venueLookupPrior, vendorLookupPrior, disqualifyTarget } from "./targets
 import { dateFilterHonoured, overlapStats } from "./compareActors";
 import { updatePrior, decideStatus, PRIOR_K } from "./measure";
 import { bucket, scoreCrossings } from "./compareArms";
+import { shortcodeFromUrl, allocateSlots } from "./sampleCredible";
 
 const FIXTURE_DIR = new URL("./fixtures/", import.meta.url).pathname;
 function loadFixture(name: string): ApifyPostItem {
@@ -649,5 +650,40 @@ describe("compareArms scoring (D065)", () => {
 
   test("zero creations at a venue is ignored rather than scored as a 0 -> 0 crossing", () => {
     expect(scoreCrossings(new Map([[1, 0]]), new Map([[1, 0]]))).toEqual({ crossed_0_to_1: [], crossed_1_5_to_6: [] });
+  });
+});
+
+describe("sampleCredible (D065 verification sample)", () => {
+  test("shortcodeFromUrl handles p / reel / tv and rejects a non-post url", () => {
+    expect(shortcodeFromUrl("https://www.instagram.com/p/DU2P2K9Du4q/")).toBe("DU2P2K9Du4q");
+    expect(shortcodeFromUrl("https://www.instagram.com/reel/Abc-1_9/")).toBe("Abc-1_9");
+    expect(shortcodeFromUrl("https://www.instagram.com/tv/XYZ123/")).toBe("XYZ123");
+    // A profile url carries no post to open, so it must not become a bogus shortcode.
+    expect(shortcodeFromUrl("https://www.instagram.com/silverlake.cc/")).toBeNull();
+  });
+
+  test("allocateSlots spreads evenly when every arm has supply", () => {
+    const got = allocateSlots(new Map([["A", 50], ["C", 50], ["D", 50]]), 20);
+    expect([...got.values()].reduce((a, b) => a + b, 0)).toBe(20);
+    expect([...got.values()].every((v) => v === 6 || v === 7)).toBe(true);
+  });
+
+  test("an arm short on supply gives its leftover slots to the others, not the floor", () => {
+    // D has only 2 credible posts; the other 18 slots must still be filled from A and C.
+    const got = allocateSlots(new Map([["A", 50], ["C", 50], ["D", 2]]), 20);
+    expect(got.get("D")).toBe(2);
+    expect([...got.values()].reduce((a, b) => a + b, 0)).toBe(20);
+  });
+
+  test("it never over-draws an arm, and asking for more than exists returns everything", () => {
+    const got = allocateSlots(new Map([["A", 3], ["C", 1]]), 20);
+    expect(got.get("A")).toBe(3);
+    expect(got.get("C")).toBe(1);
+    expect([...got.values()].reduce((a, b) => a + b, 0)).toBe(4);
+  });
+
+  test("no supply anywhere yields no slots rather than looping forever", () => {
+    const got = allocateSlots(new Map([["A", 0], ["C", 0]]), 20);
+    expect([...got.values()].reduce((a, b) => a + b, 0)).toBe(0);
   });
 });
