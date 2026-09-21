@@ -466,7 +466,15 @@ async function main() {
   // inverts on a vendor population.
   const isVendorTier = tier === "vendor" || tier === "vendorthin";
   for (const r of rows) {
-    const reason = isVendorTier ? disqualifyVendorTarget(r) : disqualifyTarget(r);
+    let reason = isVendorTier ? disqualifyVendorTarget(r) : disqualifyTarget(r);
+    // D065: on the `crossing` tier, house_of_worship is not a disqualification. Every target here
+    // already HAS 1-5 documented Chicago weddings, so it is a proven wedding venue by evidence, and
+    // the type heuristic exists for UNPROVEN candidates. This is the rule VENUE_POOL already states
+    // -- "venue types are a prior, never an exclusion" -- which disqualifyTarget was still
+    // contradicting; month 1's low-types probe put 7 venues into 6+ from exactly this population.
+    // umbrella_brand and out_of_area still apply: a national chain's or an operator's tagged feed
+    // spends Chicago money on weddings in other cities.
+    if (tier === "crossing" && reason === "house_of_worship") reason = null;
     if (reason) excluded.push({ r, reason });
     else eligible.push(r);
   }
