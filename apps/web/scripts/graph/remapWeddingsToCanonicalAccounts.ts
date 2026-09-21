@@ -321,7 +321,18 @@ async function main() {
     }
 
     if (apply) {
+      // D064: refresh `edges` INSIDE the same transaction as the remap.
+      //
+      // Re-pointing wedding_vendors.account_id from an alias to its canonical changes the set of
+      // co-vendor pairs, and `edges` is a materialized view over exactly that. Leaving it unrefreshed
+      // is silent: nothing errors, the graph just serves stale relationships. The D062 identity
+      // batches did this and left the view 92 rows out of sync (160,158 vs a true 160,066) --
+      // caught only because graphStrengthening.test.ts compares the view against its own source
+      // rather than against a pinned literal. createWeddingsFromJeremyEvidence.ts already refreshes
+      // here; this path did not.
+      await client.query("refresh materialized view edges");
       await client.query("commit");
+      console.log("[remap-weddings-to-canonical] refreshed materialized view edges");
       console.log("\n[remap-weddings-to-canonical] COMMITTED");
     } else {
       await client.query("rollback");
