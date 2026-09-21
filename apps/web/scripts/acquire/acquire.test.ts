@@ -16,6 +16,7 @@ import { ACTORS, PRICE_USD, buildInput, estimateCostUsd } from "./apifyClient";
 import { formatBatchId } from "./runTick";
 import { computeSpotCheckAgreement, type SpotCheckPair } from "./reportSpotCheck";
 import { venueLookupPrior, vendorLookupPrior } from "./targets";
+import { dateFilterHonoured, overlapStats } from "./compareActors";
 import { updatePrior, decideStatus, PRIOR_K } from "./measure";
 
 const FIXTURE_DIR = new URL("./fixtures/", import.meta.url).pathname;
@@ -428,5 +429,76 @@ describe("updatePrior / decideStatus (measure.ts -- previously untested)", () =>
     expect(decideStatus(25, 1, 0)).toBe("promising");
     expect(decideStatus(25, 0, 1)).toBe("promising");
     expect(decideStatus(26, 1, 0)).toBe("ambiguous");
+  });
+});
+
+describe("buildInput refuses a date filter the tagged actor cannot apply (D063)", () => {
+  // The bug this prevents: runTick passed onlyNewerThan in unconditionally and the tagged branch
+  // dropped it. You paid for a full re-pull and the run reported success. The deepen tick burned
+  // $0.82 of $1.84 that way.
+  test("tagged + onlyPostsNewerThan throws rather than silently ignoring it", () => {
+    expect(() => buildInput("tagged", ["a"], { resultsLimit: 25, onlyPostsNewerThan: "2026-08-01" })).toThrow(
+      /no date filter/i
+    );
+  });
+
+  test("tagged without a date filter is unchanged", () => {
+    expect(buildInput("tagged", ["a", "b"], { resultsLimit: 25 })).toEqual({
+      username: ["a", "b"],
+      resultsLimit: 25,
+    });
+  });
+
+  test("own still accepts the date filter -- that is the incremental path", () => {
+    const input = buildInput("own", ["a"], { resultsLimit: 25, onlyPostsNewerThan: "2026-08-01" });
+    expect(input.onlyPostsNewerThan).toBe("2026-08-01");
+  });
+});
+
+describe("dateFilterHonoured (D063 Stage 0)", () => {
+  // Measured 2026-09-21: of 45 items under a 2026-08-22 cutoff, exactly one predated it --
+  // DbcXKLMtGZ3, posted 2026-07-31, isPinned: true. Apify documents that pinned posts ignore the
+  // filter. A naive "zero older items" rule failed the whole incremental path over that one photo.
+  test("a pinned older post does NOT fail the filter", () => {
+    const r = dateFilterHonoured(
+      [
+        { timestamp: "2026-09-01T00:00:00Z", isPinned: false },
+        { timestamp: "2026-07-31T00:00:00Z", isPinned: true },
+      ],
+      "2026-08-22"
+    );
+    expect(r.olderPinned).toBe(1);
+    expect(r.olderUnpinned).toBe(0);
+    expect(r.honoured).toBe(true);
+  });
+
+  test("an UNPINNED older post does fail the filter", () => {
+    const r = dateFilterHonoured([{ timestamp: "2026-07-31T00:00:00Z", isPinned: false }], "2026-08-22");
+    expect(r.olderUnpinned).toBe(1);
+    expect(r.honoured).toBe(false);
+  });
+
+  test("a missing isPinned is treated as unpinned -- absence of proof is not exemption", () => {
+    const r = dateFilterHonoured([{ timestamp: "2026-07-31T00:00:00Z" }], "2026-08-22");
+    expect(r.honoured).toBe(false);
+  });
+
+  test("unparseable or missing timestamps are ignored, not counted as violations", () => {
+    const r = dateFilterHonoured([{ timestamp: null }, { timestamp: "not-a-date" }], "2026-08-22");
+    expect(r.total).toBe(2);
+    expect(r.olderUnpinned).toBe(0);
+    expect(r.honoured).toBe(true);
+  });
+});
+
+describe("overlapStats (D063 Stage 0)", () => {
+  test("counts how much of a pull we already held", () => {
+    const held = new Set(["a", "b", "c"]);
+    const r = overlapStats(["a", "b", "z"], held);
+    expect(r).toEqual({ returned: 3, alreadyHeld: 2, fresh: 1, pctAlreadyHeld: 67 });
+  });
+
+  test("an empty pull does not divide by zero", () => {
+    expect(overlapStats([], new Set(["a"])).pctAlreadyHeld).toBe(0);
   });
 });

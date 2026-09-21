@@ -45,6 +45,19 @@ export type Feed = keyof typeof ACTORS;
 
 // BRONZE tier per-result price, reconciled against real usage via getMonthlyUsageUsd() —
 // see docs/engineering/acquisition-loop/README.md. Same rate for all three feeds today.
+//
+// D063 (2026-09-21): we are billed LESS than this. The Stage 0 comparison run is the clean
+// measurement — two runs, 120 dataset items, Apify usage moved $26.8594 → $27.0894 = $0.2301,
+// i.e. **$0.001918 per item**. That is the SILVER tier rate ($0.0019) from the actors'
+// `pricingInfos`, not BRONZE ($0.0023); the account is on the STARTER plan, which evidently
+// carries SILVER actor pricing. Our model therefore overstates spend by ~21%.
+//
+// The constant is deliberately LEFT HIGH. It feeds the pre-flight guards in runTick.ts
+// (`--max-cost-usd`, MONTHLY_STOP_USD), and for a guard, over-estimating is the safe direction —
+// it stops early rather than late. The cost consequence is only that we reserve more headroom than
+// we need. What it does mean: every "$ per wedding" figure we have published is an UPPER BOUND,
+// roughly 21% above actual. The full tier table, for when volume justifies a plan change:
+// FREE $0.0027 · BRONZE $0.0023 · SILVER $0.0019 · GOLD $0.0015 · PLATINUM $0.0009 · DIAMOND $0.0005.
 export const PRICE_USD: Record<Feed, number> = {
   tagged: 0.0023,
   own: 0.0023,
@@ -155,6 +168,26 @@ export function buildInput(
   opts: { resultsLimit: number; onlyPostsNewerThan?: string }
 ): Record<string, unknown> {
   if (feed === "tagged") {
+    // D063: FAIL LOUDLY instead of silently dropping a date filter this actor cannot apply.
+    //
+    // apify/instagram-tagged-scraper's entire input surface is `username[]` + `resultsLimit`
+    // (verified against its own builds/default inputSchema, 2026-09-20) -- no cursor, offset or
+    // date parameter exists. Before this throw, runTick.ts passed `onlyNewerThan` in here
+    // unconditionally and the key was quietly discarded: the caller paid full price for a complete
+    // re-pull and saw a successful run. STATE.md's own guidance ("the next deepening should use
+    // --only-newer-than") would have done exactly that. A silent no-op on a metered API is the
+    // expensive kind of bug, so it is now impossible to make by accident.
+    //
+    // For an incremental pull of the same content, use the `mentions` results type on the general
+    // scraper (see ACTORS.own), which does support onlyPostsNewerThan at the same per-result price.
+    if (opts.onlyPostsNewerThan) {
+      throw new Error(
+        `buildInput: the tagged actor (${ACTORS.tagged}) has no date filter -- it accepts only ` +
+          `username[] and resultsLimit, so onlyPostsNewerThan=${opts.onlyPostsNewerThan} would be ` +
+          `silently ignored and the full result set billed. Use feed 'own' with resultsType ` +
+          `'mentions' for an incremental pull of the same content.`
+      );
+    }
     return { username: usernames, resultsLimit: opts.resultsLimit };
   }
   if (feed === "own") {
