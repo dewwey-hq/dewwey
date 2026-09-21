@@ -48,6 +48,20 @@ tail -40 /tmp/claude-1000/-home-jhoffen-dewwey/fee2c860-795b-48ef-beed-06a4952ba
 tail -5 /home/jhoffen/dewwey/apps/web/scripts/graph/tmp_analysis/acq_logs/acq-20260921-d065scale.chain.log
 tail -5 /home/jhoffen/dewwey/apps/web/scripts/graph/tmp_analysis/acq_logs/acq-20260921-d065scale.finish.log
 ```
+**The durable check, if the scratchpad is gone** (it is session-scoped; `acq_logs/` and the DB are
+not). `runTick`'s stdout is block-buffered, so the DB is the better progress source anyway — six
+runs are expected, ~$2.1 each:
+
+```sql
+select id, status, cost_usd, started_at, ingested_at,
+       (select sum(s.fetched) from ops.crawl_run_seeds s where s.run_id = r.id) fetched,
+       (select sum(s.new_posts) from ops.crawl_run_seeds s where s.run_id = r.id) new_posts
+from ops.crawl_runs r where batch_id = 'acq-20260921-d065scale' order by id;
+```
+`ingested_at is null` on the newest row means it is mid-ingest (~0.86 s/item, almost all of it
+images to R2 — a 900-item run is ~13 min). Actual Apify spend is always
+`getMonthlyUsageUsd()`, never the DB `cost_usd` sum, which under-counts.
+
 If the **tick** died partway: `runTick.ts` supports `--resume`, and both budget guards are
 per-batch and fail closed, so re-running cannot overshoot. If the **chain** died, re-run
 `bash scripts/acquire/bin/chain.sh acq-20260921-d065scale` from `apps/web` — idempotent, no Apify
