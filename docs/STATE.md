@@ -5,71 +5,99 @@ session; history lives in `decisions.md`, preferences in Claude's memory, in-fli
 If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-21 ~04:40 UTC**, hand-off MID-FLIGHT at a context limit. D065's three
-acquisition chains were RUNNING when the session ended -- the mission section immediately below is
-the first thing to act on. (The D060 VenueDetails window is separate and idle; its f1 tick served 27
-venues and $34.74 of its $40 cap is unspent.)
-served). Two windows commit to local `main` in parallel (this one = D060 VenueDetails; the other = D061
-acquisition loop, see "Second mission"). Check `git log --oneline origin/main..HEAD` for what is unpushed;
-the user pushes.
+Last rewritten: **2026-09-21 ~05:30 UTC**. D065's arm comparison is **DONE and decided** — arm C won,
+and the remaining $13.06 is committed and **RUNNING** as `acq-20260921-d065scale`. The D060
+VenueDetails window is separate and idle; its f1 tick served 27 venues and $34.74 of its $40 cap is
+unspent. Two windows commit to local `main` in parallel. `git log --oneline origin/main..HEAD` for
+what is unpushed (**24+ commits**); the user pushes.
 
 ## How to resume (5 minutes)
 
-1. `git log --oneline -10`, `git status`, `git log --oneline origin/main..HEAD | wc -l` from the repo root.
-2. Read `docs/engineering/venue-enrichment/loop/README.md` (protocol) and the last three rows of
-   `loop/ticks.md` (c6, serve-c6, review-1, refresh-1). The plan of record is
-   `~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md` ("Execution loop for Phases 2–3").
-3. Re-check one live number: from `apps/web`, `bun run scripts/venue-details/reportVenueDetailsFunnel.ts`
-   should show **33 served / 24 compare-ready**; `bunx --bun vitest run lib/venueDetails app/components/venue
-   scripts/venue-details` should be **899 green**. Dev server: `nohup bun run dev` from `apps/web`
-   (`/lab/venue?u=<username>` renders the served set).
-4. Then the "Blocked on the user" list. **Phase 3 cap is $40, approved by the user; $5.26 spent, ≈ $34.74 left.**
+1. `git log --oneline -10`, `git status`, `git log --oneline origin/main..HEAD | wc -l`.
+2. **First check the scaled tick** — see the D065 section immediately below. It was mid-flight at
+   hand-off and is the only thing spending money.
+3. For the D060 window: read `docs/engineering/venue-enrichment/loop/README.md` and the last rows of
+   `loop/ticks.md`. Plan of record `~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md`.
+4. Re-check one live number: from `apps/web`, `bun run scripts/venue-details/reportVenueDetailsFunnel.ts`
+   should show **33 served / 24 compare-ready**. Dev server: `nohup bun run dev` from `apps/web`.
 
-## Mission in flight — D065 acquisition arms: CHAINS WERE RUNNING AT HAND-OFF (2026-09-21)
+## Mission in flight — D065: arm C won, and the remaining $13.06 is RUNNING (2026-09-21)
 
-**FIRST THING TO DO IN A NEW SESSION.** Three crawl batches are ingested and their chains were
-running when the session ended. Nobody has seen a result yet.
+**Decision is made. Narrative + all the reasoning: `docs/decisions.md` D065.** Three arms were
+crawled, chained, created live and compared on identical metrics with `compareArms.ts`:
+
+| arm | hypothesis | $ | weddings | **weddings/$** | **crossed 1-5→6+** | crossings/$ | 0→1 |
+|---|---|---|---|---|---|---|---|
+| A | depth at thin venues (15 @100) | 3.45 | 18 | 5.2 | 2 | 0.58 | 0 |
+| **C** | **vendor feeds by thin-venue connection (12 @100)** | **2.76** | **128** | **46.4** | **3** | **1.09** | **3** |
+| D | own-profile feed, never run before (8 @25) | 0.46 | 25 | 54.3 | 0 | 0 | 0 |
+
+**Arm C won both of the user's metrics per dollar.** Report:
+`apps/web/scripts/graph/tmp_analysis/d065_arm_comparison.md` (regenerated to include the scaled tick).
+
+### THE THING TO CHECK FIRST
+
+`acq-20260921-d065scale` — 56 vendors, `--tier vendorthin`, feed `mentions`, 100 posts, 2024 floor,
+projected **$12.88**, landing at **$48.00 against the $48.18 authorized ceiling**. It runs
+crawl → ingest → chain → create live → measure → re-compare → print a 20-post sample, all sequential.
 
 ```
-# 1. Did the chains finish?
-tail -5 /home/jhoffen/dewwey/apps/web/scripts/graph/tmp_analysis/acq_logs/acq-20260920-d065A.chain.log
-#    ...same for d065C and d065D. Look for "== <time> DONE".
-# 2. If any did NOT finish, re-run it (idempotent, no Apify cost, ~$0.30 OpenRouter each):
-cd apps/web && bash scripts/acquire/bin/chain.sh acq-20260920-d065A
-# 3. Then measure each arm and COMPARE THEM. This comparison is the entire point.
-bun run scripts/acquire/measure.ts --batch-id acq-20260920-d065A   # dry-run first
+# is it still going / did it finish?
+tail -40 /tmp/claude-1000/-home-jhoffen-dewwey/fee2c860-795b-48ef-beed-06a4952baa88/scratchpad/logs/scale.log
+#   look for "== <time> SCALE ALL DONE". If the scratchpad is gone, the durable logs are:
+tail -5 /home/jhoffen/dewwey/apps/web/scripts/graph/tmp_analysis/acq_logs/acq-20260921-d065scale.chain.log
+tail -5 /home/jhoffen/dewwey/apps/web/scripts/graph/tmp_analysis/acq_logs/acq-20260921-d065scale.finish.log
 ```
+If the **tick** died partway: `runTick.ts` supports `--resume`, and both budget guards are
+per-batch and fail closed, so re-running cannot overshoot. If the **chain** died, re-run
+`bash scripts/acquire/bin/chain.sh acq-20260921-d065scale` from `apps/web` — idempotent, no Apify
+cost. If the chain finished but creation did not, `bash scripts/acquire/bin/finish_batch.sh
+acq-20260921-d065scale`. **One at a time** — two concurrent ingests deadlocked on `accounts` (D061).
 
-**The comparison, on identical metrics:** weddings created per dollar, and **venues crossing
-1-5 → 6+**. Then put the remaining **$13.06** behind whichever arm actually won — not the one that
-looked most promising in advance. The arms exist because the user asked *"are you testing too here
-to make sure we aren't committing all to 1 strategy that is wrong?"*, and the honest answer was no.
+### Blocked on the user (D065)
 
-| arm | batch | hypothesis | accounts | items | $ |
-|---|---|---|---|---|---|
-| A | `acq-20260920-d065A` | depth at big-gap promising thin venues | 15 | 1,500 | 3.45 |
-| C | `acq-20260920-d065C` | vendor feeds picked by THIN-VENUE CONNECTION | 12 | 1,200 | 2.76 |
-| D | `acq-20260920-d065D` | own-profile feed — never run before | 8 | 200 | 0.46 |
+1. **Verify ~20 credible posts.** The user asked for this explicitly before more scaling. The scale
+   script prints the link at the end; regenerate any time from `apps/web`:
+   ```
+   bun run scripts/acquire/sampleCredible.ts --batches acq-20260920-d065A,acq-20260920-d065C,acq-20260920-d065D,acq-20260921-d065scale --n 20
+   ```
+   It serves the model's THIS_VENUE calls one per screen at `/label/candidates?post=...` (dev server
+   on :3000). **Why it matters:** arm C is entirely vendor feeds, and vendor marketing that uses
+   "wedding" generically is still the reader's top failure class (month 1 blind test: 91.9%). The
+   blind `?spotcheck=<batch>&n=20` links it also prints are the agreement instrument.
+2. **Push** — 24+ commits local; the classifier blocks Claude from pushing.
+3. **Budget.** After the scaled tick Apify is ≈ **$48.00 of the $48.18 authorized** ($28.18 at
+   authorization + the user's $20). **Nothing further can be spent without a new authorization** —
+   the code's `MONTHLY_STOP_USD` is 48.50, which is $0.32 looser than what was actually authorized.
+   The account's hard cap is $100; anything above $29 is real overage.
 
-Arm A's ingest is the only thing measured so far: 1,496 fetched → **1,074 new**, a flat 28%
-already-held (the D061 deepen tick re-paid ~45%). Projected ~75–95 weddings at its measured prior —
-**a projection, not a result.**
+### Known-good, reusable, and what was NOT funded
 
-**Budget.** Apify **$35.12**; the authorized ceiling is **$48.50** (`MONTHLY_STOP_USD`), which is
-$28.18 at authorization + the user's $20. **$6.94 spent, $13.06 left.** Spending past $29 is
-overage against the account's $100 hard cap — real money beyond the subscription. Do not raise the
-ceiling again without asking.
+- `--tier vendorthin` — arm C as a reproducible tier (it had been hand-picked), ranked by
+  *near-crossing* potential: connected venues at 4-5, because the marginal cost of a crossing is
+  (6-n) and the band is not uniform — **31 venues sit at 5 and need one more, 93 sit at 1 and need
+  five**. Pool 578 qualified, so it scales well past this tick.
+- `--tier crossing` — venues ranked nearest the 6+ threshold, **including already-crawled ones** (28
+  of the 55 in the 4-5 band are already measured `promising`; every other coverage tier excludes
+  them by construction). Built and measured, **deliberately not funded**: at arm A's realized rate it
+  buys more crossings but ~10x fewer weddings, and arm C won on both stated metrics. This is the
+  obvious next thing to fund if the priority flips from volume to named-venue coverage.
+- **Arm C cannot be aimed at a named venue** — 61 of the 69 venues it created weddings at were
+  already thick. A vendor's feed reflects their own book of business. Moving a *specific* venue still
+  needs that venue's own tagged feed, i.e. arm A's mechanism at arm A's price. Do not re-derive this.
+- **Two "weddings at a venue" definitions exist and disagree.** `reportVenueCoverage.ts` and
+  STATE.md's bands use `weddings.venue_id` ("literally what the page shows"); the creation script's
+  coverage delta uses alias-rolled `wedding_vendors` — 10 vs 5 for @silverlake.cc. `compareArms.ts`
+  uses the venue_id basis and says so. On that basis the creation logs **understated** both arms
+  (A was 2 crossings not 1, C was 3 not 1).
+- The three arms are recorded in `ops.crawl_targets` with `tier='discover'`, which is wrong — the
+  previous session did not pass `--tier`. Any future tier-based analysis must not trust it.
 
-**Landmines specific to this work:**
-- **Run ticks and chains ONE AT A TIME.** Two concurrent ingests deadlocked on `accounts` once
-  (D061), and the budget guard is per-process — three parallel `runTick`s would each read the same
-  stale usage and could collectively overshoot the stop.
-- **Ingest is the bottleneck, not Apify.** ~0.86 s/item, almost all of it images to R2: a
-  1,000-item batch is ~3 min of Apify and ~15 min of ingest. `ingest.ts` has a `--no-images` path;
-  for a scaled tick, skip images and backfill them later.
-- **DB tests need `--no-file-parallelism`** or they time out at 120s (D064).
-- `@thelasallechicago` is geo-unblocked but still unlisted: its top role is `accommodations`, which
-  `/venues` does not accept. A role-vocabulary gap, not a geography one.
+### Coverage bands right now (metro venue accounts, `weddings.venue_id`, is_chicago, no alias rollup)
+
+Measured 2026-09-21 05:15, **before** the scaled tick's creations land:
+0: **177** · 1-5: **243** (93 at 1, 51 at 2, 44 at 3, 24 at 4, 31 at 5) · 6-15: **94** · 16-49: **80** · 50+: **30**.
+Re-run with `bun run scripts/graph/reportVenueCoverage.ts`.
 
 ## Mission in flight — D060 VenueDetails v3: Phase 3 filling; **f1 served 27 venues** (2026-09-20)
 
