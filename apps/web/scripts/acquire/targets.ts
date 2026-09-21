@@ -151,7 +151,15 @@ const CHICAGO_PLACE_HANDLE_RE =
  * church/parish/cathedral and the bio says only "Founded in 1953 as a community of faith". Houses
  * of worship measure 0.053 w/post with half returning nothing, so letting them to the top of a
  * budgeted queue is exactly the mistake the gate exists to prevent. */
-const SAINT_HANDLE_RE = /^(st\.?|saint|ss\.?)[a-z]/i;
+// Requires "saint" spelled out, or an ABBREVIATION FOLLOWED BY A SEPARATOR. Two iterations got
+// this wrong in opposite directions during the Stage 2 dry-run:
+//   `^(st\.?|saint|ss\.?)[a-z]` missed @saint_spyridon (underscore, not a letter).
+//   `^(st|saint|ss)[._-]?[a-z]` then swallowed @stonegatebanquet, @standardclub, @stagecoachinn
+//   and @stainedglass -- every venue whose name merely begins with "st".
+// Bare "st"+letters is genuinely ambiguous, so it is NOT matched here. The accepted cost is that a
+// handle like @stbenschicago passes this rule and must be caught by the bio/full_name faith test
+// instead. Missing one church is cheap (they yield 0.053 w/post); excluding four real venues is not.
+const SAINT_HANDLE_RE = /^(saint[._-]?|st[._-]|ss[._-])[a-z]/i;
 const FAITH_TEXT_RE = /\b(community of faith|catholic|lutheran|methodist|presbyterian|episcopal|congregation|diocese|archdiocese|ministries|worship)\b/i;
 
 /** Places that are demonstrably NOT the Chicago metro. Checked BEFORE the Chicago test because a

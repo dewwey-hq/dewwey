@@ -1,0 +1,17 @@
+{
+  "since": "2026-08-22",
+  "resultsLimit": 25,
+  "usernames": [
+    "belvederechateau1",
+    "ivyroomchicago",
+    "chicagowinery"
+  ],
+  "billed": 0.23007092659801387,
+  "itemsA": 75,
+  "itemsB": 45,
+  "dateFilter": {
+    "total": 45,
+    "older": 1,
+    "honoured": false
+  }
+}

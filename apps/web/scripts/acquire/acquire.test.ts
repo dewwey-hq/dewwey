@@ -536,8 +536,8 @@ describe("disqualifyTarget (D063 qualification gate)", () => {
   });
 
   // Houses of worship measure 0.053 w/post with half returning nothing.
-  test("houses of worship are refused, including saint-prefixed handles with no church word", () => {
-    expect(disqualifyTarget({ ...base, username: "stbenschicago" })).toBe("house_of_worship");
+  test("houses of worship are refused, including handles with no explicit church word", () => {
+    expect(disqualifyTarget({ ...base, username: "chicagochurchvenue" })).toBe("house_of_worship");
     // Ranked FIRST in the first gate run: no church word in the handle, bio says only
     // "Founded in 1953 as a community of faith".
     expect(disqualifyTarget({ ...base, username: "st.johnbrebeufniles", biography: "Founded in 1953 as a community of faith" })).toBe("house_of_worship");
@@ -547,6 +547,25 @@ describe("disqualifyTarget (D063 qualification gate)", () => {
   test("the HANDLE counts as geography evidence -- @msichicago is a real Chicago venue", () => {
     expect(disqualifyTarget({ ...base, in_metro: false, username: "msichicago", biography: "Looking for Griffin Museum of Science and Industry" })).toBeNull();
     expect(disqualifyTarget({ ...base, in_metro: false, username: "lespacechicago" })).toBeNull();
+  });
+
+  // Two iterations got the saint rule wrong in OPPOSITE directions during the Stage 2 dry-run.
+  // Both directions are pinned so neither can come back.
+  test("saint handles are caught with any separator", () => {
+    expect(disqualifyTarget({ ...base, username: "saint_spyridon" })).toBe("house_of_worship");
+    expect(disqualifyTarget({ ...base, username: "st.johnbrebeufniles" })).toBe("house_of_worship");
+  });
+
+  test("but venues whose name merely BEGINS with 'st' are not churches", () => {
+    // A separator-optional rule swallowed all four of these.
+    for (const u of ["stonegatebanquet", "standardclub", "stagecoachinn", "stainedglass"]) {
+      expect(disqualifyTarget({ ...base, username: u })).toBeNull();
+    }
+  });
+
+  test("bare st+letters is ambiguous and relies on the bio instead -- a documented gap", () => {
+    expect(disqualifyTarget({ ...base, username: "stbenschicago" })).toBeNull();
+    expect(disqualifyTarget({ ...base, username: "stbenschicago", biography: "St Benedict Catholic parish" })).toBe("house_of_worship");
   });
 
   test("no Chicago evidence anywhere is refused rather than guessed at", () => {

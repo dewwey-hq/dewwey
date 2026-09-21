@@ -4,6 +4,83 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D063 — 2026-09-21 — A cheaper acquisition loop: incremental pulls are possible, and never-crawled venues are exhausted
+
+Status: Accepted. Stage 0 PASS, Stage 1 shipped, **Stage 2 FAILED its gate and stopped the plan** —
+which is the staged design working. Plan of record `~/.claude/plans/virtual-watching-crown.md`.
+Strategy: `docs/engineering/venue-coverage/README.md`. Sits on D062 and D061.
+
+**Context.** D062 fixed venue identity; this is the acquisition follow-on, run as a $20 test budget
+allocated in stages where each stage must pass a stated gate before the next one spends. The user's
+framing: "lets just test for now and see what results are… don't want to just spend it all at once",
+and "did you check api and like apify docs" — which is what found the central result.
+
+**Stage 0 — the actor question (PASS, $0.23).** The tagged actor genuinely cannot do incremental
+pulls: `apify/instagram-tagged-scraper` (titled "Instagram Mentions Scraper") accepts exactly
+`username[]` and `resultsLimit`, verified against its own `builds/default` inputSchema through the
+Apify API rather than inferred from our code. But `apify/instagram-scraper` exposes
+`resultsType: "mentions"` — "Posts where a profile is tagged", per Apify's docs — **and**
+`onlyPostsNewerThan`, at the same per-result price. Measured over 3 venues:
+- *Equivalence:* 75 items, 74 already held from tagged-actor pulls = **99% overlap**. Same feed.
+- *Date filter:* 75 items unfiltered → 45 with a 30-day cutoff, and exactly one predated it —
+  `DbcXKLMtGZ3`, `isPinned: true`. Apify documents that pinned posts ignore the filter. My first
+  gate was "zero older items" and called this a FAIL, which would have discarded the whole
+  incremental path over one pinned photo; `dateFilterHonoured` now exempts pinned posts and still
+  fails on any unpinned violation.
+**So incremental depth pulls are viable**, and the D061 deepen tick's 45% re-payment is avoidable.
+
+**Bug fixed.** `buildInput` silently dropped `onlyPostsNewerThan` on the tagged branch, so a caller
+paid for a full re-pull and saw a successful run. STATE.md's own guidance ("the next deepening
+should use `--only-newer-than`") would have done exactly that. It now throws.
+
+**Billing correction.** We are billed **$0.001918/result**, not the $0.0023 `PRICE_USD` assumes —
+SILVER tier on a STARTER plan. The constant stays high deliberately (it feeds the stop guards, where
+over-estimating fails safe), but **every "$ per wedding" we have published is an upper bound ~21%
+above actual**. Tiers, for when volume justifies a plan change: BRONZE $0.0023 · SILVER $0.0019 ·
+GOLD $0.0015 · DIAMOND $0.0005.
+
+**Stage 1 — qualification, and a correction to D062's prior.**
+- *Qualification is a gate, not a prior.* D062 made the prior favour small accounts, correctly — but
+  junk accounts are also small, so the never-crawled queue filled with a Scottsdale gallery, a
+  Panama shopping plaza, a catering manager's personal account and four parishes. `disqualifyTarget`
+  cuts 244 raw targets to 61 and **prints every exclusion with its reason**, because silent
+  filtering is how a gate bug hides real venues. Reviewing that output immediately caught three bugs
+  of my own, all the same root cause — `\b` cannot match inside a concatenated handle: @msichicago
+  (Griffin Museum) excluded for "no Chicago evidence" because the regex read bio but not the
+  username; @st.johnbrebeufniles ranked first; then an over-correction that swallowed
+  @stonegatebanquet, @standardclub, @stagecoachinn and @stainedglass as churches.
+- *The prior is a hump, not a slope.* D062 read "yield falls as followers rise" off a
+  ≥15-posts-fetched subsample — which structurally could not see accounts returning almost nothing.
+  Across all 697 measured targets, weddings per VENUE: <50 **0.36** · 50-149 0.90 · 150-399 1.91 ·
+  400-999 **2.43** · 1.5k-5k 2.59 · 5-20k 1.21 · 20k+ **0.33**. Tiny accounts are not good targets;
+  they have no feed (under 50 followers returns 4.5 posts, 82% empty). Back-test top quartile:
+  D062 2.69 weddings/venue and 60% yielding ≥1; **D063 3.50 and 82%**, same money.
+
+**Stage 2 — FAILED its gate, and that is the result worth keeping.** 20 qualified never-crawled
+venues, 450 posts, $1.04. Gate was "≥50% of venues yield ≥1 wedding". Outcome: **0 weddings
+auto-created**, 34 stack posts (7.6% stack rate vs our 21% baseline), 24 candidates — 13
+Chicago-confirmed across 8 venues, 1 auto-creatable (@thedrakeoakbrook). Even counting candidates
+that might survive human review that is ≤40% of venues. Status split: 9 promising, 9 dead, 2 with
+no tagged feed at all (@artinstitutechicago, @the.neighborhood.hotel returned zero posts).
+
+**Decision: stop the never-crawled tier. Do not spend Stage 3.** The remaining uncrawled venue pool
+is exhausted even after qualification — the accounts that survive the gate are largely hotels and
+museums whose tagged feeds are tourists. $1.04 bought the knowledge that a $4.60 plan was wrong,
+which is what the staged gates are for.
+
+**Where coverage has to come from instead**, in order: the 116 `geo_blocked` accounts holding 143
+weddings that already clear the ≥1 bar and are invisible for want of a geography row (free);
+re-anchoring the 18 `mis_anchored`; and incremental depth at venues already measured `promising`,
+which Stage 0 has now made affordable. Not from crawling more never-crawled venues.
+
+**Spend.** Apify $28.18 of the $29 cycle; the tick stopped itself at the $28.50 guard mid-run,
+correctly. $1.27 of the $20 test budget used ($0.23 Stage 0 + $1.04 Stage 2). The remainder is
+unspent because Stage 2's gate failed and because the cycle is exhausted until 10-16.
+
+Related: D062, D061, D055.
+
+---
+
 ## D062 — 2026-09-20 — Venue coverage is an identity problem before an acquisition problem
 
 Status: Accepted (thesis + batch 1 applied). Strategy and the standing taxonomy:

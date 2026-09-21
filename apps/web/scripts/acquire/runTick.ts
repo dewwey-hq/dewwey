@@ -40,6 +40,11 @@ const SLEEP_BETWEEN_RUNS_MS = 20_000;
 // a coverage lever found the same day. profile carries no yield prior of its own (0).
 export const PRIOR_BY_TIER: Record<string, number> = {
   pilot: 0.35,
+  // D063: `discover` = never-crawled venue accounts with no documented wedding, AFTER
+  // disqualifyTarget() has removed out-of-area, umbrella, non-venue and house-of-worship handles.
+  // Seeded at the measured realized rate of the qualified band rather than a guess: the top
+  // quartile of the recalibrated prior realized 0.134 w/post with 82% of venues yielding >= 1.
+  discover: 0.12,
   probe: 0.08,
   probe6: 0.12, // 6-15 bucket venues: documented elsewhere, own feed never crawled (2026-09-20 remainder tick)
   discovered: 0.08, // hop-1 frontier venues, same unknown as a probe
