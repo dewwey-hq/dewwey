@@ -92,6 +92,22 @@ rate it buys more crossings but ~10x fewer weddings, and arm C won on both state
 
 **Priors seeded from realized rates, not guesses:** vendorthin 0.109, crossing 0.012.
 
+**The scaled tick, and the bug it surfaced.** `acq-20260921-d065scale` crawled clean: 6/6 runs,
+4,923 items, **3,624 genuinely new (73.6%)**, **$11.64** against a $12.88 projection, 1,125
+candidates clustered. Then the reader stopped dead at 505 of 881 posts — process alive, CPU idle,
+no log line, no exception — because the machine suspended overnight mid-run and `fetch` in
+`scripts/classify/openrouter.ts` had **no timeout and no AbortSignal**, so a silently dead socket
+left the promise neither resolved nor rejected. Its `catch` anticipates this case in a comment ("the
+machine sleeping mid-request") but only fires when fetch throws, so the 5-attempt retry loop never
+ran. Fixed with `AbortSignal.timeout(120_000)`, which routes the hang into that existing retry path.
+
+**And a wrong turn worth recording, because it is the same failure mode as the five retractions in
+the D061→D065 arc.** I diagnosed this as exhausted OpenRouter credits and wrote it into STATE.md
+before checking: `OPENROUTER_API_KEY` genuinely reads $10.371 used of $10. But that is the OLD key,
+which `callTool` deliberately does not use — it prefers `NEW_OPENROUTER_API_KEY`, which had **$57 of
+$300 remaining** the entire time. The evidence was real and the conclusion was wrong because I
+checked a different thing than the code does. Check the key the code actually reads.
+
 **Left for the user:** a 20-post sample of the model's THIS_VENUE calls across all four batches
 (`sampleCredible.ts` → one `/label/candidates?post=` link), because arm C is entirely vendor feeds
 and vendor marketing that uses "wedding" generically is still the reader's top failure class. The
