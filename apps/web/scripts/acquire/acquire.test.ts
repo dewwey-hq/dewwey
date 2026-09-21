@@ -18,6 +18,7 @@ import { computeSpotCheckAgreement, type SpotCheckPair } from "./reportSpotCheck
 import { venueLookupPrior, vendorLookupPrior, disqualifyTarget } from "./targets";
 import { dateFilterHonoured, overlapStats } from "./compareActors";
 import { updatePrior, decideStatus, PRIOR_K } from "./measure";
+import { bucket, scoreCrossings } from "./compareArms";
 
 const FIXTURE_DIR = new URL("./fixtures/", import.meta.url).pathname;
 function loadFixture(name: string): ApifyPostItem {
@@ -602,5 +603,51 @@ describe("mentions feed (D065)", () => {
   test("mentions is priced the same as every other feed", () => {
     expect(PRICE_USD.mentions).toBe(PRICE_USD.tagged);
     expect(estimateCostUsd("mentions", 10, 100)).toBeCloseTo(10 * 100 * PRICE_USD.mentions, 6);
+  });
+});
+
+describe("compareArms scoring (D065)", () => {
+  test("bucket uses the coverage bands STATE.md reports", () => {
+    expect(bucket(0)).toBe("0");
+    expect(bucket(1)).toBe("1-5");
+    expect(bucket(5)).toBe("1-5");
+    expect(bucket(6)).toBe("6-15");
+    expect(bucket(15)).toBe("6-15");
+    expect(bucket(16)).toBe("16-49");
+    expect(bucket(49)).toBe("16-49");
+    expect(bucket(50)).toBe("50+");
+  });
+
+  test("a 1-5 venue pushed to 6+ counts once, and a thick venue never counts", () => {
+    const baseline = new Map([[1, 5], [2, 42]]);
+    const { crossed_1_5_to_6, crossed_0_to_1 } = scoreCrossings(baseline, new Map([[1, 1], [2, 5]]));
+    // venue 1: 5 -> 6 crosses. venue 2 got MORE weddings (5 of them) but was already thick, so it
+    // contributes nothing -- this is the arm-A pathology the comparison has to make visible.
+    expect(crossed_1_5_to_6).toEqual([{ venue_id: 1, from: 5, to: 6 }]);
+    expect(crossed_0_to_1).toEqual([]);
+  });
+
+  test("0 -> 1 is its own bucket and is not double counted as 1-5 -> 6+", () => {
+    const { crossed_0_to_1, crossed_1_5_to_6 } = scoreCrossings(new Map([[9, 0]]), new Map([[9, 8]]));
+    expect(crossed_0_to_1).toEqual([{ venue_id: 9, from: 0, to: 8 }]);
+    expect(crossed_1_5_to_6).toEqual([]);
+  });
+
+  test("a venue short of 6 does not cross, and an unseen venue baselines at 0", () => {
+    expect(scoreCrossings(new Map([[1, 3]]), new Map([[1, 2]])).crossed_1_5_to_6).toEqual([]);
+    expect(scoreCrossings(new Map(), new Map([[7, 1]])).crossed_0_to_1).toEqual([{ venue_id: 7, from: 0, to: 1 }]);
+  });
+
+  test("the SHARED baseline is what stops two arms both claiming one crossing", () => {
+    // Venue 1 sat at 4. Arm A created 1, arm C created 1 -- together 6, neither alone.
+    const baseline = new Map([[1, 4]]);
+    expect(scoreCrossings(baseline, new Map([[1, 1]])).crossed_1_5_to_6).toEqual([]);
+    expect(scoreCrossings(baseline, new Map([[1, 1]])).crossed_1_5_to_6).toEqual([]);
+    // The union of both arms is what actually crosses, which is why the report prints a UNION row.
+    expect(scoreCrossings(baseline, new Map([[1, 2]])).crossed_1_5_to_6).toEqual([{ venue_id: 1, from: 4, to: 6 }]);
+  });
+
+  test("zero creations at a venue is ignored rather than scored as a 0 -> 0 crossing", () => {
+    expect(scoreCrossings(new Map([[1, 0]]), new Map([[1, 0]]))).toEqual({ crossed_0_to_1: [], crossed_1_5_to_6: [] });
   });
 });
