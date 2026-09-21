@@ -15,6 +15,17 @@
  * reported separately as `overlap`, and the `UNION` row shows the combined effect, so double
  * counting is visible instead of hidden.
  *
+ * WHICH "weddings at a venue" this counts, because the repo has two and they disagree. This uses
+ * `count(*) from weddings where venue_id = account`, no alias rollup -- the same basis as
+ * `reportVenueCoverage.ts`, which documents it as "literally what the page shows", and therefore the
+ * same basis as the coverage bands STATE.md tracks. `createWeddingsFromJeremyEvidence.ts`'s
+ * printCoverageDelta instead counts `wedding_vendors` rows with role='venue', alias-rolled, and for
+ * @silverlake.cc that reads 10 where this reads 5: a venue can hold a venue-role CREDIT on weddings
+ * whose own `venue_id` points somewhere else. Neither is wrong, they answer different questions --
+ * but an arm comparison must pick one and say so, and the product question ("how many weddings does
+ * this venue's page show?") is the venue_id one. Expect this report's crossing counts to differ from
+ * a creation dry-run's "venues moving 1-5->6+" line for exactly that reason.
+ *
  * Read-only. Every metric traces to a table, and arms with no creation runs print zeros, not errors.
  *
  * Usage (from apps/web):
