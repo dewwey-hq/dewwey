@@ -15,7 +15,7 @@ import {
 import { ACTORS, PRICE_USD, buildInput, estimateCostUsd } from "./apifyClient";
 import { formatBatchId } from "./runTick";
 import { computeSpotCheckAgreement, type SpotCheckPair } from "./reportSpotCheck";
-import { venueLookupPrior, vendorLookupPrior } from "./targets";
+import { venueLookupPrior, vendorLookupPrior, disqualifyTarget } from "./targets";
 import { dateFilterHonoured, overlapStats } from "./compareActors";
 import { updatePrior, decideStatus, PRIOR_K } from "./measure";
 
@@ -351,35 +351,42 @@ describe("computeSpotCheckAgreement (D061 blind spot-check)", () => {
   });
 });
 
-describe("venueLookupPrior (D062 recalibration, 2026-09-20)", () => {
-  // These bands are MEASURED, not chosen -- 570 of our own targets, >= 15 posts fetched each.
-  // Weddings per post by follower band: <500 0.152 / 500-1.5k 0.116 / 1.5k-5k 0.104 /
-  // 5k-20k 0.049 / 20k+ 0.013. Yield falls monotonically as followers rise. Re-run the back-test
-  // before changing any number here.
+describe("venueLookupPrior (D063 hump correction, 2026-09-21)", () => {
+  // MEASURED, not chosen -- all 697 measured targets. Weddings per VENUE, which is the metric that
+  // matters at the ">= 1 wedding" bar, is hump-shaped:
+  //   <50 0.36 | 50-149 0.90 | 150-399 1.91 | 400-999 2.43 | 1.5k-5k 2.59 | 5-20k 1.21 | 20k+ 0.33
+  // Tiny accounts are not good targets, they just have no feed to pull -- under 50 followers
+  // returns 4.5 posts and is 82% empty. D062 read the per-post rate off a >=15-posts subsample,
+  // which structurally could not see them, and made the prior monotonically decreasing.
+  // Back-test on all targets, top quartile: D062 60% of venues yielded >= 1 wedding, D063 82%.
+  // Re-run the back-test before changing any number here.
   const f = (followers: number | null, venue_type: string | null = null) => ({
     venue_type, followers, reviews: null, ptype: null,
   });
 
-  test("is monotonically DECREASING in followers -- the whole point of the recalibration", () => {
-    const tiny = venueLookupPrior(f(200));
-    const small = venueLookupPrior(f(900));
-    const mid = venueLookupPrior(f(3000));
-    const big = venueLookupPrior(f(12000));
-    const huge = venueLookupPrior(f(90000));
-    expect(tiny).toBeGreaterThan(small);
-    expect(small).toBeGreaterThan(mid);
-    expect(mid).toBeGreaterThan(big);
-    expect(big).toBeGreaterThan(huge);
+  test("peaks in the middle -- the 400-5k band beats both extremes", () => {
+    const peak = venueLookupPrior(f(2000));
+    expect(peak).toBeGreaterThan(venueLookupPrior(f(20)));      // no feed to pull
+    expect(peak).toBeGreaterThan(venueLookupPrior(f(100)));
+    expect(peak).toBeGreaterThan(venueLookupPrior(f(12000)));   // signal dilution
+    expect(peak).toBeGreaterThan(venueLookupPrior(f(90000)));
   });
 
-  test("does NOT favour the 3k-10k band any more (the old rule added +0.06 there)", () => {
-    // crawl nº1 measured weddings per VENUE; we pay per POST. A big venue hits the 25-post cap.
-    expect(venueLookupPrior(f(5000))).toBeLessThan(venueLookupPrior(f(400)));
+  test("still falls off hard at the top -- 20k+ measured 0.33 weddings/venue, 83% empty", () => {
+    expect(venueLookupPrior(f(90000))).toBeLessThan(venueLookupPrior(f(600)));
+    expect(venueLookupPrior(f(12000))).toBeLessThan(venueLookupPrior(f(600)));
+  });
+
+  test("and falls off at the bottom -- the D063 correction to D062", () => {
+    // @cityhallofchicago (4 followers) ranked SECOND in the first qualified queue under D062.
+    expect(venueLookupPrior(f(4))).toBeLessThan(venueLookupPrior(f(600)));
+    expect(venueLookupPrior(f(4))).toBeLessThan(venueLookupPrior(f(300)));
   });
 
   test("band boundaries are pinned on both sides", () => {
-    expect(venueLookupPrior(f(499))).toBeGreaterThan(venueLookupPrior(f(500)));
-    expect(venueLookupPrior(f(1499))).toBeGreaterThan(venueLookupPrior(f(1500)));
+    expect(venueLookupPrior(f(49))).toBeLessThan(venueLookupPrior(f(50)));
+    expect(venueLookupPrior(f(149))).toBeLessThan(venueLookupPrior(f(150)));
+    expect(venueLookupPrior(f(399))).toBeLessThan(venueLookupPrior(f(400)));
     expect(venueLookupPrior(f(4999))).toBeGreaterThan(venueLookupPrior(f(5000)));
     expect(venueLookupPrior(f(19999))).toBeGreaterThan(venueLookupPrior(f(20000)));
   });
@@ -500,5 +507,49 @@ describe("overlapStats (D063 Stage 0)", () => {
 
   test("an empty pull does not divide by zero", () => {
     expect(overlapStats([], new Set(["a"])).pctAlreadyHeld).toBe(0);
+  });
+});
+
+describe("disqualifyTarget (D063 qualification gate)", () => {
+  // The prior RANKS; it does not QUALIFY. D062 made the prior favour small accounts, which is
+  // right, but junk accounts are also small -- so the top of the never-crawled queue filled with a
+  // Scottsdale gallery, a Panama shopping plaza, a catering manager's personal account and four
+  // parishes. Qualifying first cut 244 raw targets to 61.
+  const base = { username: "someplace", biography: null as string | null, full_name: null as string | null, in_metro: true, venue_type: null as string | null };
+
+  test("an in_metro venue passes", () => {
+    expect(disqualifyTarget(base)).toBeNull();
+  });
+
+  test("out-of-area is caught from the bio even when in_metro is unset", () => {
+    expect(disqualifyTarget({ ...base, in_metro: false, biography: "Scottsdale's Premier Fine Art Gallery & Events" })).toBe("out_of_area");
+    expect(disqualifyTarget({ ...base, in_metro: false, biography: "Plaza Comercial en Via Transistmica, Panama" })).toBe("out_of_area");
+  });
+
+  test("out-of-area beats a Chicago mention -- a bio can name both", () => {
+    expect(disqualifyTarget({ ...base, in_metro: false, biography: "Scottsdale gallery, also serving Chicago clients" })).toBe("out_of_area");
+  });
+
+  test("umbrella brands and non-venue trades are refused", () => {
+    expect(disqualifyTarget({ ...base, username: "hiltonhotels" })).toBe("umbrella_brand");
+    expect(disqualifyTarget({ ...base, username: "jddesignandplanning" })).toBe("non_venue_trade");
+  });
+
+  // Houses of worship measure 0.053 w/post with half returning nothing.
+  test("houses of worship are refused, including saint-prefixed handles with no church word", () => {
+    expect(disqualifyTarget({ ...base, username: "stbenschicago" })).toBe("house_of_worship");
+    // Ranked FIRST in the first gate run: no church word in the handle, bio says only
+    // "Founded in 1953 as a community of faith".
+    expect(disqualifyTarget({ ...base, username: "st.johnbrebeufniles", biography: "Founded in 1953 as a community of faith" })).toBe("house_of_worship");
+  });
+
+  // Handles are concatenated words, so \b cannot match inside them.
+  test("the HANDLE counts as geography evidence -- @msichicago is a real Chicago venue", () => {
+    expect(disqualifyTarget({ ...base, in_metro: false, username: "msichicago", biography: "Looking for Griffin Museum of Science and Industry" })).toBeNull();
+    expect(disqualifyTarget({ ...base, in_metro: false, username: "lespacechicago" })).toBeNull();
+  });
+
+  test("no Chicago evidence anywhere is refused rather than guessed at", () => {
+    expect(disqualifyTarget({ ...base, in_metro: false, username: "thebasementeast", biography: "Live music venue" })).toBe("no_chicago_evidence");
   });
 });

@@ -23,8 +23,13 @@
  */
 import { writeFileSync } from "node:fs";
 import { getPool, closePool } from "../classify/db";
+import {
+  isUmbrellaBrandUsername,
+  isNonVenueUsername,
+  isChurchLikeUsername,
+} from "../graph/venueAliasSignals";
 
-export type Tier = "probe" | "probe6" | "discovered" | "alias" | "vendor" | "deepen";
+export type Tier = "probe" | "probe6" | "discovered" | "alias" | "vendor" | "deepen" | "discover";
 
 /** Pure: lookup prior for a venue's tagged feed, in weddings per POST.
  *
@@ -62,16 +67,37 @@ export function venueLookupPrior(f: { venue_type: string | null; followers: numb
   if (f.venue_type && ["farm_estate", "event_space", "park_outdoor", "museum"].includes(f.venue_type)) p += 0.04;
   else if (f.venue_type === "other") p -= 0.04;
   else if (f.venue_type == null) p += 0.03;
-  // Follower term: inverted and made the dominant signal (D062 back-test above).
+  // Follower term. D063 CORRECTION to D062: the relationship is a HUMP, not monotonic.
+  //
+  // D062 read "yield falls as followers rise" off the >=15-posts-fetched sample and made the prior
+  // monotonically decreasing. Re-measured across ALL measured targets, including the ones that
+  // returned almost nothing, the bottom falls away -- tiny accounts do not have a tagged feed to
+  // pull:
+  //
+  //   followers   venues  avg posts RETURNED  weddings/venue  % returning nothing
+  //   < 50            11                 4.5            0.36                 82%
+  //   50-149          20                 8.3            0.90                 75%
+  //   150-399         56                16.8            1.91                 46%
+  //   400-999        129                23.6            2.43                 42%
+  //   1.5k-5k        146                24.9            2.59                 31%
+  //   5k-20k         133                24.9            1.21                 62%
+  //   20k+            87                24.9            0.33                 83%
+  //
+  // Per-post yield still looks fine at the bottom (0.082-0.114) only because the denominator is
+  // 4-8 posts. What matters for the ">= 1 wedding" bar is weddings PER VENUE, and that peaks in the
+  // 400-5,000 range. Billing is per result RETURNED, so a 4-post account costs ~$0.009 -- these are
+  // cheap rather than harmful, hence a modest penalty, not exclusion. The symptom that prompted
+  // this: @cityhallofchicago, 4 followers, ranked second in the first qualified queue.
   if (f.followers != null) {
-    if (f.followers < 500) p += 0.06;
-    else if (f.followers < 1500) p += 0.03;
-    else if (f.followers < 5000) p += 0.01;
+    if (f.followers < 50) p -= 0.03;
+    else if (f.followers < 150) p -= 0.01;
+    else if (f.followers < 400) p += 0.04;
+    else if (f.followers < 5000) p += 0.05;
     else if (f.followers < 20000) p -= 0.04;
     else p -= 0.07;
   } else {
-    // Unknown follower count usually means a never-scraped shell, which skews small.
-    p += 0.02;
+    // Unknown follower count means a never-scraped shell. Scrape it before spending a crawl on it.
+    p += 0.01;
   }
   if (f.reviews != null) p += f.reviews >= 50 && f.reviews <= 1000 ? 0.02 : f.reviews > 1000 ? -0.04 : 0;
   if (f.ptype === "event_venue" || f.ptype === "wedding_venue" || f.ptype === "banquet_hall") p += 0.03;
@@ -99,6 +125,89 @@ interface Row {
   nw: number;
   measured_prior: number | null;
   measured_status: string | null;
+  /** D063 qualification inputs. Every pool projects these so the gate can run uniformly. */
+  biography: string | null;
+  full_name: string | null;
+  in_metro: boolean | null;
+}
+
+/** D063: a venue is in the Chicago metro if account_locations says so, or failing that if its own
+ * bio/full_name names a metro municipality. The second half exists because 302 venue-role accounts
+ * have no account_locations row at all -- see the geo_blocked bucket in
+ * reportVenueIdentityTaxonomy.ts -- and refusing to consider them would hide real venues. */
+const CHICAGO_PLACE_RE =
+  /\b(chicago|evanston|naperville|oak park|schaumburg|elmhurst|wheaton|aurora|joliet|skokie|des plaines|arlington heights|glenview|northbrook|lombard|oak brook|lisle|berwyn|cicero|hinsdale|la ?grange|wilmette|winnetka|highland park|lake forest|barrington|palatine|crystal lake|st\.? charles|geneva|batavia|romeoville|lemont|orland park|tinley park|bolingbrook|downers grove|itasca|elgin|illinois|\bil\b)\b/i;
+
+/** Handle variant of CHICAGO_PLACE_RE with no \b anchors. Instagram handles are concatenated words
+ * with no separators, so "\bchicago\b" cannot match inside "msichicago" -- the same reasoning
+ * CHURCH_SUBSTRING_RE documents in venueAliasSignals.ts. Found in review of the first gate run:
+ * @msichicago (the Griffin Museum of Science and Industry) was excluded for "no Chicago evidence"
+ * because its bio names the museum but not the city. */
+const CHICAGO_PLACE_HANDLE_RE =
+  /(chicago|evanston|naperville|oakpark|schaumburg|elmhurst|wheaton|skokie|desplaines|glenview|northbrook|oakbrook|hinsdale|lagrange|wilmette|winnetka|highlandpark|lakeforest|barrington|palatine|crystallake|stcharles|romeoville|lemont|orlandpark|tinleypark|bolingbrook|downersgrove|itasca|elgin|chi\b)/i;
+
+/** Saint-prefixed and faith-community handles that name no explicit church word. St John Brebeuf
+ * (@st.johnbrebeufniles) ranked FIRST in the first gate run: `isChurchLikeUsername` looks for
+ * church/parish/cathedral and the bio says only "Founded in 1953 as a community of faith". Houses
+ * of worship measure 0.053 w/post with half returning nothing, so letting them to the top of a
+ * budgeted queue is exactly the mistake the gate exists to prevent. */
+const SAINT_HANDLE_RE = /^(st\.?|saint|ss\.?)[a-z]/i;
+const FAITH_TEXT_RE = /\b(community of faith|catholic|lutheran|methodist|presbyterian|episcopal|congregation|diocese|archdiocese|ministries|worship)\b/i;
+
+/** Places that are demonstrably NOT the Chicago metro. Checked BEFORE the Chicago test because a
+ * bio can name both ("Scottsdale's premier gallery ... also serving Chicago clients"). */
+const NOT_CHICAGO_RE =
+  /\b(scottsdale|arizona|phoenix|panam[áa]|miami|florida|texas|austin|dallas|houston|nashville|denver|atlanta|boston|brooklyn|new york|nyc|california|los angeles|san diego|seattle|portland|maui|hawaii|fiji|anguilla|sorrento|italy|london|paris|toronto|vegas|charleston|savannah|milwaukee|wisconsin|indiana|michigan)\b/i;
+
+export type Disqualification =
+  | "umbrella_brand"
+  | "non_venue_trade"
+  | "house_of_worship"
+  | "out_of_area"
+  | "no_chicago_evidence";
+
+/** Pure: should this account be crawled at all? SEPARATE FROM THE PRIOR, deliberately.
+ *
+ * The prior RANKS; it was never meant to QUALIFY, and conflating the two backfired. D062
+ * recalibrated the prior to favour small accounts (measured: <500 followers yield 0.152 w/post vs
+ * 0.013 for 20k+), which is correct -- but junk accounts are also small, so the top of the
+ * never-crawled queue filled with @bellafineartandevents ("Scottsdale's premier fine art gallery"),
+ * @millenium.park ("Plaza Comercial en Via Transistmica" -- Panama), @uclubashley (a person: "Senior
+ * Catering Sales Manager"), four parishes and @cityhallofchicago (4 followers). Only 22 of the top
+ * 134 were even in_metro. Qualifying first cuts 269 raw targets to 78 and the bill from $15.47 to
+ * $4.49.
+ *
+ * Returns null when the target is eligible, otherwise the reason -- callers REPORT every exclusion
+ * rather than dropping it silently, so a bug in this gate is visible instead of quietly hiding
+ * good venues. */
+export function disqualifyTarget(r: {
+  username: string;
+  biography: string | null;
+  full_name: string | null;
+  in_metro: boolean | null;
+  venue_type: string | null;
+}): Disqualification | null {
+  if (isUmbrellaBrandUsername(r.username)) return "umbrella_brand";
+  if (isNonVenueUsername(r.username)) return "non_venue_trade";
+  const text = `${r.biography ?? ""} ${r.full_name ?? ""}`;
+  if (
+    isChurchLikeUsername(r.username) ||
+    SAINT_HANDLE_RE.test(r.username) ||
+    /\b(parish|church|cathedral|chapel|synagogue|mosque)\b/i.test(text) ||
+    FAITH_TEXT_RE.test(text)
+  ) {
+    // Measured 0.053 w/post with 50% returning nothing -- the weakest venue_type we have.
+    return "house_of_worship";
+  }
+  if (NOT_CHICAGO_RE.test(text)) return "out_of_area";
+  if (r.in_metro === true) return null;
+  // The HANDLE counts as geography evidence too. Caught in review of the first run: @msichicago --
+  // the Griffin Museum of Science and Industry, a real Chicago venue -- was excluded as
+  // "no_chicago_evidence" because its bio names the museum without naming the city. Handles like
+  // @msichicago / @chicagowinery / @lespacechicago carry the city and nothing else does.
+  if (CHICAGO_PLACE_HANDLE_RE.test(r.username)) return null;
+  if (CHICAGO_PLACE_RE.test(text)) return null;
+  return "no_chicago_evidence";
 }
 
 const VENUE_POOL = `
@@ -106,7 +215,9 @@ const VENUE_POOL = `
     (select (v.raw->>'review_count')::int from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) reviews,
     (select v.raw->>'primary_type' from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) ptype,
     null::text role, null::numeric own_yield,
-    (select count(*) from weddings w where w.venue_id=a.id)::int nw
+    (select count(*) from weddings w where w.venue_id=a.id)::int nw,
+    a.biography, a.full_name,
+    coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from accounts a join v_account_role r on r.account_id=a.id and r.role='venue'
   join account_locations al on al.account_id=a.id and al.in_metro
   where coalesce(a.is_private,false)=false`;
@@ -116,7 +227,9 @@ const VENUE_POOL = `
 
 const ALIAS_POOL = `
   select a.id, a.username::text username, 'alias sibling of '||c.username::text why, a.followers, a.venue_type,
-    null::int reviews, null::text ptype, null::text role, null::numeric own_yield, 0 nw
+    null::int reviews, null::text ptype, null::text role, null::numeric own_yield, 0 nw,
+    a.biography, a.full_name,
+    coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from account_aliases x join accounts a on a.id=x.alias_account_id join accounts c on c.id=x.canonical_account_id
   where coalesce(a.is_private,false)=false
     and exists (select 1 from v_account_role r join account_locations l on l.account_id=r.account_id and l.in_metro
@@ -127,18 +240,42 @@ const DISCOVERED_POOL = `
     (select (v.raw->>'review_count')::int from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) reviews,
     (select v.raw->>'primary_type' from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) ptype,
     null::text role, null::numeric own_yield,
-    (select count(*) from weddings w where w.venue_id=a.id)::int nw
+    (select count(*) from weddings w where w.venue_id=a.id)::int nw,
+    a.biography, a.full_name,
+    coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from ops.crawl_frontier f join accounts a on a.id=f.account_id
   join v_account_role r on r.account_id=a.id and r.role='venue'
   join account_locations al on al.account_id=a.id and al.in_metro
   where f.hops=1 and f.status='pending' and coalesce(a.is_private,false)=false`;
+
+/** D063: never-crawled venue-role accounts with no documented wedding -- the "1+ bar" pool.
+ * Deliberately does NOT require account_locations.in_metro, because 302 venue-role accounts have no
+ * location row at all and some of them are real Chicago venues. Geography is decided by
+ * disqualifyTarget() in TS instead, where "no Chicago evidence" is reported rather than silently
+ * filtered in SQL. */
+const DISCOVER_POOL = `
+  select a.id, a.username::text username, 'never crawled, no documented wedding' why, a.followers, a.venue_type,
+    (select (v.raw->>'review_count')::int from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) reviews,
+    (select v.raw->>'primary_type' from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) ptype,
+    null::text role, null::numeric own_yield,
+    0::int nw,
+    a.biography, a.full_name,
+    coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
+  from accounts a
+  where exists (select 1 from v_account_role r where r.account_id=a.id and r.role in ('venue','hotel'))
+    and coalesce(a.is_private,false)=false
+    and not exists (select 1 from account_aliases aa where aa.alias_account_id=a.id)
+    and not exists (select 1 from weddings w where w.venue_id=a.id)
+    and not exists (select 1 from ops.post_observations o where o.seed_account_id=a.id)`;
 
 const VENDOR_POOL = `
   with sp as (select sp.post_url, lower(sp.owner_username) u from staging.instagram_posts sp),
        j as (select url from posts where source='jeremy_evidence'),
        au as (select u, count(*) posts, count(j.url) wp from sp left join j on j.url=sp.post_url group by u having count(*)>=10)
   select a.id, a.username::text username, 'tier-A vendor ('||r.role::text||')' why, a.followers, null::text venue_type,
-    null::int reviews, null::text ptype, r.role::text role, round(au.wp::numeric/au.posts,3) own_yield, 0 nw
+    null::int reviews, null::text ptype, r.role::text role, round(au.wp::numeric/au.posts,3) own_yield, 0 nw,
+    a.biography, a.full_name,
+    coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from au join accounts a on a.username::text=au.u
   join v_account_role r on r.account_id=a.id and r.role::text in ('planner','catering','dj','florist','officiant','photo_booth')
   where au.wp::numeric/au.posts >= 0.3 and coalesce(a.is_private,false)=false
@@ -151,12 +288,17 @@ async function main() {
   const tier = get("--tier") as Tier | undefined;
   const limit = Number(get("--limit") ?? "50");
   const idsFile = get("--ids-file");
-  if (!tier || !["probe", "probe6", "discovered", "alias", "vendor", "deepen"].includes(tier)) {
-    console.error("Usage: bun run scripts/acquire/targets.ts --tier probe|probe6|discovered|alias|vendor|deepen [--limit N] [--ids-file path]");
+  if (!tier || !["probe", "probe6", "discovered", "alias", "vendor", "deepen", "discover"].includes(tier)) {
+    console.error("Usage: bun run scripts/acquire/targets.ts --tier probe|probe6|discovered|alias|vendor|deepen|discover [--limit N] [--ids-file path]");
     process.exit(2);
   }
   const pool = getPool();
-  const poolSql = tier === "vendor" ? VENDOR_POOL : tier === "alias" ? ALIAS_POOL : tier === "discovered" ? DISCOVERED_POOL : VENUE_POOL;
+  const poolSql =
+    tier === "vendor" ? VENDOR_POOL
+    : tier === "alias" ? ALIAS_POOL
+    : tier === "discovered" ? DISCOVERED_POOL
+    : tier === "discover" ? DISCOVER_POOL
+    : VENUE_POOL;
   const { rows } = await pool.query<Row>(
     `with pool as (${poolSql}),
      latest as (
@@ -171,7 +313,17 @@ async function main() {
        ${tier === "probe" ? "and p.nw <= 5" : tier === "probe6" ? "and p.nw between 6 and 15" : ""}
        and coalesce(l.status,'') not in ('dead','excluded')`
   );
-  const ranked = rows
+  // D063: QUALIFY before ranking, and report every exclusion with its reason. The prior ranks; it
+  // does not qualify -- see disqualifyTarget. Silent filtering is how a gate bug hides good venues.
+  const excluded: { r: Row; reason: Disqualification }[] = [];
+  const eligible: Row[] = [];
+  for (const r of rows) {
+    const reason = disqualifyTarget(r);
+    if (reason) excluded.push({ r, reason });
+    else eligible.push(r);
+  }
+
+  const ranked = eligible
     .map((r) => {
       const prior =
         r.measured_prior != null
@@ -183,7 +335,22 @@ async function main() {
     })
     .sort((a, b) => b.prior - a.prior || b.nw - a.nw || (b.followers ?? 0) - (a.followers ?? 0))
     .slice(0, limit);
-  console.log(`[targets] tier=${tier} pool=${rows.length} selected=${ranked.length} (est. $${(ranked.length * 25 * 0.0023).toFixed(2)} at 25 posts each)`);
+  console.log(
+    `[targets] tier=${tier} pool=${rows.length} qualified=${eligible.length} excluded=${excluded.length} ` +
+      `selected=${ranked.length} (est. $${(ranked.length * 25 * 0.0023).toFixed(2)} at 25 posts each, an upper bound -- ` +
+      `we bill nearer $0.0019/result, see PRICE_USD)`
+  );
+  if (excluded.length > 0) {
+    const byReason = new Map<string, Row[]>();
+    for (const e of excluded) {
+      if (!byReason.has(e.reason)) byReason.set(e.reason, []);
+      byReason.get(e.reason)!.push(e.r);
+    }
+    console.log(`[targets] excluded by reason (review these -- a gate bug hides real venues):`);
+    for (const [reason, rs] of [...byReason].sort((a, b) => b[1].length - a[1].length)) {
+      console.log(`  ${reason.padEnd(20)} ${String(rs.length).padStart(4)}  e.g. ${rs.slice(0, 6).map((r) => "@" + r.username).join(", ")}`);
+    }
+  }
   console.log("  id | account | prior | src | followers | venue_type/role | weddings | why");
   for (const r of ranked) {
     console.log(
