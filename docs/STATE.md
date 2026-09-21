@@ -21,75 +21,87 @@ what is unpushed (**24+ commits**); the user pushes.
 4. Re-check one live number: from `apps/web`, `bun run scripts/venue-details/reportVenueDetailsFunnel.ts`
    should show **33 served / 24 compare-ready**. Dev server: `nohup bun run dev` from `apps/web`.
 
-## Mission in flight — D065: arm C won; scaled tick crawled, reader RESUMED after a hang (2026-09-21)
+## Mission — D065: COMPLETE. Arm C won, was scaled, and the scaled tick beat its own prior (2026-09-21)
 
-**Decision is made, the Apify money is spent well, and the pipeline is running again.**
-Narrative + reasoning: `docs/decisions.md` D065.
+**Nothing in flight. Nothing running.** Narrative: `docs/decisions.md` D065.
 
-### The overnight stall was a missing request timeout, NOT a credit problem
+### Final result
 
-The scaled tick's reader stopped dead at 505 of 881 posts and sat there for hours: process alive,
-CPU idle at 16s, not one log line, no exception. The machine had suspended overnight mid-run, the
-open sockets died without a RST ever arriving, and `fetch` in `scripts/classify/openrouter.ts`
-carried **no timeout and no AbortSignal** — so the promise neither resolved nor rejected. Its
-`catch` block anticipates exactly this ("the machine sleeping mid-request") but only fires when
-fetch THROWS; a silently dead socket never reaches it, so the 5-attempt retry loop never got a turn.
+| arm | $ | weddings | weddings/$ | crossed 1-5→6+ | 0→1 |
+|---|---|---|---|---|---|
+| A depth-thin (15 venues) | 3.45 | 18 | 5.2 | 2 | 0 |
+| C vendor-thin-conn (12 vendors) | 2.76 | 128 | 46.4 | 3 | 3 |
+| D own-profile (8 vendors) | 0.46 | 25 | 54.3 | 0 | 0 |
+| **SCALE vendorthin ×56** | **11.64** | **606** | **52.1** | **10** | **3** |
 
-**Fixed**: `AbortSignal.timeout(120_000)` on the request, which converts the hang into the network
-error the existing retry path already handles. 120s is well clear of the slowest observed completion
-(~25s).
-
-**A wrong turn worth not repeating:** I first blamed OpenRouter credits, because
-`OPENROUTER_API_KEY` reads $10.371 used of $10. That key is the OLD exhausted one and is
-deliberately unused — `callTool` prefers **`NEW_OPENROUTER_API_KEY`**, which had **$57 of $300
-left** the whole time. Check the key the code actually uses before concluding anything about spend.
-
-### What the $13.06 bought (all safe in the DB, nothing lost)
-
-`acq-20260921-d065scale`, 56 vendors via `--tier vendorthin`, feed `mentions`, 100 posts, 2024 floor:
-
-| | |
-|---|---|
-| Apify spend | **$11.64** (projected $12.88; **under** budget) |
-| Runs | 6 of 6, 0 failed |
-| Items fetched | 4,923 · **3,624 genuinely new** (73.6%, better than arm C's 67%) |
-| Candidates clustered | **1,125** (918 new + 199 attached, v2; 100 new, a1) |
-| Posts read by the reader | **505 of 881** at the stall; the rest are being read now |
-| THIS_VENUE verdicts banked | **435** |
-
-**Apify is now at ≈$46.76 of the $48.18 authorized.** Nothing further can be spent without a new ask.
-
-### Resume status (2026-09-21 ~12:57 UTC)
-
-Relaunched and **running now**: `chain.sh acq-20260921-d065scale` → `finish_batch.sh` → a four-way
-`compareArms.ts`. No Apify cost; the reader only re-reads the ~376 posts it never got to (~$1.2).
-If it needs restarting, from `apps/web`, **one at a time** (concurrent ingests deadlocked on
-`accounts` once — D061):
-```
-bash scripts/acquire/bin/chain.sh acq-20260921-d065scale        # idempotent, no Apify cost
-bash scripts/acquire/bin/finish_batch.sh acq-20260921-d065scale # create live + measure --apply
-```
-Durable progress: `scripts/graph/tmp_analysis/acq_logs/acq-20260921-d065scale.{chain,finish}.log`.
-
-### The arm comparison that decided it (DONE, live, committed)
-
-| arm | hypothesis | $ | weddings | **weddings/$** | **crossed 1-5→6+** | crossings/$ | 0→1 |
-|---|---|---|---|---|---|---|---|
-| A | depth at thin venues (15 @100) | 3.45 | 18 | 5.2 | 2 | 0.58 | 0 |
-| **C** | **vendor feeds by thin-venue connection (12 @100)** | **2.76** | **128** | **46.4** | **3** | **1.09** | **3** |
-| D | own-profile feed, never run before (8 @25) | 0.46 | 25 | 54.3 | 0 | 0 | 0 |
-
-Arm C won both of the user's metrics per dollar, which is why the remainder went behind it.
+The bet held: arm C predicted 46.4 weddings/$ and the scaled tick returned **52.1** — better with
+scale, not worse — and crossings went 3 → 10. The union check confirms all 15 crossings are distinct.
 Report: `apps/web/scripts/graph/tmp_analysis/d065_arm_comparison.md`.
 
-### Also blocked on the user
+**D065 total: 779 weddings for $18.31 of Apify.** Weddings 6,995 → **7,774**.
+Coverage (metro venue accounts, `weddings.venue_id`, is_chicago, no alias rollup):
+0: 177 → **175** · 1-5: 243 → **231** · 6-15: 94 → **102** · 16-49: 80 → **78** · 50+: 30 → **39**.
 
-1. **Verify ~20 credible posts** — asked for explicitly before further scaling. Regenerate any time:
-   `bun run scripts/acquire/sampleCredible.ts --batches acq-20260920-d065A,acq-20260920-d065C,acq-20260920-d065D,acq-20260921-d065scale --n 20`
-   It prints one `/label/candidates?post=...` link (dev server :3000), plus blind `?spotcheck=` links.
-   **Why:** arm C is entirely vendor feeds, and generic "wedding" marketing is the reader's top
-   failure class (month 1 blind test: 91.9% vs the 95% bar the user chose to keep).
-2. **Push** — ~27 commits local; the classifier blocks Claude from pushing.
+### The user's spot-check: PASS, and it caught a real gap
+
+40 posts labeled. **THIS_VENUE precision 35/35 = 100%** (bar is 95%; month 1 was 91.9%). Overall
+agreement 36/40. **Zero false positives** — all four disagreements were the model being too
+conservative (NOT_WEDDING where the user says real wedding). So nothing needed reverting, and arm C's
+vendor-feed weddings are sound.
+
+**What it exposed:** I said the live creation would pick the corrections up automatically. It did not.
+A batch's creation only runs when invoked, and arm C's ran at 05:16 — before the labels existed at
+13:16. Re-ran as `acq-20260920-d065C-create-3`: **+2 weddings** (@sarabandechicago,
+@providencevineyard). @halimmuseum correctly hit the styled-shoot gate (`HUMAN_STYLED`).
+**Standing rule: after the user labels, re-run creation for every batch holding those candidates.**
+
+### Cheap win left on the table
+
+**9 undecided sibling posts unlock 5 queued candidates** (a candidate needs every post decided):
+```
+http://localhost:3000/label/candidates?post=DantIbbEafG,DbbMK6JkQwQ,DbdmUHDg5TI,Da0jeokE9IL,DanP9s3jw5b,DV1mFmhjdR_,DaB_VEVsjM-,DclV9UKx1x5,DcQtn-zx6_2
+```
+@maedistrict ×3, @itascacountryclub ×2, @thedrakechicago ×2, @ovationchicago, @thepeninsulachi.
+Then re-run creation for `acq-20260921-d065scale` and `acq-20260920-vendor`.
+
+### Budget — effectively exhausted
+
+Apify **$46.76 of the $48.18 authorized** ($28.18 + the user's $20). **$1.42 left; do not spend it or
+raise the ceiling without a new ask.** The code's `MONTHLY_STOP_USD` is 48.50, $0.32 looser than what
+was authorized — trust $48.18. Account hard cap $100; anything above $29 is real overage.
+OpenRouter for the whole scaled chain: **$1.04**, with $57 of $300 left on `NEW_OPENROUTER_API_KEY`.
+
+### The next decision is a product call, not a measurement one
+
+Arm C is well-measured and `--tier vendorthin` still has **578 qualified vendors**, so it scales
+further on volume. But it **cannot be aimed at a named venue** (61 of the 69 venues it reached were
+already thick — a vendor's feed follows their own book of business). `--tier crossing` is the
+instrument for named-venue coverage: built, measured, deliberately **not funded**. Which to feed next
+depends on whether the priority is more weddings or more venues off zero.
+
+### Two bugs fixed this session, both worth remembering
+
+1. **`openrouter.ts` had no request timeout.** The machine suspended overnight mid-run, sockets died
+   without a RST, and `fetch` never settled — process alive, CPU idle, no log line, no exception, for
+   hours. The `catch` anticipates this in a comment but only fires when fetch THROWS. Fixed with
+   `AbortSignal.timeout(120_000)`. If a long run goes quiet with idle CPU, suspect this first.
+2. **The venue gate was eating vendors, and "Lake Michigan" read as the state.** See D065.
+
+**A wrong turn worth not repeating:** I diagnosed the stall as exhausted OpenRouter credits and wrote
+it into STATE.md before checking. `OPENROUTER_API_KEY` really is at $10.371 of $10 — but that is the
+OLD key the code deliberately avoids; `callTool` prefers `NEW_OPENROUTER_API_KEY`. Check the key the
+code actually reads.
+
+### Blocked on the user
+
+1. **Push** — 31 commits local; the classifier blocks Claude from pushing.
+2. Optional, cheap: the 9 sibling posts above (unlocks 5 weddings), then re-run creation for
+   `acq-20260921-d065scale` and `acq-20260920-vendor`.
+3. Optional: decide what to feed next — `vendorthin` (volume, 578 vendors left) or `crossing`
+   (named-venue coverage, built but unfunded). Needs a new Apify authorization either way; only
+   $1.42 of the last $20 remains.
+
+The ~20-post verification is **DONE** (100% precision, see above) — nothing is waiting on it.
 
 ### Known-good, reusable, and what was NOT funded
 

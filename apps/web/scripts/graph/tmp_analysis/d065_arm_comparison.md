@@ -1,6 +1,6 @@
 # D065 arm comparison -- identical metrics
 
-Arms: `acq-20260920-d065A`, `acq-20260920-d065C`, `acq-20260920-d065D`. Generated 2026-09-21T05:21:41.100Z.
+Arms: `acq-20260920-d065A`, `acq-20260920-d065C`, `acq-20260920-d065D`, `acq-20260921-d065scale`. Generated 2026-09-21T14:06:57.021Z.
 
 Scoring rule: every arm is measured against ONE shared baseline -- each venue's wedding count
 excluding weddings created by **any** compared arm -- so no arm's "before" is polluted by another's
@@ -14,12 +14,13 @@ basis across arms).
 | A depth-thin | tagged | 15 | $3.45 | 1496 | 1074 | 26 | 34 | **18** | 0.017 | **5.2** | $0.19 | 10 | 2.9 | **2** | 0 |
 | C vendor-thin-conn | tagged | 12 | $2.76 | 1182 | 794 | 373 | 311 | **128** | 0.161 | **46.4** | $0.02 | 20 | 7.2 | **3** | 3 |
 | D own-profile | own | 8 | $0.46 | 200 | 145 | 56 | 55 | **25** | 0.172 | **54.3** | $0.02 | 1 | 2.2 | **0** | 0 |
+| SCALE vendorthin x56 | tagged | 56 | $11.64 | 4923 | 3624 | 1299 | 1125 | **606** | 0.167 | **52.1** | $0.02 | 57 | 4.9 | **10** | 3 |
 
 ## Overlap check (is the per-arm credit double counted?)
 
-- Per-arm sum of `crossed 1-5 -> 6+`: **5**
-- UNION of all arms' creations against the same baseline: **5** crossings (0->1: 3)
-- Venues created into by more than one arm: **12** (1132, 666, 583, 19194, 530, 577, 521, 484, 547, 127, 236, 280)
+- Per-arm sum of `crossed 1-5 -> 6+`: **15**
+- UNION of all arms' creations against the same baseline: **15** crossings (0->1: 6)
+- Venues created into by more than one arm: **70** (5741, 4641, 4386, 1132, 666, 583, 1660, 271, 27393, 1437, 18631, 4433, 11081, 483, 2631, 20812, 541, 68, 1370, 2785, 19194, 18945, 530, 27405, 1598, 4604, 20332, 3389, 58, 590, 586, 21174, 2342, 700, 580, 578, 305, 1461, 577, 1205, 519, 521, 484, 591, 263, 520, 1131, 595, 4420, 8023, 592, 3970, 529, 31, 687, 547, 194, 127, 236, 515, 280, 2221, 2245, 5680, 27424, 1433, 4551, 474, 1057, 2379)
 - Union equals the per-arm sum: the arms are NOT competing for the same crossings, so per-arm credit is clean.
 
 ## Per arm
@@ -44,3 +45,10 @@ basis across arms).
 - crossed **1-5 -> 6+**: (none)
 - crossed 0 -> 1: (none)
 - already-held share of fetched: 27.5%
+
+### SCALE vendorthin x56 `acq-20260921-d065scale`
+
+- venues touched by its created weddings: 169
+- crossed **1-5 -> 6+**: 596 (4->6), 648 (5->6), 1437 (2->10), 11085 (5->10), 18631 (5->6), 18940 (5->9), 27393 (3->7), 27404 (5->6), 27429 (5->6), 27455 (5->6)
+- crossed 0 -> 1: 617 (0->1), 55070 (0->1), 57917 (0->1)
+- already-held share of fetched: 26.4%
