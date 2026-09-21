@@ -168,3 +168,32 @@ Rejected after verification, each now encoded so it cannot recur: `luc_conferenc
 
 D061 (the acquisition loop this sits beside), D060 (venue Details + website discovery), D055
 (batch/revert discipline), D052 (verified account bridging and aliasing), D049, D031.
+
+## Backlog — known-open, with the evidence
+
+Dated and attributed, so the next session doesn't re-derive them.
+
+- **Drifted DB row-count invariants (2026-09-20).** `graphStrengthening.test.ts` (11 assertions),
+  `vendorAssociation.test.ts` (1), `venuePortfolioContent.test.ts` (1) fail against the live DB.
+  Partly this session's 56 wedding creations from the human-verdict pass, partly the pre-existing
+  D059 drift `STATE.md` already tracked. **None of them import any file D062 changed** (verified by
+  grep). They are the "re-pin the literal in the test with the reason" class from
+  `working-across-sessions.md`, and D059 owns them. Not re-pinned here because doing it blind would
+  bless whatever the numbers happen to be.
+- **`drurylaneproductions` (4 weddings) + `drurylaneevents` (20) is still unmerged.** Neither S1
+  (stems "drurylaneproductions" vs "drurylane" — "productions" is not a facility noun and adding it
+  is too broad) nor S3b (one of them publishes a `campsite.bio` aggregator link) reaches it. Same
+  shape: `butterfieldcc_grounds` (11) + `butterfieldcountryclub` (7), `rpmeventschicago` (5) +
+  `rpmeventsandcatering` (8). A "corporate-suffix" stem rule (`productions|enterprises|inc|llc`)
+  would catch the first; the second and third need the aggregator link resolved to a real domain.
+- **210 listed venues publish a link-in-bio aggregator URL rather than their own domain.** Their
+  real domain is one HTTP fetch away and would feed S3b directly. `resolveAggregatorLinks.ts`
+  (report-only, plain `fetch`, no Apify) is specified in the plan and not yet written.
+- **`account_locations` has no `batch_id` column**, so `applyD062GeoBackfill.ts` encodes the batch
+  in `source` (`websearch:idn-20260920-geo-1`). Workable, queryable, but not the same guarantee the
+  alias table now has. Add the column when the geo backfill scales past a handful of rows.
+- **`isUmbrellaBrandUsername` is a username heuristic.** It catches `@luc_conferences`,
+  `@marriottbonvoy`, `@victoriavenues`, but a chain handle that doesn't say so in its name
+  (`@intercontinental`, `@thedrake`) still relies on the hand-maintained `DENY_LIST_USERNAMES`.
+- **The 9 `chain_brand` and 4 `not_a_venue` accounts are classified but not acted on.** Delisting
+  means stripping a venue role, which changes `/venues`; it needs its own batch and diff.
