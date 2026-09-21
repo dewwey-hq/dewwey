@@ -21,10 +21,51 @@ what is unpushed (**24+ commits**); the user pushes.
 4. Re-check one live number: from `apps/web`, `bun run scripts/venue-details/reportVenueDetailsFunnel.ts`
    should show **33 served / 24 compare-ready**. Dev server: `nohup bun run dev` from `apps/web`.
 
-## Mission in flight — D065: arm C won, and the remaining $13.06 is RUNNING (2026-09-21)
+## Mission in flight — D065: arm C won; scaled tick CRAWLED, but the reader is BLOCKED on OpenRouter (2026-09-21)
 
-**Decision is made. Narrative + all the reasoning: `docs/decisions.md` D065.** Three arms were
-crawled, chained, created live and compared on identical metrics with `compareArms.ts`:
+**Decision is made and the Apify money is spent well. The pipeline is stuck on a $0 problem.**
+Narrative + reasoning: `docs/decisions.md` D065.
+
+### BLOCKED ON THE USER — OpenRouter is out of credits
+
+```
+total_credits 10.00 | total_usage 10.371   ->  balance is NEGATIVE
+```
+The key itself has no per-key cap (`limit: null`), so this is the **account balance**. The reader
+(`runExtract.ts`) does not error on this — it **hangs**: no log line, no exception, CPU idle. That is
+how it presents, so do not go looking for a crash. **Top up OpenRouter, then resume (below).**
+Check first: `curl -s https://openrouter.ai/api/v1/credits -H "Authorization: Bearer $OPENROUTER_API_KEY"`.
+
+### What the $13.06 bought (all safe in the DB, nothing lost)
+
+`acq-20260921-d065scale`, 56 vendors via `--tier vendorthin`, feed `mentions`, 100 posts, 2024 floor:
+
+| | |
+|---|---|
+| Apify spend | **$11.64** (projected $12.88; **under** budget) |
+| Runs | 6 of 6, 0 failed |
+| Items fetched | 4,923 · **3,624 genuinely new** (73.6%, better than arm C's 67%) |
+| Candidates clustered | **1,125** (918 new + 199 attached, v2; 100 new, a1) |
+| Posts read by the reader | **505 of 881** — then credits ran out |
+| THIS_VENUE verdicts banked | **435** |
+
+**Apify is now at ≈$46.76 of the $48.18 authorized.** Nothing further can be spent without a new ask.
+
+### How to resume once OpenRouter has credit
+
+From `apps/web`, **one at a time** (two concurrent ingests deadlocked on `accounts` once — D061):
+```
+bash scripts/acquire/bin/chain.sh acq-20260921-d065scale      # idempotent, NO Apify cost;
+                                                              # re-reads only the ~376 unread posts (~$1.2)
+bash scripts/acquire/bin/finish_batch.sh acq-20260921-d065scale   # create live + measure --apply + funnel
+bun run scripts/acquire/compareArms.ts \
+  --batches acq-20260920-d065A,acq-20260920-d065C,acq-20260920-d065D,acq-20260921-d065scale \
+  --labels "A depth-thin,C vendor-thin-conn,D own-profile,SCALE vendorthin x56" \
+  --out scripts/graph/tmp_analysis/d065_arm_comparison.md
+```
+The stalled processes from the overnight run were killed on 2026-09-21 ~12:55 UTC; nothing is running.
+
+### The arm comparison that decided it (DONE, live, committed)
 
 | arm | hypothesis | $ | weddings | **weddings/$** | **crossed 1-5→6+** | crossings/$ | 0→1 |
 |---|---|---|---|---|---|---|---|
@@ -32,86 +73,46 @@ crawled, chained, created live and compared on identical metrics with `compareAr
 | **C** | **vendor feeds by thin-venue connection (12 @100)** | **2.76** | **128** | **46.4** | **3** | **1.09** | **3** |
 | D | own-profile feed, never run before (8 @25) | 0.46 | 25 | 54.3 | 0 | 0 | 0 |
 
-**Arm C won both of the user's metrics per dollar.** Report:
-`apps/web/scripts/graph/tmp_analysis/d065_arm_comparison.md` (regenerated to include the scaled tick).
+Arm C won both of the user's metrics per dollar, which is why the remainder went behind it.
+Report: `apps/web/scripts/graph/tmp_analysis/d065_arm_comparison.md`.
 
-### THE THING TO CHECK FIRST
+### Also blocked on the user
 
-`acq-20260921-d065scale` — 56 vendors, `--tier vendorthin`, feed `mentions`, 100 posts, 2024 floor,
-projected **$12.88**, landing at **$48.00 against the $48.18 authorized ceiling**. It runs
-crawl → ingest → chain → create live → measure → re-compare → print a 20-post sample, all sequential.
-
-```
-# is it still going / did it finish?
-tail -40 /tmp/claude-1000/-home-jhoffen-dewwey/fee2c860-795b-48ef-beed-06a4952baa88/scratchpad/logs/scale.log
-#   look for "== <time> SCALE ALL DONE". If the scratchpad is gone, the durable logs are:
-tail -5 /home/jhoffen/dewwey/apps/web/scripts/graph/tmp_analysis/acq_logs/acq-20260921-d065scale.chain.log
-tail -5 /home/jhoffen/dewwey/apps/web/scripts/graph/tmp_analysis/acq_logs/acq-20260921-d065scale.finish.log
-```
-**The durable check, if the scratchpad is gone** (it is session-scoped; `acq_logs/` and the DB are
-not). `runTick`'s stdout is block-buffered, so the DB is the better progress source anyway — six
-runs are expected, ~$2.1 each:
-
-```sql
-select id, status, cost_usd, started_at, ingested_at,
-       (select sum(s.fetched) from ops.crawl_run_seeds s where s.run_id = r.id) fetched,
-       (select sum(s.new_posts) from ops.crawl_run_seeds s where s.run_id = r.id) new_posts
-from ops.crawl_runs r where batch_id = 'acq-20260921-d065scale' order by id;
-```
-`ingested_at is null` on the newest row means it is mid-ingest (~0.86 s/item, almost all of it
-images to R2 — a 900-item run is ~13 min). Actual Apify spend is always
-`getMonthlyUsageUsd()`, never the DB `cost_usd` sum, which under-counts.
-
-If the **tick** died partway: `runTick.ts` supports `--resume`, and both budget guards are
-per-batch and fail closed, so re-running cannot overshoot. If the **chain** died, re-run
-`bash scripts/acquire/bin/chain.sh acq-20260921-d065scale` from `apps/web` — idempotent, no Apify
-cost. If the chain finished but creation did not, `bash scripts/acquire/bin/finish_batch.sh
-acq-20260921-d065scale`. **One at a time** — two concurrent ingests deadlocked on `accounts` (D061).
-
-### Blocked on the user (D065)
-
-1. **Verify ~20 credible posts.** The user asked for this explicitly before more scaling. The scale
-   script prints the link at the end; regenerate any time from `apps/web`:
-   ```
-   bun run scripts/acquire/sampleCredible.ts --batches acq-20260920-d065A,acq-20260920-d065C,acq-20260920-d065D,acq-20260921-d065scale --n 20
-   ```
-   It serves the model's THIS_VENUE calls one per screen at `/label/candidates?post=...` (dev server
-   on :3000). **Why it matters:** arm C is entirely vendor feeds, and vendor marketing that uses
-   "wedding" generically is still the reader's top failure class (month 1 blind test: 91.9%). The
-   blind `?spotcheck=<batch>&n=20` links it also prints are the agreement instrument.
-2. **Push** — 24+ commits local; the classifier blocks Claude from pushing.
-3. **Budget.** After the scaled tick Apify is ≈ **$48.00 of the $48.18 authorized** ($28.18 at
-   authorization + the user's $20). **Nothing further can be spent without a new authorization** —
-   the code's `MONTHLY_STOP_USD` is 48.50, which is $0.32 looser than what was actually authorized.
-   The account's hard cap is $100; anything above $29 is real overage.
+1. **Verify ~20 credible posts** — asked for explicitly before further scaling. Regenerate any time:
+   `bun run scripts/acquire/sampleCredible.ts --batches acq-20260920-d065A,acq-20260920-d065C,acq-20260920-d065D,acq-20260921-d065scale --n 20`
+   It prints one `/label/candidates?post=...` link (dev server :3000), plus blind `?spotcheck=` links.
+   **Why:** arm C is entirely vendor feeds, and generic "wedding" marketing is the reader's top
+   failure class (month 1 blind test: 91.9% vs the 95% bar the user chose to keep).
+2. **Push** — ~27 commits local; the classifier blocks Claude from pushing.
 
 ### Known-good, reusable, and what was NOT funded
 
 - `--tier vendorthin` — arm C as a reproducible tier (it had been hand-picked), ranked by
   *near-crossing* potential: connected venues at 4-5, because the marginal cost of a crossing is
   (6-n) and the band is not uniform — **31 venues sit at 5 and need one more, 93 sit at 1 and need
-  five**. Pool 578 qualified, so it scales well past this tick.
+  five**. 578 qualified, so it scales well past this tick.
 - `--tier crossing` — venues ranked nearest the 6+ threshold, **including already-crawled ones** (28
-  of the 55 in the 4-5 band are already measured `promising`; every other coverage tier excludes
-  them by construction). Built and measured, **deliberately not funded**: at arm A's realized rate it
-  buys more crossings but ~10x fewer weddings, and arm C won on both stated metrics. This is the
-  obvious next thing to fund if the priority flips from volume to named-venue coverage.
-- **Arm C cannot be aimed at a named venue** — 61 of the 69 venues it created weddings at were
-  already thick. A vendor's feed reflects their own book of business. Moving a *specific* venue still
-  needs that venue's own tagged feed, i.e. arm A's mechanism at arm A's price. Do not re-derive this.
+  of the 55 in the 4-5 band are already measured `promising`; every other coverage tier excludes them
+  by construction). Built and measured, **deliberately not funded**: arm C won on both stated
+  metrics. Fund this if the priority flips from volume to named-venue coverage.
+- **Arm C cannot be aimed at a named venue** — 61 of the 69 venues it reached were already thick. A
+  vendor's feed follows their own book of business. Moving a *specific* venue still needs that
+  venue's own tagged feed, i.e. arm A's mechanism at arm A's price. Do not re-derive this.
 - **Two "weddings at a venue" definitions exist and disagree.** `reportVenueCoverage.ts` and
   STATE.md's bands use `weddings.venue_id` ("literally what the page shows"); the creation script's
-  coverage delta uses alias-rolled `wedding_vendors` — 10 vs 5 for @silverlake.cc. `compareArms.ts`
-  uses the venue_id basis and says so. On that basis the creation logs **understated** both arms
-  (A was 2 crossings not 1, C was 3 not 1).
-- The three arms are recorded in `ops.crawl_targets` with `tier='discover'`, which is wrong — the
-  previous session did not pass `--tier`. Any future tier-based analysis must not trust it.
+  delta uses alias-rolled `wedding_vendors` — 10 vs 5 for @silverlake.cc. `compareArms.ts` uses the
+  venue_id basis and says so. On that basis the creation logs **understated** both arms (A was 2
+  crossings not 1, C was 3 not 1).
+- The three arms carry `tier='discover'` in `ops.crawl_targets`, which is wrong — the session that
+  ran them did not pass `--tier`. Do not trust it for tier-based analysis.
+- **`runExtract` hangs instead of erroring when OpenRouter has no credit.** Worth fixing: a
+  fail-fast balance check at startup would have turned an overnight stall into a 1-second error.
 
-### Coverage bands right now (metro venue accounts, `weddings.venue_id`, is_chicago, no alias rollup)
+### Coverage bands (metro venue accounts, `weddings.venue_id`, is_chicago, no alias rollup)
 
-Measured 2026-09-21 05:15, **before** the scaled tick's creations land:
+Measured 2026-09-21 05:15, before the scaled tick's creations land:
 0: **177** · 1-5: **243** (93 at 1, 51 at 2, 44 at 3, 24 at 4, 31 at 5) · 6-15: **94** · 16-49: **80** · 50+: **30**.
-Re-run with `bun run scripts/graph/reportVenueCoverage.ts`.
+Re-run: `bun run scripts/graph/reportVenueCoverage.ts`.
 
 ## Mission in flight — D060 VenueDetails v3: Phase 3 filling; **f1 served 27 venues** (2026-09-20)
 
