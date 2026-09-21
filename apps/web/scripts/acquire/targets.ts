@@ -137,6 +137,11 @@ interface Row {
    * already credited at. The tier's whole hypothesis, so it ranks ahead of the prior there; null
    * for every other tier. */
   thin_venues: number | null;
+  /** D065 `vendorthin` only: of those, how many are at 4-5 weddings -- i.e. need only 1-2 more to
+   * cross into 6+. Ranks FIRST, because crossings are the metric and the marginal cost of a
+   * crossing is (6 - n): 31 venues sit at 5 and need one wedding, while 93 sit at 1 and need five.
+   * Null for every other tier. */
+  near_cross: number | null;
 }
 
 /** D063: a venue is in the Chicago metro if account_locations says so, or failing that if its own
@@ -257,7 +262,7 @@ const VENUE_POOL = `
     (select v.raw->>'primary_type' from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) ptype,
     null::text role, null::numeric own_yield,
     (select count(*) from weddings w where w.venue_id=a.id)::int nw,
-    null::int thin_venues,
+    null::int thin_venues, null::int near_cross,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from accounts a join v_account_role r on r.account_id=a.id and r.role='venue'
@@ -270,7 +275,7 @@ const VENUE_POOL = `
 const ALIAS_POOL = `
   select a.id, a.username::text username, 'alias sibling of '||c.username::text why, a.followers, a.venue_type,
     null::int reviews, null::text ptype, null::text role, null::numeric own_yield, 0 nw,
-    null::int thin_venues,
+    null::int thin_venues, null::int near_cross,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from account_aliases x join accounts a on a.id=x.alias_account_id join accounts c on c.id=x.canonical_account_id
@@ -284,7 +289,7 @@ const DISCOVERED_POOL = `
     (select v.raw->>'primary_type' from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) ptype,
     null::text role, null::numeric own_yield,
     (select count(*) from weddings w where w.venue_id=a.id)::int nw,
-    null::int thin_venues,
+    null::int thin_venues, null::int near_cross,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from ops.crawl_frontier f join accounts a on a.id=f.account_id
@@ -303,7 +308,7 @@ const DISCOVER_POOL = `
     (select v.raw->>'primary_type' from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) ptype,
     null::text role, null::numeric own_yield,
     0::int nw,
-    null::int thin_venues,
+    null::int thin_venues, null::int near_cross,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from accounts a
@@ -319,7 +324,7 @@ const VENDOR_POOL = `
        au as (select u, count(*) posts, count(j.url) wp from sp left join j on j.url=sp.post_url group by u having count(*)>=10)
   select a.id, a.username::text username, 'tier-A vendor ('||r.role::text||')' why, a.followers, null::text venue_type,
     null::int reviews, null::text ptype, r.role::text role, round(au.wp::numeric/au.posts,3) own_yield, 0 nw,
-    null::int thin_venues,
+    null::int thin_venues, null::int near_cross,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from au join accounts a on a.username::text=au.u
@@ -357,19 +362,25 @@ const VENDORTHIN_POOL = `
     where not exists (select 1 from account_aliases aa where aa.alias_account_id=a.id)
       and (select count(*) from weddings w where w.venue_id=a.id and w.is_chicago) between 1 and 5
   ),
+  thin_n as (
+    select t.venue_account_id, (select count(*) from weddings w where w.venue_id=t.venue_account_id and w.is_chicago)::int nw
+    from thin t
+  ),
   conn as (
-    select wv.account_id, count(distinct w.venue_id)::int thin_venues
+    select wv.account_id,
+      count(distinct w.venue_id)::int thin_venues,
+      count(distinct w.venue_id) filter (where t.nw >= 4)::int near_cross
     from wedding_vendors wv
     join weddings w on w.id=wv.wedding_id and w.is_chicago
-    join thin t on t.venue_account_id=w.venue_id
+    join thin_n t on t.venue_account_id=w.venue_id
     where wv.account_id is not null and wv.role <> 'venue'
     group by 1
   )
   select a.id, a.username::text username,
-    'credited at '||conn.thin_venues||' thin venue(s) ('||r.role::text||')' why,
+    'credited at '||conn.thin_venues||' thin venue(s), '||conn.near_cross||' needing <=2 ('||r.role::text||')' why,
     a.followers, null::text venue_type,
     null::int reviews, null::text ptype, r.role::text role, null::numeric own_yield, 0 nw,
-    conn.thin_venues,
+    conn.thin_venues, conn.near_cross,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from conn join accounts a on a.id=conn.account_id
@@ -441,16 +452,24 @@ async function main() {
     // on quality alone sends the weddings to venues that are already thick. The prior still breaks
     // ties. Every other tier is unchanged: prior, then documented weddings, then followers.
     //
+    // NEAR_CROSS ranks ahead of raw connection count because the metric is CROSSINGS and the
+    // marginal cost of one is (6 - n). The band is not uniform: 31 venues sit at 5 weddings and need
+    // one more, 24 sit at 4, but 93 sit at 1 and need five. Ranking on raw thin-venue count spends
+    // equally on both ends and arm A showed what that produces -- 18 weddings and exactly ONE
+    // crossing, @maxwellstrading, which happened to already be at 5.
+    //
     // KNOWN RISK, deliberately left for the tick to measure rather than pre-corrected: connection
-    // count correlates with account size, so this puts mega-accounts on top (@flowersfordreams,
-    // 163k followers, 18 thin venues). On VENUE feeds D062/D063 measured yield collapsing above 5k
-    // followers, and if that carries to vendor feeds these are the worst targets in the pool. It is
-    // not measured on vendors, so guessing a ceiling here would be the same unmeasured hand-tuning
-    // D062 had to undo -- measure.ts will produce the per-account priors and the next tick can rank
-    // on them.
+    // count correlates with account size, so this still tends to favour large accounts. On VENUE
+    // feeds D062/D063 measured yield collapsing above 5k followers, and if that carries to vendor
+    // feeds those are the worst targets in the pool. It is not measured on vendors, so guessing a
+    // ceiling here would be the same unmeasured hand-tuning D062 had to undo -- measure.ts will
+    // produce the per-account priors and the next tick can rank on them.
     .sort((a, b) =>
       tier === "vendorthin"
-        ? (b.thin_venues ?? 0) - (a.thin_venues ?? 0) || b.prior - a.prior || (b.followers ?? 0) - (a.followers ?? 0)
+        ? (b.near_cross ?? 0) - (a.near_cross ?? 0) ||
+          (b.thin_venues ?? 0) - (a.thin_venues ?? 0) ||
+          b.prior - a.prior ||
+          (b.followers ?? 0) - (a.followers ?? 0)
         : b.prior - a.prior || b.nw - a.nw || (b.followers ?? 0) - (a.followers ?? 0)
     )
     .slice(0, limit);
