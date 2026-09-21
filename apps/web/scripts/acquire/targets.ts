@@ -10,6 +10,9 @@
  *   deepen  venues already crawled with a measured prior >= 0.2 (status promising), for a deeper pull
  *   probe6  (2026-09-20, remainder tick) metro venue accounts at 6-15 documented weddings never tagged-crawled
  *           -- documented from Jeremy's corpus / vendor feeds only, their own tagged feed is untouched
+ *   vendorthin (2026-09-21, D065 arm C) vendors already credited at a venue in the 1-5 band, never
+ *           tagged-crawled -- selected by THIN-VENUE CONNECTION, not vendor quality, because the
+ *           month-1 `vendor` tick put 88 of its 104 weddings at venues that were already thick
  *   discovered (2026-09-20) hop-1 `ops.crawl_frontier` rows still pending (co-tagged by crawl no.1's venues),
  *           venue role + in_metro, never crawled -- the "discovered venues" Ben's crawler queued but never ran
  * Prior per target = the LATEST ops.crawl_targets row for (account, feed) when one exists (measured by
@@ -20,6 +23,7 @@
  * Read-only. Prints the ranked table and writes the ids (one per line) to --ids-file for runTick.ts.
  *   bun run scripts/acquire/targets.ts --tier probe --limit 90 --ids-file /tmp/probesB.txt
  *   bun run scripts/acquire/targets.ts --tier vendor --limit 100 --ids-file /tmp/vendor.txt
+ *   bun run scripts/acquire/targets.ts --tier vendorthin --limit 60 --ids-file /tmp/vendorthin.txt
  */
 import { writeFileSync } from "node:fs";
 import { getPool, closePool } from "../classify/db";
@@ -29,7 +33,7 @@ import {
   isChurchLikeUsername,
 } from "../graph/venueAliasSignals";
 
-export type Tier = "probe" | "probe6" | "discovered" | "alias" | "vendor" | "deepen" | "discover";
+export type Tier = "probe" | "probe6" | "discovered" | "alias" | "vendor" | "vendorthin" | "deepen" | "discover";
 
 /** Pure: lookup prior for a venue's tagged feed, in weddings per POST.
  *
@@ -129,6 +133,10 @@ interface Row {
   biography: string | null;
   full_name: string | null;
   in_metro: boolean | null;
+  /** D065 `vendorthin` only: how many DISTINCT venues currently in the 1-5 band this vendor is
+   * already credited at. The tier's whole hypothesis, so it ranks ahead of the prior there; null
+   * for every other tier. */
+  thin_venues: number | null;
 }
 
 /** D063: a venue is in the Chicago metro if account_locations says so, or failing that if its own
@@ -218,12 +226,38 @@ export function disqualifyTarget(r: {
   return "no_chicago_evidence";
 }
 
+/** D065: qualification for a VENDOR pool. `disqualifyTarget` above is a VENUE gate and applying it
+ * to vendors is simply wrong -- caught building the `vendorthin` tier, where it threw out 456 of 596
+ * candidates, most of them correctly-identified wedding vendors:
+ *
+ *   non_venue_trade      121  @christytylerphotography, @oldnorthfilmco, @juliettanfloraldesign ...
+ *   no_chicago_evidence  316  @blushandborrowed, @lifeinbloom, @stylemattersdjs ...
+ *
+ * Both exclusions invert for vendors. `isNonVenueUsername` matches trade words ("photography",
+ * "films", "floral") in order to keep tradespeople OUT of a venue pool -- in a vendor pool that is
+ * the target population. And "no Chicago evidence in the bio" is the weaker signal here: a vendor in
+ * this pool is credited on a wedding at a Chicago venue, which is stronger evidence of working in
+ * Chicago than any bio string. `umbrella_brand` inverts too -- "group" and "talent" are ordinary
+ * vendor names, and arm C itself contained @sparkentgroup and @greenlinetalent.
+ *
+ * What survives is the one signal that means the same thing for both: text that positively says the
+ * account is somewhere else. Private accounts and role filtering are handled in SQL.
+ *
+ * This is applied to the `vendor` tier as well as `vendorthin`. The bug was always there; the
+ * month-1 vendor tick simply never noticed how much of its pool it was silently discarding. */
+export function disqualifyVendorTarget(r: { biography: string | null; full_name: string | null }): Disqualification | null {
+  const text = `${r.biography ?? ""} ${r.full_name ?? ""}`;
+  if (NOT_CHICAGO_RE.test(text)) return "out_of_area";
+  return null;
+}
+
 const VENUE_POOL = `
   select a.id, a.username::text username, 'listed venue' why, a.followers, a.venue_type,
     (select (v.raw->>'review_count')::int from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) reviews,
     (select v.raw->>'primary_type' from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) ptype,
     null::text role, null::numeric own_yield,
     (select count(*) from weddings w where w.venue_id=a.id)::int nw,
+    null::int thin_venues,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from accounts a join v_account_role r on r.account_id=a.id and r.role='venue'
@@ -236,6 +270,7 @@ const VENUE_POOL = `
 const ALIAS_POOL = `
   select a.id, a.username::text username, 'alias sibling of '||c.username::text why, a.followers, a.venue_type,
     null::int reviews, null::text ptype, null::text role, null::numeric own_yield, 0 nw,
+    null::int thin_venues,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from account_aliases x join accounts a on a.id=x.alias_account_id join accounts c on c.id=x.canonical_account_id
@@ -249,6 +284,7 @@ const DISCOVERED_POOL = `
     (select v.raw->>'primary_type' from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) ptype,
     null::text role, null::numeric own_yield,
     (select count(*) from weddings w where w.venue_id=a.id)::int nw,
+    null::int thin_venues,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from ops.crawl_frontier f join accounts a on a.id=f.account_id
@@ -267,6 +303,7 @@ const DISCOVER_POOL = `
     (select v.raw->>'primary_type' from vendors v where v.account_id=a.id and v.discovery_source='google_places' limit 1) ptype,
     null::text role, null::numeric own_yield,
     0::int nw,
+    null::int thin_venues,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from accounts a
@@ -282,11 +319,65 @@ const VENDOR_POOL = `
        au as (select u, count(*) posts, count(j.url) wp from sp left join j on j.url=sp.post_url group by u having count(*)>=10)
   select a.id, a.username::text username, 'tier-A vendor ('||r.role::text||')' why, a.followers, null::text venue_type,
     null::int reviews, null::text ptype, r.role::text role, round(au.wp::numeric/au.posts,3) own_yield, 0 nw,
+    null::int thin_venues,
     a.biography, a.full_name,
     coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
   from au join accounts a on a.username::text=au.u
   join v_account_role r on r.account_id=a.id and r.role::text in ('planner','catering','dj','florist','officiant','photo_booth')
   where au.wp::numeric/au.posts >= 0.3 and coalesce(a.is_private,false)=false
+    and (exists (select 1 from account_locations al where al.account_id=a.id and al.in_metro)
+         or exists (select 1 from staging.vendors sv where lower(sv.instagram_handle)=a.username::text))`;
+
+/** D065 arm C, made reproducible. Vendors selected by THIN-VENUE CONNECTION rather than by vendor
+ * quality: accounts already credited at >= 1 venue sitting in the 1-5 band, never tagged-crawled.
+ *
+ * Why this pool and not `vendor`. The month-1 vendor tick selected on own-post wedding yield and
+ * produced 104 weddings, but put 88 of them at venues that were already thick -- excellent
+ * weddings/dollar, near-zero coverage movement. Selecting on who is already credited at a THIN venue
+ * is the hypothesis that the same feeds can be pointed at the band we actually need to move. Arm C
+ * ran this by hand over 12 vendors; this is that selection as a tier, so a scaled tick is one
+ * command and the next session can reproduce the sample.
+ *
+ * "Thin" is the SAME basis as reportVenueCoverage.ts and the coverage bands STATE.md tracks --
+ * `count(*) from weddings where venue_id = account`, is_chicago, no alias rollup -- so the tier
+ * targets the number the report will be judged on rather than a second, differently-defined one.
+ *
+ * Roles. Arm C's 12 spanned catering / band / photographer / florist / dj / rentals / cake, and the
+ * list below is that set plus its close analogs. hair / makeup / beauty_services are deliberately
+ * OUT: the user flagged them and the measurement agrees -- hair anchors to hotels at 14.7% against
+ * catering's 0.6%, and hotels are the thick end of the distribution, so those feeds pull spend
+ * towards exactly the venues that do not need it. Retail roles (attire, wedding_dress, jewelry,
+ * shoes, menswear) are out because they credit no venue. */
+const VENDORTHIN_POOL = `
+  with thin as (
+    select a.id venue_account_id
+    from accounts a
+    join v_account_role r on r.account_id=a.id and r.role='venue'
+    join account_locations al on al.account_id=a.id and al.in_metro
+    where not exists (select 1 from account_aliases aa where aa.alias_account_id=a.id)
+      and (select count(*) from weddings w where w.venue_id=a.id and w.is_chicago) between 1 and 5
+  ),
+  conn as (
+    select wv.account_id, count(distinct w.venue_id)::int thin_venues
+    from wedding_vendors wv
+    join weddings w on w.id=wv.wedding_id and w.is_chicago
+    join thin t on t.venue_account_id=w.venue_id
+    where wv.account_id is not null and wv.role <> 'venue'
+    group by 1
+  )
+  select a.id, a.username::text username,
+    'credited at '||conn.thin_venues||' thin venue(s) ('||r.role::text||')' why,
+    a.followers, null::text venue_type,
+    null::int reviews, null::text ptype, r.role::text role, null::numeric own_yield, 0 nw,
+    conn.thin_venues,
+    a.biography, a.full_name,
+    coalesce((select l2.in_metro from account_locations l2 where l2.account_id=a.id), false) in_metro
+  from conn join accounts a on a.id=conn.account_id
+  join v_account_role r on r.account_id=a.id and r.role::text in
+    ('planner','catering','dj','florist','photographer','videographer','cake','rentals','band',
+     'live_music','photo_booth','officiant','event_design','lighting_production','desserts')
+  where coalesce(a.is_private,false)=false
+    and not exists (select 1 from v_account_role r2 where r2.account_id=a.id and r2.role::text in ('venue','hotel'))
     and (exists (select 1 from account_locations al where al.account_id=a.id and al.in_metro)
          or exists (select 1 from staging.vendors sv where lower(sv.instagram_handle)=a.username::text))`;
 
@@ -296,13 +387,14 @@ async function main() {
   const tier = get("--tier") as Tier | undefined;
   const limit = Number(get("--limit") ?? "50");
   const idsFile = get("--ids-file");
-  if (!tier || !["probe", "probe6", "discovered", "alias", "vendor", "deepen", "discover"].includes(tier)) {
-    console.error("Usage: bun run scripts/acquire/targets.ts --tier probe|probe6|discovered|alias|vendor|deepen|discover [--limit N] [--ids-file path]");
+  if (!tier || !["probe", "probe6", "discovered", "alias", "vendor", "vendorthin", "deepen", "discover"].includes(tier)) {
+    console.error("Usage: bun run scripts/acquire/targets.ts --tier probe|probe6|discovered|alias|vendor|vendorthin|deepen|discover [--limit N] [--ids-file path]");
     process.exit(2);
   }
   const pool = getPool();
   const poolSql =
     tier === "vendor" ? VENDOR_POOL
+    : tier === "vendorthin" ? VENDORTHIN_POOL
     : tier === "alias" ? ALIAS_POOL
     : tier === "discovered" ? DISCOVERED_POOL
     : tier === "discover" ? DISCOVER_POOL
@@ -325,8 +417,11 @@ async function main() {
   // does not qualify -- see disqualifyTarget. Silent filtering is how a gate bug hides good venues.
   const excluded: { r: Row; reason: Disqualification }[] = [];
   const eligible: Row[] = [];
+  // D065: vendor pools get the VENDOR gate -- see disqualifyVendorTarget for why the venue gate
+  // inverts on a vendor population.
+  const isVendorTier = tier === "vendor" || tier === "vendorthin";
   for (const r of rows) {
-    const reason = disqualifyTarget(r);
+    const reason = isVendorTier ? disqualifyVendorTarget(r) : disqualifyTarget(r);
     if (reason) excluded.push({ r, reason });
     else eligible.push(r);
   }
@@ -336,12 +431,28 @@ async function main() {
       const prior =
         r.measured_prior != null
           ? r.measured_prior
-          : tier === "vendor"
+          : tier === "vendor" || tier === "vendorthin"
             ? vendorLookupPrior(r.role, r.own_yield != null ? Number(r.own_yield) : null)
             : venueLookupPrior(r);
       return { ...r, prior };
     })
-    .sort((a, b) => b.prior - a.prior || b.nw - a.nw || (b.followers ?? 0) - (a.followers ?? 0))
+    // D065: `vendorthin` ranks by THIN-VENUE CONNECTION COUNT first, because that -- not vendor
+    // quality -- is the tier's hypothesis, and the month-1 vendor tick already showed that ranking
+    // on quality alone sends the weddings to venues that are already thick. The prior still breaks
+    // ties. Every other tier is unchanged: prior, then documented weddings, then followers.
+    //
+    // KNOWN RISK, deliberately left for the tick to measure rather than pre-corrected: connection
+    // count correlates with account size, so this puts mega-accounts on top (@flowersfordreams,
+    // 163k followers, 18 thin venues). On VENUE feeds D062/D063 measured yield collapsing above 5k
+    // followers, and if that carries to vendor feeds these are the worst targets in the pool. It is
+    // not measured on vendors, so guessing a ceiling here would be the same unmeasured hand-tuning
+    // D062 had to undo -- measure.ts will produce the per-account priors and the next tick can rank
+    // on them.
+    .sort((a, b) =>
+      tier === "vendorthin"
+        ? (b.thin_venues ?? 0) - (a.thin_venues ?? 0) || b.prior - a.prior || (b.followers ?? 0) - (a.followers ?? 0)
+        : b.prior - a.prior || b.nw - a.nw || (b.followers ?? 0) - (a.followers ?? 0)
+    )
     .slice(0, limit);
   console.log(
     `[targets] tier=${tier} pool=${rows.length} qualified=${eligible.length} excluded=${excluded.length} ` +

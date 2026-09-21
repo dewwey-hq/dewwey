@@ -15,7 +15,7 @@ import {
 import { ACTORS, PRICE_USD, buildInput, estimateCostUsd } from "./apifyClient";
 import { formatBatchId } from "./runTick";
 import { computeSpotCheckAgreement, type SpotCheckPair } from "./reportSpotCheck";
-import { venueLookupPrior, vendorLookupPrior, disqualifyTarget } from "./targets";
+import { venueLookupPrior, vendorLookupPrior, disqualifyTarget, disqualifyVendorTarget } from "./targets";
 import { dateFilterHonoured, overlapStats } from "./compareActors";
 import { updatePrior, decideStatus, PRIOR_K } from "./measure";
 import { bucket, scoreCrossings } from "./compareArms";
@@ -685,5 +685,35 @@ describe("sampleCredible (D065 verification sample)", () => {
   test("no supply anywhere yields no slots rather than looping forever", () => {
     const got = allocateSlots(new Map([["A", 0], ["C", 0]]), 20);
     expect([...got.values()].reduce((a, b) => a + b, 0)).toBe(0);
+  });
+});
+
+describe("disqualifyVendorTarget (D065 -- the venue gate inverts on vendors)", () => {
+  const base = { biography: null as string | null, full_name: null as string | null };
+
+  test("a trade handle is NOT excluded -- in a vendor pool that is the target population", () => {
+    // disqualifyTarget returns "non_venue_trade" for these; it threw out 121 real vendors.
+    expect(disqualifyTarget({ ...base, username: "christytylerphotography", in_metro: true, venue_type: null })).toBe("non_venue_trade");
+    expect(disqualifyVendorTarget(base)).toBeNull();
+  });
+
+  test("a silent bio is NOT 'no_chicago_evidence' for a vendor", () => {
+    // The vendor is in the pool because it is credited at a Chicago venue's wedding, which beats any
+    // bio string. The venue gate excluded 316 vendors on this reason alone.
+    expect(disqualifyTarget({ ...base, username: "lifeinbloom", in_metro: false, venue_type: null })).toBe("no_chicago_evidence");
+    expect(disqualifyVendorTarget({ biography: "Floral design", full_name: "Life in Bloom" })).toBeNull();
+  });
+
+  test("'group' and 'talent' are ordinary vendor names, not umbrella brands", () => {
+    // Arm C itself contained @sparkentgroup and @greenlinetalent.
+    expect(disqualifyVendorTarget({ biography: "Chicago entertainment", full_name: "Spark Entertainment Group" })).toBeNull();
+  });
+
+  test("text that positively names somewhere else still excludes -- the one signal that carries", () => {
+    expect(disqualifyVendorTarget({ biography: "Nashville, TN wedding florist", full_name: null })).toBe("out_of_area");
+  });
+
+  test("a church-like vendor handle is not excluded -- officiants are vendors", () => {
+    expect(disqualifyVendorTarget({ biography: "Wedding officiant serving Chicagoland", full_name: "Rev. A" })).toBeNull();
   });
 });
