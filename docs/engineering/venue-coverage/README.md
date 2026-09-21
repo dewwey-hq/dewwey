@@ -203,10 +203,53 @@ Rejected after verification, each now encoded so it cannot recur: `luc_conferenc
 `loyola_cuneomansion` (umbrella), `shorebyclub` / `shoreby_club` and `peartreeestate` /
 `pear_tree_estate` (both sides empty shells — no attribution improves, no evidence to carry).
 
-## 6. Next
+## 6. Next — the month-2 plan for thin coverage
 
-1. **`geo_blocked` (117 accounts, 144 weddings)** — the cheapest coverage left. Backfill
-   `account_locations` from Places and `staging.vendors` addresses, verified per venue.
+The thin tier is **not** one problem. Broken down by what we have actually already done to each
+(listed venues at 1–5 weddings, alias-resolved, 2026-09-20):
+
+| state | venues | avg posts we pulled | avg followers | what it means |
+|---|---|---|---|---|
+| `promising` | 101 | **24** | 22,767 | produced evidence, then we stopped at the 25-post cap |
+| `dead` | 67 | 25 | 27,223 | 25 posts, nothing — do not re-crawl |
+| never targeted | 53 | — | 19,132 | never probed at all |
+| `ambiguous` | 33 | **2** | 2,492 | barely touched; not a real probe |
+
+**The crawled thin venues were never exhausted — they were sampled.** Every one stopped at
+`resultsLimit` 25. Depth is the one dimension never tried on them, and the `deepen` tick in D061
+month 1 is the evidence that it works: 8 venues taken 25 → 100 posts produced 105 weddings at
+**$0.018 each, the cheapest tick of the month**.
+
+In priority order:
+
+1. **`geo_blocked` (116 accounts, 143 weddings) — free, no credit.** They already clear the ≥ 1 bar
+   and cannot be seen. Backfill `account_locations` from Places and `staging.vendors` addresses,
+   verified per venue, in batches with a named diff (`applyD062GeoBackfill.ts` is the pattern).
+   Proven to matter: two venues entered the catalog this way on 2026-09-20.
+2. **Finish the venues we only half-probed — ~$5.** The 33 `ambiguous` (2 posts each!) plus the 53
+   never-targeted, at 25 posts each ≈ 86 × 25 × $0.0023 = **$4.95**. Highest certainty in the plan:
+   these have genuinely never been asked.
+3. **Deepen the 101 `promising` thin venues — ~$23.** 25 → 100 posts. Note the tagged actor has **no
+   recency parameter** (`onlyPostsNewerThan` works only on the `own` feed), so a depth pull re-pays
+   for the first 25 — 100 posts fetched buys 75 new. At their measured prior of 0.069 w/post that is
+   ≈ 520 weddings for ~$23, and because it is the venue's *own* tagged feed every wedding anchors
+   there, which is what moves 1–5 → 6+. Temper the expectation: this cohort averages 22.7k
+   followers, the weakest band in §4, so do **not** extrapolate the deepen tick's 0.24/new-post —
+   that was measured at proven, smaller venues.
+4. **Calibrate the own-profile feed before scaling it (~$0.58).** It has never been run; for the 266
+   proven-thin venues, 365 of their weddings came from own-profile posts vs 261 from tagged feeds.
+   But the tier-A 0.49 prior is measured on Jeremy's *curated* corpus (77.6% stack rate vs 21% on
+   our raw crawls) and will not transfer. 10 authors × 25 posts answers it.
+5. **Re-run the back-test in §4 after each tick** and update the prior if the bands moved. That is
+   the loop actually learning, rather than only recording.
+
+Sequenced this way month 2 spends ≈ $28 of the $29 with the free work done first, and every tick
+produces a measurement that improves the next one.
+
+### Still open
+
+1. **`geo_blocked` remainder** — backfill `account_locations` from Places and `staging.vendors`
+   addresses, verified per venue.
 2. **`mis_anchored` (18)** — re-anchor.
 3. **`no_identity` (260)** — profile enrichment, then re-run the taxonomy and the alias finder.
 4. **Website as venue truth** — a venue serving `/weddings` on its own domain with zero Instagram
