@@ -4,6 +4,72 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D066 — 2026-09-21 — The thin-venue coverage ceiling is real, and the corpus is exhausted
+
+Status: **Accepted.** Measured answer to the user's question: *"is the thought then that we have
+squeezed all we can and those venues dont have credible wedding posts?… should we call it here?"*
+Sits on D065 (the arms), D063 (never-crawled tier closed), D053/D054 (corpus mining).
+
+**Spend to date, all sources.** Apify **$45.99** total, of which **$19.97** went at month-1
+thin/unproven venue probes and **$18.31** at D065 — so **~$38 of ~$46 has been spent chasing thin
+coverage.** Output: the 1-5 band moved 243 → 231 during D065. **12 venues, 5% of the band.**
+
+**Why so little: 88% of the output landed where it was not needed.** Of D065's 779 created weddings,
+**687 (88%) went to venues that already had 6+**, 86 to thin venues, 6 to venues at zero. 188 venues
+touched, 140 already thick. This is month 1's vendor-tick pathology (88 of 104 at thick venues)
+reproduced at 7x scale, at the identical 88%. The metric the arms competed on — weddings per dollar —
+rewards precisely the behaviour that does not move coverage.
+
+**The empirical ceiling, from our own measured target verdicts** (`dead` = ≥20 posts fetched, zero
+stack posts, zero candidates):
+
+| band | venues | crawled | dead | promising | never crawled |
+|---|---|---|---|---|---|
+| 0 weddings | 175 | 156 | **97 (62%)** | 23 | 19 |
+| 1-5 (thin) | 231 | 179 | 59 (33%) | **81 (45%)** | 52 |
+| 6+ | 219 | 150 | 10 (7%) | 117 (78%) | 69 |
+
+**Read it carefully, because the two bands give opposite answers.**
+- **The zero band is genuinely empty.** 156 of 175 crawled, **62% dead**. Their tagged feeds carry no
+  wedding evidence at all. Consistent with D063 Stage 2 failing its gate. **Call it.**
+- **The thin band is NOT a collection failure.** 45% of crawled thin venues are measured
+  `promising` — they do produce wedding signal, and 52 have never been crawled. But arm A pulled 100
+  posts from promising thin venues and returned **~1.2 weddings per venue**, while a venue at 1
+  wedding needs 5 more. **These are real venues that genuinely host few documented weddings.** The
+  distribution is the truth about the venues, not an artifact of our collection. 89 sit at exactly 1.
+
+**So the answer is "call it, with two exceptions":** stop buying coverage for the zero band and for
+the 138 venues at 1-2 (that would be $100+ of Apify for weddings that mostly do not exist). Keep
+(a) the 52 venues at 4-5, which need only 1-2 each and where 7 of the scaled tick's 10 crossings
+already landed, and (b) the free `290 unclustered mapped posts` thread below.
+
+**The corpus is exhausted, and a stale doc line hid that.** Measured: of 47,623
+`staging.instagram_posts`, **47,142 (99%) parsed**, 11,153 clustered, 3,587 read by the reader, and
+**ZERO carry a usable venue anchor while remaining unclustered**. The 35,989 parsed-but-unclustered
+posts lack an anchor, not attention.
+
+I nonetheless recommended "mine the corpus" as a next step, because CLAUDE.md said the re-parse was
+"ongoing corpus-mining work" and the standing memory opened with "only ~6.5% of which has ever made
+it into `public.posts`". **Import share into `public.posts` measures nothing about mining** — the
+parser and reader work staging in place, and the reader logs `context split: staging=N public=N`. The
+user caught it (*"did we already mine jeremy's posts? i thought we had"*). Both sources are corrected;
+measure `stack_extraction_runs` / `jeremy_wedding_candidate_posts`, never import share.
+
+**The one free thread left.** 1,441 staging posts have a full vendor stack (≥3 roles) but no
+candidate. 981 carry a location tag, of which 691 are correctly unmappable — they name a *city or
+neighbourhood*, not a venue ("Chicago Illinois" x141, "Chicago IL", "West Loop Chicago", "West town")
+or are out of area (Milwaukee, Lake Geneva, Bahamas, an estate in Massachusetts). **290 map to a known
+venue and still did not cluster** — the only plausible remaining gate bug, same shape as D050/D051.
+
+**The question worth more than either exception: is 6+ the right bar?** 231 venues hold 1-5 *real*
+documented weddings with vendor lists. A couple looking at a venue with 3 documented weddings is
+arguably well served. "6+" looks like an internal proxy we have been buying against at rising cost,
+and reframing it would move coverage further than any crawl. Raised for the user; a product call.
+
+Related: D065, D063, D062, D061, D054, D053.
+
+---
+
 ## D065 — 2026-09-21 — Depth at thin venues, tested as three competing arms: arm C won
 
 Status: **Accepted — arms measured, winner chosen, remaining budget committed.** Plan:

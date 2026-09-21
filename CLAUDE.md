@@ -75,9 +75,17 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   source of truth**. Jeremy's beta RDS data (5,029 vendors) IS loaded, verbatim,
   in `staging.vendors`/`staging.instagram_posts` etc. (see the bullet above —
   confirmed by count, D052, 2026-09-07); his DDL is captured separately in
-  `docs/jeremy-ddl.sql` for schema reference. His 47,623 posts are not all
-  re-parsed through our stack parser yet — that's the ongoing corpus-mining
-  work, not a data-import gap.
+  `docs/jeremy-ddl.sql` for schema reference. **His 47,623 posts ARE mined
+  (measured 2026-09-21, D066): 47,142 parsed (99%), 11,153 clustered into
+  candidates, and — the number that matters — ZERO staging posts carry a usable
+  venue anchor without already being clustered.** The corpus is exhausted for
+  venue-anchored weddings; the 35,989 parsed-but-unclustered posts lack a venue
+  anchor, not attention. **Do not read "only ~6.5% is in `public.posts`" as
+  "unmined"** — the parser and reader work `staging.instagram_posts` in place
+  (the reader even prints `context split: staging=N public=N`), so import share
+  measures nothing about mining. This line used to say the re-parse was ongoing
+  work; it isn't, and that stale wording caused a session to propose
+  already-finished work as fresh headroom.
 
 ## Design decisions (carry over; don't relitigate without reason)
 
