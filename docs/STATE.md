@@ -21,20 +21,28 @@ what is unpushed (**24+ commits**); the user pushes.
 4. Re-check one live number: from `apps/web`, `bun run scripts/venue-details/reportVenueDetailsFunnel.ts`
    should show **33 served / 24 compare-ready**. Dev server: `nohup bun run dev` from `apps/web`.
 
-## Mission in flight — D065: arm C won; scaled tick CRAWLED, but the reader is BLOCKED on OpenRouter (2026-09-21)
+## Mission in flight — D065: arm C won; scaled tick crawled, reader RESUMED after a hang (2026-09-21)
 
-**Decision is made and the Apify money is spent well. The pipeline is stuck on a $0 problem.**
+**Decision is made, the Apify money is spent well, and the pipeline is running again.**
 Narrative + reasoning: `docs/decisions.md` D065.
 
-### BLOCKED ON THE USER — OpenRouter is out of credits
+### The overnight stall was a missing request timeout, NOT a credit problem
 
-```
-total_credits 10.00 | total_usage 10.371   ->  balance is NEGATIVE
-```
-The key itself has no per-key cap (`limit: null`), so this is the **account balance**. The reader
-(`runExtract.ts`) does not error on this — it **hangs**: no log line, no exception, CPU idle. That is
-how it presents, so do not go looking for a crash. **Top up OpenRouter, then resume (below).**
-Check first: `curl -s https://openrouter.ai/api/v1/credits -H "Authorization: Bearer $OPENROUTER_API_KEY"`.
+The scaled tick's reader stopped dead at 505 of 881 posts and sat there for hours: process alive,
+CPU idle at 16s, not one log line, no exception. The machine had suspended overnight mid-run, the
+open sockets died without a RST ever arriving, and `fetch` in `scripts/classify/openrouter.ts`
+carried **no timeout and no AbortSignal** — so the promise neither resolved nor rejected. Its
+`catch` block anticipates exactly this ("the machine sleeping mid-request") but only fires when
+fetch THROWS; a silently dead socket never reaches it, so the 5-attempt retry loop never got a turn.
+
+**Fixed**: `AbortSignal.timeout(120_000)` on the request, which converts the hang into the network
+error the existing retry path already handles. 120s is well clear of the slowest observed completion
+(~25s).
+
+**A wrong turn worth not repeating:** I first blamed OpenRouter credits, because
+`OPENROUTER_API_KEY` reads $10.371 used of $10. That key is the OLD exhausted one and is
+deliberately unused — `callTool` prefers **`NEW_OPENROUTER_API_KEY`**, which had **$57 of $300
+left** the whole time. Check the key the code actually uses before concluding anything about spend.
 
 ### What the $13.06 bought (all safe in the DB, nothing lost)
 
@@ -46,24 +54,22 @@ Check first: `curl -s https://openrouter.ai/api/v1/credits -H "Authorization: Be
 | Runs | 6 of 6, 0 failed |
 | Items fetched | 4,923 · **3,624 genuinely new** (73.6%, better than arm C's 67%) |
 | Candidates clustered | **1,125** (918 new + 199 attached, v2; 100 new, a1) |
-| Posts read by the reader | **505 of 881** — then credits ran out |
+| Posts read by the reader | **505 of 881** at the stall; the rest are being read now |
 | THIS_VENUE verdicts banked | **435** |
 
 **Apify is now at ≈$46.76 of the $48.18 authorized.** Nothing further can be spent without a new ask.
 
-### How to resume once OpenRouter has credit
+### Resume status (2026-09-21 ~12:57 UTC)
 
-From `apps/web`, **one at a time** (two concurrent ingests deadlocked on `accounts` once — D061):
+Relaunched and **running now**: `chain.sh acq-20260921-d065scale` → `finish_batch.sh` → a four-way
+`compareArms.ts`. No Apify cost; the reader only re-reads the ~376 posts it never got to (~$1.2).
+If it needs restarting, from `apps/web`, **one at a time** (concurrent ingests deadlocked on
+`accounts` once — D061):
 ```
-bash scripts/acquire/bin/chain.sh acq-20260921-d065scale      # idempotent, NO Apify cost;
-                                                              # re-reads only the ~376 unread posts (~$1.2)
-bash scripts/acquire/bin/finish_batch.sh acq-20260921-d065scale   # create live + measure --apply + funnel
-bun run scripts/acquire/compareArms.ts \
-  --batches acq-20260920-d065A,acq-20260920-d065C,acq-20260920-d065D,acq-20260921-d065scale \
-  --labels "A depth-thin,C vendor-thin-conn,D own-profile,SCALE vendorthin x56" \
-  --out scripts/graph/tmp_analysis/d065_arm_comparison.md
+bash scripts/acquire/bin/chain.sh acq-20260921-d065scale        # idempotent, no Apify cost
+bash scripts/acquire/bin/finish_batch.sh acq-20260921-d065scale # create live + measure --apply
 ```
-The stalled processes from the overnight run were killed on 2026-09-21 ~12:55 UTC; nothing is running.
+Durable progress: `scripts/graph/tmp_analysis/acq_logs/acq-20260921-d065scale.{chain,finish}.log`.
 
 ### The arm comparison that decided it (DONE, live, committed)
 
@@ -105,8 +111,9 @@ Report: `apps/web/scripts/graph/tmp_analysis/d065_arm_comparison.md`.
   crossings not 1, C was 3 not 1).
 - The three arms carry `tier='discover'` in `ops.crawl_targets`, which is wrong — the session that
   ran them did not pass `--tier`. Do not trust it for tier-based analysis.
-- **`runExtract` hangs instead of erroring when OpenRouter has no credit.** Worth fixing: a
-  fail-fast balance check at startup would have turned an overnight stall into a 1-second error.
+- **`openrouter.ts` now sets a 120s request timeout.** Without it a suspended machine wedges a run
+  permanently and silently. If a long run ever goes quiet again with idle CPU, this is the shape to
+  suspect first — and check `NEW_OPENROUTER_API_KEY`, not `OPENROUTER_API_KEY`, for spend.
 
 ### Coverage bands (metro venue accounts, `weddings.venue_id`, is_chicago, no alias rollup)
 

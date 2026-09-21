@@ -22,6 +22,9 @@ export interface ToolCallResult<T> {
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
+/** Per-request ceiling. See the `signal:` comment in callTool for the incident that added it. */
+const REQUEST_TIMEOUT_MS = 120_000;
+
 export class OpenRouterError extends Error {
   constructor(
     message: string,
@@ -107,6 +110,19 @@ export async function callTool<T>(opts: {
     try {
       res = await fetch(OPENROUTER_URL, {
         method: "POST",
+        // A REQUEST TIMEOUT, because without one this call can hang forever and wedge a whole run.
+        //
+        // 2026-09-21 (D065): the scaled tick's reader stopped dead at 505 of 881 posts and sat
+        // there for hours -- process alive, CPU idle, not one log line, no exception. The machine
+        // had suspended overnight mid-run and the open sockets died without a RST ever arriving,
+        // so `fetch` neither resolved nor rejected. The catch below anticipates exactly this case
+        // ("the machine sleeping mid-request") but it only fires when fetch THROWS; a silently
+        // dead socket never reaches it, so the retry loop underneath never got a turn.
+        //
+        // AbortSignal.timeout makes the hang throw, which hands it to that existing retry path.
+        // 120s is well clear of a slow completion (the slowest observed here is ~25s) while still
+        // turning an overnight stall into a 2-minute pause.
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
@@ -141,6 +157,8 @@ export async function callTool<T>(opts: {
       // all — it never reaches a response to inspect. At 47k-post
       // production scale, transient network failures are inevitable; retry
       // them the same way as a 429 instead of failing the post outright.
+      // Includes the AbortSignal.timeout above (a TimeoutError DOMException), which is the whole
+      // point of setting it: a wedged socket now arrives here as a retryable network failure.
       lastError = networkError;
       if (attempt < maxAttempts) {
         await sleep(attempt * 3000);
