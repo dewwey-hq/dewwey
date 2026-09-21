@@ -147,11 +147,28 @@ The ~20-post verification is **DONE** (100% precision, see above) — nothing is
   permanently and silently. If a long run ever goes quiet again with idle CPU, this is the shape to
   suspect first — and check `NEW_OPENROUTER_API_KEY`, not `OPENROUTER_API_KEY`, for spend.
 
-### Coverage bands (metro venue accounts, `weddings.venue_id`, is_chicago, no alias rollup)
+### Coverage bands — two universes, and they are not interchangeable
 
-Measured 2026-09-21 05:15, before the scaled tick's creations land:
+**Metro venue accounts** (`weddings.venue_id`, is_chicago, no alias rollup) — measured 2026-09-21
+05:15, *before* the scaled tick's creations landed:
 0: **177** · 1-5: **243** (93 at 1, 51 at 2, 44 at 3, 24 at 4, 31 at 5) · 6-15: **94** · 16-49: **80** · 50+: **30**.
-Re-run: `bun run scripts/graph/reportVenueCoverage.ts`.
+The close-out's after-figures on the same basis: 0: 175 · 1-5: 231 · 6-15: 102 · 16-49: 78 · 50+: 39.
+
+**Listed on `/venues`** (Universe A, what `reportVenueCoverage.ts` prints) — re-measured 2026-09-21
+20:38 UTC, after everything:
+
+| | listed venues | weddings anchored | 1-5 | 6-15 | 16-49 | 50+ | median |
+|---|---|---|---|---|---|---|---|
+| before the scaled tick | 440 | 6,515 | 229 | 98 | 79 | 34 | 5 |
+| after | **442** | **7,271** | **217** | **106** | **77** | **42** | **6** |
+
+Read the first row of that table before funding more of the same: **+756 anchored weddings moved only
+2 venues onto the page.** The scaled tick bought depth at venues already listed, which is exactly what
+D065 concluded arm C does and cannot be talked out of. Hidden, unchanged in shape: B 298 accounts / 78
+weddings (no `account_locations` row), C 49 / 52 (`in_metro=false`), E 21 / 49 (mis-anchored).
+Re-run: `bun run scripts/graph/reportVenueCoverage.ts`; it rewrites
+`tmp_analysis/venue_coverage_2026-09-21.md`.
+
 
 ## Mission in flight — D060 VenueDetails v3: Phase 3 filling; **f1 served 27 venues** (2026-09-20)
 

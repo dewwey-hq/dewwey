@@ -7,14 +7,14 @@ the page doesn't either).
 
 ## Universe A summary
 
-- Listed venues: **440**
-- Total weddings (anchored to a listed venue): **6515**
-- Buckets: 0=0  1-5=229  6-15=98  16-49=79  50+=34
-- Median weddings/venue: **5**
-- Top 50 share: 3553 / 6515 (54.5%)
-- Top 100 share: 4825 / 6515 (74.1%)
+- Listed venues: **442**
+- Total weddings (anchored to a listed venue): **7271**
+- Buckets: 0=0  1-5=217  6-15=106  16-49=77  50+=42
+- Median weddings/venue: **6**
+- Top 50 share: 3923 / 7271 (54.0%)
+- Top 100 share: 5407 / 7271 (74.4%)
 
-## Hidden B -- venue-top, no account_locations row at all (284 accounts, 75 weddings)
+## Hidden B -- venue-top, no account_locations row at all (298 accounts, 78 weddings)
 
 Top 15 by weddings:
 - marriottbonvoy -- 2 weddings
@@ -59,23 +59,23 @@ Product question: hotels don't currently appear under /venues' category=venue fi
 Top 15 by weddings:
 - magmilemarriott -- 3 weddings
 
-## Hidden E -- mis-anchored: venue_id account's top role is neither venue nor hotel (21 accounts, 32 weddings)
+## Hidden E -- mis-anchored: venue_id account's top role is neither venue nor hotel (21 accounts, 49 weddings)
 
 Includes accounts with no account_tags row at all (top role shown as "(none)").
 
 Top 15 by weddings:
+- tigerlilyevents -- top role: other -- 19 weddings
 - ashyanabanquets -- top role: catering -- 4 weddings
-- venuelogic -- top role: bar_service -- 3 weddings
-- ambassadorchicago -- top role: accommodations -- 3 weddings
-- tigerlilyevents -- top role: other -- 2 weddings
-- eeeventco -- top role: other -- 2 weddings
+- venuelogic -- top role: bar_service -- 4 weddings
+- art_imagination -- top role: event_design -- 2 weddings
 - thelasallechicago -- top role: accommodations -- 2 weddings
+- eeeventco -- top role: other -- 2 weddings
 - westinchicagorivernorth -- top role: accommodations -- 2 weddings
 - frostchicago -- top role: lighting_production -- 1 weddings
-- art_imagination -- top role: event_design -- 1 weddings
 - revelglobalevents -- top role: planner -- 1 weddings
 - clementinechicago -- top role: planner -- 1 weddings
-- vendadorchicago -- top role: catering -- 1 weddings
-- lolaeventpros -- top role: planner -- 1 weddings
-- cageandaquarium -- top role: dj -- 1 weddings
-- boweryandbash -- top role: rentals -- 1 weddings
+- lulacafeevents -- top role: catering -- 1 weddings
+- _bcollective -- top role: florist -- 1 weddings
+- wsphotography.us -- top role: photographer -- 1 weddings
+- averyhouse -- top role: photographer -- 1 weddings
+- blueplatechicago -- top role: catering -- 1 weddings
