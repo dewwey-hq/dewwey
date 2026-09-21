@@ -133,7 +133,12 @@ export function mapItemToPostRow(
     likesCount: normalizeCount(item.likesCount),
     commentsCount: normalizeCount(item.commentsCount),
     seedUsername: attributeSeedUsername(item.inputUrl, seedUsernames),
-    source: feed === "tagged" ? "venue_tagged" : "own_profile",
+    // D065: `mentions` is the same content as `tagged` (posts where the seed is tagged by
+    // someone else), just pulled via the general actor so a date floor can be applied. It must
+    // record source='venue_tagged' -- calling it own_profile would mis-attribute vendor recaps as
+    // the venue's own marketing, which is the exact distinction D055 built the 0.056-vs-0.21
+    // yield split on.
+    source: feed === "tagged" || feed === "mentions" ? "venue_tagged" : "own_profile",
     raw: item,
   };
 }

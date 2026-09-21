@@ -572,3 +572,35 @@ describe("disqualifyTarget (D063 qualification gate)", () => {
     expect(disqualifyTarget({ ...base, in_metro: false, username: "thebasementeast", biography: "Live music venue" })).toBe("no_chicago_evidence");
   });
 });
+
+describe("mentions feed (D065)", () => {
+  // `mentions` exists ONLY because the tagged actor has no date filter. D063 Stage 0 measured 99%
+  // content overlap between the two (74 of 75 items already held), so this is the same feed with a
+  // floor -- which matters because the product wants 2024+ weddings, not 2019 ones.
+  test("mentions uses the general scraper, not the tagged actor", () => {
+    expect(ACTORS.mentions).toBe("apify~instagram-scraper");
+    expect(ACTORS.mentions).not.toBe(ACTORS.tagged);
+  });
+
+  test("mentions builds resultsType 'mentions' and accepts a date floor", () => {
+    const input = buildInput("mentions", ["venueA"], {
+      resultsLimit: 100,
+      onlyPostsNewerThan: "2024-01-01",
+    });
+    expect(input.resultsType).toBe("mentions");
+    expect(input.onlyPostsNewerThan).toBe("2024-01-01");
+    expect(input.directUrls).toEqual(["https://www.instagram.com/venueA/"]);
+  });
+
+  test("own still means the account's OWN posts, not mentions of it", () => {
+    // These are opposite content: a venue's own feed is marketing (D055 measured 0.056 w/post);
+    // its tagged feed is vendor recaps (0.21). Mixing them up would silently poison the priors.
+    expect(buildInput("own", ["v"], { resultsLimit: 25 }).resultsType).toBe("posts");
+    expect(buildInput("mentions", ["v"], { resultsLimit: 25 }).resultsType).toBe("mentions");
+  });
+
+  test("mentions is priced the same as every other feed", () => {
+    expect(PRICE_USD.mentions).toBe(PRICE_USD.tagged);
+    expect(estimateCostUsd("mentions", 10, 100)).toBeCloseTo(10 * 100 * PRICE_USD.mentions, 6);
+  });
+});

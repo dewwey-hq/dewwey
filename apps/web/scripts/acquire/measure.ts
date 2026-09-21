@@ -162,7 +162,7 @@ async function main() {
       const r = u.row;
       await client.query(`update ops.crawl_run_seeds set stack_posts = $1 where run_id = $2 and account_id = $3`, [r.stack_posts, r.run_id, r.account_id]);
       seedsUpdated++;
-      const targetFeed = r.feed === "own" ? "own" : "tagged";
+      const targetFeed = r.feed === "own" ? "own" : "tagged" /* D065: mentions counts as tagged */;
       await client.query(
         `insert into ops.crawl_targets (account_id, canonical_account_id, feed, tier, prior_w_per_post, prior_n, status, features, last_run_id, note)
          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,

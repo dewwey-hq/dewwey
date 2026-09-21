@@ -31,7 +31,8 @@ import { startRun, waitForRun, getDatasetItems, getMonthlyUsageUsd, PRICE_USD } 
 /** The general scraper, which the ACTORS map in apifyClient.ts calls `own`. Named here so the
  * report is unambiguous about which actor produced which column. */
 const GENERAL_ACTOR = "apify~instagram-scraper";
-const MONTHLY_STOP_USD = 28.5;
+// D065: matches runTick.ts's stop; see the rationale there ($20 authorized overage).
+const MONTHLY_STOP_USD = 48.5;
 
 /** Default probe set: venues already pulled with the tagged actor, with >= 20 held posts, chosen to
  * span the follower range that D062 found predictive (615 / 4.4k / 8.8k followers). */

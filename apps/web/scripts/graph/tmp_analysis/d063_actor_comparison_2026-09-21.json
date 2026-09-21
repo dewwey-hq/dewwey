@@ -1,17 +1,16 @@
 {
-  "since": "2026-08-22",
-  "resultsLimit": 25,
+  "since": "2024-01-01",
+  "resultsLimit": 100,
   "usernames": [
-    "belvederechateau1",
-    "ivyroomchicago",
-    "chicagowinery"
+    "hiltonchicagonorthbrook"
   ],
-  "billed": 0.23007092659801387,
-  "itemsA": 75,
-  "itemsB": 45,
+  "billed": 0.23000345855951565,
+  "itemsA": 100,
+  "itemsB": 13,
   "dateFilter": {
-    "total": 45,
-    "older": 1,
-    "honoured": false
+    "total": 13,
+    "olderUnpinned": 0,
+    "olderPinned": 0,
+    "honoured": true
   }
 }

@@ -29,7 +29,31 @@ import {
 } from "./apifyClient";
 import { ingestRun, normalizeHandle } from "./ingest";
 
-const MONTHLY_STOP_USD = 28.5;
+/** Hard stop against the Apify account's live monthly usage, checked before every batch.
+ *
+ * D065 (2026-09-21): raised 28.5 -> 48.50. The old value existed to keep month 1 inside the Starter
+ * plan's INCLUDED $29 and it did its job -- the D063 Stage 2 tick halted itself mid-run at $28.18.
+ * But it is a self-imposed budget, not an account limit, and mistaking one for the other cost a
+ * session: the account's real `maxMonthlyUsageUsd` is $100.
+ *
+ * SPENDING ABOVE $29 IS OVERAGE -- money billed beyond the subscription, against that $100 cap.
+ * The user authorized a $20 test budget explicitly, so the ceiling is
+ * usage-at-authorization ($28.18) + $20 = $48.50. Raising it further needs another explicit ask.
+ *
+ * Unchanged: the check runs before any paid call, projects at the conservative PRICE_USD rather
+ * than the ~21%-lower rate we are actually billed, and fails CLOSED when the usage fetch errors. */
+const MONTHLY_STOP_USD = 48.5;
+
+/** D065: what to WRITE for `feed` in ops.*, which is a CONTENT type, not an actor name.
+ *
+ * `mentions` is the tagged feed pulled through the general actor so a date floor can apply, so it
+ * records as 'tagged' -- that is what the content is, it keeps every downstream consumer
+ * (ingest's posts.source, measure's rollup, targets' crawled-set) working unchanged, and it
+ * satisfies crawl_runs_feed_check, which allows only tagged|own|profile. Which actor actually ran
+ * is not lost: ops.crawl_runs.actor records it, and the input jsonb carries resultsType. */
+function dbFeed(feed: Feed): "tagged" | "own" {
+  return feed === "own" ? "own" : "tagged";
+}
 const BATCH_SIZE = 10;
 const RUN_TIMEOUT_MS = 30 * 60 * 1000;
 const SLEEP_BETWEEN_RUNS_MS = 20_000;
@@ -174,7 +198,7 @@ async function ensureTargets(
   targetNote: string
 ): Promise<Map<number, number>> {
   const pool = getPool();
-  const targetsFeed = feed === "profile" ? "tagged" : feed;
+  const targetsFeed = dbFeed(feed);
   const targetsTier = feed === "profile" ? "profile" : tier;
   const prior = PRIOR_BY_TIER[targetsTier] ?? 0;
   const idByAccount = new Map<number, number>();
@@ -338,7 +362,7 @@ async function main() {
     const { rows: runRows } = await pool.query(
       `insert into ops.crawl_runs (batch_id, actor, feed, input, status, note)
        values ($1,$2,$3,$4,'started',$5) returning id`,
-      [batchId, ACTORS[args.feed], args.feed, JSON.stringify(input), args.note]
+      [batchId, ACTORS[args.feed], dbFeed(args.feed), JSON.stringify(input), args.note]
     );
     const runId = runRows[0].id as number;
 
