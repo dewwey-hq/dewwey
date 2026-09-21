@@ -33,11 +33,13 @@ Apify API rather than inferred from our code. But `apify/instagram-scraper` expo
 paid for a full re-pull and saw a successful run. STATE.md's own guidance ("the next deepening
 should use `--only-newer-than`") would have done exactly that. It now throws.
 
-**Billing correction.** We are billed **$0.001918/result**, not the $0.0023 `PRICE_USD` assumes —
-SILVER tier on a STARTER plan. The constant stays high deliberately (it feeds the stop guards, where
-over-estimating fails safe), but **every "$ per wedding" we have published is an upper bound ~21%
-above actual**. Tiers, for when volume justifies a plan change: BRONZE $0.0023 · SILVER $0.0019 ·
-GOLD $0.0015 · DIAMOND $0.0005.
+**Billing correction — ITSELF CORRECTED by D065, keep both halves.** This entry originally claimed
+we are billed $0.001918/result (SILVER on a STARTER plan) and that every "$ per wedding" figure we
+publish is an upper bound ~21% above actual. **That was wrong.** It was inferred from a 120-item
+run, and a ~$0.23 delta read off a lagging monthly-usage API is noise rather than a rate. Measured
+again during D065 on 3,500 items across three runs of ≥1,000: **$0.00232/item — BRONZE $0.0023**,
+exactly what `PRICE_USD` already assumed. Our cost figures were never overstated. The standing rule
+this leaves behind: never infer a unit rate from a usage delta under ~1,000 items.
 
 **Stage 1 — qualification, and a correction to D062's prior.**
 - *Qualification is a gate, not a prior.* D062 made the prior favour small accounts, correctly — but

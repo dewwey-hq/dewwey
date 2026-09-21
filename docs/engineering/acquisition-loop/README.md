@@ -1,9 +1,29 @@
 # Acquisition loop — Instagram post acquisition that learns from its own yield (D061)
 
-**Status: MONTH 1 COMPLETE (2026-09-19 → 20, incl. the remainder ticks probe6 / discovered / deepen and the human-verdict creation pass). Weddings
-5,972 → 6,995 (1,025 created by the loop), Apify $25.69 of $29, OpenRouter ≈ $8, 10,461 post results fetched; Gates
-0 / 1a / 1 and two blind spot-checks (95.7%, 97%) passed. Reader `extract-v1.3` shipped 2026-09-20 (precision 52/52, recall 52/62 on the 79-post eval; v1.2 40/41,
-40/62) with the styled-shoot auto-create gate. The human-verdict creation pass (2026-09-20 evening, no spend) added 56 weddings from the user's 93 labels; 4 venues left the 1-5 bucket.
+**Status: MONTH 1 COMPLETE (2026-09-19 → 20). Weddings 5,972 → 6,995 (1,025 by the loop), Apify $25.69
+of $29, OpenRouter ≈ $8; Gates 0 / 1a / 1 and two blind spot-checks (95.7%, 97%) passed. Reader
+`extract-v1.3` shipped with the styled-shoot gate; the human-verdict pass added 56 weddings from the
+user's 93 labels.**
+
+**What month 1's plan got wrong, established since (read this before planning month 2):**
+- **The never-crawled venue tier is CLOSED (D063).** 20 qualified never-crawled venues, 450 posts,
+  $1.04 → **0 weddings auto-created**, 7.6% stack rate against a 21% baseline. Even after
+  qualification the survivors are largely hotels and museums whose tagged feeds are tourists. Do not
+  re-open it; the §4 tick table below predates this.
+- **The venue prior in §1a is superseded.** Follower count predicts yield as a HUMP, not the band
+  table below: <50 followers yields 0.36 weddings/venue, 400–999 yields 2.43, 20k+ yields 0.33.
+  `venueLookupPrior` in `scripts/acquire/targets.ts` carries the measured version and its evidence.
+- **A qualification gate now runs BEFORE the prior** (`disqualifyTarget`). The prior ranks; it does
+  not decide eligibility. Without it the queue fills with out-of-state venues, people, umbrella
+  brands and parishes — 244 raw targets became 61.
+- **The tagged actor cannot do incremental pulls, but `apify/instagram-scraper` with
+  `resultsType: "mentions"` can** — same content (99% overlap over 3 venues, D063 Stage 0), same
+  price, and it accepts `onlyPostsNewerThan`. `buildInput` now THROWS if handed a date filter for
+  the tagged actor, which used to be dropped silently while the caller paid for a full re-pull.
+- **Billing is BRONZE $0.0023/result**, measured over 3,500 items. A D063 claim that we were on
+  SILVER came from a 120-item sample and was wrong — never infer a unit rate from a usage delta
+  under ~1,000 items.
+
 Live status: `docs/STATE.md` "Second mission"; history: `docs/decisions.md` D061 + addenda.**
 Plan of record: `~/.claude/plans/on-1-what-do-joyful-church.md` (this README is
 kept in line with it). Yield queries:

@@ -132,44 +132,56 @@ had never been asked whether the priors it selects with are any good. Back-testi
 of our own measured targets (tiers probe / probe6 / canary, ≥ 15 posts fetched) answered that, and
 the answer changed how targeting works.
 
-### Finding: yield falls as venue size rises, and our prior was pointed the wrong way
+### Finding: venue size predicts yield — as a HUMP, not a slope
 
-Weddings per **post** by follower band:
+This finding was got wrong twice before it was got right. Both wrong versions are kept, because the
+*way* they were wrong is the reusable lesson.
 
-| followers | venues | weddings/post | % that came back empty |
-|---|---|---|---|
-| < 500 | 45 | **0.152** | **13%** |
-| 500–1.5k | 143 | 0.116 | 27% |
-| 1.5k–5k | 146 | 0.104 | 31% |
-| 5k–20k | 133 | 0.049 | 62% |
-| 20k+ | 87 | **0.013** | **83%** |
+**Version 1 (D062).** Back-testing 570 targets filtered to `fetched >= 15`, weddings per **post** by
+follower band: <500 **0.152** · 500–1.5k 0.116 · 1.5k–5k 0.104 · 5k–20k 0.049 · 20k+ **0.013**.
+Read as "yield falls monotonically as venues get bigger", and the prior was rebuilt to favour the
+smallest accounts.
 
-The smallest venues out-yield the largest **12× per post**. The old prior did the opposite — it
-added +0.06 for the 3k–10k band — because the loop README's §1a table came from crawl nº1, which
-measured weddings **per venue**. A large venue is tagged constantly and hits the 25-post cap, so it
-produces more weddings per venue while producing far fewer per post. **We pay per post.** The prior
-was optimising the wrong denominator, and no amount of per-target learning would have caught it,
-because the bias was in the feature weights rather than in any single target's history.
+**Version 2 (D063) — the hump.** That sample was filtered to venues returning ≥ 15 posts, which
+**structurally excluded the accounts that return almost nothing**. Re-measured across ALL 697
+measured targets, on weddings per **VENUE** (the metric that matters at a ≥ 1-wedding bar):
 
-### Back-test of the ranking (same 570 venues, quartiles by prior)
+| followers | <50 | 50–149 | 150–399 | 400–999 | 1.5k–5k | 5k–20k | 20k+ |
+|---|---|---|---|---|---|---|---|
+| weddings/venue | **0.36** | 0.90 | 1.91 | **2.43** | 2.59 | 1.21 | **0.33** |
+| avg posts returned | 4.5 | 8.3 | 16.8 | 23.6 | 24.9 | 24.9 | 24.9 |
+| % returning nothing | 82% | 75% | 46% | 42% | 31% | 62% | 83% |
+
+Tiny accounts are not good targets — **they have no feed to pull**. Under 50 followers returns 4.5
+posts. Per-post yield looked fine down there only because the denominator was 4–8 posts. The
+symptom that exposed it: `@cityhallofchicago`, 4 followers, ranked **second** in the first
+qualified queue under the D062 prior.
+
+Back-test on all measured targets, top quartile: D062 2.69 weddings/venue and **60%** of venues
+yielding ≥ 1; D063 **3.50** and **82%** — same money.
+
+**The explanation D062 gave was also wrong**, and that matters more than the numbers. It said the
+old prior favoured big venues because crawl nº1 measured weddings *per venue* while we pay *per
+post*. Testing it, per-venue falls monotonically too, so the denominator story is false. The actual
+mechanism is **signal dilution at high-traffic accounts** — a landmark's tagged feed is tourists,
+not weddings — which the loop README's own note already implied (">1,000 reviews → 1.7–2.9
+weddings/venue, tourist landmarks and restaurants"). A tidy explanation that survives no test is
+worse than none, because it gets reused.
+
+### Back-test of the ranking (570 targets, ≥ 15 posts, quartiles by prior)
 
 | ranking | Q1 → Q4 realized w/post | spread | % empty Q1 → Q4 |
 |---|---|---|---|
-| old `venueLookupPrior` | 0.061 · 0.076 · 0.081 · 0.111 | 1.8× | 44% → 39% |
+| original `venueLookupPrior` | 0.061 · 0.076 · 0.081 · 0.111 | 1.8× | 44% → 39% |
 | followers ascending, alone | 0.120 · 0.106 · 0.077 · 0.028 | 4.3× | 20% → 69% |
-| **recalibrated prior** | 0.030 · 0.047 · 0.109 · **0.143** | **4.8×** | **70% → 18%** |
+| D062 recalibration | 0.030 · 0.047 · 0.109 · **0.143** | **4.8×** | **70% → 18%** |
 
-A single inverted feature beat the entire hand-tuned prior; the recalibrated version (followers
-inverted and dominant, plus `venue_type`, Places type and review count) beats followers alone. It is
-also well calibrated in level, not just in order — Q4 predicts 0.157 and realizes 0.143.
+Note this table cannot see the hump — it is the filtered sample. Judge follower bands on the
+per-venue table above, not this one.
 
-**Practical effect:** spending a fixed budget on the top prior quartile rather than an average mix
-moves expected yield from ~0.081 to ~0.143 weddings per post (**+77% per dollar**) and cuts the
-share of targets that return nothing from ~45% to 18%.
-
-`venue_type` is independently predictive on the same sample and `other` is a real negative signal
-that was previously unpenalised: farm_estate 0.148 · event_space 0.104 · country_club 0.092 ·
-hotel 0.088 · restaurant 0.062 · house_of_worship 0.053 · **other 0.033, 69% empty**.
+`venue_type` is independently predictive and `other` is a real negative signal that was previously
+unpenalised: farm_estate 0.148 · event_space 0.104 · country_club 0.092 · hotel 0.088 ·
+restaurant 0.062 · house_of_worship 0.053 · **other 0.033, 69% empty**.
 
 ### The standing rule
 

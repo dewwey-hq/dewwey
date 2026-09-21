@@ -40,28 +40,40 @@ export const ACTORS = {
   tagged: "apify~instagram-tagged-scraper",
   own: "apify~instagram-scraper",
   profile: "apify~instagram-profile-scraper",
+  // D065: the SAME content as `tagged` -- apify/instagram-scraper's `mentions` results type is
+  // documented as "Posts where a profile is tagged", and D063 Stage 0 measured 99% overlap with
+  // the tagged actor over 3 venues (74 of 75 items already held). The reason to prefer it is that
+  // it accepts `onlyPostsNewerThan`, which the tagged actor has no equivalent for at all, at the
+  // same per-result price. Use this for any pull that should stop at a date.
+  mentions: "apify~instagram-scraper",
 } as const;
 export type Feed = keyof typeof ACTORS;
 
-// BRONZE tier per-result price, reconciled against real usage via getMonthlyUsageUsd() —
-// see docs/engineering/acquisition-loop/README.md. Same rate for all three feeds today.
+// Per-result price, BRONZE tier. Reconciled against real usage via getMonthlyUsageUsd().
 //
-// D063 (2026-09-21): we are billed LESS than this. The Stage 0 comparison run is the clean
-// measurement — two runs, 120 dataset items, Apify usage moved $26.8594 → $27.0894 = $0.2301,
-// i.e. **$0.001918 per item**. That is the SILVER tier rate ($0.0019) from the actors'
-// `pricingInfos`, not BRONZE ($0.0023); the account is on the STARTER plan, which evidently
-// carries SILVER actor pricing. Our model therefore overstates spend by ~21%.
+// D065 (2026-09-21) CORRECTS D063. D063 claimed we were billed $0.001918/item (SILVER) and that
+// every "$ per wedding" figure we publish was therefore ~21% overstated. That was wrong, and the
+// mistake is worth keeping because it is easy to repeat: the claim came from a 120-item run, and a
+// ~$0.23 delta read off a lagging monthly-usage API is noise, not a rate.
 //
-// The constant is deliberately LEFT HIGH. It feeds the pre-flight guards in runTick.ts
-// (`--max-cost-usd`, MONTHLY_STOP_USD), and for a guard, over-estimating is the safe direction —
-// it stops early rather than late. The cost consequence is only that we reserve more headroom than
-// we need. What it does mean: every "$ per wedding" figure we have published is an UPPER BOUND,
-// roughly 21% above actual. The full tier table, for when volume justifies a plan change:
+// Measured again on samples big enough to mean something:
+//   120 items   -> $0.00192/item   (too small to trust)
+//   113 items   -> $0.00204/item   (too small to trust)
+//   1,000 items -> $0.00234
+//   1,500 items -> $0.00233
+//   1,000 items -> $0.00230
+//   3,500 items in aggregate -> **$0.00232/item**, i.e. BRONZE $0.0023.
+//
+// So this constant was right all along. Rule of thumb that follows: never infer a unit rate from a
+// usage delta under ~1,000 items.
+//
+// The tier table still holds if volume ever justifies a plan change:
 // FREE $0.0027 · BRONZE $0.0023 · SILVER $0.0019 · GOLD $0.0015 · PLATINUM $0.0009 · DIAMOND $0.0005.
 export const PRICE_USD: Record<Feed, number> = {
   tagged: 0.0023,
   own: 0.0023,
   profile: 0.0023,
+  mentions: 0.0023,
 };
 
 export interface RunHandle {
@@ -190,10 +202,13 @@ export function buildInput(
     }
     return { username: usernames, resultsLimit: opts.resultsLimit };
   }
-  if (feed === "own") {
+  if (feed === "own" || feed === "mentions") {
     const input: Record<string, unknown> = {
       directUrls: usernames.map((u) => `https://www.instagram.com/${u}/`),
-      resultsType: "posts",
+      // `posts` = what this account posted; `mentions` = posts where it is TAGGED by others.
+      // The venue graph is built from the latter -- a venue's own feed is marketing (D055
+      // measured 0.056 w/post on venue own-profiles), while its tagged feed is vendor recaps.
+      resultsType: feed === "mentions" ? "mentions" : "posts",
       resultsLimit: opts.resultsLimit,
     };
     if (opts.onlyPostsNewerThan) input.onlyPostsNewerThan = opts.onlyPostsNewerThan;
