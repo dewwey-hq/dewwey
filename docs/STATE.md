@@ -5,7 +5,10 @@ session; history lives in `decisions.md`, preferences in Claude's memory, in-fli
 If this page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-20 ~16:35 CT** by the D060 window, after Phase 3 fill tick **f1** (27 venues
+Last rewritten: **2026-09-21 ~04:40 UTC**, hand-off MID-FLIGHT at a context limit. D065's three
+acquisition chains were RUNNING when the session ended -- the mission section immediately below is
+the first thing to act on. (The D060 VenueDetails window is separate and idle; its f1 tick served 27
+venues and $34.74 of its $40 cap is unspent.)
 served). Two windows commit to local `main` in parallel (this one = D060 VenueDetails; the other = D061
 acquisition loop, see "Second mission"). Check `git log --oneline origin/main..HEAD` for what is unpushed;
 the user pushes.
@@ -21,6 +24,52 @@ the user pushes.
    scripts/venue-details` should be **899 green**. Dev server: `nohup bun run dev` from `apps/web`
    (`/lab/venue?u=<username>` renders the served set).
 4. Then the "Blocked on the user" list. **Phase 3 cap is $40, approved by the user; $5.26 spent, ≈ $34.74 left.**
+
+## Mission in flight — D065 acquisition arms: CHAINS WERE RUNNING AT HAND-OFF (2026-09-21)
+
+**FIRST THING TO DO IN A NEW SESSION.** Three crawl batches are ingested and their chains were
+running when the session ended. Nobody has seen a result yet.
+
+```
+# 1. Did the chains finish?
+tail -5 /home/jhoffen/dewwey/apps/web/scripts/graph/tmp_analysis/acq_logs/acq-20260920-d065A.chain.log
+#    ...same for d065C and d065D. Look for "== <time> DONE".
+# 2. If any did NOT finish, re-run it (idempotent, no Apify cost, ~$0.30 OpenRouter each):
+cd apps/web && bash scripts/acquire/bin/chain.sh acq-20260920-d065A
+# 3. Then measure each arm and COMPARE THEM. This comparison is the entire point.
+bun run scripts/acquire/measure.ts --batch-id acq-20260920-d065A   # dry-run first
+```
+
+**The comparison, on identical metrics:** weddings created per dollar, and **venues crossing
+1-5 → 6+**. Then put the remaining **$13.06** behind whichever arm actually won — not the one that
+looked most promising in advance. The arms exist because the user asked *"are you testing too here
+to make sure we aren't committing all to 1 strategy that is wrong?"*, and the honest answer was no.
+
+| arm | batch | hypothesis | accounts | items | $ |
+|---|---|---|---|---|---|
+| A | `acq-20260920-d065A` | depth at big-gap promising thin venues | 15 | 1,500 | 3.45 |
+| C | `acq-20260920-d065C` | vendor feeds picked by THIN-VENUE CONNECTION | 12 | 1,200 | 2.76 |
+| D | `acq-20260920-d065D` | own-profile feed — never run before | 8 | 200 | 0.46 |
+
+Arm A's ingest is the only thing measured so far: 1,496 fetched → **1,074 new**, a flat 28%
+already-held (the D061 deepen tick re-paid ~45%). Projected ~75–95 weddings at its measured prior —
+**a projection, not a result.**
+
+**Budget.** Apify **$35.12**; the authorized ceiling is **$48.50** (`MONTHLY_STOP_USD`), which is
+$28.18 at authorization + the user's $20. **$6.94 spent, $13.06 left.** Spending past $29 is
+overage against the account's $100 hard cap — real money beyond the subscription. Do not raise the
+ceiling again without asking.
+
+**Landmines specific to this work:**
+- **Run ticks and chains ONE AT A TIME.** Two concurrent ingests deadlocked on `accounts` once
+  (D061), and the budget guard is per-process — three parallel `runTick`s would each read the same
+  stale usage and could collectively overshoot the stop.
+- **Ingest is the bottleneck, not Apify.** ~0.86 s/item, almost all of it images to R2: a
+  1,000-item batch is ~3 min of Apify and ~15 min of ingest. `ingest.ts` has a `--no-images` path;
+  for a scaled tick, skip images and backfill them later.
+- **DB tests need `--no-file-parallelism`** or they time out at 120s (D064).
+- `@thelasallechicago` is geo-unblocked but still unlisted: its top role is `accommodations`, which
+  `/venues` does not accept. A role-vocabulary gap, not a geography one.
 
 ## Mission in flight — D060 VenueDetails v3: Phase 3 filling; **f1 served 27 venues** (2026-09-20)
 

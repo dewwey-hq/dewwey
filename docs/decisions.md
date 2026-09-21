@@ -4,6 +4,64 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D065 — 2026-09-21 — Depth at thin venues, tested as three competing arms (IN FLIGHT at hand-off)
+
+Status: **arms crawled and ingested; chains RUNNING at hand-off.** No winner decided yet — the
+comparison is the whole point and it has not been made. Plan: `~/.claude/plans/virtual-watching-crown.md`.
+
+**Context.** The user authorized $20 of Apify and asked for thin coverage plus more posts. Two
+corrections framed the work. First, **we were never blocked**: the account's hard cap is $100 and we
+sat at $28.18 — the wall was `MONTHLY_STOP_USD = 28.5`, a self-imposed constant from month 1, which
+I had mistaken for an account limit. Raised to **48.50** = $28.18 + the authorized $20, with the
+overage nature stated in the code. Second, the user asked *"are you testing too here to make sure we
+aren't committing all to 1 strategy that is wrong?"* — and the answer was no: the approved plan put
+$13.59 behind one hypothesis with the gate firing only after it was spent, which is the D063 Stage 2
+shape. Restructured at the user's direction into small competing arms.
+
+**Step 0 ($0.46) — bought the most valuable thing in the plan: proof the targeting was wrong.**
+At `@hiltonchicagonorthbrook`, a 100-pull with no floor returned 100 items (75 new); the same pull
+with `onlyPostsNewerThan=2024-01-01` returned 13 items, **all 13 already held — zero new**. Our
+existing 25-post sample already contained every 2024+ post that venue has. The plan's rule ("skip
+the 23 venues whose sample reaches back to 2024 because they have few posts") was the right answer
+for the wrong reason: they post *rarely*, so 25 posts spans years and we therefore already hold
+their recent content. Corrected metric: **how much of the 2024+ window our existing sample fails to
+cover** — which selects a different 52 venues and would have mis-picked the rest.
+
+**The user's product call:** hold the line at **2024+**, 2023 only in edge cases. Couples want
+recent weddings; a 2019 wedding has a stale vendor list and dated photos. That makes the pre-2024
+depth not worth buying, independent of cost.
+
+**Arms run (all 2024+ floor, so they are comparable and on content the product wants):**
+
+| arm | hypothesis | accounts | items | $ |
+|---|---|---|---|---|
+| A | depth at big-gap promising thin venues | 15 | 1,500 | 3.45 |
+| C | vendor tagged feeds selected by THIN-VENUE CONNECTION (never tested this way; month 1 selected by vendor quality and put 88 of 104 weddings at thick venues) | 12 | 1,200 | 2.76 |
+| D | own-profile feed — never run at all before | 8 | 200 | 0.46 |
+
+Arms C and D were rebuilt once before spending: C's first draft was dominated by hair/makeup
+vendors (the user had flagged these, and hair anchors to hotels at 14.7% vs catering's 0.6%), and
+D's included `@venuelogic` (a management company) and `@rockwellontheriver` (a venue — venue
+own-feeds measure 0.056 w/post). Both now role-filtered, and the two accounts appearing in both arms
+were removed from D so the arms stay disjoint.
+
+**Arm A's ingest (the only arm measured so far):** 1,496 fetched → **1,074 genuinely new**, a flat
+**28% already-held** across all 15 venues, every one returning a full 100 under the 2024 floor. For
+comparison the D061 deepen tick re-paid 26–59% (≈45% avg): the floor does not skip held posts, but
+it stops the pull before it buys the old tail.
+
+**Spend: $6.94 of the $20** (Apify $28.18 → $35.12). $13.06 remains, earmarked for scaling whichever
+arm wins.
+
+**Not yet known — this is what the next session must do.** The chains (parse → cluster → reconcile →
+reader → creation dry-run → funnel) were running when the session ended. Until they finish, **no arm
+has produced a single measured wedding.** The honest expectation for A is ~1,074 × its measured
+prior 0.069–0.090 ≈ 75–95 weddings, but that is a projection, not a result.
+
+Related: D063 (never-crawled tier closed; the mentions actor), D062, D061.
+
+---
+
 ## D063 — 2026-09-21 — A cheaper acquisition loop: incremental pulls are possible, and never-crawled venues are exhausted
 
 Status: Accepted. Stage 0 PASS, Stage 1 shipped, **Stage 2 FAILED its gate and stopped the plan** —
