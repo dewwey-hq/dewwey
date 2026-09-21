@@ -74,6 +74,12 @@ export const PRIOR_BY_TIER: Record<string, number> = {
   discovered: 0.08, // hop-1 frontier venues, same unknown as a probe
   canary: 0.08,
   vendor: 0.35,
+  // D065, seeded at the arms' OWN measured realized rate rather than a guess (same discipline as
+  // `discover` above). vendorthin = arm C: 129 weddings from 1,182 fetched = 0.109 w/post, the best
+  // of the three arms and 9x arm A's depth-at-thin-venues. crossing = arm A: 18 from 1,496 = 0.012,
+  // which is what a deep re-pull at an already-thin venue actually returns.
+  vendorthin: 0.109,
+  crossing: 0.012,
   alias: 0.2,
   deepen: 0.35,
   recency_a: 0.4,
