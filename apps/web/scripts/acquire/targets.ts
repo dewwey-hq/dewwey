@@ -26,15 +26,52 @@ import { getPool, closePool } from "../classify/db";
 
 export type Tier = "probe" | "probe6" | "discovered" | "alias" | "vendor" | "deepen";
 
-/** Pure: the README §1a lookup prior for a venue's tagged feed (weddings per post). */
+/** Pure: lookup prior for a venue's tagged feed, in weddings per POST.
+ *
+ * RECALIBRATED 2026-09-20 (D062) against 570 of our own measured targets (tiers probe / probe6 /
+ * canary, >= 15 posts fetched each). The original bands came from Ben's crawl nº1 as written up in
+ * the loop README §1a, and they were pointed the wrong way on the single most important feature.
+ *
+ * What the measurement says, weddings per post by follower band:
+ *
+ *   < 500      0.152   (45 venues, 13% came back with nothing)
+ *   500-1.5k   0.116   (143,  27% empty)
+ *   1.5k-5k    0.104   (146,  31% empty)
+ *   5k-20k     0.049   (133,  62% empty)
+ *   20k+       0.013   (87,   83% empty)
+ *
+ * **Yield falls monotonically as followers rise** -- the smallest venues out-yield the largest by
+ * 12x per post. The old rule did the opposite, adding +0.06 for the 3k-10k band, because crawl nº1
+ * measured weddings per VENUE and a big venue hits the 25-post cap: it produces more weddings per
+ * venue while producing far fewer per post. We pay per post, so per-post is the metric that matters
+ * and the old prior was optimising the wrong one.
+ *
+ * Back-test of the ranking (same 570 venues, quartiles by prior, realized w/post):
+ *   old prior   0.061 -> 0.076 -> 0.081 -> 0.111   (1.8x spread, dead rate 44% -> 39%)
+ *   followers ASC alone  0.120 -> 0.106 -> 0.077 -> 0.028   (4.3x spread, dead 20% -> 69%)
+ * A single inverted feature beat the whole hand-tuned prior, which is why the follower term below
+ * now dominates. venue_type is kept because it is independently predictive on the same sample
+ * (farm_estate 0.148, event_space 0.104, country_club 0.092, hotel 0.088, restaurant 0.062,
+ * house_of_worship 0.053, **other 0.033 with 69% empty** -- "other" is a real negative signal and
+ * was previously unpenalised).
+ *
+ * Re-run the back-test (`tmp_analysis/` scratch script in D062) after any future tick before
+ * touching these numbers again -- they are measured, not chosen. */
 export function venueLookupPrior(f: { venue_type: string | null; followers: number | null; reviews: number | null; ptype: string | null }): number {
   let p = 0.08;
-  if (f.venue_type && ["farm_estate", "event_space", "park_outdoor", "museum"].includes(f.venue_type)) p += 0.06;
-  else if (f.venue_type == null) p += 0.02;
+  if (f.venue_type && ["farm_estate", "event_space", "park_outdoor", "museum"].includes(f.venue_type)) p += 0.04;
+  else if (f.venue_type === "other") p -= 0.04;
+  else if (f.venue_type == null) p += 0.03;
+  // Follower term: inverted and made the dominant signal (D062 back-test above).
   if (f.followers != null) {
-    if (f.followers >= 3000 && f.followers <= 10000) p += 0.06;
-    else if (f.followers >= 1000 && f.followers <= 30000) p += 0.03;
-    else if (f.followers > 100000) p -= 0.05;
+    if (f.followers < 500) p += 0.06;
+    else if (f.followers < 1500) p += 0.03;
+    else if (f.followers < 5000) p += 0.01;
+    else if (f.followers < 20000) p -= 0.04;
+    else p -= 0.07;
+  } else {
+    // Unknown follower count usually means a never-scraped shell, which skews small.
+    p += 0.02;
   }
   if (f.reviews != null) p += f.reviews >= 50 && f.reviews <= 1000 ? 0.02 : f.reviews > 1000 ? -0.04 : 0;
   if (f.ptype === "event_venue" || f.ptype === "wedding_venue" || f.ptype === "banquet_hall") p += 0.03;

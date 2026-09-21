@@ -125,7 +125,69 @@ Nothing lands without all five:
 Carried forward: WebSearch-verify every pair by hand (that file records two false positives
 similarity alone produced); snapshot before writes; never create an alias chain.
 
-## 5. What was done (batch 1, 2026-09-20)
+## 4. Learning from our own crawls (D062, 2026-09-20)
+
+The loop has always *recorded* yield (`ops.crawl_targets.features->'measured'`, `prior_next`). It
+had never been asked whether the priors it selects with are any good. Back-testing them against 570
+of our own measured targets (tiers probe / probe6 / canary, ≥ 15 posts fetched) answered that, and
+the answer changed how targeting works.
+
+### Finding: yield falls as venue size rises, and our prior was pointed the wrong way
+
+Weddings per **post** by follower band:
+
+| followers | venues | weddings/post | % that came back empty |
+|---|---|---|---|
+| < 500 | 45 | **0.152** | **13%** |
+| 500–1.5k | 143 | 0.116 | 27% |
+| 1.5k–5k | 146 | 0.104 | 31% |
+| 5k–20k | 133 | 0.049 | 62% |
+| 20k+ | 87 | **0.013** | **83%** |
+
+The smallest venues out-yield the largest **12× per post**. The old prior did the opposite — it
+added +0.06 for the 3k–10k band — because the loop README's §1a table came from crawl nº1, which
+measured weddings **per venue**. A large venue is tagged constantly and hits the 25-post cap, so it
+produces more weddings per venue while producing far fewer per post. **We pay per post.** The prior
+was optimising the wrong denominator, and no amount of per-target learning would have caught it,
+because the bias was in the feature weights rather than in any single target's history.
+
+### Back-test of the ranking (same 570 venues, quartiles by prior)
+
+| ranking | Q1 → Q4 realized w/post | spread | % empty Q1 → Q4 |
+|---|---|---|---|
+| old `venueLookupPrior` | 0.061 · 0.076 · 0.081 · 0.111 | 1.8× | 44% → 39% |
+| followers ascending, alone | 0.120 · 0.106 · 0.077 · 0.028 | 4.3× | 20% → 69% |
+| **recalibrated prior** | 0.030 · 0.047 · 0.109 · **0.143** | **4.8×** | **70% → 18%** |
+
+A single inverted feature beat the entire hand-tuned prior; the recalibrated version (followers
+inverted and dominant, plus `venue_type`, Places type and review count) beats followers alone. It is
+also well calibrated in level, not just in order — Q4 predicts 0.157 and realizes 0.143.
+
+**Practical effect:** spending a fixed budget on the top prior quartile rather than an average mix
+moves expected yield from ~0.081 to ~0.143 weddings per post (**+77% per dollar**) and cuts the
+share of targets that return nothing from ~45% to 18%.
+
+`venue_type` is independently predictive on the same sample and `other` is a real negative signal
+that was previously unpenalised: farm_estate 0.148 · event_space 0.104 · country_club 0.092 ·
+hotel 0.088 · restaurant 0.062 · house_of_worship 0.053 · **other 0.033, 69% empty**.
+
+### The standing rule
+
+**These bands are measured, not chosen.** Re-run the back-test after any tick before editing them;
+`acquire.test.ts` pins the shape (monotonic in followers, boundaries on both sides, `other`
+penalised) so a future edit that re-inverts the relationship fails loudly. The numbers live in one
+place — `venueLookupPrior` — and the test asserts relationships rather than re-pinning literals.
+
+### Geography
+
+Among listed metro venues the thin tier is **Chicago proper (147 of 260 thin venues)**, and there
+are **no Indiana or Wisconsin venues in the listed set at all** — every one resolves to Illinois.
+Out-of-area accounts (`carnegiehall`, `hyattmauiweddings`, `korosunresort`) sit outside the listed
+set and are handled by the `chain_brand` / `not_a_venue` / geo buckets. One data-quality wrinkle:
+`account_locations.region` is inconsistent (`Illinois` vs `IL`) and 127 in-metro rows have a null
+city, so region is not yet a reliable filter — `in_metro` is.
+
+## 5. What was done (batches 1-2, 2026-09-20)
 
 Round 10 / `idn-20260920-alias-1`: six merges — `lshireweddings` and `lshirewedding` →
 `lshiremarriott`, `wrigleyfieldevents` → `officialwrigleyfield` (WebSearch: wrigleyfieldevents.com

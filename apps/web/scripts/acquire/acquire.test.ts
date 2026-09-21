@@ -15,6 +15,8 @@ import {
 import { ACTORS, PRICE_USD, buildInput, estimateCostUsd } from "./apifyClient";
 import { formatBatchId } from "./runTick";
 import { computeSpotCheckAgreement, type SpotCheckPair } from "./reportSpotCheck";
+import { venueLookupPrior, vendorLookupPrior } from "./targets";
+import { updatePrior, decideStatus, PRIOR_K } from "./measure";
 
 const FIXTURE_DIR = new URL("./fixtures/", import.meta.url).pathname;
 function loadFixture(name: string): ApifyPostItem {
@@ -345,5 +347,86 @@ describe("computeSpotCheckAgreement (D061 blind spot-check)", () => {
     const result = computeSpotCheckAgreement([...confirmed, miss]);
     expect(result.thisVenue.precisionPct).toBe(95);
     expect(result.thisVenue.pass).toBe(true);
+  });
+});
+
+describe("venueLookupPrior (D062 recalibration, 2026-09-20)", () => {
+  // These bands are MEASURED, not chosen -- 570 of our own targets, >= 15 posts fetched each.
+  // Weddings per post by follower band: <500 0.152 / 500-1.5k 0.116 / 1.5k-5k 0.104 /
+  // 5k-20k 0.049 / 20k+ 0.013. Yield falls monotonically as followers rise. Re-run the back-test
+  // before changing any number here.
+  const f = (followers: number | null, venue_type: string | null = null) => ({
+    venue_type, followers, reviews: null, ptype: null,
+  });
+
+  test("is monotonically DECREASING in followers -- the whole point of the recalibration", () => {
+    const tiny = venueLookupPrior(f(200));
+    const small = venueLookupPrior(f(900));
+    const mid = venueLookupPrior(f(3000));
+    const big = venueLookupPrior(f(12000));
+    const huge = venueLookupPrior(f(90000));
+    expect(tiny).toBeGreaterThan(small);
+    expect(small).toBeGreaterThan(mid);
+    expect(mid).toBeGreaterThan(big);
+    expect(big).toBeGreaterThan(huge);
+  });
+
+  test("does NOT favour the 3k-10k band any more (the old rule added +0.06 there)", () => {
+    // crawl nº1 measured weddings per VENUE; we pay per POST. A big venue hits the 25-post cap.
+    expect(venueLookupPrior(f(5000))).toBeLessThan(venueLookupPrior(f(400)));
+  });
+
+  test("band boundaries are pinned on both sides", () => {
+    expect(venueLookupPrior(f(499))).toBeGreaterThan(venueLookupPrior(f(500)));
+    expect(venueLookupPrior(f(1499))).toBeGreaterThan(venueLookupPrior(f(1500)));
+    expect(venueLookupPrior(f(4999))).toBeGreaterThan(venueLookupPrior(f(5000)));
+    expect(venueLookupPrior(f(19999))).toBeGreaterThan(venueLookupPrior(f(20000)));
+  });
+
+  test("penalises venue_type 'other' -- measured 0.033 w/post with 69% of them empty", () => {
+    expect(venueLookupPrior(f(1000, "other"))).toBeLessThan(venueLookupPrior(f(1000, null)));
+    expect(venueLookupPrior(f(1000, "other"))).toBeLessThan(venueLookupPrior(f(1000, "event_space")));
+  });
+
+  test("never returns below the 0.01 floor, and rounds to 3 dp", () => {
+    const worst = venueLookupPrior({ venue_type: "other", followers: 500000, reviews: 5000, ptype: "hotel" });
+    expect(worst).toBeGreaterThanOrEqual(0.01);
+    expect(String(worst).split(".")[1]?.length ?? 0).toBeLessThanOrEqual(3);
+  });
+});
+
+describe("vendorLookupPrior", () => {
+  test("uses the role table when no measured own-yield exists", () => {
+    expect(vendorLookupPrior("dj", null)).toBe(0.42);
+    expect(vendorLookupPrior("planner", null)).toBe(0.41);
+  });
+  test("falls back to 0.2 for an unknown role", () => {
+    expect(vendorLookupPrior("taxidermist", null)).toBe(0.2);
+    expect(vendorLookupPrior(null, null)).toBe(0.2);
+  });
+  test("averages with the measured own-yield when present", () => {
+    expect(vendorLookupPrior("dj", 0.1)).toBeCloseTo(0.26, 3);
+  });
+});
+
+describe("updatePrior / decideStatus (measure.ts -- previously untested)", () => {
+  test("a zero-fetch measurement leaves the prior untouched", () => {
+    expect(updatePrior(0.2, 10, 0, 0)).toEqual({ prior: 0.2, n: 10 });
+  });
+
+  test("pulls the prior toward the realized rate, weighted by K", () => {
+    const { prior } = updatePrior(0.2, 0, 5, 25);
+    expect(prior).toBeCloseTo((PRIOR_K * 0.2 + 5) / (PRIOR_K + 25), 6);
+  });
+
+  test("dead needs >= 20 fetched AND nothing found -- 19 is ambiguous, not dead", () => {
+    expect(decideStatus(20, 0, 0)).toBe("dead");
+    expect(decideStatus(19, 0, 0)).toBe("ambiguous");
+  });
+
+  test("promising bar is inclusive at one hit per 25 fetched", () => {
+    expect(decideStatus(25, 1, 0)).toBe("promising");
+    expect(decideStatus(25, 0, 1)).toBe("promising");
+    expect(decideStatus(26, 1, 0)).toBe("ambiguous");
   });
 });
