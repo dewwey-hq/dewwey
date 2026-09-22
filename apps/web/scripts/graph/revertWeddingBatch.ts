@@ -15,8 +15,11 @@
  *   3. Insert one `weddings_retired_batches` row capturing all of the above (same
  *      log-before-delete shape as `orphaned_weddings_retired` and
  *      `non_wedding_posts_retired` -- see retireNonWeddingPosts.ts).
- *   4. Delete in FK-safe order: wedding_vendors -> wedding_posts -> orphaned posts
- *      (source='jeremy_evidence' only) -> jeremy_weddings_created row -> weddings row.
+ *   4. Delete in FK-safe order: wedding_vendors -> wedding_posts -> jeremy_weddings_created row
+ *      -> weddings row. POSTS ARE NEVER DELETED (post-table merge, plan rev 3, 2026-09-22): once
+ *      `posts` is the whole corpus, a post left unattached by a revert is still a post we hold.
+ *      Step 2's orphan set is still computed and printed (as posts_left_unattached) and logged in
+ *      weddings_retired_batches.removed_posts_imported is now always empty.
  * Then `refresh materialized view edges` once at the end.
  *
  * Everything happens inside ONE transaction for the whole batch. Default is --dry-run
@@ -279,7 +282,7 @@ async function main() {
         `  candidate=${w.candidate_id} wedding=${w.wedding_id} venue_id=${w.venue_id} ` +
           `event_date_est=${w.event_date_est} is_chicago=${w.is_chicago} ` +
           `wedding_posts=${w.post_ids.length} wedding_vendors=${w.vendor_account_ids.length} ` +
-          `posts_to_delete=${orphanedForThis.length} (${JSON.stringify(orphanedForThis)})` +
+          `posts_left_unattached=${orphanedForThis.length} (${JSON.stringify(orphanedForThis)})` +
           `${mixedCandidateIds.has(w.candidate_id) ? " [MIXED: tick post + staging post]" : ""}`
       );
     }
@@ -287,7 +290,7 @@ async function main() {
     console.log(`\n[revert-wedding-batch] totals: weddings=${weddingsToRevert.length} ` +
       `wedding_posts_rows=${weddingsToRevert.reduce((n, w) => n + w.post_ids.length, 0)} ` +
       `wedding_vendors_rows=${weddingsToRevert.reduce((n, w) => n + w.vendor_account_ids.length, 0)} ` +
-      `posts_deleted=${totalPostsOrphaned}`);
+      `posts_deleted=0 posts_left_unattached=${totalPostsOrphaned} (posts are never deleted)`);
 
     if (mixedCandidateIds.size > 0) {
       console.log(
@@ -329,8 +332,6 @@ async function main() {
 
     if (execute) {
       for (const w of weddingsToRevert) {
-        const orphanedForThis = w.post_ids.filter((id) => orphanedIds.has(id));
-
         await client.query(
           `insert into weddings_retired_batches
              (batch_id, wedding_id, venue_id, event_date_est, is_chicago, wedding_created_at,
@@ -346,19 +347,13 @@ async function main() {
             w.candidate_id,
             w.post_ids,
             w.vendor_account_ids,
-            orphanedForThis,
+            [], // removed_posts_imported: posts are never deleted (post-table merge, 2026-09-22)
             `revertWeddingBatch.ts --batch-id ${batchId} (D055)`,
           ]
         );
 
         await client.query(`delete from wedding_vendors where wedding_id = $1`, [w.wedding_id]);
         await client.query(`delete from wedding_posts where wedding_id = $1`, [w.wedding_id]);
-        if (orphanedForThis.length > 0) {
-          await client.query(
-            `delete from posts where id = any($1::bigint[]) and source = 'jeremy_evidence'`,
-            [orphanedForThis]
-          );
-        }
         await client.query(`delete from jeremy_weddings_created where candidate_id = $1`, [w.candidate_id]);
         // D061: decisions are append-only history -- record the revert as its own decision row
         // (the CREATE row keeps its candidate/batch; its created_wedding_id becomes null via the

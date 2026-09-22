@@ -30,6 +30,7 @@ import type { Pool, PoolClient } from "pg";
 import { getPool, closePool } from "../classify/db";
 import { putBytes } from "../venue-details/crawl/r2";
 import { getDatasetItems } from "./apifyClient";
+import { postsHasOrigin } from "../graph/postMergeCompat";
 
 /** Anything with a pg-shaped `.query()` -- lets phase-1 helpers run against either a Pool (no open transaction) or a PoolClient. */
 type DbExecutor = { query: (text: string, params?: unknown[]) => Promise<{ rows: any[] }> };
@@ -466,9 +467,11 @@ async function writeTaggedOrOwnPlanned(client: PoolClient, run: CrawlRunRow, pla
 
     const ownerId = await upsertAccountId(client, acctCache, mapped.ownerUsername);
 
+    // Post-merge P0.5: state origin once the column exists (P1); never name it before then.
+    const withOrigin = await postsHasOrigin(client);
     const insertRes = await client.query(
-      `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, comments_count, seed_username, source, raw)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, comments_count, seed_username, source, raw${withOrigin ? ", origin" : ""})
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10${withOrigin ? ",'acquisition_loop'" : ""})
        on conflict (shortcode) do nothing returning id, caption`,
       [
         mapped.shortcode,

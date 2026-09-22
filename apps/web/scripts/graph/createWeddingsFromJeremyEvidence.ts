@@ -111,6 +111,13 @@
  */
 import { readdirSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { getPool, closePool } from "../classify/db";
+import { postsHasOrigin } from "./postMergeCompat";
+
+// Post-merge P0.5 (plan rev 3): the staging-post copy path. Until P3 a staging post may be missing
+// from `posts` and is copied in here; from P1 the copy must also state origin (NOT NULL, no default).
+// After P3 every staging post already exists, so `on conflict do nothing` links the existing row.
+let JEREMY_POST_COLS = "shortcode, url, owner_id, caption, posted_at, likes_count, source, raw";
+let JEREMY_POST_VALS = "$1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7";
 import type { PoolClient } from "pg";
 import { STRUCTURAL_CLUSTERING_VERSION } from "../../lib/server/structuralVersion";
 import {
@@ -1449,8 +1456,8 @@ async function runFromConfirmedCandidates(
           const ownerId = ownerRows[0].id;
 
           const { rows: postRows } = await client.query<{ id: number }>(
-            `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, source, raw)
-             values ($1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7)
+            `insert into posts (${JEREMY_POST_COLS})
+             values (${JEREMY_POST_VALS})
              on conflict (shortcode) do nothing
              returning id`,
             [shortcode, p.post_url, ownerId, p.caption_raw, p.post_timestamp, p.likes_count, JSON.stringify(p)]
@@ -1906,8 +1913,8 @@ async function runFromGoldenLegacy(client: PoolClient, batchId: string): Promise
         );
         const ownerId = ownerRows[0].id;
         const { rows: postRows } = await client.query<{ id: number }>(
-          `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, source, raw)
-           values ($1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7)
+          `insert into posts (${JEREMY_POST_COLS})
+           values (${JEREMY_POST_VALS})
            on conflict (shortcode) do nothing
            returning id`,
           [s.shortcode, sr.post_url, ownerId, sr.caption_raw, sr.post_timestamp, sr.likes_count, JSON.stringify(sr)]
@@ -2061,8 +2068,8 @@ async function runFromGoldenLegacy(client: PoolClient, batchId: string): Promise
       const ownerId = ownerRows[0].id;
 
       const { rows: postRows } = await client.query<{ id: number }>(
-        `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, source, raw)
-         values ($1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7)
+        `insert into posts (${JEREMY_POST_COLS})
+         values (${JEREMY_POST_VALS})
          on conflict (shortcode) do nothing
          returning id`,
         [shortcode, p.post_url, ownerId, p.caption_raw, p.post_timestamp, p.likes_count, JSON.stringify(p)]
@@ -2256,6 +2263,10 @@ async function main() {
 
   const pool = getPool();
   const client = await pool.connect();
+  if (await postsHasOrigin(client)) {
+    JEREMY_POST_COLS += ", origin";
+    JEREMY_POST_VALS += ", 'jeremy_beta'";
+  }
 
   try {
     await client.query("begin");
@@ -2411,8 +2422,8 @@ async function main() {
         const ownerId = ownerRows[0].id;
 
         const { rows: postRows } = await client.query<{ id: number }>(
-          `insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count, source, raw)
-           values ($1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7)
+          `insert into posts (${JEREMY_POST_COLS})
+           values (${JEREMY_POST_VALS})
            on conflict (shortcode) do nothing
            returning id`,
           [shortcode, p.post_url, ownerId, p.caption_raw, p.post_timestamp, p.likes_count, JSON.stringify(p)]

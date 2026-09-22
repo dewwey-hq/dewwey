@@ -130,13 +130,29 @@ def acct_id(cur, username, cache={}):
     cache[u] = cur.fetchone()[0]
     return cache[u]
 
+_POSTS_HAS_ORIGIN = None
+
+
+def posts_has_origin(cur):
+    # Post-table merge (plan rev 3, 2026-09-22): posts.origin lands NOT NULL with no default, so
+    # every writer states it once the column exists -- and never names it before then.
+    global _POSTS_HAS_ORIGIN
+    if _POSTS_HAS_ORIGIN is None:
+        cur.execute("""select exists (select 1 from information_schema.columns
+                       where table_schema='public' and table_name='posts' and column_name='origin')""")
+        _POSTS_HAS_ORIGIN = cur.fetchone()[0]
+    return _POSTS_HAS_ORIGIN
+
+
 def upsert_post(cur, item, seed):
     stack, has_stack = parse_caption(item.get('caption'))
     owner = acct_id(cur, item['ownerUsername'])
-    cur.execute("""
+    origin_col, origin_val = (", origin", ",'ben_pipeline'") if posts_has_origin(cur) else ("", "")
+    cur.execute(f"""
         insert into posts (shortcode, url, owner_id, caption, posted_at, likes_count,
-                           comments_count, seed_username, has_stack, parse_method, raw)
-        values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                           comments_count, seed_username, has_stack, parse_method, raw,
+                           source{origin_col})
+        values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'venue_tagged'{origin_val})
         on conflict (shortcode) do nothing returning id""",
         (item['shortCode'], item['url'], owner, item.get('caption'),
          item['timestamp'],
