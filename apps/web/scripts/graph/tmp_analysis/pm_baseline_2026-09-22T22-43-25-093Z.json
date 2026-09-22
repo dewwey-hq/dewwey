@@ -1,0 +1,119 @@
+{
+  "rows_dir": "scripts/graph/snapshots/2026-09-22T22-43-25-093Z-pm-baseline",
+  "written_at": "2026-09-22T22:43:25.105Z",
+  "outputs": {
+    "structural_post_vendor_evidence": {
+      "rows": 62139,
+      "sha256": "d9ee3de36a388667d520dcb1166e7c00de0e30e8d67f2fb0c24d8ae148c1bdf4"
+    },
+    "structural_for_batch:acq-20260919-probesA": {
+      "rows": 1570,
+      "sha256": "3c812f728c1835cee8eef0f3f27729ea56a100d43684dfa85bccb61b8cfd65a2"
+    },
+    "structural_for_batch:acq-20260920-probe6": {
+      "rows": 583,
+      "sha256": "549385ba2d80d26405791ca49c3d66cb59ccd30f9215c85ff55792781a9eb297"
+    },
+    "v1_content_corpus": {
+      "rows": 4033,
+      "sha256": "5a2b691de83db14f10fb9fd2fffab3431da636afa76b14bb0bd1886262458b03"
+    },
+    "venue_portfolio_content": {
+      "rows": 13763,
+      "sha256": "bc0015dd5961f1a170a002f0ff59a1babee93814c9b3145c13d6ac6c7a0bfe63"
+    },
+    "post_styled_shoot_signal": {
+      "rows": 67874,
+      "sha256": "bfb88c4616aaae9a36ca7656e94d19655f28ca8317638ef3fdd485e5f1bd17f7"
+    },
+    "human_confirmed_chicago_wedding_content": {
+      "rows": 1310,
+      "sha256": "82487ae1f3544e10f063cdb96da25fafe7460e74740cdb1055538fd31d400ab0"
+    },
+    "human_confirmed_post_geography": {
+      "rows": 1496,
+      "sha256": "01d6368c0734f25f1b89a0b23dfaba2e2ded225d7a11f4b2f34f0d5271c291cc"
+    },
+    "human_confirmed_post_vendor_association": {
+      "rows": 1576,
+      "sha256": "72d6320f043c24bffd68b9df98fbf707880b14a6fddf83c54b50999033a6ac55"
+    },
+    "human_confirmed_post_vendor_evidence": {
+      "rows": 10055,
+      "sha256": "3b1fea7a866cffadb1c364ab764437f927b14a58702605bc68ae6f575d57fbc6"
+    },
+    "human_confirmed_vendor_page_content": {
+      "rows": 1219,
+      "sha256": "2a8933439e8fc58ac2ff61f8119203d94708f8c2b7c9c05e94695fcf40977608"
+    },
+    "venue_couple_signal_post_vendor_evidence": {
+      "rows": 4171,
+      "sha256": "142061e28ac3bfc5405e62b3cfe0b9056355f7be16ca477f8477e29d6d024695"
+    },
+    "venue_inline_mention_post_vendor_evidence": {
+      "rows": 921,
+      "sha256": "d09a9d182dc1444c09239558c12501043b0bfca9139324692bc128fbd43d72fd"
+    },
+    "funnel": {
+      "rows": 1,
+      "sha256": "1c5c24015bae76c9448575fb54bf51a0fd66b44d8d963a1d8e472cf54e183240"
+    },
+    "weddings.id": {
+      "rows": 7971,
+      "sha256": "e2832d1b9c3bbdfcc5669f92dea5046911e86ed043e6587d924259928c2645ed"
+    },
+    "wedding_posts": {
+      "rows": 9065,
+      "sha256": "e3ebac857874752b948f30e2227d66e763d4cad62e727b6f5526d642f2a1b99e"
+    },
+    "wedding_vendors": {
+      "rows": 65706,
+      "sha256": "286add40134158fb99ec8ea9b5bcee41b7169542ef67294548a53bf9b0475596"
+    },
+    "edges": {
+      "rows": 173677,
+      "sha256": "f3d5bb9701b02aaeb89149c004f88bf39aa436330bd268f848618ad1a4ad2729"
+    },
+    "corpus_urls": {
+      "rows": 67874,
+      "sha256": "7ce74d2b7bc3715e4646aa0a378ca6fb763e687ec327b0439fa5119fd12e11aa"
+    },
+    "legacy_unobserved_urls": {
+      "rows": 3610,
+      "sha256": "9cfc70f8a4a93118755b99123d508fe97cb9e989912312790685ee3df9fe3e74"
+    },
+    "profile_urls": {
+      "rows": 10,
+      "sha256": "3a334bfcd6cf9399ed9388a7cb8f1a77ea8fd5b1705cdfb9a35dab84ad4b5183"
+    }
+  },
+  "post_conditions_at_baseline": {
+    "posts_count_eq_distinct": {
+      "n": 26918,
+      "sc": 26918,
+      "url": 26918
+    },
+    "evidence_orphan_urls": {
+      "stack_extraction_runs": 0,
+      "stack_extraction_entries": 0,
+      "stack_extraction_runs_v2": 0,
+      "stack_extraction_entries_v2": 0,
+      "post_classification_runs": 0,
+      "post_extraction_runs": 0,
+      "post_venue_verdicts": 0,
+      "human_post_labels": 0,
+      "extracted_venue_anchors": 0,
+      "jeremy_wedding_candidate_posts": 0,
+      "candidate_scores": 0,
+      "golden_set": 0,
+      "vendor_extraction_golden_set": 0,
+      "label_queue": 0,
+      "non_wedding_posts_retired": 0
+    },
+    "observations": {
+      "unobserved": 8856,
+      "zero_is_first": 1322,
+      "multi_is_first": 0
+    }
+  }
+}

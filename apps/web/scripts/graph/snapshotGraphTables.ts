@@ -27,7 +27,13 @@ import { pipeline } from "node:stream/promises";
 import { PassThrough } from "node:stream";
 import { getPool, closePool } from "../classify/db";
 
-const TABLES = ["weddings", "wedding_posts", "wedding_vendors", "posts", "accounts", "jeremy_weddings_created"] as const;
+const TABLES = [
+  "weddings", "wedding_posts", "wedding_vendors", "posts", "accounts", "jeremy_weddings_created",
+  // Post-table merge (plan rev 3, 2026-09-22): the provenance spine and the url-keyed evidence the
+  // merge must leave intact. staging.instagram_posts is not here -- the merge never writes it.
+  "ops.post_observations", "ops.crawl_runs", "stack_extraction_runs", "post_venue_verdicts",
+  "human_post_labels", "jeremy_wedding_candidate_posts",
+] as const;
 
 const PAGE_SIZE = 2000;
 
