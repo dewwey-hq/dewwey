@@ -10,6 +10,44 @@ Status: **Accepted.** Measured answer to the user's question: *"is the thought t
 squeezed all we can and those venues dont have credible wedding posts?… should we call it here?"*
 Sits on D065 (the arms), D063 (never-crawled tier closed), D053/D054 (corpus mining).
 
+### CORRECTION (2026-09-22): the corpus IS exhausted, but not for the reason I first gave
+
+Two things I stated above were wrong, both caught by the user asking *"are we at 47k posts, isnt total
+much higher with the 7k we just scraped?"*
+
+**1. The corpus is 67,874 posts, not 47,623.** That figure is only `staging.instagram_posts`
+(Jeremy's). Add `public.posts` (26,775 — Ben's crawl nº1 plus everything the acquisition loop has
+pulled) and subtract the 6,524 overlap: **67,874 distinct posts**, which is what `v_ig_posts` unions.
+Quoting the staging number as "the corpus" understates it by 43%.
+
+**2. "Zero posts carry a usable venue anchor while remaining unclustered" was measured on the wrong
+table.** That check used `extracted_venue_anchors`. Clustering actually reads
+`structural_post_vendor_evidence`, and against THAT table **14,509 unclustered posts do carry a venue
+anchor.**
+
+The conclusion survives, and the corrected reason is stronger because it says why:
+
+| of the 14,509 anchored, unclustered posts | |
+|---|---|
+| have a `credit_line` anchor (the strong kind) | 224 |
+| **have ANY wedding language** | **132** |
+| have a couple signal | 2,000 |
+| have a non-venue vendor credit | 765 |
+| **would clear the clustering bar** | **17** |
+
+So the corpus is not short of venue anchors — it is short of **wedding evidence**. 14,492 of those
+posts name a venue and say nothing that makes them a wedding. That is consistent with the re-read
+result (359 posts → 3 weddings) and with the two-stage agreement already recorded above.
+
+Full-corpus mining state: **62,996 of 67,874 parsed (93%)**, 14,478 clustered, 6,572 read by a model
+or human, 8,886 attached to a wedding. The one genuine crumb left is **4,878 unparsed posts, 299 of
+which carry an anchor** — cheap to parse, unlikely to be worth much, and not yet done.
+
+**The lesson repeats the arc's pattern:** I measured the right question against the wrong table and
+reported a stronger, cleaner claim than the data supported. "Zero anchors" and "anchors everywhere but
+no wedding evidence" lead to the same decision today, but they would diverge the moment someone tried
+to relax the wedding-language bar.
+
 ### The Silver Lake mis-merge — a wrong alias, found by reading one served post (2026-09-21)
 
 The user read a wedding we had served and said *"this one is not the right silverlake"*. The caption:

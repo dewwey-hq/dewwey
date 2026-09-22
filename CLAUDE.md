@@ -75,17 +75,20 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   source of truth**. Jeremy's beta RDS data (5,029 vendors) IS loaded, verbatim,
   in `staging.vendors`/`staging.instagram_posts` etc. (see the bullet above —
   confirmed by count, D052, 2026-09-07); his DDL is captured separately in
-  `docs/jeremy-ddl.sql` for schema reference. **His 47,623 posts ARE mined
-  (measured 2026-09-21, D066): 47,142 parsed (99%), 11,153 clustered into
-  candidates, and — the number that matters — ZERO staging posts carry a usable
-  venue anchor without already being clustered.** The corpus is exhausted for
-  venue-anchored weddings; the 35,989 parsed-but-unclustered posts lack a venue
-  anchor, not attention. **Do not read "only ~6.5% is in `public.posts`" as
-  "unmined"** — the parser and reader work `staging.instagram_posts` in place
-  (the reader even prints `context split: staging=N public=N`), so import share
-  measures nothing about mining. This line used to say the re-parse was ongoing
-  work; it isn't, and that stale wording caused a session to propose
-  already-finished work as fresh headroom.
+  `docs/jeremy-ddl.sql` for schema reference. **The post corpus is MINED OUT for venue-anchored
+  weddings, measured 2026-09-22 (D066).** Total corpus is **67,874 distinct
+  posts** — `staging.instagram_posts` 47,623 + `public.posts` 26,775 − 6,524
+  overlap (use `v_ig_posts`, which unions them; "47,623" is only Jeremy's slice
+  and understates it). Of those, **62,996 parsed (93%)**, 14,478 clustered into
+  candidates, 8,886 attached to a wedding. **14,509 posts DO carry a venue anchor
+  and are unclustered — but only 132 of them contain any wedding language, so
+  exactly 17 would clear the clustering bar.** That is the real reason the corpus
+  is done: not a shortage of venue anchors, a shortage of wedding evidence.
+  Re-reading every reachable unread post (359 of them) returned 3 weddings.
+  **Do not read "only ~6.5% is in `public.posts`" as "unmined"** — the parser and
+  reader work staging in place (the reader logs `context split: staging=N
+  public=N`), so import share measures nothing. Remaining crumb: 4,878 unparsed
+  posts, 299 with an anchor.
 
 ## Design decisions (carry over; don't relitigate without reason)
 
