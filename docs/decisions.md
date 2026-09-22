@@ -10,6 +10,59 @@ Status: **Accepted.** Measured answer to the user's question: *"is the thought t
 squeezed all we can and those venues dont have credible wedding posts?… should we call it here?"*
 Sits on D065 (the arms), D063 (never-crawled tier closed), D053/D054 (corpus mining).
 
+### CLOSED — what the $18.31 actually bought (final, 2026-09-21)
+
+| | |
+|---|---|
+| Apify spend (D065: 3 arms + scaled tick) | **$18.31** |
+| OpenRouter (all readers incl. the re-read pass) | ≈ **$4.9** |
+| Items fetched | 7,801 |
+| Already held (re-paid) | 2,164 (28%) |
+| **Net-new posts** | **5,637** |
+| **Incremental weddings created** | **782** (6,995 → **7,777**) |
+| Cost per wedding | **$0.023** Apify, $0.030 all-in |
+| Weddings at venues that had < 6 | **90 (11.5%)** |
+| Venues crossing 1-5 → 6+ | **16** |
+| Venues crossing 0 → 1 | **6** |
+
+Coverage bands, metro venue accounts, before → after:
+**0: 177 → 175 · 1-5: 243 → 231 · 6-15: 94 → 102 · 16-49: 80 → 78 · 50+: 30 → 39.**
+
+**So: excellent value per wedding, poor value per unit of thin coverage.** 782 weddings at 2.3 cents
+each is the cheapest content the project has ever bought. But **88.5% of it landed at venues that
+already had 6+**, and the thin band moved 12 of 243 — 5%. Both statements are true and the second is
+the one the budget was authorised for.
+
+**The batches are extracted dry, verified from two directions.** After the main chain, 737 of 1,525
+candidates were uncreated and 691 candidate posts had never been read. Re-reading everything
+reachable (`--include-ambiguous`, both clustering pools) read **359 posts for $1.11 and produced
+exactly 3 more weddings** — a 0.8% yield against the main pool's ~16%. The reason is structural, not
+tuning: the unread posts were precisely the ones reconciliation had already judged
+evidence-insufficient, and **the reader independently agreed with reconciliation.** Two stages
+reaching the same verdict is the strongest available evidence that nothing remains.
+
+I predicted 50-150 weddings from that pass. It returned 3. Recorded because the error is the same
+shape as the others in this arc: a rate estimated from a healthy pool applied to a pool that was
+selected *for* being unhealthy.
+
+**Therefore NOT pursued, on measurement:** (a) the 504 posts that carry a venue anchor but never
+cleared the supporting-evidence bar — weaker evidence than the 359 just read, so ~4 weddings expected;
+(b) the 46 seed-venue posts with wedding language, ~0-2 weddings, and needing a new anchor source.
+
+**A real design gap found and deliberately left unexploited.** Clustering accepts only a
+CAPTION-derived venue anchor (`credit_line` / `inline_at` / `location_tag` / `author` /
+`venue_hashtag`) and **discards the crawl-seed relationship entirely** — the fact that Instagram
+returned a post *because it tags venue X* is evidence of the same strength as an @-mention in the
+caption. 894 of the 3,313 anchorless posts came from a venue's tagged feed. But only 24 of those 894
+have any vendor evidence and 46 have wedding language, so the lane is worth ~20-30 weddings at best
+here. Fix it if a future crawl shape makes it matter; a seed anchor would need the same
+wedding-language bar D055 put on the other "where"-type anchors, since being tagged is not the same
+as the wedding being there.
+
+**What is actually left is human labelling, not machine work:** ~450 candidates in the HUMAN queue
+(257 on the scaled batch alone) plus ~200 SKIPs. The user's 40 labels converted at 35/35 precision and
+directly unlocked 2 weddings, so this queue has real value — it just needs a person.
+
 **Spend to date, all sources.** Apify **$45.99** total, of which **$19.97** went at month-1
 thin/unproven venue probes and **$18.31** at D065 — so **~$38 of ~$46 has been spent chasing thin
 coverage.** Output: the 1-5 band moved 243 → 231 during D065. **12 venues, 5% of the band.**

@@ -23,152 +23,91 @@ parallel — **31 commits unpushed**; the user pushes.
 4. Re-check one live number: from `apps/web`, `bun run scripts/venue-details/reportVenueDetailsFunnel.ts`
    should show **33 served / 24 compare-ready**. Dev server: `nohup bun run dev` from `apps/web`.
 
-## Mission — D065: COMPLETE. Arm C won, was scaled, and the scaled tick beat its own prior (2026-09-21)
+## Mission — D065/D066: CLOSED. $18.31 → 782 weddings, but thin coverage moved 5% (2026-09-21)
 
-**Nothing in flight. Nothing running.** Narrative: `docs/decisions.md` D065.
+**Nothing in flight. Nothing running. The acquisition thread is closed on measurement.**
+Full reasoning: `docs/decisions.md` D065 (the arms) and D066 (the ceiling + final accounting).
 
-### Final result
+### What the money bought
 
-| arm | $ | weddings | weddings/$ | crossed 1-5→6+ | 0→1 |
-|---|---|---|---|---|---|
-| A depth-thin (15 venues) | 3.45 | 18 | 5.2 | 2 | 0 |
-| C vendor-thin-conn (12 vendors) | 2.76 | 128 | 46.4 | 3 | 3 |
-| D own-profile (8 vendors) | 0.46 | 25 | 54.3 | 0 | 0 |
-| **SCALE vendorthin ×56** | **11.64** | **606** | **52.1** | **10** | **3** |
+| | |
+|---|---|
+| Apify (3 arms + scaled tick) | **$18.31** · OpenRouter ≈ $4.9 |
+| Items fetched / already held / **net new** | 7,801 / 2,164 (28%) / **5,637** |
+| **Incremental weddings** | **782** (6,995 → **7,777**) at **$0.023 each** |
+| Weddings at venues that had < 6 | **90 (11.5%)** |
+| Venues crossing 1-5 → 6+ / 0 → 1 | **16** / **6** |
 
-The bet held: arm C predicted 46.4 weddings/$ and the scaled tick returned **52.1** — better with
-scale, not worse — and crossings went 3 → 10. The union check confirms all 15 crossings are distinct.
-Report: `apps/web/scripts/graph/tmp_analysis/d065_arm_comparison.md`.
+Bands before → after: **0: 177 → 175 · 1-5: 243 → 231 · 6-15: 94 → 102 · 16-49: 80 → 78 · 50+: 30 → 39.**
 
-**D065 total: 779 weddings for $18.31 of Apify.** Weddings 6,995 → **7,774**.
-Coverage (metro venue accounts, `weddings.venue_id`, is_chicago, no alias rollup):
-0: 177 → **175** · 1-5: 243 → **231** · 6-15: 94 → **102** · 16-49: 80 → **78** · 50+: 30 → **39**.
+**Both of these are true, and the second is what the budget was for:** 782 weddings at 2.3 cents is
+the cheapest content this project has bought — and **88.5% of it went to venues that already had 6+**,
+so the thin band moved 12 of 243 (5%). Per arm: `d065_arm_comparison.md`. Arm C won and the scaled
+tick beat its own prior (52.1 weddings/$ vs the 46.4 predicted).
 
-### The user's spot-check: PASS, and it caught a real gap
+### Do NOT re-propose these — each was measured and declined
 
-40 posts labeled. **THIS_VENUE precision 35/35 = 100%** (bar is 95%; month 1 was 91.9%). Overall
-agreement 36/40. **Zero false positives** — all four disagreements were the model being too
-conservative (NOT_WEDDING where the user says real wedding). So nothing needed reverting, and arm C's
-vendor-feed weddings are sound.
+- **"Re-read the unread posts."** Done. 359 posts, $1.11, **3 weddings** (0.8% vs the main pool's 16%).
+  The unread posts were the ones reconciliation had judged evidence-insufficient, and the reader
+  independently agreed. Two stages, same verdict.
+- **"Mine Jeremy's 47k corpus."** Exhausted: 47,142 of 47,623 parsed, and **zero** staging posts carry
+  a usable venue anchor while remaining unclustered. **Never read "% in `public.posts`" as
+  "unmined"** — the parser and reader work staging in place.
+- **The 290 mapped-but-unclustered posts** — checked, NOT a gate bug: **zero of the 290 have any
+  wedding language**, and a `location_tag` anchor requires it (a tag says *where*, not *that it is a
+  wedding*).
+- **The 504 anchored-but-unclustered** (~4 weddings expected) and **46 seed-venue posts** (~0-2).
+- **More crawling at the 0 band or at venues with 1-2 weddings.** 156 of 175 zero-venues are crawled
+  and **62% came back `dead`**. The thin band is not a collection failure (45% `promising`) but arm A
+  measured ~1.2 weddings per venue from a 100-post pull while a venue at 1 needs five more. **These
+  are real venues that genuinely host few documented weddings.**
 
-**What it exposed:** I said the live creation would pick the corrections up automatically. It did not.
-A batch's creation only runs when invoked, and arm C's ran at 05:16 — before the labels existed at
-13:16. Re-ran as `acq-20260920-d065C-create-3`: **+2 weddings** (@sarabandechicago,
-@providencevineyard). @halimmuseum correctly hit the styled-shoot gate (`HUMAN_STYLED`).
-**Standing rule: after the user labels, re-run creation for every batch holding those candidates.**
+### Open design gap, documented and deliberately unexploited
 
-### Cheap win left on the table
+Clustering accepts only a CAPTION-derived venue anchor and **discards the crawl-seed relationship** —
+that Instagram returned a post *because it tags venue X* is evidence as strong as an @-mention. 894 of
+3,313 anchorless posts came from a venue's tagged feed, but only 46 have wedding language, so it is
+worth ~20-30 weddings here. Worth fixing if a future crawl shape makes it matter; it would need the
+same wedding-language bar D055 put on other "where"-type anchors.
 
-**9 undecided sibling posts unlock 5 queued candidates** (a candidate needs every post decided):
-```
-http://localhost:3000/label/candidates?post=DantIbbEafG,DbbMK6JkQwQ,DbdmUHDg5TI,Da0jeokE9IL,DanP9s3jw5b,DV1mFmhjdR_,DaB_VEVsjM-,DclV9UKx1x5,DcQtn-zx6_2
-```
-@maedistrict ×3, @itascacountryclub ×2, @thedrakechicago ×2, @ovationchicago, @thepeninsulachi.
-Then re-run creation for `acq-20260921-d065scale` and `acq-20260920-vendor`.
+### What is left, and it needs a person not a script
 
-### The other cheap win: 347 wedding-earning accounts are hidden for want of a location row
-
-`apps/web/scripts/graph/tmp_analysis/venue_accounts_hidden_2026-09-21.md` (generated by
-`refreshAccountRoleTagsFromWeddings.ts` in simulated APPLY mode) lists every account that has earned
-wedding credit but cannot appear on `/venues`: **298 with no `account_locations` row at all** and **49
-with a row but `in_metro=false`**. It costs **$0 of Apify** — the only work is the D052 verification
-pass, because that rule forbids minting a location row without a person or agent confirming geography.
-This is the same lever as the taxonomy's `geo_blocked` bucket below, but a fresher and wider cut.
-
-Do not treat the list as a work queue as-is: plenty of it is plainly not Chicago (`quince.atx`,
-`music_farm`, `philamoca`, `hawkesdene`). The top of the no-row list is where the value is —
-`artinstitutespecialevents` (12 weddings), `armourhouseweddings` (10), `thegagechicago` (5),
-`cspshall` (6), `thecedar` (6) — so verify downward from the top and stop when the weddings-per-account
-stops paying for the verification.
+**~450 candidates in the HUMAN queue** (257 on the scaled batch) plus ~200 SKIPs. The user's 40 labels
+came back **35/35 = 100% THIS_VENUE precision** and directly unlocked 2 weddings, so this queue has
+real value. `/label/candidates?batch=<id>`. **After labelling, creation must be RE-RUN for every batch
+holding those candidates — it does not happen on its own** (arm C's creation had run 7 hours before
+the labels existed, leaving two confirmed weddings uncreated until re-run).
 
 ### Budget — effectively exhausted
 
-Apify **$46.76 of the $48.18 authorized** ($28.18 + the user's $20). **$1.42 left; do not spend it or
+Apify **$46.76 of the $48.18 authorized** ($28.18 + the user's $20). **$1.42 left. Do not spend it or
 raise the ceiling without a new ask.** The code's `MONTHLY_STOP_USD` is 48.50, $0.32 looser than what
-was authorized — trust $48.18. Account hard cap $100; anything above $29 is real overage.
-OpenRouter for the whole scaled chain: **$1.04**, with $57 of $300 left on `NEW_OPENROUTER_API_KEY`.
+was authorized — trust $48.18. Hard cap $100; anything over $29 is real overage. OpenRouter: $57 of
+$300 left on `NEW_OPENROUTER_API_KEY` (**not** `OPENROUTER_API_KEY`, which is the old exhausted one).
 
-### The next decision is a product call, not a measurement one
+### The question worth more than any remaining crawl
 
-Arm C is well-measured and `--tier vendorthin` still has **578 qualified vendors**, so it scales
-further on volume. But it **cannot be aimed at a named venue** (61 of the 69 venues it reached were
-already thick — a vendor's feed follows their own book of business). `--tier crossing` is the
-instrument for named-venue coverage: built, measured, deliberately **not funded**. Which to feed next
-depends on whether the priority is more weddings or more venues off zero.
-
-### Two bugs fixed this session, both worth remembering
-
-1. **`openrouter.ts` had no request timeout.** The machine suspended overnight mid-run, sockets died
-   without a RST, and `fetch` never settled — process alive, CPU idle, no log line, no exception, for
-   hours. The `catch` anticipates this in a comment but only fires when fetch THROWS. Fixed with
-   `AbortSignal.timeout(120_000)`. If a long run goes quiet with idle CPU, suspect this first.
-2. **The venue gate was eating vendors, and "Lake Michigan" read as the state.** See D065.
-
-**A wrong turn worth not repeating:** I diagnosed the stall as exhausted OpenRouter credits and wrote
-it into STATE.md before checking. `OPENROUTER_API_KEY` really is at $10.371 of $10 — but that is the
-OLD key the code deliberately avoids; `callTool` prefers `NEW_OPENROUTER_API_KEY`. Check the key the
-code actually reads.
+**Is 6+ the right bar?** 231 venues hold 1-5 *real* documented weddings with vendor lists. A couple
+looking at a venue with 3 documented weddings is arguably well served. "6+" looks like an internal
+proxy we have been buying against at rising cost; reframing it would move perceived coverage further
+than any crawl. A product call, raised and not yet answered.
 
 ### Blocked on the user
 
-1. **Push** — 31 commits local; the classifier blocks Claude from pushing.
-2. Optional, cheap: the 9 sibling posts above (unlocks 5 weddings), then re-run creation for
-   `acq-20260921-d065scale` and `acq-20260920-vendor`.
-3. Optional: decide what to feed next — `vendorthin` (volume, 578 vendors left) or `crossing`
-   (named-venue coverage, built but unfunded). Needs a new Apify authorization either way; only
-   $1.42 of the last $20 remains.
-4. Optional, **free**: say go on the geography verification pass over
-   `venue_accounts_hidden_2026-09-21.md` (verify downward from the top of the no-row list). No Apify,
-   no new authorization — it lists venues that already hold weddings.
+1. **Push** — 34 commits local; the classifier blocks Claude from pushing.
+2. Optional: label the HUMAN queue, then re-run creation per batch.
+3. Optional, needs new authorization: `--tier crossing` on the 52 venues at 4-5 (~$12). Built and
+   measured, deliberately unfunded — the only crawl lane with decent expected value left.
 
-The ~20-post verification is **DONE** (100% precision, see above) — nothing is waiting on it.
+### Two bugs fixed this session
 
-### Known-good, reusable, and what was NOT funded
-
-- `--tier vendorthin` — arm C as a reproducible tier (it had been hand-picked), ranked by
-  *near-crossing* potential: connected venues at 4-5, because the marginal cost of a crossing is
-  (6-n) and the band is not uniform — **31 venues sit at 5 and need one more, 93 sit at 1 and need
-  five**. 578 qualified, so it scales well past this tick.
-- `--tier crossing` — venues ranked nearest the 6+ threshold, **including already-crawled ones** (28
-  of the 55 in the 4-5 band are already measured `promising`; every other coverage tier excludes them
-  by construction). Built and measured, **deliberately not funded**: arm C won on both stated
-  metrics. Fund this if the priority flips from volume to named-venue coverage.
-- **Arm C cannot be aimed at a named venue** — 61 of the 69 venues it reached were already thick. A
-  vendor's feed follows their own book of business. Moving a *specific* venue still needs that
-  venue's own tagged feed, i.e. arm A's mechanism at arm A's price. Do not re-derive this.
-- **Two "weddings at a venue" definitions exist and disagree.** `reportVenueCoverage.ts` and
-  STATE.md's bands use `weddings.venue_id` ("literally what the page shows"); the creation script's
-  delta uses alias-rolled `wedding_vendors` — 10 vs 5 for @silverlake.cc. `compareArms.ts` uses the
-  venue_id basis and says so. On that basis the creation logs **understated** both arms (A was 2
-  crossings not 1, C was 3 not 1).
-- The three arms carry `tier='discover'` in `ops.crawl_targets`, which is wrong — the session that
-  ran them did not pass `--tier`. Do not trust it for tier-based analysis.
-- **`openrouter.ts` now sets a 120s request timeout.** Without it a suspended machine wedges a run
-  permanently and silently. If a long run ever goes quiet again with idle CPU, this is the shape to
-  suspect first — and check `NEW_OPENROUTER_API_KEY`, not `OPENROUTER_API_KEY`, for spend.
-
-### Coverage bands — two universes, and they are not interchangeable
-
-**Metro venue accounts** (`weddings.venue_id`, is_chicago, no alias rollup) — measured 2026-09-21
-05:15, *before* the scaled tick's creations landed:
-0: **177** · 1-5: **243** (93 at 1, 51 at 2, 44 at 3, 24 at 4, 31 at 5) · 6-15: **94** · 16-49: **80** · 50+: **30**.
-The close-out's after-figures on the same basis: 0: 175 · 1-5: 231 · 6-15: 102 · 16-49: 78 · 50+: 39.
-
-**Listed on `/venues`** (Universe A, what `reportVenueCoverage.ts` prints) — re-measured 2026-09-21
-20:38 UTC, after everything:
-
-| | listed venues | weddings anchored | 1-5 | 6-15 | 16-49 | 50+ | median |
-|---|---|---|---|---|---|---|---|
-| before the scaled tick | 440 | 6,515 | 229 | 98 | 79 | 34 | 5 |
-| after | **442** | **7,271** | **217** | **106** | **77** | **42** | **6** |
-
-Read the first row of that table before funding more of the same: **+756 anchored weddings moved only
-2 venues onto the page.** The scaled tick bought depth at venues already listed, which is exactly what
-D065 concluded arm C does and cannot be talked out of. Hidden, unchanged in shape: B 298 accounts / 78
-weddings (no `account_locations` row), C 49 / 52 (`in_metro=false`), E 21 / 49 (mis-anchored).
-Re-run: `bun run scripts/graph/reportVenueCoverage.ts`; it rewrites
-`tmp_analysis/venue_coverage_2026-09-21.md`.
-
+1. **`openrouter.ts` had no request timeout.** The machine suspended overnight mid-run, sockets died
+   without a RST, `fetch` never settled — process alive, CPU idle, no log line, no exception, for
+   hours. Its `catch` anticipates this but only fires when fetch THROWS. Fixed with
+   `AbortSignal.timeout(120_000)`. If a long run goes quiet with idle CPU, suspect this first.
+2. **The venue gate was eating vendors** (456 of 596 rejected, incl. photographers as
+   `non_venue_trade`), and **"Lake Michigan" read as the state of Michigan**, excluding two Chicago
+   venues that sat one wedding from crossing. Both fixed; see D065.
 
 ## Mission in flight — D060 VenueDetails v3: Phase 3 filling; **f1 served 27 venues** (2026-09-20)
 
