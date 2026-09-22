@@ -1,113 +1,141 @@
 # STATE — the one living status page
 
-**Read this first in every session.** It is rewritten (not appended) at the end of every working
-session; history lives in `decisions.md`, preferences in Claude's memory, in-flight detail nowhere else.
-If this page and any other doc disagree, this page is newer.
+**Read this first in every session.** Rewritten (not appended) at the end of every working session;
+history lives in `decisions.md`, preferences in Claude's memory, in-flight detail nowhere else. If this
+page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-21 ~20:45 UTC**. **D065 is COMPLETE — nothing is in flight and nothing is
-running.** The scaled arm-C tick `acq-20260921-d065scale` crawled, chained and created; its numbers are
-in the mission section below and were re-verified against the live DB on resume (weddings **7,774**,
-Apify **$46.79** of the $48.18 authorized). The D060 VenueDetails window is separate and idle; its f1
-tick served 27 venues and $34.74 of its $40 cap is unspent. Two windows commit to local `main` in
-parallel — **31 commits unpushed**; the user pushes.
+Last rewritten: **2026-09-22 ~05:45 UTC**. The acquisition thread (D065/D066) is **closed on
+measurement** — arm C won, the budget is spent, the corpus is 99% parsed and mined out. One chain may
+still be finishing; the mission section says how to check. The D060 VenueDetails window is idle, and
+the user is taking venue/vendor enrichment into a different UI/UX, so it is NOT the default next thread.
 
 ## How to resume (5 minutes)
 
 1. `git log --oneline -10`, `git status`, `git log --oneline origin/main..HEAD | wc -l`.
-2. **Nothing is spending money.** Re-verify that rather than assume it: `weddings` should be 7,774 and
-   `GET /v2/users/me/limits` should read ≈ $46.79 — both were true at this rewrite. If either moved,
-   something ran after it.
-3. For the D060 window: read `docs/engineering/venue-enrichment/loop/README.md` and the last rows of
-   `loop/ticks.md`. Plan of record `~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md`.
-4. Re-check one live number: from `apps/web`, `bun run scripts/venue-details/reportVenueDetailsFunnel.ts`
-   should show **33 served / 24 compare-ready**. Dev server: `nohup bun run dev` from `apps/web`.
+2. **Check the new-parse chain** — first subsection below. It is the only thing that might be running.
+3. **Never quote a corpus or coverage number from memory.** Run
+   `bun run scripts/graph/reportCorpusInventory.ts --batches` (corpus + per-batch outcomes) and
+   `bun run scripts/graph/reportVenueCoverage.ts` (bands). Numbers in this file are a snapshot; those
+   scripts are the source of truth. Quoting a stale number caused three separate bugs this session.
+4. Then "Blocked on the user".
 
-## Mission — D065/D066: CLOSED. $18.31 → 782 weddings, but thin coverage moved 5% (2026-09-21)
+## Mission — D065/D066: acquisition CLOSED on measurement; corpus 99% parsed (2026-09-22)
 
-**Nothing in flight. Nothing running. The acquisition thread is closed on measurement.**
-Full reasoning: `docs/decisions.md` D065 (the arms) and D066 (the ceiling + final accounting).
+**One thing may still be running — check it first (below). Everything else is done.**
+Reasoning: `docs/decisions.md` D065 (the arms) + D066 (the ceiling, corrections, close).
 
-### What the money bought
+### CHECK FIRST: the new-parse mining chain
+
+Launched 04:14 UTC, expected to finish ≈06:00. It parsed 4,181 previously-unreachable posts, then
+clusters → reconciles → reads → creates.
+```
+tail -20 /tmp/claude-1000/-home-jhoffen-dewwey/fee2c860-795b-48ef-beed-06a4952baa88/scratchpad/logs/newparse.log
+#   look for "== <time> NEWPARSE DONE"
+```
+Scratchpad is session-scoped, so if it is gone use the DB: creation batches are
+`d066-newparse-create-1` / `-2` in `jeremy_weddings_created`. Expected yield is **tens of weddings, not
+hundreds** — clustering produced only 24 new candidates. If it died partway, each step is idempotent
+and re-runnable from `scripts/graph/` (upsertAccountsForStackHandles → runJeremyWeddingClustering ×2 →
+runJeremyWeddingReconciliation → runExtract ×2 → createWeddingsFromJeremyEvidence ×2). **One at a
+time.** Creation needs a snapshot < 24h old (`snapshotGraphTables.ts --label <x>`) or it REFUSES —
+that silently created nothing across four batches once.
+
+### NEVER quote a corpus number from memory — run the script
+
+**`bun run scripts/graph/reportCorpusInventory.ts [--batches]`** is the source of truth: post
+provenance, the distinct total, the mining funnel, what is left and WHY, and per-batch outcomes.
+
+As of 2026-09-22: **67,874 distinct posts** (staging 47,623 + public 26,775 − 6,524 overlap;
+`v_ig_posts` has 69,192 ROWS — quote the DISTINCT count). **99.0% parsed**, 21.4% clustered, 13.1%
+attached to a wedding. **697 unparsed** left.
+
+**Why no more weddings are extractable:** 14,270 unclustered posts carry a venue anchor but only
+**114** contain any wedding language. The corpus is short of WEDDING EVIDENCE, not venue anchors.
+Measured twice — re-reading 359 reachable unread posts produced **3** weddings.
+
+**Two traps, both of which cost real bugs here:** "47,623" is only Jeremy's slice (understates by
+43%), and "% in `public.posts`" measures import share, not mining — the parser and reader work staging
+in place.
+
+### Where the numbers stand
 
 | | |
 |---|---|
-| Apify (3 arms + scaled tick) | **$18.31** · OpenRouter ≈ $4.9 |
-| Items fetched / already held / **net new** | 7,801 / 2,164 (28%) / **5,637** |
-| **Incremental weddings** | **782** (6,995 → **7,777**) at **$0.023 each** |
-| Weddings at venues that had < 6 | **90 (11.5%)** |
-| Venues crossing 1-5 → 6+ / 0 → 1 | **16** / **6** |
+| Weddings | **7,819** (6,995 at D065 start) |
+| Coverage bands (metro venues, `weddings.venue_id`, is_chicago) | 0: **175** · 1-5: **230** · 6-15: **103** · 16-49: **78** · 50+: **39** |
+| Apify | **$46.79 of $48.18 authorized** — $1.42 left, do not spend without a new ask |
+| Apify cycle | **2026-09-17 → 2026-10-16**; resets Oct 17 with **$29 included (free)** |
+| OpenRouter | ~$55 of $300 left on **`NEW_OPENROUTER_API_KEY`** (not `OPENROUTER_API_KEY`, the old exhausted one) |
 
-Bands before → after: **0: 177 → 175 · 1-5: 243 → 231 · 6-15: 94 → 102 · 16-49: 80 → 78 · 50+: 30 → 39.**
+### What actually worked — argue Apify strategy from this, not from priors
 
-**Both of these are true, and the second is what the budget was for:** 782 weddings at 2.3 cents is
-the cheapest content this project has bought — and **88.5% of it went to venues that already had 6+**,
-so the thin band moved 12 of 243 (5%). Per arm: `d065_arm_comparison.md`. Arm C won and the scaled
-tick beat its own prior (52.1 weddings/$ vs the 46.4 predicted).
+`reportCorpusInventory.ts --batches` prints it live. Top: pilot 91.4 w/$, canary-vendor 89.7, vendor
+81.9, discovered 72.4, probe6 69.3. Bottom: probesB 6.3, **d065A depth-at-thin-venues 5.8**, d063s2
+never-crawled **0.0**. **Vendor feeds and already-proven venues beat thin/zero venues by 10-15x, and
+the three worst performers are all coverage plays.** Caveat: w/$ counts only weddings created under
+`<batch>-create-%`; coverage effect needs `compareArms.ts` and its shared baseline.
 
-### Do NOT re-propose these — each was measured and declined
+### Do NOT re-propose — each measured and declined
 
-- **"Re-read the unread posts."** Done. 359 posts, $1.11, **3 weddings** (0.8% vs the main pool's 16%).
-  The unread posts were the ones reconciliation had judged evidence-insufficient, and the reader
-  independently agreed. Two stages, same verdict.
-- **"Mine Jeremy's 47k corpus."** Exhausted: 47,142 of 47,623 parsed, and **zero** staging posts carry
-  a usable venue anchor while remaining unclustered. **Never read "% in `public.posts`" as
-  "unmined"** — the parser and reader work staging in place.
-- **The 290 mapped-but-unclustered posts** — checked, NOT a gate bug: **zero of the 290 have any
-  wedding language**, and a `location_tag` anchor requires it (a tag says *where*, not *that it is a
-  wedding*).
-- **The 504 anchored-but-unclustered** (~4 weddings expected) and **46 seed-venue posts** (~0-2).
-- **More crawling at the 0 band or at venues with 1-2 weddings.** 156 of 175 zero-venues are crawled
-  and **62% came back `dead`**. The thin band is not a collection failure (45% `promising`) but arm A
-  measured ~1.2 weddings per venue from a 100-post pull while a venue at 1 needs five more. **These
-  are real venues that genuinely host few documented weddings.**
+- Re-reading unread posts (359 → 3 weddings) · corpus mining (exhausted, see above) · the 290
+  mapped-but-unclustered posts (**zero** have wedding language) · the 504 anchored-but-unclustered
+  (~4) · the 46 seed-venue posts (~0-2) · crawling the 0 band (156 of 175 crawled, **62% dead**) or
+  venues at 1-2 weddings (arm A returned ~1.2 weddings/venue; a venue at 1 needs five).
+- **Arm C cannot be aimed at a named venue** — 61 of the 69 venues it reached were already thick. A
+  vendor's feed follows their own book of business.
 
-### Open design gap, documented and deliberately unexploited
+### Open design gaps, documented and unexploited
 
-Clustering accepts only a CAPTION-derived venue anchor and **discards the crawl-seed relationship** —
-that Instagram returned a post *because it tags venue X* is evidence as strong as an @-mention. 894 of
-3,313 anchorless posts came from a venue's tagged feed, but only 46 have wedding language, so it is
-worth ~20-30 weddings here. Worth fixing if a future crawl shape makes it matter; it would need the
-same wedding-language bar D055 put on other "where"-type anchors.
-
-### What is left, and it needs a person not a script
-
-**~450 candidates in the HUMAN queue** (257 on the scaled batch) plus ~200 SKIPs. The user's 40 labels
-came back **35/35 = 100% THIS_VENUE precision** and directly unlocked 2 weddings, so this queue has
-real value. `/label/candidates?batch=<id>`. **After labelling, creation must be RE-RUN for every batch
-holding those candidates — it does not happen on its own** (arm C's creation had run 7 hours before
-the labels existed, leaving two confirmed weddings uncreated until re-run).
-
-### Budget — effectively exhausted
-
-Apify **$46.76 of the $48.18 authorized** ($28.18 + the user's $20). **$1.42 left. Do not spend it or
-raise the ceiling without a new ask.** The code's `MONTHLY_STOP_USD` is 48.50, $0.32 looser than what
-was authorized — trust $48.18. Hard cap $100; anything over $29 is real overage. OpenRouter: $57 of
-$300 left on `NEW_OPENROUTER_API_KEY` (**not** `OPENROUTER_API_KEY`, which is the old exhausted one).
-
-### The question worth more than any remaining crawl
-
-**Is 6+ the right bar?** 231 venues hold 1-5 *real* documented weddings with vendor lists. A couple
-looking at a venue with 3 documented weddings is arguably well served. "6+" looks like an internal
-proxy we have been buying against at rising cost; reframing it would move perceived coverage further
-than any crawl. A product call, raised and not yet answered.
+- Clustering accepts only a CAPTION-derived venue anchor and **discards the crawl-seed relationship**
+  — that Instagram returned a post *because it tags venue X* is evidence as strong as an @-mention.
+  894 anchorless posts came from venue tagged feeds; only 46 have wedding language, so ~20-30 weddings.
+- **Two disagreeing definitions of "weddings at a venue":** `reportVenueCoverage.ts` and these bands
+  use `weddings.venue_id` ("what the page shows"); the creation script's delta uses alias-rolled
+  `wedding_vendors`. On the venue_id basis the creation logs UNDERSTATED the arms' crossings.
+- The D065 arms carry `tier='discover'` in `ops.crawl_targets`, which is wrong.
 
 ### Blocked on the user
 
-1. **Push** — 34 commits local; the classifier blocks Claude from pushing.
-2. Optional: label the HUMAN queue, then re-run creation per batch.
-3. Optional, needs new authorization: `--tier crossing` on the 52 venues at 4-5 (~$12). Built and
-   measured, deliberately unfunded — the only crawl lane with decent expected value left.
+1. **`DbyHgNRRPb1` @cantignygolf** — labelled NOT_WEDDING with the note *"this is an engagement
+   actually… its from engagement"*, then "add both" was said. Flipping keeps wedding 14456 and
+   @cantignygolf at 6; holding NOT_WEDDING means retiring it and the venue drops to 5, **losing its
+   1-5 → 6+ crossing**. The general question matters more: **how should day-of teaser posts count?**
+   (venue credited, couple named, wedding asserted, no wedding imagery) — the model calls them
+   THIS_VENUE at 0.95, so "not a wedding" is a reader-prompt change, not a one-row fix.
+2. **`DcZjrRRm12a`** — marked OTHER_VENUE with no correction; caption has Nobu (getting dressed) and
+   Garfield Park Conservatory (portraits), reception venue unnamed. Can't create without the venue.
+3. Optional: ~300 candidates still in the HUMAN queue. Converts ≈1 wedding per 3 labels.
+4. The user is taking **venue/vendor enrichment in a different UI/UX** (their call, 2026-09-22) — so
+   D060 VenueDetails below is NOT the next Claude thread unless they say so.
 
-### Two bugs fixed this session
+### Label rounds (both scored)
 
-1. **`openrouter.ts` had no request timeout.** The machine suspended overnight mid-run, sockets died
-   without a RST, `fetch` never settled — process alive, CPU idle, no log line, no exception, for
-   hours. Its `catch` anticipates this but only fires when fetch THROWS. Fixed with
-   `AbortSignal.timeout(120_000)`. If a long run goes quiet with idle CPU, suspect this first.
-2. **The venue gate was eating vendors** (456 of 596 rejected, incl. photographers as
-   `non_venue_trade`), and **"Lake Michigan" read as the state of Michigan**, excluding two Chicago
-   venues that sat one wedding from crossing. Both fixed; see D065.
+Two rounds, **107 labels → 42 weddings**. Model THIS_VENUE precision **52/53 = 98.1%**, one false
+positive (at 0.95 confidence — confidence is not tracking correctness well enough to trade against).
+Six disagreements were the model being too conservative. **After the user labels, creation must be
+RE-RUN per batch — it does not happen on its own** (arm C's had run 7h before the labels existed,
+leaving two confirmed weddings uncreated).
+
+### Bugs fixed this session
+
+1. **`openrouter.ts` had no request timeout** — a suspended machine killed the sockets and `fetch`
+   never settled: process alive, CPU idle, no log line, no exception, for hours. `AbortSignal.timeout(120s)`.
+   If a long run goes quiet with idle CPU, suspect this first.
+2. **`--ungated` scanned staging only** (4,404 crawled posts unreachable) and **the parser's params
+   array passed 2 values where only `--acquisition-batch` uses `$2`** — so no corpus-wide parse was
+   runnable at all. Both fixed; the parse then took coverage 92.8% → 99.0%.
+3. **`/label/candidates?post=` joined staging directly**, rendering an EMPTY page for every crawled
+   post. It returned HTTP 200, so a status-code check passed it — verify CONTENT, not status.
+4. **@silverlake_cc (Stow, OHIO) was an alias of @silverlake.cc (Orland Park, IL)** — an interior
+   `.`↔`_` swap was treated as a "scrape artifact". Ohio wedding credited to Chicago, and we paid
+   Apify to crawl an Ohio venue. Signal narrowed, alias deleted, wedding 12927 re-pointed.
+
+### The question worth more than any remaining crawl
+
+**Is 6+ the right bar?** 230 venues hold 1-5 *real* documented weddings with vendor lists. If 3 is
+enough to be useful, coverage is far better than these bands imply and part of the "gap" is
+definitional. Raised, unanswered — a product call.
 
 ## Mission in flight — D060 VenueDetails v3: Phase 3 filling; **f1 served 27 venues** (2026-09-20)
 
