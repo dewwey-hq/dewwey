@@ -49,6 +49,7 @@ import { getPool, closePool } from "../classify/db";
 import {
   computeStem,
   isPunctuationVariant,
+  isInteriorPunctuationSwap,
   normalizeExternalUrl,
   registrableHost,
   isAggregatorHost,
@@ -302,7 +303,18 @@ async function main() {
       const a = accountRows[i];
       const b = accountRows[j];
       if (isPunctuationVariant(a.username, b.username)) {
-        addSignal(pairs, a.id, b.id, "S1b", "scrape/parse artifact ('.'/'_' variant)");
+        addSignal(pairs, a.id, b.id, "S1b", "scrape/parse artifact (trailing '.' or dropped separator)");
+      } else if (isInteriorPunctuationSwap(a.username, b.username)) {
+        // D066: WEAK. Both '.' and '_' are legal inside a handle, so this pair may be two real
+        // businesses that share a name -- @silverlake.cc (Orland Park IL) and @silverlake_cc
+        // (Stow OH) were merged on the old, stronger claim. Never merge on this alone.
+        addSignal(
+          pairs,
+          a.id,
+          b.id,
+          "S1c",
+          "WEAK: interior '.'<->'_' swap -- both are legal characters, so these may be DIFFERENT accounts; corroborate with geography before merging"
+        );
       }
     }
   }

@@ -68,10 +68,42 @@ export function stripPunctuationVariant(username: string): string {
   return username.toLowerCase().replace(/[._]/g, "");
 }
 
-/** S1b: two distinct handles that become identical once '.'/'_' are removed -- a scrape/parse
- * artifact, not a real second account. */
+/** S1b: two distinct handles that become identical once '.'/'_' are removed.
+ *
+ * NARROWED 2026-09-21 (D066) after it produced a wrong merge. It used to claim any such pair was
+ * "a scrape/parse artifact, not a real second account". That reasoning is sound for a TRAILING dot
+ * (Instagram handles cannot end in '.', so one is definitionally an artifact) and for a pair where
+ * one side has no punctuation at all. It is NOT sound for an interior '.'<->'_' SWAP: both
+ * characters are legal inside a handle, so `@silverlake.cc` and `@silverlake_cc` are two real,
+ * separately registered accounts — Silver Lake Country Club in Orland Park IL and Silver Lake
+ * Country Club in Stow OHIO. They were merged on this signal in "round 7a", which attributed an
+ * Ohio wedding to a Chicago venue and made the Ohio club a paid crawl target. The user caught it by
+ * reading the served post.
+ *
+ * So this now returns true only for the artifact-shaped cases, and interior swaps are routed to
+ * `isInteriorPunctuationSwap` below as a WEAK signal that must be corroborated. */
 export function isPunctuationVariant(usernameA: string, usernameB: string): boolean {
   if (usernameA.toLowerCase() === usernameB.toLowerCase()) return false;
+  const a = stripPunctuationVariant(usernameA);
+  const b = stripPunctuationVariant(usernameB);
+  if (a.length === 0 || a !== b) return false;
+  const lowerA = usernameA.toLowerCase();
+  const lowerB = usernameB.toLowerCase();
+  // A trailing '.' is impossible in a real handle, so that pair is always an artifact.
+  if (lowerA.endsWith(".") || lowerB.endsWith(".")) return true;
+  // One side carrying no punctuation at all is the "someone dropped the separator" shape.
+  const puncA = (lowerA.match(/[._]/g) ?? []).length;
+  const puncB = (lowerB.match(/[._]/g) ?? []).length;
+  return puncA === 0 || puncB === 0;
+}
+
+/** D066: two handles identical apart from swapping '.' for '_' INSIDE the handle. Both characters
+ * are legal, so this is a weak "might be the same business" hint, never an artifact claim — it must
+ * be corroborated by geography or another signal before any merge. `@silverlake.cc` vs
+ * `@silverlake_cc` is the case that proves the point: same name, different states. */
+export function isInteriorPunctuationSwap(usernameA: string, usernameB: string): boolean {
+  if (usernameA.toLowerCase() === usernameB.toLowerCase()) return false;
+  if (isPunctuationVariant(usernameA, usernameB)) return false;
   const a = stripPunctuationVariant(usernameA);
   const b = stripPunctuationVariant(usernameB);
   return a.length > 0 && a === b;

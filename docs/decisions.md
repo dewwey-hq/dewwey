@@ -10,6 +10,48 @@ Status: **Accepted.** Measured answer to the user's question: *"is the thought t
 squeezed all we can and those venues dont have credible wedding posts?… should we call it here?"*
 Sits on D065 (the arms), D063 (never-crawled tier closed), D053/D054 (corpus mining).
 
+### The Silver Lake mis-merge — a wrong alias, found by reading one served post (2026-09-21)
+
+The user read a wedding we had served and said *"this one is not the right silverlake"*. The caption:
+*"Congratulations Kristen and Josh on their big day at @silverlake_cc in Stow, Ohio."*
+
+**`@silverlake_cc` (Silver Lake Country Club, Stow OHIO) had been recorded as an alias of
+`@silverlake.cc` (Silver Lake Country Club, Orland Park IL).** Two real, separate country clubs that
+share a common name. Consequences: the Ohio club's wedding was attributed to the Chicago venue, and —
+because an alias sibling is a crawl target — **we paid Apify to crawl an Ohio venue's tagged feed.**
+
+**Root cause, in code.** `isPunctuationVariant` in `venueAliasSignals.ts` treated ANY pair that
+becomes identical after removing `.` and `_` as *"a scrape/parse artifact, not a real second
+account"*. That reasoning is correct for a **trailing** dot (Instagram handles cannot end in one, so
+one side is definitionally an artifact) and for a pair where one side has no punctuation at all. It
+is **wrong for an interior `.`↔`_` swap**: both characters are legal inside a handle, so those can be
+two separately registered accounts. The alias row carried `evidence`, `source` and `verified_by` all
+null, and the alias account has no `account_locations` row at all — nothing ever checked geography.
+
+**Fixed.** `isPunctuationVariant` now returns true only for the artifact shapes. Interior swaps go to
+a new `isInteriorPunctuationSwap`, surfaced by `findVenueAliasCandidates` as signal **S1c** with the
+label "WEAK: … may be DIFFERENT accounts; corroborate with geography before merging" instead of the
+old confident artifact claim. 6 tests pin it, including Silver Lake itself. 74 pass.
+
+**Data corrected** (`tmp_analysis/fix_silverlake_alias.ts`, dry-run then commit, before/after printed):
+alias row deleted; wedding 12927 re-pointed from the Chicago account to the Ohio one with
+`is_chicago = false`, and its `wedding_vendors` venue credit moved with it. **Not retired** — it is a
+real wedding, just not a Chicago one, and the project rule is "a wedding is Chicago iff its venue
+is". @silverlake.cc goes 10 → **9** weddings; it still clears 6, so its 1-5 → 6+ crossing survives,
+but the count was inflated by one.
+
+**Blast radius audited, and it is contained.** Of 79 aliases, 65 have no evidence/verifier recorded
+and 39 point at an account not metro-confirmed — but only **4** have weddings sourced from their own
+feed, and all four are legitimate venue sub-brands (`@uccweddings` → University Club,
+`@artinstitutespecialevents` → Art Institute, `@armourhouseweddings`, `@communityhouse_celebrate`).
+Exactly **one** alias in the table was created by the interior-swap rule, and it was this one.
+
+**The lesson, and it is the recurring one.** A confident-sounding rule ("artifact, not a real
+account") was applied one step beyond where its reasoning held, and nothing downstream re-checked it
+because the claim sounded definitional. It was caught by a human reading one served record — not by
+any gate, count or spot-check, all of which were green. Served-record review keeps finding things the
+metrics cannot.
+
 ### CLOSED — what the $18.31 actually bought (final, 2026-09-21)
 
 | | |

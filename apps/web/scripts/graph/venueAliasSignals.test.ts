@@ -2,11 +2,12 @@
  * Pure-function tests for venueAliasSignals.ts. No DB -- see that file's header for why these
  * are split out. Test cases mirror the worked examples in the findVenueAliasCandidates.ts spec.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, test } from "vitest";
 import {
   computeStem,
   stripPunctuationVariant,
   isPunctuationVariant,
+  isInteriorPunctuationSwap,
   normalizeExternalUrl,
   extractBioMentionSnippet,
   classifyBioMentionPhrase,
@@ -468,5 +469,47 @@ describe("isUmbrellaBrandUsername (S3b guard, D062)", () => {
     expect(isUmbrellaBrandUsername("officialwrigleyfield")).toBe(false);
     expect(isUmbrellaBrandUsername("salvageone")).toBe(false);
     expect(isUmbrellaBrandUsername(null)).toBe(false);
+  });
+});
+
+describe("punctuation variants (D066 -- the Silver Lake mis-merge)", () => {
+  test("an interior '.'<->'_' swap is NOT an artifact -- both characters are legal", () => {
+    // @silverlake.cc is Silver Lake CC in Orland Park IL; @silverlake_cc is Silver Lake CC in
+    // Stow OHIO. Merging them attributed an Ohio wedding to a Chicago venue and made the Ohio
+    // club a paid crawl target.
+    expect(isPunctuationVariant("silverlake.cc", "silverlake_cc")).toBe(false);
+    expect(isInteriorPunctuationSwap("silverlake.cc", "silverlake_cc")).toBe(true);
+  });
+
+  test("a trailing '.' IS an artifact -- Instagram handles cannot end in one", () => {
+    expect(isPunctuationVariant("thelytlehouse.", "thelytlehouse")).toBe(true);
+    expect(isInteriorPunctuationSwap("thelytlehouse.", "thelytlehouse")).toBe(false);
+  });
+
+  test("one side with no punctuation at all is the dropped-separator shape", () => {
+    expect(isPunctuationVariant("the_district_il", "thedistrictil")).toBe(true);
+    expect(isPunctuationVariant("the.district.il", "thedistrictil")).toBe(true);
+  });
+
+  test("identical handles are neither", () => {
+    expect(isPunctuationVariant("silverlake.cc", "silverlake.cc")).toBe(false);
+    expect(isInteriorPunctuationSwap("silverlake.cc", "silverlake.cc")).toBe(false);
+  });
+
+  test("handles that differ by more than punctuation are neither", () => {
+    expect(isPunctuationVariant("silverlake.cc", "silverlakecountryclub")).toBe(false);
+    expect(isInteriorPunctuationSwap("silverlake.cc", "silverlakecountryclub")).toBe(false);
+  });
+
+  test("the two predicates are mutually exclusive", () => {
+    const pairs: [string, string][] = [
+      ["silverlake.cc", "silverlake_cc"],
+      ["thelytlehouse.", "thelytlehouse"],
+      ["the_district_il", "thedistrictil"],
+      ["a.b_c", "a_b.c"],
+    ];
+    for (const [x, y] of pairs) {
+      expect(isPunctuationVariant(x, y) && isInteriorPunctuationSwap(x, y)).toBe(false);
+    }
   });
 });
