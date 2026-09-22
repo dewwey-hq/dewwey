@@ -10,6 +10,67 @@ Status: **Accepted.** Measured answer to the user's question: *"is the thought t
 squeezed all we can and those venues dont have credible wedding posts?… should we call it here?"*
 Sits on D065 (the arms), D063 (never-crawled tier closed), D053/D054 (corpus mining).
 
+### D066 close: the corpus inventory is a SCRIPT now, and two parser bugs are fixed (2026-09-22)
+
+The user's ask: *"the context on the true amount is critical… when I say use data and learn from our
+previous strategies for apify purposes we should use the full amount and like the batches that lead to
+those and see what worked… so that's really important to have it always up to date or like provenance
+and pointed at all results."* A number in a markdown file cannot satisfy that, so it is a script.
+
+**`scripts/graph/reportCorpusInventory.ts [--batches]`** is now the source of truth for: where every
+post lives, the distinct total and why it is not the sum, the mining funnel over the WHOLE corpus,
+what is left and WHY, and per-acquisition-batch cost → weddings → weddings/$. Run it instead of
+quoting any corpus number.
+
+**The reconciliation.** 67,874 distinct posts = staging 47,623 + public 26,775 − 6,524 overlap.
+`v_ig_posts` unions them and has 69,192 ROWS, so the row count and the distinct count differ by the
+1,318 posts held in both — quote the distinct one. The view's public side is filtered to
+`source in ('venue_tagged','own_profile')`; the excluded 5,206 `jeremy_evidence` rows are every one of
+them a staging post promoted into our graph, so staging already supplies them and nothing is hidden.
+
+**Two live parser bugs, both the same mistake the docs made — code that still thought staging WAS the
+corpus:**
+1. `--ungated` scanned `staging.instagram_posts` only. Correct when staging was the corpus; wrong once
+   21,569 crawled posts lived in `public.posts`. **4,404 crawled posts were unreachable by any
+   corpus-wide parse.** Now scans `v_ig_posts`.
+2. The params array passed `[version, shortcodes]` unconditionally, but only the
+   `--acquisition-batch` branch references `$2`, so `--ungated` AND the default score>=12 mode both
+   died with *"bind message supplies 2 parameters, but prepared statement requires 1"*. **No
+   corpus-wide parse had been runnable at all.** Params now match the branch.
+
+**Result of finally running it:** 4,181 posts parsed → **840 with a full (≥3-role) vendor stack, 1,021
+with a venue credit**. Corpus parsed coverage 92.8% → **99.0%**, 697 unparsed left. Clustering those
+produced only **24 new candidates** (most eligible posts were already clustered; 860 excluded as
+non-wedding events), so the yield is tens of weddings, not hundreds — but the blocker is gone and the
+next parse is one command.
+
+**What actually worked, by weddings per dollar — argue Apify strategy from this, not from priors:**
+
+| batch | $ | weddings | w/$ |
+|---|---|---|---|
+| pilot (proven venues) | 0.58 | 53 | **91.4** |
+| canary-vendor | 0.29 | 26 | **89.7** |
+| vendor (tier-A planners/florists) | 1.27 | 104 | **81.9** |
+| discovered (hop-1 frontier) | 1.16 | 84 | 72.4 |
+| probe6 (6-15 venues, own feed) | 3.00 | 208 | 69.3 |
+| deepen | 1.84 | 105 | 57.1 |
+| d065D own-profile | 0.46 | 25 | 54.3 |
+| d065scale vendorthin | 11.64 | 632 | 54.3 |
+| d065C vendor-thin-conn | 2.76 | 147 | 53.3 |
+| probesA | 9.84 | 334 | 33.9 |
+| probesB (zero-wedding venues) | 2.87 | 18 | 6.3 |
+| d065A depth-at-thin-venues | 3.45 | 20 | **5.8** |
+| d063s2 (never-crawled) | 1.04 | 0 | **0.0** |
+
+**Vendor feeds and already-proven venues beat thin/zero-wedding venues by 10-15x, and the three worst
+performers are all coverage plays.** Caveat carried in the script: w/$ counts only weddings created
+under `<batch>-create-%`, so a batch whose candidates were created under another id under-reports, and
+coverage effect is not here — that needs `compareArms.ts` and its shared baseline.
+
+**Also opened as thread 0 in CLAUDE.md, at the user's direction: merge the two post tables.** Four
+bugs so far have been "code forgot the other table exists" — `v_ig_posts` existing at all, the empty
+`?post=` label page, the unreachable 4,404 posts, and the 43%-understated corpus count.
+
 ### CORRECTION (2026-09-22): the corpus IS exhausted, but not for the reason I first gave
 
 Two things I stated above were wrong, both caught by the user asking *"are we at 47k posts, isnt total

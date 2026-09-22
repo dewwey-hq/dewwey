@@ -105,21 +105,31 @@ async function main() {
              where sr.post_url = v.post_url and sr.stack_parser_version = $1
            )`
       : ungated
-      ? `select sp.post_url, sp.caption_raw,
+      ? // D066 (2026-09-22): scans the FULL corpus via v_ig_posts, not `staging.instagram_posts`.
+        // It used to be staging-only, which was right when staging WAS the corpus. It no longer is:
+        // the corpus is 67,874 distinct posts, 21,569 of them crawled by the acquisition loop into
+        // `public.posts`, and this mode could not see any of them -- so 4,404 crawled posts sat
+        // unparsed with no way to reach them. Same "the corpus outgrew the number we quote" mistake
+        // the surrounding docs made.
+        `select v.post_url, v.caption_raw,
            coalesce(
              (select pc.decision::text from post_classification_runs pc
-              where pc.post_url = sp.post_url and pc.classifier_version = 'v3'
+              where pc.post_url = v.post_url and pc.classifier_version = 'v3'
               order by pc.classified_at desc limit 1),
              'UNCLASSIFIED'
            ) as decision,
            cs.score as candidate_score
-         from staging.instagram_posts sp
-         left join candidate_scores cs on cs.post_url = sp.post_url
+         from (
+           select distinct on (post_url) *
+           from v_ig_posts
+           order by post_url, (corpus_source = 'staging') desc
+         ) v
+         left join candidate_scores cs on cs.post_url = v.post_url
            and cs.candidate_generation_version = 'candidate-score-v1'
-         where sp.caption_raw is not null and sp.caption_raw <> ''
+         where v.caption_raw is not null and v.caption_raw <> ''
            and not exists (
              select 1 from stack_extraction_runs sr
-             where sr.post_url = sp.post_url and sr.stack_parser_version = $1
+             where sr.post_url = v.post_url and sr.stack_parser_version = $1
            )`
       : `select sp.post_url, sp.caption_raw,
            coalesce(
@@ -133,7 +143,11 @@ async function main() {
          join candidate_scores cs on cs.post_url = sp.post_url
            and cs.candidate_generation_version = 'candidate-score-v1' and cs.score >= 12
            and $1 = $1`,
-    [STACK_PARSER_VERSION, acquisitionShortcodes ?? []]
+    // D066: the params array used to be [version, shortcodes] unconditionally, but only the
+    // --acquisition-batch branch references $2 -- so BOTH other modes died with "bind message
+    // supplies 2 parameters, but prepared statement requires 1". That is why no corpus-wide parse
+    // had been run: --ungated and the default score>=12 mode were both unrunnable.
+    acquisitionBatch ? [STACK_PARSER_VERSION, acquisitionShortcodes ?? []] : [STACK_PARSER_VERSION]
   );
   console.log(
     `[stack-baseline] version=${STACK_PARSER_VERSION} mode=${

@@ -75,20 +75,20 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   source of truth**. Jeremy's beta RDS data (5,029 vendors) IS loaded, verbatim,
   in `staging.vendors`/`staging.instagram_posts` etc. (see the bullet above —
   confirmed by count, D052, 2026-09-07); his DDL is captured separately in
-  `docs/jeremy-ddl.sql` for schema reference. **The post corpus is MINED OUT for venue-anchored
-  weddings, measured 2026-09-22 (D066).** Total corpus is **67,874 distinct
-  posts** — `staging.instagram_posts` 47,623 + `public.posts` 26,775 − 6,524
-  overlap (use `v_ig_posts`, which unions them; "47,623" is only Jeremy's slice
-  and understates it). Of those, **62,996 parsed (93%)**, 14,478 clustered into
-  candidates, 8,886 attached to a wedding. **14,509 posts DO carry a venue anchor
-  and are unclustered — but only 132 of them contain any wedding language, so
-  exactly 17 would clear the clustering bar.** That is the real reason the corpus
-  is done: not a shortage of venue anchors, a shortage of wedding evidence.
-  Re-reading every reachable unread post (359 of them) returned 3 weddings.
-  **Do not read "only ~6.5% is in `public.posts`" as "unmined"** — the parser and
-  reader work staging in place (the reader logs `context split: staging=N
-  public=N`), so import share measures nothing. Remaining crumb: 4,878 unparsed
-  posts, 299 with an anchor.
+  `docs/jeremy-ddl.sql` for schema reference. **The post corpus is 67,874 DISTINCT posts and is
+  mined out for venue-anchored weddings.** Never quote a corpus number from
+  memory — run **`bun run scripts/graph/reportCorpusInventory.ts [--batches]`**,
+  which is the source of truth for the total, its provenance, the mining funnel
+  and per-batch outcomes. As of 2026-09-22: 67,874 distinct posts (staging 47,623
+  + public 26,775 − 6,524 overlap; `v_ig_posts` unions them and has 69,192 ROWS,
+  so quote the DISTINCT count), **99.0% parsed**, 21.4% clustered, 13.1% attached
+  to a wedding. **14,270 unclustered posts carry a venue anchor but only 114
+  contain any wedding language** — the corpus is short of WEDDING EVIDENCE, not of
+  venue anchors, which is why re-reading does not help (measured: 359 re-read
+  posts → 3 weddings). **"47,623" is only Jeremy's slice** and quoting it as "the
+  corpus" understates by 43%; **"% in `public.posts`" measures import share and
+  says nothing about mining** — the parser and reader work staging in place. Both
+  mistakes were made here and both caused real bugs (see D066).
 
 ## Design decisions (carry over; don't relitigate without reason)
 
@@ -125,6 +125,22 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   anything that reads as replacing Jeremy's architecture publicly.
 
 ## Open threads (priority order)
+
+0. **Merge `staging.instagram_posts` and `public.posts` into ONE table** (user's
+   call, 2026-09-22). Not cleanup — the split has already produced four separate
+   bugs, every one of them "some code forgot the other table exists":
+   - `v_ig_posts` exists solely to paper over the split, and anything that forgets
+     to use it silently sees half the corpus.
+   - `getPostReviewItemsByPostUrls` joined `staging` directly, so
+     `/label/candidates?post=` rendered an EMPTY page for every crawled post.
+   - `runStackParserBaseline.ts --ungated` scanned `staging` only, so 4,404 crawled
+     posts were unreachable by any corpus-wide parse and sat unparsed for weeks.
+   - Docs (and I) quoted 47,623 as "the corpus" when the real number was 67,874.
+   Shape: one `posts` table keyed by `post_url` with a `source`/`corpus_source`
+   column (`jeremy_beta` | `venue_tagged` | `own_profile` | …), staging retained
+   read-only as the import record. Note `staging` has no FK to `accounts`, which is
+   why every evidence view joins by handle — merging fixes that too. Verify after
+   with `reportCorpusInventory.ts`: the distinct total must not move.
 
 1. Link Vercel (this repo, root `apps/web`, Ben's account); then the
    dewwey.com domain story.
