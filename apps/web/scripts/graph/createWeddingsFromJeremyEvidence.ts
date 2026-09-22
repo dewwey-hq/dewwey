@@ -2264,8 +2264,9 @@ async function main() {
   const pool = getPool();
   const client = await pool.connect();
   if (await postsHasOrigin(client)) {
-    JEREMY_POST_COLS += ", origin";
-    JEREMY_POST_VALS += ", 'jeremy_beta'";
+    // P1 also adds raw_format (default apify_v1) -- this path copies the 5-field staging subset.
+    JEREMY_POST_COLS += ", origin, raw_format";
+    JEREMY_POST_VALS += ", 'jeremy_beta', 'jeremy_evidence_subset'";
   }
 
   try {
