@@ -82,7 +82,10 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   and per-batch outcomes. As of 2026-09-22: 67,874 distinct posts (staging 47,623
   + public 26,775 − 6,524 overlap; `v_ig_posts` unions them and has 69,192 ROWS,
   so quote the DISTINCT count), **99.0% parsed**, 21.4% clustered, 13.1% attached
-  to a wedding. **14,270 unclustered posts carry a venue anchor but only 114
+  to a wedding. Note 67,874 is a POST count, not a
+  wedding-post count — only **13% are attached to a wedding**, the rest being
+  vendor marketing, golf outings and promos, so never say "69k wedding posts".
+  **14,270 unclustered posts carry a venue anchor but only 114
   contain any wedding language** — the corpus is short of WEDDING EVIDENCE, not of
   venue anchors, which is why re-reading does not help (measured: 359 re-read
   posts → 3 weddings). **"47,623" is only Jeremy's slice** and quoting it as "the

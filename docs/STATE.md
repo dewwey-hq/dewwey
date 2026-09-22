@@ -70,6 +70,33 @@ Measured twice — re-reading 359 reachable unread posts produced **3** weddings
 43%), and "% in `public.posts`" measures import share, not mining — the parser and reader work staging
 in place.
 
+### The ceiling, and what actually moves it (read this before proposing more acquisition)
+
+**67,874 is a POST count, not a wedding-post count.** Only **8,913 (13%)** of those posts are attached
+to a wedding — the rest is vendor marketing, golf outings, venue promos, engagement shoots. About **1
+in 8** is wedding documentation. Say "7,971 weddings out of 67,874 **posts**", never "out of 69k
+wedding posts": the ratio looks low only because the denominator is everything we hold.
+
+**Automated mining is finished. Human labelling is not.** Those are different statements and conflating
+them loses ~100 weddings:
+
+| lever | remaining | cost | verdict |
+|---|---|---|---|
+| Re-parse / re-read / re-cluster the corpus | ~0 | — | **done** (99% parsed; 14,270 anchored-unclustered posts, only 114 with wedding language) |
+| **HUMAN queue, ~300 candidates** | **≈100 weddings** at ≈1 per 3 labels | human time, $0 | **cheapest source left by a wide margin** |
+| 697 unparsed posts (226 with an anchor) | a handful | ~$0 | marginal |
+| 21 `OTHER_VENUE` verdicts with no corrected venue | ≤21 | one venue name each | marginal, needs a human |
+| **More weddings beyond that** | unbounded | Apify | **requires ADDING to the corpus — i.e. crawling more posts** |
+
+**So: to move the wedding count materially you must grow the 67,874, not re-squeeze it.** Apify resets
+**Oct 17** with $29 included (free). Spend it where the measured per-batch table says — vendor feeds and
+already-proven venues at **50-91 weddings/$** — not thin or zero-wedding venues at **0-6**.
+
+**But know what more posts does NOT buy: coverage.** 88.5% of D065's 782 weddings landed at venues that
+already had 6+. 173 venues still have zero documented weddings and their tagged feeds are **62% dead** —
+crawling cannot fix that, because the weddings are not there to find. Wedding count and venue coverage
+are two different problems and only the first responds to money.
+
 ### Where the numbers stand
 
 | | |
