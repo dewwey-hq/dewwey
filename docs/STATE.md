@@ -6,14 +6,14 @@ page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
 Last rewritten: **2026-09-22 ~05:45 UTC**. The acquisition thread (D065/D066) is **closed on
-measurement** — arm C won, the budget is spent, the corpus is 99% parsed and mined out. One chain may
-still be finishing; the mission section says how to check. The D060 VenueDetails window is idle, and
+measurement** — arm C won, the budget is spent, the corpus is 99% parsed and mined out. **Nothing is
+running.** The D060 VenueDetails window is idle, and
 the user is taking venue/vendor enrichment into a different UI/UX, so it is NOT the default next thread.
 
 ## How to resume (5 minutes)
 
 1. `git log --oneline -10`, `git status`, `git log --oneline origin/main..HEAD | wc -l`.
-2. **Check the new-parse chain** — first subsection below. It is the only thing that might be running.
+2. Nothing is running. The new-parse chain finished at 05:49 UTC; its result is the first subsection.
 3. **Never quote a corpus or coverage number from memory.** Run
    `bun run scripts/graph/reportCorpusInventory.ts --batches` (corpus + per-batch outcomes) and
    `bun run scripts/graph/reportVenueCoverage.ts` (bands). Numbers in this file are a snapshot; those
@@ -25,21 +25,28 @@ the user is taking venue/vendor enrichment into a different UI/UX, so it is NOT 
 **One thing may still be running — check it first (below). Everything else is done.**
 Reasoning: `docs/decisions.md` D065 (the arms) + D066 (the ceiling, corrections, close).
 
-### CHECK FIRST: the new-parse mining chain
+### The new-parse mining chain: DONE (05:49 UTC / 00:49 CDT, 2026-09-22)
 
-Launched 04:14 UTC, expected to finish ≈06:00. It parsed 4,181 previously-unreachable posts, then
-clusters → reconciles → reads → creates.
-```
-tail -20 /tmp/claude-1000/-home-jhoffen-dewwey/fee2c860-795b-48ef-beed-06a4952baa88/scratchpad/logs/newparse.log
-#   look for "== <time> NEWPARSE DONE"
-```
-Scratchpad is session-scoped, so if it is gone use the DB: creation batches are
-`d066-newparse-create-1` / `-2` in `jeremy_weddings_created`. Expected yield is **tens of weddings, not
-hundreds** — clustering produced only 24 new candidates. If it died partway, each step is idempotent
-and re-runnable from `scripts/graph/` (upsertAccountsForStackHandles → runJeremyWeddingClustering ×2 →
-runJeremyWeddingReconciliation → runExtract ×2 → createWeddingsFromJeremyEvidence ×2). **One at a
-time.** Creation needs a snapshot < 24h old (`snapshotGraphTables.ts --label <x>`) or it REFUSES —
-that silently created nothing across four batches once.
+Nothing is running. It parsed 4,181 posts that no corpus-wide parse could previously reach, then
+clustered → reconciled → read → created:
+
+| | |
+|---|---|
+| Posts parsed | 4,181 → **840 with a full (≥3-role) vendor stack**, 1,021 with a venue credit |
+| New candidates clustered | 24 (v2 pool) + 16 (a1 pool) |
+| Reader | 501 posts $1.42 (v2) + 730 of 800 $2.01 (a1 — stopped exactly at its `--max-cost-usd 2` cap) |
+| **Weddings created** | **42**, all from the a1 pool (`d066-newparse-create-2`) |
+| Coverage | 1 venue crossed 1-5 → 6+; the **0 band moved 175 → 174** |
+
+**The v2 pool created 0 of its 513 eligible candidates** — they are almost all
+`SKIP(wrong_venue_no_correction)`: a human marked the venue wrong but never named the right one, so
+there is nothing to create against. That is a standing backlog, not a failure, and it is the same
+shape as the `DcZjrRRm12a` item under "Blocked on the user".
+
+Because the a1 reader truncated at its cost cap, **70 candidate posts stayed unread** and a handful of
+candidates are still incomplete. Re-running is free of Apify (~$0.2 of OpenRouter):
+`bun run scripts/classify/runExtract.ts --mode corpus --clustering-version structural-v3-a1 --limit 200 --write-verdicts --max-cost-usd 1`
+then creation again with a fresh batch id (needs a snapshot < 24h old, or it REFUSES).
 
 ### NEVER quote a corpus number from memory — run the script
 
@@ -62,8 +69,8 @@ in place.
 
 | | |
 |---|---|
-| Weddings | **7,819** (6,995 at D065 start) |
-| Coverage bands (metro venues, `weddings.venue_id`, is_chicago) | 0: **175** · 1-5: **230** · 6-15: **103** · 16-49: **78** · 50+: **39** |
+| Weddings | **7,861** (6,995 at D065 start) |
+| Coverage bands (metro venues, `weddings.venue_id`, is_chicago) | 0: **174** · 1-5: **230** · 6-15: **103** · 16-49: **78** · 50+: **39** |
 | Apify | **$46.79 of $48.18 authorized** — $1.42 left, do not spend without a new ask |
 | Apify cycle | **2026-09-17 → 2026-10-16**; resets Oct 17 with **$29 included (free)** |
 | OpenRouter | ~$55 of $300 left on **`NEW_OPENROUTER_API_KEY`** (not `OPENROUTER_API_KEY`, the old exhausted one) |
