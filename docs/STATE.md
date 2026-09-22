@@ -109,7 +109,12 @@ are two different problems and only the first responds to money.
 
 ### What actually worked — argue Apify strategy from this, not from priors
 
-`reportCorpusInventory.ts --batches` prints it live. Top: pilot 91.4 w/$, canary-vendor 89.7, vendor
+**This is the single most reusable artifact of the D065/D066 arc: run
+`bun run scripts/graph/reportCorpusInventory.ts --batches` FIRST, before proposing any spend, and let
+the measured ranking pick the tier. Do not size a tick from a prior** — D065's own arm A was projected
+at 75-95 weddings from its prior and returned 18, and every retraction in this arc has the same shape.
+
+It prints the ranking live. Top: pilot 91.4 w/$, canary-vendor 89.7, vendor
 81.9, discovered 72.4, probe6 69.3. Bottom: probesB 6.3, **d065A depth-at-thin-venues 5.8**, d063s2
 never-crawled **0.0**. **Vendor feeds and already-proven venues beat thin/zero venues by 10-15x, and
 the three worst performers are all coverage plays.** Caveat: w/$ counts only weddings created under
