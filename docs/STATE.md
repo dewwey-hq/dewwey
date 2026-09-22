@@ -75,7 +75,7 @@ in place.
 | | |
 |---|---|
 | Weddings | **7,971** (6,995 at D065 start) |
-| Coverage bands (metro venues, `weddings.venue_id`, is_chicago) | 0: **174** · 1-5: **229** · 6-15: **103** · 16-49: **78** · 50+: **39** |
+| Coverage bands (metro venues, `weddings.venue_id`, is_chicago) | 0: **173** · 1-5: **231** · 6-15: **102** · 16-49: **78** · 50+: **41** |
 | Apify | **$46.79 of $48.18 authorized** — $1.42 left, do not spend without a new ask |
 | Apify cycle | **2026-09-17 → 2026-10-16**; resets Oct 17 with **$29 included (free)** |
 | OpenRouter | ~$55 of $300 left on **`NEW_OPENROUTER_API_KEY`** (not `OPENROUTER_API_KEY`, the old exhausted one) |
@@ -107,19 +107,32 @@ the three worst performers are all coverage plays.** Caveat: w/$ counts only wed
   `wedding_vendors`. On the venue_id basis the creation logs UNDERSTATED the arms' crossings.
 - The D065 arms carry `tier='discover'` in `ops.crawl_targets`, which is wrong.
 
-### Blocked on the user
+### Blocked on the user — both decisions RESOLVED 2026-09-22
 
-1. **`DbyHgNRRPb1` @cantignygolf** — labelled NOT_WEDDING with the note *"this is an engagement
-   actually… its from engagement"*, then "add both" was said. Flipping keeps wedding 14456 and
-   @cantignygolf at 6; holding NOT_WEDDING means retiring it and the venue drops to 5, **losing its
-   1-5 → 6+ crossing**. The general question matters more: **how should day-of teaser posts count?**
-   (venue credited, couple named, wedding asserted, no wedding imagery) — the model calls them
-   THIS_VENUE at 0.95, so "not a wedding" is a reader-prompt change, not a one-row fix.
-2. **`DcZjrRRm12a`** — marked OTHER_VENUE with no correction; caption has Nobu (getting dressed) and
-   Garfield Park Conservatory (portraits), reception venue unnamed. Can't create without the venue.
-3. Optional: ~300 candidates still in the HUMAN queue. Converts ≈1 wedding per 3 labels.
-4. The user is taking **venue/vendor enrichment in a different UI/UX** (their call, 2026-09-22) — so
-   D060 VenueDetails below is NOT the next Claude thread unless they say so.
+1. **Day-of teaser posts: the rule is UNCHANGED.** The user's call — *"dayof should usually be wedding
+   documented and credible. that one was promotional. exception to rule. so no change i dont think."*
+   So a day-of post that credits the venue and names the couple DOES count, which is exactly what the
+   reader already does (THIS_VENUE at 0.95). **No prompt change.** `DbyHgNRRPb1` @cantignygolf is the
+   exception — promotional / engagement imagery — so its NOT_WEDDING stands and wedding 14456 was
+   retired, with the reason written into `post_venue_verdicts` so no future pass re-creates it.
+   **@cantignygolf 6 → 5, losing its 1-5 → 6+ crossing** — accepted, it was never real.
+2. **`DcZjrRRm12a`: the dinner venue is @avecchicago.** The user remembered the caption named it and
+   they were right — it is a four-location micro-wedding: *dressed at Nobu · portraits at the Garfield
+   Park Conservatory · married at the Alfred Caldwell Lily Pool · dinner with our families at Avec*.
+   The candidate had been anchored to **@nobuchicago**, where they got *dressed*. Corrected to
+   @avecchicago (id 347) and created (`d066-user-decisions-2`) — **@avecchicago 0 → 1**, its first
+   documented wedding.
+   **Still open, deliberately:** the CEREMONY was at the Alfred Caldwell Lily Pool, which has no
+   account. `weddings.ceremony_venue_id` exists for it, but the only candidate is `@chicagoparks` — a
+   whole park district with 12 weddings — and guessing that would be the same over-merge that made an
+   Ohio country club an alias of a Chicago one. Needs a real account or a human call.
+
+Both applied via `tmp_analysis/apply_user_decisions_20260922.ts`, dry-run then `--commit`, before/after
+printed. Nothing else is blocked on the user.
+
+Optional whenever: ~300 candidates still in the HUMAN queue (`/label/candidates?batch=<id>`), converting
+≈1 wedding per 3 labels. And the user is taking **venue/vendor enrichment into a different UI/UX**, so
+D060 VenueDetails below is NOT the default next Claude thread.
 
 ### Label rounds (both scored)
 
