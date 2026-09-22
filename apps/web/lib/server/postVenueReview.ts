@@ -911,6 +911,23 @@ export async function getPostReviewItemsByPostUrls(postUrls: string[]): Promise<
   const pool = getPool();
   if (postUrls.length === 0) return [];
 
+  // D066 (2026-09-21) BUG FIX: this joined `staging.instagram_posts` directly, so direct-open mode
+  // could only ever serve posts from JEREMY'S CORPUS. Every post we crawl ourselves through the
+  // acquisition loop lands in `public.posts`, not staging, so `?post=<shortcode>` returned an EMPTY
+  // page for all of them -- it rendered HTTP 200 with `initialItems: []`, which is why it looked
+  // fine from a status-code check and was only caught when the user tried to open a curated list of
+  // D065 weddings. `getPostReviewQueue` already unions both sides via `v_ig_posts`; this path never
+  // got that fix. Same guarded join here, falling back to staging-only when the view is absent so
+  // the page still cannot 500 over it.
+  const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
+  const postsJoin = viewGuard[0].ok
+    ? `join (
+         select distinct on (shortcode) *
+         from v_ig_posts
+         order by shortcode, (corpus_source = 'staging') desc
+       ) sp on sp.post_url = cp.source_post_url`
+    : `join staging.instagram_posts sp on sp.post_url = cp.source_post_url`;
+
   const { rows } = await pool.query(
     `with venue_counts as (
        select coalesce(al.canonical_account_id, wv.account_id) as venue_account_id,
@@ -942,7 +959,7 @@ export async function getPostReviewItemsByPostUrls(postUrls: string[]): Promise<
          ${styledSignalSql("sp.caption_raw")} as styled_signal_raw
        from jeremy_wedding_candidate_posts cp
        join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
-       join staging.instagram_posts sp on sp.post_url = cp.source_post_url
+       ${postsJoin}
        where cp.source_post_url = any($1::text[])
      ),
      ${LATEST_EXTRACTION_CTE}
