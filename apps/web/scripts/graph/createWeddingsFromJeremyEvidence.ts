@@ -124,6 +124,30 @@ import {
 // set (158, 662) were individually cross-checked against Ben's existing graph and cleared.
 // Already created (D035) -- kept here so a re-run stays a no-op via jeremy_weddings_created,
 // not because this list needs to grow; new batches get their own array below.
+/** D066 (2026-09-22): the stack parser still emits FOUR pre-D056 role slugs that the `vendor_role`
+ * enum no longer has, and `structural_post_vendor_evidence` passes them through unmapped. The first
+ * `$3::vendor_role` cast that met one crashed the whole creation run:
+ *   `invalid input value for enum vendor_role: "beauty_other"`
+ * That is not hypothetical -- it killed the v2 pool of the D066 new-parse chain after 16 CREATE
+ * decisions, so those 16 weddings were never written while the a1 pool's 42 were. Live counts in
+ * `stack_extraction_entries`: beauty_other 10,986, musician 7,164, photobooth 6,126, jeweler 4,654.
+ *
+ * Mapped narrowly, at the insert boundary, rather than reusing `V9_TO_D056` from vendorRoleRules --
+ * that map also rewrites `hotel` -> `accommodations`, and `hotel` IS a valid enum value, so applying
+ * it wholesale would silently change which role thousands of existing credits carry.
+ *
+ * The deeper fix is to canonicalise at parse time or in the evidence view so nothing downstream has
+ * to know; this keeps creation from dying in the meantime. */
+const LEGACY_ROLE_RENAMES: Record<string, string> = {
+  beauty_other: "beauty_services",
+  musician: "live_music",
+  photobooth: "photo_booth",
+  jeweler: "jewelry",
+};
+function canonicalRole(role: string): string {
+  return LEGACY_ROLE_RENAMES[role] ?? role;
+}
+
 const D035_PILOT_CANDIDATE_IDS = [158, 351, 396, 540, 624, 662, 701, 1158, 1222, 1253, 1363, 1650, 2250, 2756, 2804];
 
 // is-chicago-for-new-venues mission (D036), Phase 1: candidates whose venue resolves via
@@ -1475,7 +1499,7 @@ async function runFromConfirmedCandidates(
            values ($1, $2, $3::vendor_role, $4)
            on conflict (wedding_id, account_id, role) do nothing
            returning wedding_id`,
-          [weddingId, v.account_id, v.role, v.n_confirmations]
+          [weddingId, v.account_id, canonicalRole(v.role), v.n_confirmations]
         );
         if (inserted.length > 0) vendorsInserted++;
       }
@@ -2071,7 +2095,7 @@ async function runFromGoldenLegacy(client: PoolClient, batchId: string): Promise
          values ($1, $2, $3::vendor_role, $4)
          on conflict (wedding_id, account_id, role) do nothing
          returning wedding_id`,
-        [weddingId, v.account_id, v.role, v.n_confirmations]
+        [weddingId, v.account_id, canonicalRole(v.role), v.n_confirmations]
       );
       if (inserted.length > 0) vendorsInserted++;
     }
@@ -2426,7 +2450,7 @@ async function main() {
            values ($1, $2, $3::vendor_role, 1)
            on conflict (wedding_id, account_id, role) do nothing
            returning wedding_id`,
-          [weddingId, v.account_id, v.role]
+          [weddingId, v.account_id, canonicalRole(v.role)]
         );
         if (inserted.length > 0) vendorsInserted++;
       }

@@ -35,13 +35,18 @@ clustered → reconciled → read → created:
 | Posts parsed | 4,181 → **840 with a full (≥3-role) vendor stack**, 1,021 with a venue credit |
 | New candidates clustered | 24 (v2 pool) + 16 (a1 pool) |
 | Reader | 501 posts $1.42 (v2) + 730 of 800 $2.01 (a1 — stopped exactly at its `--max-cost-usd 2` cap) |
-| **Weddings created** | **42**, all from the a1 pool (`d066-newparse-create-2`) |
-| Coverage | 1 venue crossed 1-5 → 6+; the **0 band moved 175 → 174** |
+| **Weddings created** | **152** — 42 (a1) + **110** after fixing an enum crash (see below) |
+| Coverage | 3 venues crossed 1-5 → 6+; the **0 band moved 175 → 174** |
 
-**The v2 pool created 0 of its 513 eligible candidates** — they are almost all
-`SKIP(wrong_venue_no_correction)`: a human marked the venue wrong but never named the right one, so
-there is nothing to create against. That is a standing backlog, not a failure, and it is the same
-shape as the `DcZjrRRm12a` item under "Blocked on the user".
+**The v2 pool first created 0 of its 513 eligible candidates — it was CRASHING, not empty.**
+`invalid input value for enum vendor_role: "beauty_other"`: D056 renamed four role slugs, the stack
+parser still emits the old ones, and the evidence view passes them through unmapped, so the first
+`$3::vendor_role` cast that met one killed the run mid-transaction. ~29k entries carry such a role
+(beauty_other 10,986 · musician 7,164 · photobooth 6,126 · jeweler 4,654). Fixed with a narrow rename
+map at the three `wedding_vendors` insert sites; re-running produced **110 weddings** and 2 more
+crossings. **A failed creation run prints no `weddings_created=` line at all, so it looks exactly
+like an empty pool — check for a stack trace before believing "nothing to create".** Deeper fix still
+open: canonicalise at parse time or in the view. See `decisions.md`.
 
 Because the a1 reader truncated at its cost cap, **70 candidate posts stayed unread** and a handful of
 candidates are still incomplete. Re-running is free of Apify (~$0.2 of OpenRouter):
@@ -69,8 +74,8 @@ in place.
 
 | | |
 |---|---|
-| Weddings | **7,861** (6,995 at D065 start) |
-| Coverage bands (metro venues, `weddings.venue_id`, is_chicago) | 0: **174** · 1-5: **230** · 6-15: **103** · 16-49: **78** · 50+: **39** |
+| Weddings | **7,971** (6,995 at D065 start) |
+| Coverage bands (metro venues, `weddings.venue_id`, is_chicago) | 0: **174** · 1-5: **229** · 6-15: **103** · 16-49: **78** · 50+: **39** |
 | Apify | **$46.79 of $48.18 authorized** — $1.42 left, do not spend without a new ask |
 | Apify cycle | **2026-09-17 → 2026-10-16**; resets Oct 17 with **$29 included (free)** |
 | OpenRouter | ~$55 of $300 left on **`NEW_OPENROUTER_API_KEY`** (not `OPENROUTER_API_KEY`, the old exhausted one) |

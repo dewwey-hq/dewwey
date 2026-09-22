@@ -10,6 +10,37 @@ Status: **Accepted.** Measured answer to the user's question: *"is the thought t
 squeezed all we can and those venues dont have credible wedding posts?… should we call it here?"*
 Sits on D065 (the arms), D063 (never-crawled tier closed), D053/D054 (corpus mining).
 
+### A latent enum crash was eating whole creation runs (2026-09-22)
+
+The D066 new-parse chain's v2 pool logged 16 `-> CREATE` decisions and then wrote **nothing**. Cause:
+
+```
+error: invalid input value for enum vendor_role: "beauty_other"
+```
+
+**D056 renamed four `vendor_role` slugs; the stack parser still emits the OLD ones, and
+`structural_post_vendor_evidence` passes them straight through unmapped.** The first
+`$3::vendor_role` cast that met one threw, killing the run mid-transaction. Live counts in
+`stack_extraction_entries`: **beauty_other 10,986 · musician 7,164 · photobooth 6,126 · jeweler
+4,654** — ~29k entries able to kill any creation run that touches them.
+
+**Fixed** with a narrow rename map applied at the three `wedding_vendors` insert sites. Deliberately
+NOT by reusing `V9_TO_D056` from `vendorRoleRules.ts`: that map also rewrites `hotel` →
+`accommodations`, and `hotel` IS a valid enum value, so applying it wholesale would silently change
+which role thousands of existing credits carry.
+
+**What it had been costing.** Re-running the same pool after the fix: **513 eligible → 110 weddings
+created**, 2 more venues crossing 1-5 → 6+. The "16 CREATEs" in the failed log were only what it
+reached before dying, so the loss was ~7x what the log suggested. Weddings 7,861 → **7,971**.
+
+**Why it hid for so long:** every previous creation ran scoped to `--acquisition-batch`, whose
+candidates happened not to carry those four roles. The first unscoped, corpus-wide run hit it
+immediately. A crash that only fires outside the usual scope reads as "nothing to create" — the
+failed run printed no `weddings_created=` line at all, and I initially reported it as an empty pool.
+
+**Deeper fix still open:** canonicalise at parse time or in the evidence view, so nothing downstream
+needs to know about the rename.
+
 ### D066 close: the corpus inventory is a SCRIPT now, and two parser bugs are fixed (2026-09-22)
 
 The user's ask: *"the context on the true amount is critical… when I say use data and learn from our
