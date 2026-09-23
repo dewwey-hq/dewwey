@@ -42,7 +42,7 @@ const TMP_ROOT = new URL("./tmp_analysis/", import.meta.url).pathname;
 const PINNED_BATCHES = ["acq-20260919-probesA", "acq-20260920-probe6"];
 
 /** Frozen outputs: each query returns one text column `r`, the full row. */
-const FROZEN: { name: string; sql: string }[] = [
+export const FROZEN: { name: string; sql: string }[] = [
   { name: "structural_post_vendor_evidence", sql: `select t::text r from structural_post_vendor_evidence t` },
   ...PINNED_BATCHES.map((b) => ({
     name: `structural_for_batch:${b}`,
@@ -84,7 +84,7 @@ const FROZEN: { name: string; sql: string }[] = [
 ];
 
 /** Sets captured at baseline and used by post-conditions (not diffed as frozen outputs). */
-const CAPTURED: { name: string; sql: string }[] = [
+export const CAPTURED: { name: string; sql: string }[] = [
   // The corpus url set. Post-condition: baseline minus current == exactly the 10 profile urls.
   { name: "corpus_urls", sql: `select distinct post_url r from v_ig_posts` },
   // Ben's legacy bulk load: public, not in staging, never observed. Must never enter the
@@ -122,18 +122,18 @@ const EVIDENCE_URL_COLUMNS: [string, string][] = [
   ["non_wedding_posts_retired", "post_url"],
 ];
 
-function sha(lines: string[]): string {
+export function sha(lines: string[]): string {
   const h = createHash("sha256");
   for (const l of lines) h.update(l + "\n");
   return h.digest("hex");
 }
 
-async function fetchLines(c: PoolClient, sql: string): Promise<string[]> {
+export async function fetchLines(c: PoolClient, sql: string): Promise<string[]> {
   const { rows } = await c.query<{ r: string | null }>(sql);
   return rows.map((x) => x.r ?? "\\N").sort();
 }
 
-function multisetDiff(a: string[], b: string[]): { onlyA: string[]; onlyB: string[] } {
+export function multisetDiff(a: string[], b: string[]): { onlyA: string[]; onlyB: string[] } {
   const m = new Map<string, number>();
   for (const x of a) m.set(x, (m.get(x) ?? 0) + 1);
   const onlyB: string[] = [];
@@ -147,7 +147,7 @@ function multisetDiff(a: string[], b: string[]): { onlyA: string[]; onlyB: strin
   return { onlyA, onlyB };
 }
 
-async function measurePostConditions(c: PoolClient, post: boolean) {
+export async function measurePostConditions(c: PoolClient, post: boolean) {
   const out: Record<string, unknown> = {};
   const { rows: k } = await c.query(
     `select count(*)::int n, count(distinct shortcode)::int sc, count(distinct url)::int url from posts`
@@ -155,8 +155,10 @@ async function measurePostConditions(c: PoolClient, post: boolean) {
   out.posts_count_eq_distinct = k[0];
 
   // Orphans. Before the merge an orphan is a url missing from BOTH posts and staging; after, from posts.
+  // After the merge a url is accounted for if it is a post, or one of the staging rows the merge
+  // deliberately excluded as not-a-post (ops.post_merge_exclusions, each with its reason).
   const universe = post
-    ? `select url u from posts`
+    ? `select url u from posts union select post_url from ops.post_merge_exclusions`
     : `select url u from posts union select post_url from staging.instagram_posts`;
   const orphans: Record<string, number> = {};
   for (const [t, col] of EVIDENCE_URL_COLUMNS) {
@@ -179,7 +181,7 @@ async function measurePostConditions(c: PoolClient, post: boolean) {
   return out;
 }
 
-function checkPost(pc: Record<string, any>, captured: Record<string, string[]>, current: Record<string, string[]>): string[] {
+export function checkPost(pc: Record<string, any>, captured: Record<string, string[]>, current: Record<string, string[]>): string[] {
   const fails: string[] = [];
   const k = pc.posts_count_eq_distinct;
   if (!(k.n === k.sc && k.n === k.url)) fails.push(`posts count/distinct mismatch ${JSON.stringify(k)}`);
@@ -195,6 +197,35 @@ function checkPost(pc: Record<string, any>, captured: Record<string, string[]>, 
   if (onlyA.length - unexpectedGone.length !== prof.size) fails.push(`expected all ${prof.size} profile urls gone`);
   if (onlyB.length) fails.push(`${onlyB.length} corpus urls appeared (writer lock?)`);
   return fails;
+}
+
+// The baseline files are newline-joined row text, and some rows (captions) contain newlines -- a
+// format slip in the one-time baseline write. The baseline is never rewritten, so the reader
+// repairs it: regroup continuation lines into the row that starts with "(https://www.instagram",
+// then PROVE the regrouping against the row count and sha256 recorded in summary.json at write
+// time. Any mismatch throws rather than comparing against a guess.
+export function baselineLoader(baselineDir: string): (name: string) => string[] {
+  const summary = JSON.parse(readFileSync(`${baselineDir}/summary.json`, "utf8")) as {
+    outputs: Record<string, { rows: number; sha256: string }>;
+  };
+  return (name: string): string[] => {
+    const f = `${baselineDir}/${name.replace(/[^a-zA-Z0-9_.-]/g, "_")}.txt.gz`;
+    const s = gunzipSync(readFileSync(f)).toString();
+    let lines = s === "" ? [] : s.split("\n");
+    const want = summary.outputs[name];
+    if (want && lines.length !== want.rows) {
+      const grouped: string[] = [];
+      for (const l of lines) {
+        if (grouped.length === 0 || l.startsWith("(https://www.instagram.com/")) grouped.push(l);
+        else grouped[grouped.length - 1] += "\n" + l;
+      }
+      lines = grouped;
+    }
+    if (want && (lines.length !== want.rows || sha(lines) !== want.sha256)) {
+      throw new Error(`baseline ${name}: cannot reproduce ${want.rows} rows / recorded sha256 (got ${lines.length})`);
+    }
+    return lines;
+  };
 }
 
 async function main() {
@@ -254,32 +285,7 @@ async function main() {
       return;
     }
 
-    // The baseline files are newline-joined row text, and some rows (captions) contain newlines --
-    // a format slip in the one-time baseline write. The baseline is never rewritten, so the reader
-    // repairs it: regroup continuation lines into the row that starts with "(https://www.instagram",
-    // then PROVE the regrouping against the row count and sha256 recorded in summary.json at write
-    // time. Any mismatch throws rather than comparing against a guess.
-    const summary = JSON.parse(readFileSync(`${baselineDir}/summary.json`, "utf8")) as {
-      outputs: Record<string, { rows: number; sha256: string }>;
-    };
-    const load = (name: string): string[] => {
-      const f = `${baselineDir}/${name.replace(/[^a-zA-Z0-9_.-]/g, "_")}.txt.gz`;
-      const s = gunzipSync(readFileSync(f)).toString();
-      let lines = s === "" ? [] : s.split("\n");
-      const want = summary.outputs[name];
-      if (want && lines.length !== want.rows) {
-        const grouped: string[] = [];
-        for (const l of lines) {
-          if (grouped.length === 0 || l.startsWith("(https://www.instagram.com/")) grouped.push(l);
-          else grouped[grouped.length - 1] += "\n" + l;
-        }
-        lines = grouped;
-      }
-      if (want && (lines.length !== want.rows || sha(lines) !== want.sha256)) {
-        throw new Error(`baseline ${name}: cannot reproduce ${want.rows} rows / recorded sha256 (got ${lines.length})`);
-      }
-      return lines;
-    };
+    const load = baselineLoader(baselineDir!);
     let frozenDiffs = 0;
     console.log("\n=== FROZEN OUTPUTS (must match baseline, or differ only by a named cause) ===");
     for (const q of FROZEN) {
