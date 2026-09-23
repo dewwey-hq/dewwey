@@ -2692,3 +2692,76 @@ create or replace view v_ig_posts as
    where p.source in ('venue_tagged','own_profile');
 comment on view v_ig_posts is 'DERIVED (D061): pure normalization of every raw Instagram post we hold -- staging (Jeremy) union public.posts (Ben crawl + acquisition loop). NO dedupe, NO eligibility, NO exclusions: consumers apply distinct on (shortcode) with staging precedence and their own guards. The join key across sources is shortcode, never the URL string.';
 
+
+-- ============================================================================
+-- POST-TABLE MERGE (P1, 2026-09-22) -- transcribed VERBATIM from
+-- apps/web/scripts/graph/applyPostMergeSchema.ts (keep the two in sync by hand).
+-- Additive only: posts.origin/raw_format/staging_raw/staging_post_id/merge_batch_id,
+-- unique(url), ops.post_merge_log, ops.post_merge_exclusions, the two synthetic
+-- legacy-import crawl_runs, and the one-time origin/raw_format backfill.
+-- Plan: ~/.claude/plans/read-thru-my-documentation-reflective-sundae.md (rev 3);
+-- tick log: docs/engineering/post-merge/ticks.md.
+-- ============================================================================
+alter table posts add column if not exists origin text;
+alter table posts add column if not exists raw_format text;
+alter table posts add column if not exists staging_raw jsonb;
+alter table posts add column if not exists staging_post_id integer;
+alter table posts add column if not exists merge_batch_id text;
+do $$ begin
+     if not exists (select 1 from pg_constraint where conname = 'posts_origin_check') then
+       alter table posts add constraint posts_origin_check
+         check (origin in ('ben_pipeline','jeremy_beta','acquisition_loop'));
+     end if;
+     if not exists (select 1 from pg_constraint where conname = 'posts_raw_format_check') then
+       alter table posts add constraint posts_raw_format_check
+         check (raw_format in ('apify_v1','jeremy_evidence_subset','jeremy_staging_v1'));
+     end if;
+   end $$;
+create unique index if not exists posts_url_key on posts (url);
+create unique index if not exists posts_staging_post_id_key on posts (staging_post_id);
+create table if not exists ops.post_merge_log (
+     id               bigint generated always as identity primary key,
+     batch_id         text not null,
+     post_id          bigint,
+     staging_post_id  integer,
+     action           text not null,
+     before           jsonb,
+     after            jsonb,
+     logged_at        timestamptz not null default now()
+   );
+create index if not exists idx_post_merge_log_batch on ops.post_merge_log (batch_id, action);
+comment on table ops.post_merge_log is 'POST-TABLE MERGE (2026-09-22): append-only, one row per insert/relabel/link/observation-repair the merge made, with before-state. The revert reads it. Never updated or deleted.';
+create table if not exists ops.post_merge_exclusions (
+     staging_post_id  integer primary key,
+     post_url         text not null,
+     reason           text not null,
+     batch_id         text not null,
+     excluded_at      timestamptz not null default now()
+   );
+comment on table ops.post_merge_exclusions is 'POST-TABLE MERGE (2026-09-22): staging rows deliberately NOT merged into posts, each with its reason (the 10 profile urls, which are not posts).';
+insert into ops.crawl_runs (batch_id, actor, feed, input, status, started_at, finished_at, ingested_at, note)
+   select 'legacy-ben-pipeline', 'legacy-import', 'tagged',
+          '{"source":"pipeline/pipeline.py (apify/instagram-tagged-scraper)","registered_by":"post-table merge P1"}'::jsonb,
+          'ingested', '2026-08-20 05:21:20+00', '2026-08-20 06:32:26+00', now(),
+          'POST-TABLE MERGE (2026-09-22): channel for Ben''s pre-loop pipeline.py crawl, bulk-loaded 2026-08-20 05:21-06:32 UTC. Sightings backfilled under this run use posts.scraped_at, which is the LOAD clock, not an Instagram scrape time. Not a strategy: excluded from w/$ (batch_id is not acq-%).'
+   where not exists (select 1 from ops.crawl_runs where batch_id = 'legacy-ben-pipeline');
+insert into ops.crawl_runs (batch_id, actor, feed, input, status, started_at, finished_at, ingested_at, note)
+   select 'legacy-jeremy-beta-import', 'legacy-import', 'own',
+          '{"source":"Jeremy beta RDS public.instagram_posts, loaded verbatim into staging.instagram_posts","registered_by":"post-table merge P1"}'::jsonb,
+          'ingested', '2026-08-22 00:00:00+00', '2026-08-22 00:00:00+00', now(),
+          'POST-TABLE MERGE (2026-09-22): channel for Jeremy''s beta own-profile scrape (vendor profiles, scraped 2026-06-17..08-21, imported 2026-08-22). Sightings use the staging row''s scraped_at (his real scrape clock). Not a strategy: excluded from w/$ (batch_id is not acq-%).'
+   where not exists (select 1 from ops.crawl_runs where batch_id = 'legacy-jeremy-beta-import');
+update posts p set origin = case
+       when p.source = 'jeremy_evidence' then 'jeremy_beta'
+       when exists (select 1 from ops.post_observations o join ops.crawl_runs r on r.id = o.run_id
+                    where o.post_id = p.id and o.is_first and r.batch_id not like 'legacy-%') then 'acquisition_loop'
+       else 'ben_pipeline' end
+   where p.origin is null;
+update posts set raw_format = case when source = 'jeremy_evidence' then 'jeremy_evidence_subset' else 'apify_v1' end
+   where raw_format is null;
+alter table posts alter column origin set not null;
+alter table posts alter column raw_format set default 'apify_v1';
+alter table posts alter column raw_format set not null;
+comment on column posts.origin is 'POST-TABLE MERGE: which pipeline CREATED this row (ben_pipeline | jeremy_beta | acquisition_loop). No default: writers state it. Sightings (who saw it, when) live in ops.post_observations.';
+comment on column posts.raw_format is 'POST-TABLE MERGE: shape of raw -- apify_v1 | jeremy_evidence_subset (5-field copy, pre-P3) | jeremy_staging_v1 (full staging row).';
+comment on column posts.staging_raw is 'POST-TABLE MERGE: verbatim staging.instagram_posts row, only where raw is an Apify payload and the post is also in staging; normalized fields read it first (staging precedence).';

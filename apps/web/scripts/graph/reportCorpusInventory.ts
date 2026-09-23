@@ -139,6 +139,8 @@ async function main() {
       // ---- Per-acquisition-batch outcomes. This is the table Apify strategy should be argued from:
       // what each batch cost and what it actually produced, not what a prior predicted.
       const { rows: b } = await c.query(
+        // Only acq-% batches are strategies. The post-table merge's synthetic channel runs
+        // (actor 'legacy-import', batch_id 'legacy-*') and run 31 are channel totals, never ranked.
         `with runs as (select id, batch_id, cost_usd from ops.crawl_runs where batch_id like 'acq-%'),
           seeds as (select r.batch_id, sum(s.fetched)::int fetched, sum(s.new_posts)::int new_posts,
                            count(distinct s.account_id)::int accounts
