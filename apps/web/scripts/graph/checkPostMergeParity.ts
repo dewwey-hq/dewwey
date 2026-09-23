@@ -28,6 +28,8 @@
  *   bun run scripts/graph/checkPostMergeParity.ts --baseline <dir> --post     # after P3: assert post-conditions
  *   ... --show 20   # max rows printed per diff side (default 10)
  *   ... --write-baseline --dry   # measure everything, write nothing (smoke test before the one real write)
+ *   ... --record-accepted <dir> --expect <name>=<minus>/<plus>,...   # once, after an approved gate
+ *   ... --accepted <dir>          # compare against baseline adjusted by the approved named diffs
  */
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -286,10 +288,49 @@ async function main() {
     }
 
     const load = baselineLoader(baselineDir!);
+
+    // --record-accepted <dir> --expect name=m/p,...: write the CURRENT frozen diffs as the approved
+    // named diffs, ONCE, and only if every output's -/+ counts equal what the gate packet approved.
+    // It never touches the baseline. --accepted <dir> then compares against
+    // baseline - accepted.minus + accepted.plus, so any other change still fails.
+    const ri = args.indexOf("--record-accepted");
+    if (ri !== -1) {
+      const dir = args[ri + 1];
+      if (existsSync(dir)) throw new Error(`REFUSING: ${dir} exists -- accepted diffs are recorded once`);
+      const ei = args.indexOf("--expect");
+      const expect = new Map<string, string>(
+        (ei !== -1 ? args[ei + 1] : "").split(",").filter(Boolean).map((kv) => kv.split("=") as [string, string])
+      );
+      const rec: Record<string, { minus: string[]; plus: string[] }> = {};
+      for (const q of FROZEN) {
+        const { onlyA, onlyB } = multisetDiff(load(q.name), current[q.name]);
+        if (!onlyA.length && !onlyB.length) continue;
+        rec[q.name] = { minus: onlyA, plus: onlyB };
+      }
+      const got = new Map(Object.entries(rec).map(([k, v]) => [k, `${v.minus.length}/${v.plus.length}`]));
+      const same = got.size === expect.size && [...expect].every(([k, v]) => got.get(k) === v);
+      if (!same) {
+        console.error(`REFUSING: diffs ${JSON.stringify([...got])} do not match --expect ${JSON.stringify([...expect])}`);
+        process.exit(1);
+      }
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(`${dir}/accepted.json`, JSON.stringify({ recorded_at: new Date().toISOString(), expect: [...expect], diffs: rec }, null, 1));
+      console.log(`[parity] accepted diffs recorded: ${dir}/accepted.json ${JSON.stringify([...got])}`);
+      return;
+    }
+    const ai = args.indexOf("--accepted");
+    const accepted: Record<string, { minus: string[]; plus: string[] }> =
+      ai !== -1 ? JSON.parse(readFileSync(`${args[ai + 1]}/accepted.json`, "utf8")).diffs : {};
+
     let frozenDiffs = 0;
     console.log("\n=== FROZEN OUTPUTS (must match baseline, or differ only by a named cause) ===");
     for (const q of FROZEN) {
-      const base = load(q.name);
+      let base = load(q.name);
+      const acc = accepted[q.name];
+      if (acc) {
+        const { onlyA: remaining } = multisetDiff(base, acc.minus); // base minus the approved removals
+        base = [...remaining, ...acc.plus];
+      }
       const { onlyA, onlyB } = multisetDiff(base, current[q.name]);
       if (!onlyA.length && !onlyB.length) {
         console.log(`  OK   ${q.name} (${base.length})`);
