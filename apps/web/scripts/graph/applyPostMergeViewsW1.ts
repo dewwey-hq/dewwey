@@ -69,7 +69,8 @@ async function main() {
   const c = await pool.connect();
   try {
     if (args.includes("--print-schema")) {
-      const out: string[] = [V_JEREMY_BETA_POSTS + ";", COMMENT + ";"];
+      // Live definitions only (W2 replaced the lateral versions this file first installed).
+      const out: string[] = [`create or replace view v_jeremy_beta_posts as\n${(await c.query(`select pg_get_viewdef('v_jeremy_beta_posts'::regclass, true) d`)).rows[0].d}`, COMMENT + ";"];
       out.push(`create or replace view v_ig_posts as\n${(await c.query(`select pg_get_viewdef('v_ig_posts'::regclass, true) d`)).rows[0].d}`);
       for (const v of VIEWS) out.push(`create or replace view ${v} as\n${(await c.query(`select pg_get_viewdef($1::regclass, true) d`, [v])).rows[0].d}`);
       out.push(`create or replace view structural_post_vendor_evidence as\n${(await c.query(`select pg_get_viewdef('structural_post_vendor_evidence'::regclass, true) d`)).rows[0].d}`);

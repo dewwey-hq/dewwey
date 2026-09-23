@@ -440,10 +440,12 @@ export async function getPostReviewQueue(
   // doesn't exist yet (schema not applied), so this page can never 500 over it.
   const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
   const candidatePostsJoin = viewGuard[0].ok
-    ? // Post-table merge W2: v_ig_posts is exactly one row per post now (posts.shortcode is unique),
-      // so the distinct-on wrapper is gone -- it forced a sort of all ~68k rows (incl. JSON extraction
-      // of Jeremy's) before the url filter, ~1 min per page load. Same rows, index-driven.
-      `join v_ig_posts sp on sp.post_url = cp.source_post_url`
+    ? // Post-table merge: v_ig_posts is exactly one row per post (posts.shortcode is unique), so the
+      // old distinct-on wrapper is gone.
+      // Per-row indexed lookup: LATERAL with an OFFSET 0 fence so the planner cannot flatten it back
+      // into a join over the whole view (a plain join hash-joins all ~68k rows and de-toasts every
+      // raw payload: ~12 s warm for this join; this shape: ~0.5 s, index scans on posts_url_key).
+      `cross join lateral (select * from v_ig_posts v where v.post_url = cp.source_post_url offset 0) sp`
     : `join v_jeremy_beta_posts sp on sp.post_url = cp.source_post_url`;
 
   if (opts.spotCheckBatch) {
@@ -645,10 +647,8 @@ async function getD061BatchSpotCheckQueue(
   const pool = getPool();
 
   const candidatePostsJoin = hasIgPostsView
-    ? // Post-table merge W2: v_ig_posts is exactly one row per post now (posts.shortcode is unique),
-      // so the distinct-on wrapper is gone -- it forced a sort of all ~68k rows (incl. JSON extraction
-      // of Jeremy's) before the url filter, ~1 min per page load. Same rows, index-driven.
-      `join v_ig_posts sp on sp.post_url = cp.source_post_url`
+    ? // Post-table merge: one row per post now, so no distinct-on; same per-row lookup as the main queue.
+      `cross join lateral (select * from v_ig_posts v where v.post_url = cp.source_post_url offset 0) sp`
     : `join v_jeremy_beta_posts sp on sp.post_url = cp.source_post_url`;
 
   const { rows } = await pool.query(

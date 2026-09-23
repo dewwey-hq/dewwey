@@ -122,14 +122,15 @@ const STACK_SELECT = `
         'owner_username', ao.username,
         'owner_name', COALESCE(ao.full_name, ao.username::text),
         'owner_avatar', ao.avatar_path,
-        'post_type', sip.post_type,
-        'media_width', sip.media_width,
-        'media_height', sip.media_height
+        'post_type', (CASE WHEN p.raw_format = 'jeremy_staging_v1' THEN p.raw ELSE p.staging_raw END)->>'post_type',
+        'media_width', ((CASE WHEN p.raw_format = 'jeremy_staging_v1' THEN p.raw ELSE p.staging_raw END)->>'media_width')::int,
+        'media_height', ((CASE WHEN p.raw_format = 'jeremy_staging_v1' THEN p.raw ELSE p.staging_raw END)->>'media_height')::int
       ) ORDER BY (ao.embeds_disabled IS TRUE), p.posted_at)
        FROM wedding_posts wp JOIN posts p ON p.id = wp.post_id
        JOIN accounts ao ON ao.id = p.owner_id
-       -- post-table merge W2: Jeremy's media metadata now lives in posts (v_jeremy_beta_posts).
-       LEFT JOIN v_jeremy_beta_posts sip ON sip.post_url = p.url
+       -- post-table merge: Jeremy's media metadata is read straight off the posts row (his verbatim
+       -- staging row lives in raw or staging_raw; NULL for crawled posts, as the old staging join was).
+       -- No view join: joining v_jeremy_beta_posts per wedding scanned the view each time (60-90 s pages).
       WHERE wp.wedding_id = w.id) AS post_infos,
     (SELECT p.caption FROM wedding_posts wp JOIN posts p ON p.id = wp.post_id
       WHERE wp.wedding_id = w.id AND p.caption IS NOT NULL

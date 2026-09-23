@@ -1522,39 +1522,27 @@ describe("D061 acquisition invariants (DB)", () => {
     expect(rows[0].n).toBe(0);
   }, 120000);
 
-  it("every 'public' row reachable from the structural universe was registered by the loop (ops.post_observations) -- unregistered Ben crawl posts stay out", async (ctx) => {
+  it("every 'public' row reachable from the structural universe was observed by a real crawl run -- legacy-import channels and unregistered Ben crawl posts stay out", async (ctx) => {
     const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
     ctx.skip(!viewGuard[0].ok, "v_ig_posts does not exist yet (D061 acquisition schema not applied)");
     const { rows: runsGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('ops.crawl_runs')::text as ok`);
     ctx.skip(!runsGuard[0].ok, "ops.crawl_runs does not exist yet (D061 acquisition schema not applied)");
 
-    // Matches the universe CTE's own rule exactly: a public row only ever enters when scraped_at
-    // is after the first acquisition run ever; with ops.crawl_runs empty, NOTHING public should
-    // be reachable at all (coalesce(...,'infinity') makes the bound unreachable). Shortcodes that
-    // staging ALSO holds (629 of Ben's crawl posts on 2026-09-19) are excluded: precedence picks
-    // the staging row for those, so the universe row is a staging row and the public duplicate is
-    // not "reachable" -- a naive shortcode join would count it (first run of this test: 133).
+    // Post-table merge (2026-09-23): every post now has a sighting (the merge backfilled the two
+    // actor='legacy-import' channel runs), so "has an observation" no longer separates anything. The
+    // universe gate is "observed by a run that is not a legacy-import channel" -- mirrored here. Since
+    // the merge, v_ig_posts is one row per post and 'public' simply means not linked to staging.
     const { rows } = await pool.query(`
       select count(*)::int as n
       from structural_post_vendor_evidence e
-      join v_ig_posts v on v.shortcode = (regexp_match(e.source_post_url, '/p/([^/]+)'))[1]
+      join v_ig_posts v on v.post_url = e.source_post_url
       where v.corpus_source = 'public'
-        and not exists (select 1 from ops.post_observations o where o.post_id = v.post_id)
-        and not exists (select 1 from v_ig_posts s where s.shortcode = v.shortcode and s.corpus_source = 'staging')
-    `);
+        and not exists (select 1 from ops.post_observations o join ops.crawl_runs r on r.id = o.run_id
+                        where o.post_id = v.post_id and r.actor <> 'legacy-import')
+    `)
     expect(rows[0].n).toBe(0);
   }, 120000);
 
-  it("v_ig_posts never carries a jeremy_evidence-sourced row (that source is CREATE-time only, never part of the pure corpus union)", async (ctx) => {
-    const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
-    ctx.skip(!viewGuard[0].ok, "v_ig_posts does not exist yet (D061 acquisition schema not applied)");
-
-    const { rows } = await pool.query(`
-      select count(*)::int as n
-      from v_ig_posts v
-      join posts p on p.id = v.post_id
-      where p.source = 'jeremy_evidence'
-    `);
-    expect(rows[0].n).toBe(0);
-  }, 120000);
+  // (The old "v_ig_posts never carries a jeremy_evidence row" test moved to postMergeInvariants.test.ts:
+  // the merge retired that source value entirely, so the invariant is now "no posts row carries it".)
 });

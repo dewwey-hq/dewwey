@@ -2767,61 +2767,94 @@ comment on column posts.raw_format is 'POST-TABLE MERGE: shape of raw -- apify_v
 comment on column posts.staging_raw is 'POST-TABLE MERGE: verbatim staging.instagram_posts row, only where raw is an Apify payload and the post is also in staging; normalized fields read it first (staging precedence).';
 
 -- ============================================================================
--- POST-TABLE MERGE (P3 + P4 W1, 2026-09-23) -- LIVE definitions after the merge, printed by
+-- POST-TABLE MERGE (P3 + P4 W1/W2, 2026-09-23) -- LIVE definitions after the merge, printed by
 -- apps/web/scripts/graph/applyPostMergeViewsW1.ts --print-schema. These SUPERSEDE the earlier
 -- definitions of the same objects in this file: nothing reads staging.instagram_posts any more;
--- Jeremy-slice views read v_jeremy_beta_posts (posts rows linked to staging). Note: the earlier
--- structural_post_vendor_evidence_for_batch text in this file was already stale vs live before the
--- merge (live used the observation gate).
+-- Jeremy-slice views read v_jeremy_beta_posts (posts rows linked to staging). Pinned to the live DB by
+-- scripts/graph/postMergeInvariants.test.ts. Note: the earlier structural_post_vendor_evidence_for_batch
+-- text in this file was already stale vs live before the merge (live used the observation gate).
 -- ============================================================================
 create or replace view v_jeremy_beta_posts as
- select p.staging_post_id as id,
-        (s.j->>'vendor_id')::integer as vendor_id,
-        p.url as post_url,
-        (s.j->>'location_tag')::varchar(255) as location_tag,
-        s.j->>'caption_raw' as caption_raw,
-        (s.j->>'scraped_at')::timestamp as scraped_at,
-        (s.j->>'post_timestamp')::timestamp as post_timestamp,
-        s.j->>'image_url' as image_url,
-        (s.j->>'likes_count')::integer as likes_count,
-        (s.j->>'owner_username')::varchar(100) as owner_username,
-        nullif(s.j->'mentions', 'null'::jsonb) as mentions,
-        nullif(s.j->'hashtags', 'null'::jsonb) as hashtags,
-        (s.j->>'post_type')::varchar(20) as post_type,
-        nullif(s.j->'images', 'null'::jsonb) as images,
-        (s.j->>'media_width')::integer as media_width,
-        (s.j->>'media_height')::integer as media_height,
-        p.id as post_id,
-        p.shortcode
-   from posts p
-   cross join lateral (select case when p.raw_format = 'jeremy_staging_v1' then p.raw else p.staging_raw end as j) s
-  where p.staging_post_id is not null;
+ SELECT p.staging_post_id AS id,
+    (p.raw ->> 'vendor_id'::text)::integer AS vendor_id,
+    p.url AS post_url,
+    ((p.raw ->> 'location_tag'::text))::character varying(255) AS location_tag,
+    p.raw ->> 'caption_raw'::text AS caption_raw,
+    (p.raw ->> 'scraped_at'::text)::timestamp without time zone AS scraped_at,
+    (p.raw ->> 'post_timestamp'::text)::timestamp without time zone AS post_timestamp,
+    p.raw ->> 'image_url'::text AS image_url,
+    (p.raw ->> 'likes_count'::text)::integer AS likes_count,
+    ((p.raw ->> 'owner_username'::text))::character varying(100) AS owner_username,
+    NULLIF(p.raw -> 'mentions'::text, 'null'::jsonb) AS mentions,
+    NULLIF(p.raw -> 'hashtags'::text, 'null'::jsonb) AS hashtags,
+    ((p.raw ->> 'post_type'::text))::character varying(20) AS post_type,
+    NULLIF(p.raw -> 'images'::text, 'null'::jsonb) AS images,
+    (p.raw ->> 'media_width'::text)::integer AS media_width,
+    (p.raw ->> 'media_height'::text)::integer AS media_height,
+    p.id AS post_id,
+    p.shortcode
+   FROM posts p
+  WHERE p.staging_post_id IS NOT NULL AND p.raw_format = 'jeremy_staging_v1'::text
+UNION ALL
+ SELECT p.staging_post_id AS id,
+    (p.staging_raw ->> 'vendor_id'::text)::integer AS vendor_id,
+    p.url AS post_url,
+    ((p.staging_raw ->> 'location_tag'::text))::character varying(255) AS location_tag,
+    p.staging_raw ->> 'caption_raw'::text AS caption_raw,
+    (p.staging_raw ->> 'scraped_at'::text)::timestamp without time zone AS scraped_at,
+    (p.staging_raw ->> 'post_timestamp'::text)::timestamp without time zone AS post_timestamp,
+    p.staging_raw ->> 'image_url'::text AS image_url,
+    (p.staging_raw ->> 'likes_count'::text)::integer AS likes_count,
+    ((p.staging_raw ->> 'owner_username'::text))::character varying(100) AS owner_username,
+    NULLIF(p.staging_raw -> 'mentions'::text, 'null'::jsonb) AS mentions,
+    NULLIF(p.staging_raw -> 'hashtags'::text, 'null'::jsonb) AS hashtags,
+    ((p.staging_raw ->> 'post_type'::text))::character varying(20) AS post_type,
+    NULLIF(p.staging_raw -> 'images'::text, 'null'::jsonb) AS images,
+    (p.staging_raw ->> 'media_width'::text)::integer AS media_width,
+    (p.staging_raw ->> 'media_height'::text)::integer AS media_height,
+    p.id AS post_id,
+    p.shortcode
+   FROM posts p
+  WHERE p.staging_post_id IS NOT NULL AND p.raw_format <> 'jeremy_staging_v1'::text;
 
 comment on view v_jeremy_beta_posts is 'POST-TABLE MERGE (P4 W1, 2026-09-23): Jeremy''s beta rows, sourced from public.posts (rows linked to a staging row), with the staging.instagram_posts columns, types and values (from the verbatim staging row the merge stored) plus post_id/shortcode. Use it where a query is DEFINED on his slice; use posts / v_ig_posts for the whole corpus. Never read staging.instagram_posts.';
 
 create or replace view v_ig_posts as
  SELECT p.url AS post_url,
     p.shortcode,
-    s.j ->> 'caption_raw'::text AS caption_raw,
-    ((s.j ->> 'post_timestamp'::text)::timestamp without time zone)::timestamp with time zone AS post_timestamp,
-    (s.j ->> 'location_tag'::text)::character varying AS location_tag,
-    lower(s.j ->> 'owner_username'::text) AS owner_username,
-    NULLIF(s.j -> 'mentions'::text, 'null'::jsonb) AS mentions,
-    NULLIF(s.j -> 'hashtags'::text, 'null'::jsonb) AS hashtags,
-    (s.j ->> 'post_type'::text)::character varying AS post_type,
-    s.j ->> 'image_url'::text AS image_url,
-    (s.j ->> 'likes_count'::text)::integer AS likes_count,
-    (s.j ->> 'vendor_id'::text)::integer AS vendor_id,
-    ((s.j ->> 'scraped_at'::text)::timestamp without time zone)::timestamp with time zone AS scraped_at,
+    p.raw ->> 'caption_raw'::text AS caption_raw,
+    ((p.raw ->> 'post_timestamp'::text)::timestamp without time zone)::timestamp with time zone AS post_timestamp,
+    (p.raw ->> 'location_tag'::text)::character varying AS location_tag,
+    lower(p.raw ->> 'owner_username'::text) AS owner_username,
+    NULLIF(p.raw -> 'mentions'::text, 'null'::jsonb) AS mentions,
+    NULLIF(p.raw -> 'hashtags'::text, 'null'::jsonb) AS hashtags,
+    (p.raw ->> 'post_type'::text)::character varying AS post_type,
+    p.raw ->> 'image_url'::text AS image_url,
+    (p.raw ->> 'likes_count'::text)::integer AS likes_count,
+    (p.raw ->> 'vendor_id'::text)::integer AS vendor_id,
+    ((p.raw ->> 'scraped_at'::text)::timestamp without time zone)::timestamp with time zone AS scraped_at,
     NULL::bigint AS post_id,
     'staging'::text AS corpus_source
    FROM posts p
-     CROSS JOIN LATERAL ( SELECT
-                CASE
-                    WHEN p.raw_format = 'jeremy_staging_v1'::text THEN p.raw
-                    ELSE p.staging_raw
-                END AS j) s
-  WHERE p.staging_post_id IS NOT NULL
+  WHERE p.staging_post_id IS NOT NULL AND p.raw_format = 'jeremy_staging_v1'::text
+UNION ALL
+ SELECT p.url AS post_url,
+    p.shortcode,
+    p.staging_raw ->> 'caption_raw'::text AS caption_raw,
+    ((p.staging_raw ->> 'post_timestamp'::text)::timestamp without time zone)::timestamp with time zone AS post_timestamp,
+    (p.staging_raw ->> 'location_tag'::text)::character varying AS location_tag,
+    lower(p.staging_raw ->> 'owner_username'::text) AS owner_username,
+    NULLIF(p.staging_raw -> 'mentions'::text, 'null'::jsonb) AS mentions,
+    NULLIF(p.staging_raw -> 'hashtags'::text, 'null'::jsonb) AS hashtags,
+    (p.staging_raw ->> 'post_type'::text)::character varying AS post_type,
+    p.staging_raw ->> 'image_url'::text AS image_url,
+    (p.staging_raw ->> 'likes_count'::text)::integer AS likes_count,
+    (p.staging_raw ->> 'vendor_id'::text)::integer AS vendor_id,
+    ((p.staging_raw ->> 'scraped_at'::text)::timestamp without time zone)::timestamp with time zone AS scraped_at,
+    NULL::bigint AS post_id,
+    'staging'::text AS corpus_source
+   FROM posts p
+  WHERE p.staging_post_id IS NOT NULL AND p.raw_format <> 'jeremy_staging_v1'::text
 UNION ALL
  SELECT p.url AS post_url,
     p.shortcode,

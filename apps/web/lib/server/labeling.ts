@@ -152,14 +152,19 @@ export async function getQueueBatch(
   // buildLabelingQueue.ts's doc comment for why both corpora are sampled.
   const { rows } = await getPool().query(
     `select lq.post_url, lq.bucket, lq.rank, lq.source,
-            coalesce(sp.caption_raw, p.caption) as caption,
-            sp.hashtags, sp.mentions, sp.location_tag,
-            coalesce(sp.post_timestamp, p.posted_at) as posted_at,
-            coalesce(sp.likes_count, p.likes_count) as likes_count,
-            coalesce(sp.owner_username, a.username::text) as owner_username,
-            sp.image_url, sp.images
+            coalesce((case when ps.raw_format = 'jeremy_staging_v1' then ps.raw else ps.staging_raw end)->>'caption_raw', p.caption) as caption,
+            nullif((case when ps.raw_format = 'jeremy_staging_v1' then ps.raw else ps.staging_raw end)->'hashtags', 'null'::jsonb) as hashtags,
+            nullif((case when ps.raw_format = 'jeremy_staging_v1' then ps.raw else ps.staging_raw end)->'mentions', 'null'::jsonb) as mentions,
+            (case when ps.raw_format = 'jeremy_staging_v1' then ps.raw else ps.staging_raw end)->>'location_tag' as location_tag,
+            coalesce(((case when ps.raw_format = 'jeremy_staging_v1' then ps.raw else ps.staging_raw end)->>'post_timestamp')::timestamp, p.posted_at) as posted_at,
+            coalesce(((case when ps.raw_format = 'jeremy_staging_v1' then ps.raw else ps.staging_raw end)->>'likes_count')::int, p.likes_count) as likes_count,
+            coalesce((case when ps.raw_format = 'jeremy_staging_v1' then ps.raw else ps.staging_raw end)->>'owner_username', a.username::text) as owner_username,
+            (case when ps.raw_format = 'jeremy_staging_v1' then ps.raw else ps.staging_raw end)->>'image_url' as image_url,
+            nullif((case when ps.raw_format = 'jeremy_staging_v1' then ps.raw else ps.staging_raw end)->'images', 'null'::jsonb) as images
      from label_queue lq
-     left join v_jeremy_beta_posts sp on lq.source = 'staging' and sp.post_url = lq.post_url
+     -- post-table merge: Jeremy's staging row is read straight off his posts row (raw or staging_raw)
+     -- via the unique url index -- a join to the v_jeremy_beta_posts view scanned it (2.7 s / 20 rows).
+     left join posts ps on lq.source = 'staging' and ps.url = lq.post_url
      left join posts p on lq.source = 'public' and p.url = lq.post_url
      left join accounts a on lq.source = 'public' and a.id = p.owner_id
      where lq.queue_version = $1
