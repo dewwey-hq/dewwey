@@ -182,6 +182,20 @@ describe("post-merge invariants (DB)", () => {
     expect(trg.map((t) => t.tgname)).toEqual(["instagram_posts_read_only", "instagram_posts_read_only_truncate"]);
   }, 120000);
 
+  it("P6: post_truth has one row per post; regression set v1 is frozen and its sha reproduces", async () => {
+    const { rows } = await pool.query(
+      `select (select count(*) from post_truth)::int t, (select count(*) from posts)::int p,
+              v.members, v.sha256,
+              encode(sha256(convert_to((select string_agg(post_url || '|' || label, E'\\n' order by post_url)
+                                         from eval_set_members e where e.eval_set_id = v.id), 'UTF8')), 'hex') recomputed
+       from eval_set_versions v where v.name = 'post-truth-regression-v1'`
+    );
+    expect(rows[0].t).toBe(rows[0].p);
+    expect(rows[0].members).toBe(4316);
+    expect(rows[0].sha256).toBe("83879f9f12759e64978feaa1d12f2c4876b58061e077a0a7717a4be156566276");
+    expect(rows[0].recomputed).toBe(rows[0].sha256);
+  }, 120000);
+
   it("pipeline/schema.sql's POST-TABLE MERGE block equals the live definitions", async () => {
     const schema = readFileSync(join(REPO, "pipeline/schema.sql"), "utf8");
     const start = schema.indexOf("-- POST-TABLE MERGE (P3 + P4 W1/W2");

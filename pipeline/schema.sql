@@ -3735,3 +3735,103 @@ create trigger instagram_posts_read_only_truncate before truncate on staging.ins
      for each statement execute function staging.forbid_write_instagram_posts();
 comment on table staging.instagram_posts is 'READ-ONLY IMPORT RECORD (post-table merge, 2026-09-23). Jeremy''s beta rows, loaded verbatim 2026-08-22. Every real post here is in public.posts (staging_post_id = id, origin = jeremy_beta); the 10 profile urls are in ops.post_merge_exclusions. Writes are rejected by trigger. Read posts / v_ig_posts / v_jeremy_beta_posts instead.';
 
+
+-- ============================================================================
+-- POST-TABLE MERGE P6 TRUTH LAYER (2026-09-23) -- transcribed from apps/web/scripts/graph/applyPostTruth.ts.
+-- post_truth (label x tier per post) + insert-only eval_set_versions/eval_set_members. v1 frozen by the script:
+-- 'post-truth-regression-v1', 4,316 members, sha256 83879f9f12759e64978feaa1d12f2c4876b58061e077a0a7717a4be156566276.
+-- ============================================================================
+create or replace view post_truth as
+with hl as (
+  select distinct on (post_url) post_url, decision, labeled_at
+  from human_post_labels
+  where labeled_by = 'jeremy' or labeled_by like 'human%'
+  order by post_url, labeled_at desc
+), hv as (
+  select distinct on (post_url) post_url, verdict, reviewed_at
+  from post_venue_verdicts where (reviewed_by = 'jeremy' or reviewed_by like 'human%')
+  order by post_url, reviewed_at desc
+), mv as (
+  select distinct on (post_url) post_url, verdict, reviewed_by, reviewed_at
+  from post_venue_verdicts where not (reviewed_by = 'jeremy' or reviewed_by like 'human%')
+  order by post_url, reviewed_at desc
+), wp as (
+  select x.post_id, min(x.wedding_id) as wedding_id from wedding_posts x group by 1
+), rt as (
+  select distinct post_url from non_wedding_posts_retired
+), cl as (
+  select distinct source_post_url as post_url from jeremy_wedding_candidate_posts
+), m as (
+  select p.url as post_url, p.id as post_id, p.origin, p.source,
+         hl.decision as human_label, hl.labeled_at,
+         hv.verdict as human_verdict, hv.reviewed_at as human_verdict_at,
+         mv.verdict as model_verdict, mv.reviewed_by as model_reviewer, mv.reviewed_at as model_verdict_at,
+         case hl.decision when 'WEDDING' then 'wedding' when 'NOT_WEDDING' then 'not_wedding' end as hl_label,
+         case hv.verdict when 'THIS_VENUE' then 'wedding' when 'OTHER_VENUE' then 'wedding' when 'NOT_WEDDING' then 'not_wedding' end as hv_label,
+         case mv.verdict when 'THIS_VENUE' then 'wedding' when 'OTHER_VENUE' then 'wedding' when 'NOT_WEDDING' then 'not_wedding' end as mv_label,
+         wp.wedding_id, rt.post_url is not null as retired, cl.post_url is not null as clustered
+  from posts p
+  left join hl on hl.post_url = p.url
+  left join hv on hv.post_url = p.url
+  left join mv on mv.post_url = p.url
+  left join wp on wp.post_id = p.id
+  left join rt on rt.post_url = p.url
+  left join cl on cl.post_url = p.url
+)
+select post_url, post_id, origin, source,
+  case when hl_label is not null and hv_label is not null and hl_label <> hv_label then 'conflicting'
+       when coalesce(hl_label, hv_label) is not null then coalesce(hl_label, hv_label)
+       when mv_label is not null then mv_label
+       when retired then 'not_wedding'
+       when wedding_id is not null then 'wedding'
+       when clustered then 'wedding'
+       else 'unknown' end as label,
+  case when coalesce(hl_label, hv_label) is not null then 'gold'
+       when mv_label is not null or retired or wedding_id is not null then 'silver'
+       when clustered then 'bronze' end as tier,
+  case when hl_label is not null and hv_label is not null then 'human_label+human_verdict'
+       when hl_label is not null then 'human_label'
+       when hv_label is not null then 'human_verdict'
+       when mv_label is not null then 'model_verdict:' || model_reviewer
+       when retired then 'non_wedding_posts_retired'
+       when wedding_id is not null then 'wedding_attachment'
+       when clustered then 'wedding_candidate_cluster' end as label_source,
+  case when hl_label is not null or hv_label is not null then greatest(labeled_at, human_verdict_at)
+       when mv_label is not null then model_verdict_at end as label_at,
+  (coalesce(hl_label, hv_label) = 'not_wedding' and wedding_id is not null
+     and not (hl_label is not null and hv_label is not null and hl_label <> hv_label)) as retirement_candidate,
+  (coalesce(hl_label, hv_label) is null and (
+     (mv_label is not null and ((retired and mv_label <> 'not_wedding') or (wedding_id is not null and mv_label <> 'wedding')))
+     or (retired and wedding_id is not null))) as silver_disagreement,
+  jsonb_strip_nulls(jsonb_build_object(
+     'human_label', human_label, 'human_verdict', human_verdict,
+     'model_verdict', model_verdict, 'model_reviewer', model_reviewer,
+     'wedding_id', wedding_id, 'retired', nullif(retired, false), 'clustered', nullif(clustered, false))) as sources
+from m;
+comment on view post_truth is 'POST-TABLE MERGE P6 (2026-09-23): one row per post with label (wedding|not_wedding|unknown|conflicting) and tier (gold=human, silver=model verdict/retirement/wedding attachment, bronze=candidate cluster). Tiers are never blended: pick them explicitly. conflicting = two gold sources disagree. See apps/web/scripts/graph/applyPostTruth.ts.';
+create table if not exists eval_set_versions (
+     id          serial primary key,
+     name        text not null unique,
+     definition  text not null,
+     members     integer not null,
+     sha256      text not null,
+     created_at  timestamptz not null default now(),
+     notes       text
+   );
+create table if not exists eval_set_members (
+     eval_set_id   integer not null references eval_set_versions(id),
+     post_url      text not null references posts(url),
+     label         text not null check (label in ('wedding','not_wedding')),
+     tier          text not null,
+     label_source  text not null,
+     flags         jsonb not null default '{}'::jsonb,
+     primary key (eval_set_id, post_url)
+   );
+create or replace function forbid_eval_set_rewrite() returns trigger language plpgsql as $f$
+   begin raise exception 'eval sets are insert-only: freeze a new version instead of editing %', tg_table_name; end $f$;
+drop trigger if exists eval_set_versions_insert_only on eval_set_versions;
+create trigger eval_set_versions_insert_only before update or delete on eval_set_versions for each row execute function forbid_eval_set_rewrite();
+drop trigger if exists eval_set_members_insert_only on eval_set_members;
+create trigger eval_set_members_insert_only before update or delete on eval_set_members for each row execute function forbid_eval_set_rewrite();
+comment on table eval_set_versions is 'POST-TABLE MERGE P6: frozen, insert-only evaluation sets over post_truth. v1 = gold wedding/not_wedding, a REGRESSION set (the reader was tuned on these labels), not a holdout.';
+
