@@ -5,7 +5,7 @@ history lives in `decisions.md`, preferences in Claude's memory, in-flight detai
 page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-23 ~09:45 UTC**. **The post-table merge (D067) is DONE.** `staging.instagram_posts` lives
+Last rewritten: **2026-09-23 ~11:30 UTC** (independently verified: tick 18). **The post-table merge (D067) is DONE.** `staging.instagram_posts` lives
 in `public.posts`; staging is a read-only import record; `post_truth` and a frozen regression set exist. **Nothing is
 running, and there is no writer lock.** Everything from D065/D066 further down is unchanged history. Its numbers
 predate the merge, so re-run the reports instead of quoting them.
@@ -49,8 +49,10 @@ Narrative: `docs/decisions.md` D067. Every tick, count and named cause: `docs/en
 1. **74 retirement candidates**: posts you labelled NOT_WEDDING that are still attached to a wedding
    (`select * from post_truth where retirement_candidate`). Decide per post or as a class; nothing was acted on.
 2. **3 conflicting gold posts**: your label and your verdict disagree (`where label = 'conflicting'`).
-3. **Push** local commits: `! git push origin main`.
-4. Tell Ben/Jeremy (CLAUDE.md working agreement): Jeremy's table is now merged and read-only, and his original rows
+3. (Pushed 2026-09-23: all merge commits are on origin/main.)
+4. **Optional perf look:** the default `/label/candidates` queue page takes 7–12 s (was 33 s right after P3; it was never timed
+   before the merge, so it is not known to be a regression). Direct-open review 1–2 s, `/label` 0.4 s, vendor page ~6.5 s.
+5. Tell Ben/Jeremy (CLAUDE.md working agreement): Jeremy's table is now merged and read-only, and his original rows
    are preserved verbatim.
 
 **Merge landmines (all hit this mission):**
