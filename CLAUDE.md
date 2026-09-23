@@ -80,9 +80,8 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
   mined out for venue-anchored weddings.** Never quote a corpus number from
   memory — run **`bun run scripts/graph/reportCorpusInventory.ts [--batches]`**,
   which is the source of truth for the total, its provenance, the mining funnel
-  and per-batch outcomes. As of 2026-09-22: 67,874 distinct posts (staging 47,623
-  + public 26,775 − 6,524 overlap; `v_ig_posts` unions them and has 69,192 ROWS,
-  so quote the DISTINCT count), **99.0% parsed**, 21.4% clustered, 13.1% attached
+  and per-batch outcomes. As of 2026-09-22 (pre-merge): 67,874 distinct posts. **Since D067 (2026-09-23) `posts` holds them all: 67,864
+  rows, one per post** (the 10 difference are staging profile urls that were never posts), and `v_ig_posts` is one row per post, **99.0% parsed**, 21.4% clustered, 13.1% attached
   to a wedding. Note 67,874 is a POST count, not a
   wedding-post count — only **13% are attached to a wedding**, the rest being
   vendor marketing, golf outings and promos, so never say "69k wedding posts".
@@ -130,22 +129,12 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
 
 ## Open threads (priority order)
 
-0. **IN FLIGHT — merge `staging.instagram_posts` and `public.posts` into ONE table** (user's
-   call, 2026-09-22). **P3 COMMITTED 2026-09-23: posts = 67,864, one row per post; P4-W3 done, writer lock
-   OFF.** Never run a bare `SET` against DATABASE_URL (transaction pooler): it leaks to other clients (see STATE landmines). Status: `docs/engineering/post-merge/ticks.md` + `docs/STATE.md`. Not cleanup — the split has already produced four separate
-   bugs, every one of them "some code forgot the other table exists":
-   - `v_ig_posts` exists solely to paper over the split, and anything that forgets
-     to use it silently sees half the corpus.
-   - `getPostReviewItemsByPostUrls` joined `staging` directly, so
-     `/label/candidates?post=` rendered an EMPTY page for every crawled post.
-   - `runStackParserBaseline.ts --ungated` scanned `staging` only, so 4,404 crawled
-     posts were unreachable by any corpus-wide parse and sat unparsed for weeks.
-   - Docs (and I) quoted 47,623 as "the corpus" when the real number was 67,874.
-   Shape: one `posts` table keyed by `post_url` with a `source`/`corpus_source`
-   column (`jeremy_beta` | `venue_tagged` | `own_profile` | …), staging retained
-   read-only as the import record. Note `staging` has no FK to `accounts`, which is
-   why every evidence view joins by handle — merging fixes that too. Verify after
-   with `reportCorpusInventory.ts`: the distinct total must not move.
+0. **DONE (D067, 2026-09-23): `staging.instagram_posts` merged into `public.posts`.** `posts` is the corpus (one row
+   per post, `origin` = which pipeline created it); staging is a read-only import record (trigger); Jeremy's rows read
+   as before via `v_jeremy_beta_posts`; `post_truth` + frozen `post-truth-regression-v1`. Guards:
+   `scripts/graph/postMergeInvariants.test.ts`. **Never run a bare `SET` against DATABASE_URL** (transaction pooler):
+   it leaks to other clients and faked "Supabase read-only" three times. Follow-ups (74 retirement candidates, 3
+   conflicting labels) are in `docs/STATE.md`.
 
 1. Link Vercel (this repo, root `apps/web`, Ben's account); then the
    dewwey.com domain story.

@@ -5,86 +5,72 @@ history lives in `decisions.md`, preferences in Claude's memory, in-flight detai
 page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-23 ~06:00 UTC**. **One mission is in flight: the post-table merge
-(CLAUDE.md thread 0).** P0–P3 are done and **the merge is COMMITTED**: `staging.instagram_posts` now
-lives in `public.posts`. P4 W1 (DB views), W2 (server) and **W3 (pipeline readers) are done; the WRITER LOCK IS OFF** (tick 12). Next: W4 reports/queues, W5 lint guard, P5 FKs, P6 truth layer, P7 D067. Details: last row of `docs/engineering/post-merge/ticks.md`. Everything from D065/D066 further down is unchanged history.
+Last rewritten: **2026-09-23 ~09:45 UTC**. **The post-table merge (D067) is DONE.** `staging.instagram_posts` lives
+in `public.posts`; staging is a read-only import record; `post_truth` and a frozen regression set exist. **Nothing is
+running, and there is no writer lock.** Everything from D065/D066 further down is unchanged history. Its numbers
+predate the merge, so re-run the reports instead of quoting them.
 
 ## How to resume (5 minutes)
 
 1. `git log --oneline -10`, `git status`.
-2. **Read `docs/engineering/post-merge/ticks.md`.** It is the tick-by-tick log of this mission: its
-   last row says exactly where things stand, and its header holds the parity command + lock state.
-3. Plan of record: `~/.claude/plans/read-thru-my-documentation-reflective-sundae.md` (rev 3; its
-   rev-3 header wins over the body). Restart with the `/loop Mission: merge …` prompt at the bottom
-   of that file.
-4. **Never quote a corpus or coverage number from memory.** Run
-   `bun run scripts/graph/reportCorpusInventory.ts --batches` and
-   `bun run scripts/graph/reportVenueCoverage.ts`. Numbers in this file are a snapshot.
+2. **Never quote a corpus or coverage number from memory.**
+   - `bun run scripts/graph/reportCorpusInventory.ts --batches`: corpus, provenance by origin × source, import-record
+     reconciliation, sightings per channel, funnel.
+   - `bun run scripts/graph/reportStrategyYield.ts`: gold/silver weddings per crawl batch.
+   - `bun run scripts/graph/reportVenueCoverage.ts`: coverage bands.
+3. Guard suite: `cd apps/web && DATABASE_URL=… bunx --bun vitest run scripts/graph/postMergeInvariants.test.ts`
+   (12 tests). Bun only auto-loads `.env.local` for `bun run`, so export `DATABASE_URL` for vitest.
+4. Then "Blocked on the user" below.
 
-## Mission in flight — post-table merge (2026-09-22 → 23)
+## Post-table merge (D067) — DONE 2026-09-23
 
-**Why:** the corpus lived in two tables (`staging.instagram_posts`, Jeremy's 47,623 beta rows; and
-`public.posts`), and four separate bugs were "code forgot the other table exists" (D066).
+Narrative: `docs/decisions.md` D067. Every tick, count and named cause: `docs/engineering/post-merge/ticks.md`.
 
-**Done (all committed; ticks 1–7):**
-- **P0:** `apps/web/scripts/graph/checkPostMergeParity.ts`, the oracle. It holds 18 frozen
-  downstream outputs as full-row multisets against a ONE-TIME baseline
-  (`scripts/graph/snapshots/2026-09-22T22-43-25-093Z-pm-baseline`, gitignored; summary in
-  `tmp_analysis/pm_baseline_*.json`). **Never rewrite the baseline.**
-- **P0.5:** writers state `posts.origin` (`scripts/graph/postMergeCompat.ts`). `revertWeddingBatch.ts`
-  **never deletes posts** any more.
-- **P1:** `applyPostMergeSchema.ts` added `posts.origin` (ben_pipeline | jeremy_beta |
-  acquisition_loop; NOT NULL, no default), `raw_format`, `staging_raw`, `staging_post_id`,
-  `merge_batch_id`, unique(url), `ops.post_merge_log`, `ops.post_merge_exclusions`, and synthetic runs
-  `legacy-ben-pipeline` / `legacy-jeremy-beta-import` (actor `legacy-import`; never in the w/$ ranking).
-- **P2/P3:** `mergeStagingPosts.ts` batch `pm-20260923-merge-1`, **committed 2026-09-23 ~05:30 UTC**
-  after the user's approval. posts = **67,864** (67,874 − 10 profile urls, logged as exclusions);
-  40,946 inserted, 5,349 `jeremy_evidence` copies relabeled (source own_profile | unknown), 1,318
-  crawled posts linked, 1,409 owner accounts minted. **The 5 dot/underscore twin owners were pointed at
-  the existing account (the user's call).** Every post has ≥1 sighting and exactly one `is_first`.
-  `v_ig_posts` is now single-source: rows = distinct = 67,864.
-- **Approved named diffs** (the packet `tmp_analysis/pm_gate_packet_pm-20260923-merge-1.md` lists
-  every row):
-  1. a pre-existing nondeterministic venue pick in `credit_line_venue` (two venue handles on one
-     line), now deterministic with lowest account id; about 118 rows, all `venue_anchor_conflict=t`
-  2. minted accounts filling a NULL author (38)
-  3. the twin default (5)
-  4. funnel total −10
+**Where things are now:**
+- **`posts` = the corpus.** One row per post; `origin` = which pipeline created it. Jeremy's rows are
+  `origin = 'jeremy_beta'`; read them the old way through `v_jeremy_beta_posts`. `v_ig_posts` is one row per post.
+  `jeremy_evidence` no longer exists as a source value.
+- **Sightings:** every post has ≥1 in `ops.post_observations`, with exactly one `is_first`. The channels
+  `legacy-jeremy-beta-import` and `legacy-ben-pipeline` have actor `legacy-import` and are never ranked.
+- **Truth:** `post_truth` gives label × tier (gold = human, silver = model/attachment/retirement, bronze = cluster).
+  `eval_set_*` tables are insert-only. **`post-truth-regression-v1`** has 4,316 members, sha `83879f9f…6276`, and the
+  6 suspected slips flagged. It is a regression set, not a holdout.
+- **Guards:**
+  - `postMergeInvariants.test.ts` lints for staging reads and the `jeremy_evidence` filter, checks the invariants,
+    and pins `pipeline/schema.sql`'s POST-TABLE MERGE block to live.
+  - FKs to `posts(url)` on the core evidence tables.
+  - A trigger makes staging read-only.
+  - The 8 superseded `apply*Schema.ts` scripts refuse to run (`POST_MERGE_SUPERSEDED`).
+- **Parity oracle** (kept for future schema work): `checkPostMergeParity.ts --baseline
+  scripts/graph/snapshots/2026-09-22T22-43-25-093Z-pm-baseline --accepted scripts/graph/tmp_analysis/pm_accepted_final
+  --post`.
 
-**Next (P4 onward, no user input needed):**
-1. Teach `checkPostMergeParity.ts` the approved diffs, so the standalone checker passes on exactly
-   those rows and fails on anything else.
-2. P4 W1: DB views/function + their duplicating apply scripts and `pipeline/schema.sql`. Note that
-   `schema.sql`'s `structural_post_vendor_evidence_for_batch` body was ALREADY stale vs live (live
-   used the observation gate).
-3. W2: server code (`lib/server/graph.ts`, `labeling.ts`, `postVenueReview.ts`). Check CONTENT.
-4. W3: pipeline readers (parser, extractor, clustering, creation; `jeremy_evidence` filters become
-   `origin`). **This lifts the writer lock.**
-5. W4: reports/queues. W5: lint guard + tests.
-6. P5: FKs to `posts(url)`, REVOKE writes on staging.
-7. P6: `post_truth` + regression set v1.
-8. P7: D067 + a STATE rewrite.
+**Blocked on the user (merge follow-ups):**
+1. **74 retirement candidates**: posts you labelled NOT_WEDDING that are still attached to a wedding
+   (`select * from post_truth where retirement_candidate`). Decide per post or as a class; nothing was acted on.
+2. **3 conflicting gold posts**: your label and your verdict disagree (`where label = 'conflicting'`).
+3. **Push** local commits: `! git push origin main`.
+4. Tell Ben/Jeremy (CLAUDE.md working agreement): Jeremy's table is now merged and read-only, and his original rows
+   are preserved verbatim.
 
 **Merge landmines (all hit this mission):**
-- **THE "READ-ONLY" EPISODES WERE SELF-INFLICTED (found tick 12).** A bare `set default_transaction_read_only=on`
-  sent through the transaction-mode pooler (:6543) sticks to that pooled backend and is served to every later
-  client. That was my own read-only-check prefix. Never a bare SET via DATABASE_URL: use `begin read only` or
-  `set local`. If the DB "goes read-only", run
-  `select setting, source from pg_settings where name='default_transaction_read_only'` FIRST; `session` means a
-  leak, and `set … = off` through the pooler fixes it.
-- **(Superseded diagnosis) Supabase read-only mode twice.** Free-tier cap first, then the small disk kept after the Pro
-  transfer. The project is now **Pro, disk 8 GB** (auto-scaled 2026-09-23). A rolled-back ~45k-row
-  transaction still costs disk (dead tuples + WAL): `VACUUM (ANALYZE)` after big rolled-back
-  rehearsals, never `VACUUM FULL` on a tight disk.
-- **Planner trap:** a view column computed as CASE has no statistics. Filtering on it sent the
-  structural view from 50 s to >19 min. `v_ig_posts` is two UNION ALL branches on `staging_post_id`
-  for that reason, and `ANALYZE` runs inside the merge transaction.
-- **Run 31** (`legacy-ben-crawl1-zero-venues`) registered 1,541 Ben posts as sightings, so "has an
-  observation" ≠ "created by the loop". The structural gate is "observed by a non-`legacy-import`
-  run".
-- `pkill -f <script>` matches its own shell (exit 144). Cancel queries with `pg_cancel_backend`.
-- `is_first` was not moved for acquisition posts Jeremy already held. ~700 posts the loop counted as
-  "new" (d065scale 306 …) are REPORTED in the packet, not rewritten. This is P6 strategy-report input.
+- **NEVER run a bare `SET` through DATABASE_URL (transaction pooler, :6543).**
+  - `set default_transaction_read_only=on` stuck to a pooled backend and made the whole DB "read-only" for every
+    client, 3+ times. I blamed Supabase's disk and free tier; it was my own read-only checks.
+  - Use `begin read only` / `set local`.
+  - If it "goes read-only", run `select setting, source from pg_settings where name='default_transaction_read_only'`
+    FIRST. `session` means a leak: `set … = off` through the pooler fixes it.
+- **After any view change, re-time EVERY page that joins that view.** A UNION ALL view joined per row is a full
+  scan. Fixes, in order of preference:
+  1. read the field off the `posts` row directly (`raw` / `staging_raw`)
+  2. `cross join lateral (select … from v where v.post_url = x.url offset 0)`; a LATERAL without the `OFFSET 0`
+     fence gets flattened back into a join
+  3. never a bare join. A CASE-computed column has no statistics, so views split into branches on real columns.
+- **`to_jsonb()` turns SQL NULL into JSON null**, and `j->'x'` then returns jsonb `'null'`. Wrap it in
+  `nullif(…, 'null'::jsonb)`.
+- **Rolled-back big rehearsals still cost disk** (dead tuples + WAL). Run `VACUUM (ANALYZE)` after them, never
+  `VACUUM FULL` on a tight disk. The project is now Pro (8 GB).
+- `pkill -f <script>` matches its own shell; cancel queries with `pg_cancel_backend`.
 
 ## Mission — D065/D066: acquisition CLOSED on measurement; corpus 99% parsed (2026-09-22) — history, numbers pre-merge
 

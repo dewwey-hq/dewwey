@@ -2767,7 +2767,7 @@ comment on column posts.raw_format is 'POST-TABLE MERGE: shape of raw -- apify_v
 comment on column posts.staging_raw is 'POST-TABLE MERGE: verbatim staging.instagram_posts row, only where raw is an Apify payload and the post is also in staging; normalized fields read it first (staging precedence).';
 
 -- ============================================================================
--- POST-TABLE MERGE (P3 + P4 W1/W2, 2026-09-23) -- LIVE definitions after the merge, printed by
+-- POST-TABLE MERGE (P3 + P4 W1/W2, 2026-09-23; venue tie-breaks tick 17) -- LIVE definitions, printed by
 -- apps/web/scripts/graph/applyPostMergeViewsW1.ts --print-schema. These SUPERSEDE the earlier
 -- definitions of the same objects in this file: nothing reads staging.instagram_posts any more;
 -- Jeremy-slice views read v_jeremy_beta_posts (posts rows linked to staging). Pinned to the live DB by
@@ -3279,7 +3279,7 @@ create or replace view structural_post_vendor_evidence as
                   WHERE av.source_post_url = u_1.post_url)) AND NOT (EXISTS ( SELECT 1
                    FROM location_venue lv
                   WHERE lv.source_post_url = u_1.post_url))
-          ORDER BY u_1.post_url, l.line_no
+          ORDER BY u_1.post_url, l.line_no, (COALESCE(al.canonical_account_id, a.id))
         ), hashtag_venue AS (
          SELECT DISTINCT ON (u_1.post_url) u_1.post_url AS source_post_url,
             COALESCE(al.canonical_account_id, a.id) AS account_id,
@@ -3298,7 +3298,7 @@ create or replace view structural_post_vendor_evidence as
                   WHERE lv.source_post_url = u_1.post_url)) AND NOT (EXISTS ( SELECT 1
                    FROM inline_venue iv
                   WHERE iv.source_post_url = u_1.post_url))
-          ORDER BY u_1.post_url, l.line_no
+          ORDER BY u_1.post_url, l.line_no, (COALESCE(al.canonical_account_id, a.id))
         ), extracted_venue AS (
          SELECT u_1.post_url AS source_post_url,
             COALESCE(al.canonical_account_id, eva.venue_account_id) AS account_id
@@ -3565,7 +3565,7 @@ AS $function$
      where not exists (select 1 from credit_line_venue clv where clv.source_post_url = u.post_url)
        and not exists (select 1 from author_venue av where av.source_post_url = u.post_url)
        and not exists (select 1 from location_venue lv where lv.source_post_url = u.post_url)
-     order by u.post_url, l.line_no asc
+     order by u.post_url, l.line_no asc, coalesce(al.canonical_account_id, a.id)
    ),
    hashtag_venue as (
      select distinct on (u.post_url)
@@ -3580,7 +3580,7 @@ AS $function$
        and not exists (select 1 from author_venue av where av.source_post_url = u.post_url)
        and not exists (select 1 from location_venue lv where lv.source_post_url = u.post_url)
        and not exists (select 1 from inline_venue iv where iv.source_post_url = u.post_url)
-     order by u.post_url, l.line_no asc
+     order by u.post_url, l.line_no asc, coalesce(al.canonical_account_id, a.id)
    ),
    -- D055 venue-discovery reader downstream (2026-09-09), 6th and LAST priority: the Haiku
    -- pool-b reader's own venue attribution (extracted_venue_anchors, resolveDiscoveredVenues.ts),

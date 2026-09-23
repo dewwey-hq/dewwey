@@ -4,6 +4,88 @@ Append-only log, newest entry on top. Not every choice goes here — only ones t
 
 ---
 
+## D067 — 2026-09-23 — One posts table: staging.instagram_posts merged into public.posts, plus a truth layer
+
+Status: **Accepted and shipped (2026-09-22 → 23).** The user's call: *"i dont think they should be separate…
+we want to learn from strategies for pulling wedding posts… do better with mining… have this strong organized
+dataset… (with real credible weddings or not weddings)"*. Plan of record
+`~/.claude/plans/read-thru-my-documentation-reflective-sundae.md` (rev 3, after two outside Grok reviews); tick log
+`docs/engineering/post-merge/ticks.md` (17 ticks, every count and named cause). Closes CLAUDE.md thread 0.
+
+**Why.** Two post tables caused four bugs of one shape, "code forgot the other table exists" (D066): an empty
+`/label/candidates?post=` for crawled posts, 4,404 crawled posts no corpus-wide parse could reach, a union view that
+double-counted overlaps, and "47,623" quoted as the corpus.
+
+**What exists now.**
+- **`posts` is the corpus: 67,864 rows, one per post** (count = distinct shortcode = distinct url; unique url index).
+  New columns:
+  - `origin`: which pipeline created the row (ben_pipeline 6,370 · jeremy_beta 46,295 · acquisition_loop 15,199)
+  - `raw_format`
+  - `staging_raw`: the verbatim staging row for the 1,318 overlap posts
+  - `staging_post_id` and `merge_batch_id`
+- **The source value `jeremy_evidence` is retired.** Jeremy's rows are `own_profile` (owner = scraped vendor) or
+  `unknown`.
+- **Provenance.**
+  - Every post has ≥1 sighting in `ops.post_observations` and exactly one `is_first`. Two synthetic channel runs
+    (actor `legacy-import`: `legacy-jeremy-beta-import`, `legacy-ben-pipeline`) carry the backfilled sightings, and
+    they are never ranked as strategies.
+  - `ops.post_merge_log` holds every insert, relabel, link, mint and is_first, with before-state.
+  - `ops.post_merge_exclusions` holds the 10 staging rows that were profile urls, not posts.
+- **`staging.instagram_posts` is the read-only import record**: a trigger rejects writes; it is never dropped.
+  - `v_jeremy_beta_posts` is its drop-in replacement over `posts` (same columns, types and values).
+  - `v_ig_posts` is single-source, one row per post.
+  - No view or function reads staging; `postMergeInvariants.test.ts` lints the code for it.
+- **FKs** from stack_extraction_runs, post_extraction_runs, post_venue_verdicts and jeremy_wedding_candidate_posts to
+  `posts(url)`, validated. human_post_labels' FK is NOT VALID for one legacy label on a profile url.
+- **Truth layer.**
+  - `post_truth`: label × tier per post. gold = human (2,593 W / 1,723 not-W / 3 conflicting); silver = model verdict,
+    retirement or attachment; bronze = candidate cluster.
+  - Insert-only `eval_set_*` tables. **`post-truth-regression-v1`**: 4,316 gold posts, sha256 `83879f9f…6276`, the 6
+    suspected label slips flagged. It is a regression set, not a holdout.
+  - `reportStrategyYield.ts`: gold/silver weddings per first-sighting batch, W/$ for acquisition batches only.
+
+**Decisions taken on the way** (the tick log has the evidence for each):
+1. **Origin is derived two ways and must agree on every row.** Run 31 had already registered 1,541 Ben posts as
+   sightings, so "has an observation" ≠ "the loop created it".
+2. **The structural universe gate is now "observed by a non-legacy-import run".** A plain "has an observation" gate
+   would have admitted Ben's 3,610 legacy posts once they were backfilled. They stay out; admitting them is a
+   separate, measurable decision.
+3. **`corpus_source` keeps its 'staging' | 'public' values, and staging-linked rows read the staging row.** This held
+   every frozen output byte-identical except the named, approved diffs:
+   - a pre-existing **nondeterministic venue tie-break** in `credit_line_venue`, now lowest account id. The final
+     parity run found the same bug in `inline_venue` and `hashtag_venue` (two venue handles on one line; 23 + 5
+     rows, each proven a pure tie pair), fixed the same way in tick 17
+   - **minted accounts filling a NULL author** (38 rows)
+   - the **twin-handle default**: the user put all 5 dot/underscore twins on the existing account
+   - the 10 profile urls
+4. **`is_first` records the sighting under which the row entered our records and was not moved.** About 700 posts the
+   loop counted as "new" were already in Jeremy's staging (d065scale 306 …); they are reported, not rewritten.
+5. **Posts are never deleted**; `revertWeddingBatch.ts` no longer deletes them.
+
+**Verification.** `checkPostMergeParity.ts` checked 18 frozen outputs against a one-time baseline (never rewritten)
+plus the approved diffs, and was green after every write. Before-and-after proofs:
+- the W3 pipeline scripts, dry-run with old and new code: identical outputs
+- server pages captured before and after: identical visible text
+- 12/12 invariant tests
+
+**Bugs this caught or caused, all fixed:**
+- the vendor-tier crawl ranking P3 had silently zeroed
+- `v_ig_posts` returning JSON null for 25k mentions
+- a LATERAL-in-view plan that made post lookups take ~17 s
+- vendor pages at 60–90 s, which starved the app's 5-connection pool
+- `schema.sql` already stale vs live before the merge
+
+**The "Supabase read-only" episodes were self-inflicted.** A bare `set default_transaction_read_only=on` through the
+transaction pooler stuck to a pooled backend. The project did move to Supabase Pro (974 MB > the free cap), which
+stays justified. The rule is now in STATE landmines, CLAUDE.md and memory.
+
+**Open, deliberately:**
+- **74 retirement candidates**: posts a human labelled NOT_WEDDING that are still attached to a wedding
+  (`post_truth.retirement_candidate`). The user decides.
+- The `human_confirmed_*` views are 1.5–2.5× slower (Jeremy's fields come out of jsonb). Typed columns if they ever
+  matter.
+- `staging` can be archived to R2 and dropped once nobody needs the import record.
+
 ## D066 — 2026-09-21 — The thin-venue coverage ceiling is real, and the corpus is exhausted
 
 Status: **Accepted.** Measured answer to the user's question: *"is the thought then that we have

@@ -11,13 +11,15 @@ anything below: `docs/decisions.md` (D001–D055 so far).
 lists the threads that aren't part of the active mission. Protocol for working across
 sessions: `docs/engineering/working-across-sessions.md`.
 
+- **Shipped 2026-09-23: D067 post-table merge.** One `posts` table (staging is a read-only import record), a
+  `post_truth` truth layer and a frozen regression set; tick log `docs/engineering/post-merge/ticks.md`.
 - **Active mission: D060 VenueDetails v3** (2026-09-13 →): the venue Details tab as one typed
   schema (comparison spine + detail layer) filled by a provenance-first loop, rendered generically.
   Phases 0-2 built and the golden renders reviewed (seven rounds); **schema applied 2026-09-19 and the
   fill loop running** in ticks with gates (`docs/engineering/venue-enrichment/loop/README.md`, log in
   `loop/ticks.md`). Full picture: `docs/STATE.md`; narrative: `docs/decisions.md` D060; plan of record
   `~/.claude/plans/hello-alright-want-to-quizzical-sparrow.md`.
-- **Proposed: Acquisition loop (D061 candidate, 2026-09-19)** — Apify credits are live again
+- **Accepted and ran: Acquisition loop (D061, 2026-09-19; closed on measurement D065/D066)** — Apify credits are live again
   ($29/cycle, cycle started 09-17). Replaces D055's "Phase 2 / coverage items 2–3" with a measured,
   budget-bounded loop over crawl targets with yield priors. Proposal + month-1 budget + the decisions
   it needs: `docs/engineering/acquisition-loop/README.md`. Not approved, nothing spent.
