@@ -440,12 +440,11 @@ export async function getPostReviewQueue(
   // doesn't exist yet (schema not applied), so this page can never 500 over it.
   const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
   const candidatePostsJoin = viewGuard[0].ok
-    ? `join (
-         select distinct on (shortcode) *
-         from v_ig_posts
-         order by shortcode, (corpus_source = 'staging') desc
-       ) sp on sp.post_url = cp.source_post_url`
-    : `join staging.instagram_posts sp on sp.post_url = cp.source_post_url`;
+    ? // Post-table merge W2: v_ig_posts is exactly one row per post now (posts.shortcode is unique),
+      // so the distinct-on wrapper is gone -- it forced a sort of all ~68k rows (incl. JSON extraction
+      // of Jeremy's) before the url filter, ~1 min per page load. Same rows, index-driven.
+      `join v_ig_posts sp on sp.post_url = cp.source_post_url`
+    : `join v_jeremy_beta_posts sp on sp.post_url = cp.source_post_url`;
 
   if (opts.spotCheckBatch) {
     return getD061BatchSpotCheckQueue(limit, opts.spotCheckBatch, viewGuard[0].ok !== null);
@@ -646,13 +645,11 @@ async function getD061BatchSpotCheckQueue(
   const pool = getPool();
 
   const candidatePostsJoin = hasIgPostsView
-    ? `join (
-         select distinct on (shortcode) *
-         from v_ig_posts
-         where post_url in (select post_url from batch_first_observed)
-         order by shortcode, (corpus_source = 'staging') desc
-       ) sp on sp.post_url = cp.source_post_url`
-    : `join staging.instagram_posts sp on sp.post_url = cp.source_post_url`;
+    ? // Post-table merge W2: v_ig_posts is exactly one row per post now (posts.shortcode is unique),
+      // so the distinct-on wrapper is gone -- it forced a sort of all ~68k rows (incl. JSON extraction
+      // of Jeremy's) before the url filter, ~1 min per page load. Same rows, index-driven.
+      `join v_ig_posts sp on sp.post_url = cp.source_post_url`
+    : `join v_jeremy_beta_posts sp on sp.post_url = cp.source_post_url`;
 
   const { rows } = await pool.query(
     `with venue_counts as materialized (
@@ -921,12 +918,11 @@ export async function getPostReviewItemsByPostUrls(postUrls: string[]): Promise<
   // the page still cannot 500 over it.
   const { rows: viewGuard } = await pool.query<{ ok: string | null }>(`select to_regclass('v_ig_posts')::text as ok`);
   const postsJoin = viewGuard[0].ok
-    ? `join (
-         select distinct on (shortcode) *
-         from v_ig_posts
-         order by shortcode, (corpus_source = 'staging') desc
-       ) sp on sp.post_url = cp.source_post_url`
-    : `join staging.instagram_posts sp on sp.post_url = cp.source_post_url`;
+    ? // Post-table merge W2: v_ig_posts is exactly one row per post now (posts.shortcode is unique),
+      // so the distinct-on wrapper is gone -- it forced a sort of all ~68k rows (incl. JSON extraction
+      // of Jeremy's) before the url filter, ~1 min per page load. Same rows, index-driven.
+      `join v_ig_posts sp on sp.post_url = cp.source_post_url`
+    : `join v_jeremy_beta_posts sp on sp.post_url = cp.source_post_url`;
 
   const { rows } = await pool.query(
     `with venue_counts as (
@@ -1067,7 +1063,7 @@ export async function getSpotCheckQueue(
          ${styledSignalSql("sp.caption_raw")} as styled_signal_raw
        from jeremy_wedding_candidate_posts cp
        join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
-       join staging.instagram_posts sp on sp.post_url = cp.source_post_url
+       join v_jeremy_beta_posts sp on sp.post_url = cp.source_post_url
        where jwc.clustering_version = $1
      ),
      target_current as (
@@ -1361,7 +1357,7 @@ export async function getPostReviewProgress(
        select cp.source_post_url, jwc.chicago_status
        from jeremy_wedding_candidate_posts cp
        join jeremy_wedding_candidates jwc on jwc.id = cp.candidate_id
-       join staging.instagram_posts sp on sp.post_url = cp.source_post_url
+       join v_jeremy_beta_posts sp on sp.post_url = cp.source_post_url
        where jwc.clustering_version = $1
          and jwc.chicago_status <> 'CHICAGO_NOT_CONFIRMED'
          and not ${nonWeddingEventExclusionSql("sp.caption_raw")}

@@ -26,7 +26,7 @@ export interface StackVendor {
  * Per-post detail for the D058 feed design lab (`app/lab/feed`) — additive to the
  * `post_urls`/`embed_urls` arrays every existing caller (`WeddingFeedCard`, `/weddings`,
  * the vendor page) already reads; those are untouched. `postType` is only populated for
- * the ~14k posts Jeremy's crawl also captured (`staging.instagram_posts`, joined by URL) —
+ * the ~14k posts Jeremy's crawl also captured (`v_jeremy_beta_posts`, formerly `staging.instagram_posts`, joined by URL) —
  * null for the rest, which is most of Ben's `venue_tagged` corpus.
  */
 export interface StackPostInfo {
@@ -39,7 +39,7 @@ export interface StackPostInfo {
   ownerUsername: string | null;
   ownerName: string | null;
   ownerAvatarUrl: string | null;
-  /** 'Image' | 'Sidecar' | 'Video' | null (unknown — not in staging.instagram_posts). */
+  /** 'Image' | 'Sidecar' | 'Video' | null (unknown — not one of Jeremy's beta posts, v_jeremy_beta_posts). */
   postType: string | null;
   mediaWidth: number | null;
   mediaHeight: number | null;
@@ -128,7 +128,8 @@ const STACK_SELECT = `
       ) ORDER BY (ao.embeds_disabled IS TRUE), p.posted_at)
        FROM wedding_posts wp JOIN posts p ON p.id = wp.post_id
        JOIN accounts ao ON ao.id = p.owner_id
-       LEFT JOIN staging.instagram_posts sip ON sip.post_url = p.url
+       -- post-table merge W2: Jeremy's media metadata now lives in posts (v_jeremy_beta_posts).
+       LEFT JOIN v_jeremy_beta_posts sip ON sip.post_url = p.url
       WHERE wp.wedding_id = w.id) AS post_infos,
     (SELECT p.caption FROM wedding_posts wp JOIN posts p ON p.id = wp.post_id
       WHERE wp.wedding_id = w.id AND p.caption IS NOT NULL

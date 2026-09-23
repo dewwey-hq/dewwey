@@ -145,7 +145,8 @@ export async function getQueueBatch(
   const queueVersion = opts.queueVersion ?? CURRENT_QUEUE_VERSION;
   const labeledBy = opts.labeledBy ?? LABELED_BY;
   // Resolves each queued post from whichever corpus it came from
-  // (lq.source) -- staging.instagram_posts (Jeremy's own-profile scrape)
+  // (lq.source) -- 'staging' = Jeremy's own-profile scrape, read via v_jeremy_beta_posts since the
+  // post-table merge (the rows live in posts now)
   // or public.posts (Ben's venue_tagged crawl, joined to accounts for the
   // username public.posts doesn't store directly). See
   // buildLabelingQueue.ts's doc comment for why both corpora are sampled.
@@ -158,7 +159,7 @@ export async function getQueueBatch(
             coalesce(sp.owner_username, a.username::text) as owner_username,
             sp.image_url, sp.images
      from label_queue lq
-     left join staging.instagram_posts sp on lq.source = 'staging' and sp.post_url = lq.post_url
+     left join v_jeremy_beta_posts sp on lq.source = 'staging' and sp.post_url = lq.post_url
      left join posts p on lq.source = 'public' and p.url = lq.post_url
      left join accounts a on lq.source = 'public' and a.id = p.owner_id
      where lq.queue_version = $1

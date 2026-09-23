@@ -21,9 +21,9 @@ let fixturePostUrl: string;
 beforeAll(async () => {
   const pool = getPool();
   const { rows } = await pool.query<{ post_url: string }>(
-    `select post_url from staging.instagram_posts order by id limit 1`
+    `select post_url from v_jeremy_beta_posts order by id limit 1`
   );
-  if (!rows[0]) throw new Error("staging.instagram_posts is empty -- cannot pick a fixture post");
+  if (!rows[0]) throw new Error("v_jeremy_beta_posts is empty -- cannot pick a fixture post");
   fixturePostUrl = rows[0].post_url;
 
   await pool.query(
