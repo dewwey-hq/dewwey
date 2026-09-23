@@ -5,22 +5,84 @@ history lives in `decisions.md`, preferences in Claude's memory, in-flight detai
 page and any other doc disagree, this page is newer.
 Protocol: `engineering/working-across-sessions.md`.
 
-Last rewritten: **2026-09-22 ~05:45 UTC**. The acquisition thread (D065/D066) is **closed on
-measurement** — arm C won, the budget is spent, the corpus is 99% parsed and mined out. **Nothing is
-running.** The D060 VenueDetails window is idle, and
-the user is taking venue/vendor enrichment into a different UI/UX, so it is NOT the default next thread.
+Last rewritten: **2026-09-23 ~06:00 UTC**. **One mission is in flight: the post-table merge
+(CLAUDE.md thread 0).** P0–P3 are done and **the merge is COMMITTED**: `staging.instagram_posts` now
+lives in `public.posts`. P4 (consumer cutover) runs next as a self-paced `/loop`. **A WRITER LOCK IS
+ON**: no acquisition tick, parse, reader, creation or revert run until the P4-W3 commit lifts it
+(see below). Everything from D065/D066 further down is unchanged history.
 
 ## How to resume (5 minutes)
 
-1. `git log --oneline -10`, `git status`, `git log --oneline origin/main..HEAD | wc -l`.
-2. Nothing is running. The new-parse chain finished at 05:49 UTC; its result is the first subsection.
-3. **Never quote a corpus or coverage number from memory.** Run
-   `bun run scripts/graph/reportCorpusInventory.ts --batches` (corpus + per-batch outcomes) and
-   `bun run scripts/graph/reportVenueCoverage.ts` (bands). Numbers in this file are a snapshot; those
-   scripts are the source of truth. Quoting a stale number caused three separate bugs this session.
-4. Then "Blocked on the user".
+1. `git log --oneline -10`, `git status`.
+2. **Read `docs/engineering/post-merge/ticks.md`.** It is the tick-by-tick log of this mission: its
+   last row says exactly where things stand, and its header holds the parity command + lock state.
+3. Plan of record: `~/.claude/plans/read-thru-my-documentation-reflective-sundae.md` (rev 3; its
+   rev-3 header wins over the body). Restart with the `/loop Mission: merge …` prompt at the bottom
+   of that file.
+4. **Never quote a corpus or coverage number from memory.** Run
+   `bun run scripts/graph/reportCorpusInventory.ts --batches` and
+   `bun run scripts/graph/reportVenueCoverage.ts`. Numbers in this file are a snapshot.
 
-## Mission — D065/D066: acquisition CLOSED on measurement; corpus 99% parsed (2026-09-22)
+## Mission in flight — post-table merge (2026-09-22 → 23)
+
+**Why:** the corpus lived in two tables (`staging.instagram_posts`, Jeremy's 47,623 beta rows; and
+`public.posts`), and four separate bugs were "code forgot the other table exists" (D066).
+
+**Done (all committed; ticks 1–7):**
+- **P0:** `apps/web/scripts/graph/checkPostMergeParity.ts`, the oracle. It holds 18 frozen
+  downstream outputs as full-row multisets against a ONE-TIME baseline
+  (`scripts/graph/snapshots/2026-09-22T22-43-25-093Z-pm-baseline`, gitignored; summary in
+  `tmp_analysis/pm_baseline_*.json`). **Never rewrite the baseline.**
+- **P0.5:** writers state `posts.origin` (`scripts/graph/postMergeCompat.ts`). `revertWeddingBatch.ts`
+  **never deletes posts** any more.
+- **P1:** `applyPostMergeSchema.ts` added `posts.origin` (ben_pipeline | jeremy_beta |
+  acquisition_loop; NOT NULL, no default), `raw_format`, `staging_raw`, `staging_post_id`,
+  `merge_batch_id`, unique(url), `ops.post_merge_log`, `ops.post_merge_exclusions`, and synthetic runs
+  `legacy-ben-pipeline` / `legacy-jeremy-beta-import` (actor `legacy-import`; never in the w/$ ranking).
+- **P2/P3:** `mergeStagingPosts.ts` batch `pm-20260923-merge-1`, **committed 2026-09-23 ~05:30 UTC**
+  after the user's approval. posts = **67,864** (67,874 − 10 profile urls, logged as exclusions);
+  40,946 inserted, 5,349 `jeremy_evidence` copies relabeled (source own_profile | unknown), 1,318
+  crawled posts linked, 1,409 owner accounts minted. **The 5 dot/underscore twin owners were pointed at
+  the existing account (the user's call).** Every post has ≥1 sighting and exactly one `is_first`.
+  `v_ig_posts` is now single-source: rows = distinct = 67,864.
+- **Approved named diffs** (the packet `tmp_analysis/pm_gate_packet_pm-20260923-merge-1.md` lists
+  every row):
+  1. a pre-existing nondeterministic venue pick in `credit_line_venue` (two venue handles on one
+     line), now deterministic with lowest account id; about 118 rows, all `venue_anchor_conflict=t`
+  2. minted accounts filling a NULL author (38)
+  3. the twin default (5)
+  4. funnel total −10
+
+**Next (P4 onward, no user input needed):**
+1. Teach `checkPostMergeParity.ts` the approved diffs, so the standalone checker passes on exactly
+   those rows and fails on anything else.
+2. P4 W1: DB views/function + their duplicating apply scripts and `pipeline/schema.sql`. Note that
+   `schema.sql`'s `structural_post_vendor_evidence_for_batch` body was ALREADY stale vs live (live
+   used the observation gate).
+3. W2: server code (`lib/server/graph.ts`, `labeling.ts`, `postVenueReview.ts`). Check CONTENT.
+4. W3: pipeline readers (parser, extractor, clustering, creation; `jeremy_evidence` filters become
+   `origin`). **This lifts the writer lock.**
+5. W4: reports/queues. W5: lint guard + tests.
+6. P5: FKs to `posts(url)`, REVOKE writes on staging.
+7. P6: `post_truth` + regression set v1.
+8. P7: D067 + a STATE rewrite.
+
+**Merge landmines (all hit this mission):**
+- **Supabase read-only mode twice.** Free-tier cap first, then the small disk kept after the Pro
+  transfer. The project is now **Pro, disk 8 GB** (auto-scaled 2026-09-23). A rolled-back ~45k-row
+  transaction still costs disk (dead tuples + WAL): `VACUUM (ANALYZE)` after big rolled-back
+  rehearsals, never `VACUUM FULL` on a tight disk.
+- **Planner trap:** a view column computed as CASE has no statistics. Filtering on it sent the
+  structural view from 50 s to >19 min. `v_ig_posts` is two UNION ALL branches on `staging_post_id`
+  for that reason, and `ANALYZE` runs inside the merge transaction.
+- **Run 31** (`legacy-ben-crawl1-zero-venues`) registered 1,541 Ben posts as sightings, so "has an
+  observation" ≠ "created by the loop". The structural gate is "observed by a non-`legacy-import`
+  run".
+- `pkill -f <script>` matches its own shell (exit 144). Cancel queries with `pg_cancel_backend`.
+- `is_first` was not moved for acquisition posts Jeremy already held. ~700 posts the loop counted as
+  "new" (d065scale 306 …) are REPORTED in the packet, not rewritten. This is P6 strategy-report input.
+
+## Mission — D065/D066: acquisition CLOSED on measurement; corpus 99% parsed (2026-09-22) — history, numbers pre-merge
 
 **One thing may still be running — check it first (below). Everything else is done.**
 Reasoning: `docs/decisions.md` D065 (the arms) + D066 (the ceiling, corrections, close).

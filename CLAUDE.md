@@ -33,7 +33,8 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
 ## Infrastructure (state as of 2026-08-22)
 
 - **Supabase**: project `dewwey`, ref `ljcbslfdlfehgjrdnfco`, **Dewwey org**,
-  us-east-1, free tier. **Merged schema applied and Ben's graph data loaded**
+  us-east-1, **Pro plan since 2026-09-23 (disk 8 GB)**. The free tier's 500 MB cap put the DB in read-only
+  mode mid-merge, and so did the small disk that survived the transfer. **Merged schema applied and Ben's graph data loaded**
   (2026-08-22): 1,384 weddings, 11,043 accounts, 6,370 posts, 54,271 edges,
   3,786 frontier rows — counts verified identical to the local DB. Jeremy's
   data is ALSO loaded (same day, on Ben's explicit authorization — "Jeremy
@@ -129,8 +130,9 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
 
 ## Open threads (priority order)
 
-0. **Merge `staging.instagram_posts` and `public.posts` into ONE table** (user's
-   call, 2026-09-22). Not cleanup — the split has already produced four separate
+0. **IN FLIGHT — merge `staging.instagram_posts` and `public.posts` into ONE table** (user's
+   call, 2026-09-22). **P3 COMMITTED 2026-09-23: posts = 67,864, one row per post; a WRITER LOCK is
+   ON until P4-W3.** Status: `docs/engineering/post-merge/ticks.md` + `docs/STATE.md`. Not cleanup — the split has already produced four separate
    bugs, every one of them "some code forgot the other table exists":
    - `v_ig_posts` exists solely to paper over the split, and anything that forgets
      to use it silently sees half the corpus.
