@@ -3686,3 +3686,52 @@ AS $function$
    join couple_extract ce on ce.post_url = c.source_post_url
    $function$
 ;
+
+-- END POST-TABLE MERGE VIEWS
+
+-- ============================================================================
+-- POST-TABLE MERGE P5 LOCK-DOWN (2026-09-23) -- transcribed from apps/web/scripts/graph/applyPostMergeLockdown.ts.
+-- FKs from the core evidence tables to posts(url); staging.instagram_posts rejects writes (trigger).
+-- ============================================================================
+do $$ begin
+      if not exists (select 1 from pg_constraint where conname = 'stack_extraction_runs_post_url_fkey') then
+        alter table stack_extraction_runs add constraint stack_extraction_runs_post_url_fkey foreign key (post_url) references posts(url) not valid;
+      end if;
+    end $$;
+do $$ begin
+      if not exists (select 1 from pg_constraint where conname = 'post_extraction_runs_post_url_fkey') then
+        alter table post_extraction_runs add constraint post_extraction_runs_post_url_fkey foreign key (post_url) references posts(url) not valid;
+      end if;
+    end $$;
+do $$ begin
+      if not exists (select 1 from pg_constraint where conname = 'post_venue_verdicts_post_url_fkey') then
+        alter table post_venue_verdicts add constraint post_venue_verdicts_post_url_fkey foreign key (post_url) references posts(url) not valid;
+      end if;
+    end $$;
+do $$ begin
+      if not exists (select 1 from pg_constraint where conname = 'jeremy_wedding_candidate_posts_source_post_url_fkey') then
+        alter table jeremy_wedding_candidate_posts add constraint jeremy_wedding_candidate_posts_source_post_url_fkey foreign key (source_post_url) references posts(url) not valid;
+      end if;
+    end $$;
+do $$ begin
+      if not exists (select 1 from pg_constraint where conname = 'human_post_labels_post_url_fkey') then
+        alter table human_post_labels add constraint human_post_labels_post_url_fkey foreign key (post_url) references posts(url) not valid;
+      end if;
+    end $$;
+alter table stack_extraction_runs validate constraint stack_extraction_runs_post_url_fkey;
+alter table post_extraction_runs validate constraint post_extraction_runs_post_url_fkey;
+alter table post_venue_verdicts validate constraint post_venue_verdicts_post_url_fkey;
+alter table jeremy_wedding_candidate_posts validate constraint jeremy_wedding_candidate_posts_source_post_url_fkey;
+comment on constraint human_post_labels_post_url_fkey on human_post_labels is 'POST-TABLE MERGE P5: NOT VALID on purpose -- one legacy human label (2026-09-05, NOT_WEDDING) is on a profile url that was never a post (logged in ops.post_merge_exclusions); labels are append-only. Every new label is enforced.';
+create or replace function staging.forbid_write_instagram_posts() returns trigger language plpgsql as $f$
+   begin
+     raise exception 'staging.instagram_posts is the read-only import record of the post-table merge (2026-09-23); the corpus is public.posts (Jeremy''s rows: origin = jeremy_beta, view v_jeremy_beta_posts)';
+   end $f$;
+drop trigger if exists instagram_posts_read_only on staging.instagram_posts;
+create trigger instagram_posts_read_only before insert or update or delete on staging.instagram_posts
+     for each statement execute function staging.forbid_write_instagram_posts();
+drop trigger if exists instagram_posts_read_only_truncate on staging.instagram_posts;
+create trigger instagram_posts_read_only_truncate before truncate on staging.instagram_posts
+     for each statement execute function staging.forbid_write_instagram_posts();
+comment on table staging.instagram_posts is 'READ-ONLY IMPORT RECORD (post-table merge, 2026-09-23). Jeremy''s beta rows, loaded verbatim 2026-08-22. Every real post here is in public.posts (staging_post_id = id, origin = jeremy_beta); the 10 profile urls are in ops.post_merge_exclusions. Writes are rejected by trigger. Read posts / v_ig_posts / v_jeremy_beta_posts instead.';
+

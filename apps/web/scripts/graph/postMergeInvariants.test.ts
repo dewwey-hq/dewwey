@@ -31,6 +31,7 @@ const ALLOW = new Set([
   "apps/web/scripts/graph/applyPostMergeSchema.ts",
   "apps/web/scripts/graph/applyPostMergeViewsW1.ts",
   "apps/web/scripts/graph/applyPostMergeViewsW2.ts",
+  "apps/web/scripts/graph/applyPostMergeLockdown.ts", // probes that staging rejects writes
   "apps/web/scripts/graph/postMergeInvariants.test.ts",
   "apps/web/scripts/graph/reportCorpusInventory.ts", // import-record reconciliation (marked)
   "pipeline/schema.sql", // history: earlier definitions are superseded by the POST-TABLE MERGE block
@@ -162,11 +163,32 @@ describe("post-merge invariants (DB)", () => {
     }
   }, 120000);
 
+  it("P5 lock-down holds: evidence FKs to posts(url) exist (validated except the named human_post_labels one); staging rejects writes", async () => {
+    const { rows } = await pool.query(
+      `select conname, convalidated from pg_constraint where conname in
+         ('stack_extraction_runs_post_url_fkey','post_extraction_runs_post_url_fkey','post_venue_verdicts_post_url_fkey',
+          'jeremy_wedding_candidate_posts_source_post_url_fkey','human_post_labels_post_url_fkey') order by 1`
+    );
+    expect(rows).toEqual([
+      { conname: "human_post_labels_post_url_fkey", convalidated: false },
+      { conname: "jeremy_wedding_candidate_posts_source_post_url_fkey", convalidated: true },
+      { conname: "post_extraction_runs_post_url_fkey", convalidated: true },
+      { conname: "post_venue_verdicts_post_url_fkey", convalidated: true },
+      { conname: "stack_extraction_runs_post_url_fkey", convalidated: true },
+    ]);
+    const { rows: trg } = await pool.query(
+      `select tgname from pg_trigger where tgrelid = 'staging.instagram_posts'::regclass and not tgisinternal order by 1`
+    );
+    expect(trg.map((t) => t.tgname)).toEqual(["instagram_posts_read_only", "instagram_posts_read_only_truncate"]);
+  }, 120000);
+
   it("pipeline/schema.sql's POST-TABLE MERGE block equals the live definitions", async () => {
     const schema = readFileSync(join(REPO, "pipeline/schema.sql"), "utf8");
     const start = schema.indexOf("-- POST-TABLE MERGE (P3 + P4 W1/W2");
     expect(start).toBeGreaterThan(0);
-    const block = schema.slice(start);
+    const end = schema.indexOf("-- END POST-TABLE MERGE VIEWS", start);
+    expect(end).toBeGreaterThan(start);
+    const block = schema.slice(start, end);
     const norm = (s: string) => s.replace(/\s+/g, " ").replace(/;\s*$/, "").trim();
     const chunks = block.split(/\n(?=create or replace view |CREATE OR REPLACE FUNCTION )/);
     let checked = 0;
