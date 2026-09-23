@@ -20,7 +20,7 @@
  * never mix — deliberately not a merged/unioned evidence pool, per the
  * project's provenance-separation rule (docs/engineering/human-labeling/README.md).
  * Most human-confirmed posts never had a V3 run at all, so date/event-date
- * evidence is sourced from staging.instagram_posts.post_timestamp directly
+ * evidence is sourced from v_jeremy_beta_posts.post_timestamp (formerly staging.instagram_posts.post_timestamp) directly
  * rather than post_classification_runs (event_date/event_date_confidence,
  * which only V3 extracts, are left null for this source — effectiveDate()
  * already falls back to posted_at cleanly). After clustering, resolves each
@@ -35,7 +35,7 @@
  * explicit couple-name pattern, independent of V3/golden_set. Writes under
  * clustering_version='venue-couple-signal-v1' — a third, separate
  * provenance pool, same non-mixing rule as human_confirmed. Date evidence
- * from staging.instagram_posts.post_timestamp (same reason as
+ * from v_jeremy_beta_posts.post_timestamp (formerly staging.instagram_posts.post_timestamp; same reason as
  * human_confirmed). chicago_status is resolved the same tri-state way as
  * human_confirmed (vendors.city/account_locations.in_metro) — deliberately
  * NOT hardcoded true, even though every source post's author is already a
@@ -70,7 +70,7 @@
  * has_couple_signal. has_couple_signal (and the new has_couple_signal-derived couple_guess) also
  * got a precision fix in the view itself: the couple-name-pair regex alternative excludes matches
  * where either captured word is a business word (e.g. "Lido Banquets & Events" no longer reads as
- * a couple). Date evidence is the view's own `event_date` (staging.instagram_posts.post_timestamp
+ * a couple). Date evidence is the view's own `event_date` (v_jeremy_beta_posts.post_timestamp, formerly staging.instagram_posts.post_timestamp
  * under the hood — same as human_confirmed/venue_couple_signal/venue_inline_mention, no V3 event
  * extraction available for this population either). chicago_status resolves exactly like the
  * venue_couple_signal/venue_inline_mention branch. Also persists venue_anchor_source and

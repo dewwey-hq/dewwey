@@ -4,7 +4,7 @@
  * row with NO `jeremy_weddings_created` row (his phase_dedup rule: a post with >=3 distinct
  * vendor roles becomes a wedding; no model or human ever read the post for "is this a real
  * wedding"). 1,325 weddings, 1,602 posts via wedding_posts -> posts (source='venue_tagged',
- * NEVER in staging.instagram_posts).
+ * NEVER in v_jeremy_beta_posts, formerly staging.instagram_posts).
  *
  * For each Ben wedding, joins:
  *   - its posts' pool='ben-weddings' rows in post_extraction_runs (runExtract.ts --mode

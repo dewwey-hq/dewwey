@@ -80,7 +80,7 @@ async function main() {
   }>(
     `select gs.post_url, sp.caption_raw, sp.location_tag, sp.owner_username
      from golden_set gs
-     join staging.instagram_posts sp on sp.post_url = gs.post_url
+     join v_jeremy_beta_posts sp on sp.post_url = gs.post_url
      where gs.expected_decision = 'INCLUDE'`
   );
 

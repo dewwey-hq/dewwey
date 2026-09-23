@@ -105,7 +105,7 @@ async function main() {
             sp.caption_raw,
             sp.owner_username
      from post_extraction_runs per
-     join staging.instagram_posts sp on sp.post_url = per.post_url
+     join v_jeremy_beta_posts sp on sp.post_url = per.post_url
      where per.pool = 'pool-b'
        and per.verdict in ('THIS_VENUE', 'OTHER_VENUE')
        and per.confidence >= $1

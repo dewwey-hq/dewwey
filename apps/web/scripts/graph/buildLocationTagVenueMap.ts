@@ -1,5 +1,5 @@
 /**
- * Maps Instagram `location_tag` strings (`staging.instagram_posts.location_tag`) to a venue
+ * Maps Instagram `location_tag` strings (`v_jeremy_beta_posts.location_tag`, formerly `staging.instagram_posts.location_tag`) to a venue
  * `accounts.id`, so posts can be venue-anchored from the platform's structured place tag
  * instead of caption parsing. Read-only report by default (see --apply below).
  * Same conservative philosophy as matchVenuelessLocationTags.ts: only resolve a tag when it
@@ -150,7 +150,7 @@ async function main() {
   const pool = getPool();
 
   const { rows: tagRows } = await pool.query<{ location_tag: string; post_count: string }>(
-    `select location_tag, count(*)::text as post_count from staging.instagram_posts
+    `select location_tag, count(*)::text as post_count from v_jeremy_beta_posts
      where location_tag is not null and location_tag <> ''
      group by location_tag order by count(*) desc limit $1`,
     [TOP_N_TAGS]

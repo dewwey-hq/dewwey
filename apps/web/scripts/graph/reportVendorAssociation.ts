@@ -53,11 +53,11 @@ async function main() {
 
   // Edge case flagged in D046, not fixed here: human_confirmed_post_geography
   // (and therefore Layer 1) only resolves posts present in
-  // staging.instagram_posts -- golden_set INCLUDE rows sourced only from
+  // v_jeremy_beta_posts (formerly staging.instagram_posts) -- golden_set INCLUDE rows sourced only from
   // public.posts are invisible to it entirely.
   const [{ n: publicOnly }] = await q<{ n: string }>(
     `select count(*)::int as n from golden_set gs
-     left join staging.instagram_posts sp on sp.post_url = gs.post_url
+     left join v_jeremy_beta_posts sp on sp.post_url = gs.post_url
      join posts p on p.url = gs.post_url
      where gs.expected_decision = 'INCLUDE' and sp.post_url is null`
   );

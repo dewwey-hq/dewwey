@@ -30,7 +30,7 @@ async function main() {
     select lq.post_url,
       coalesce((select count(*) from wedding_vendors wv where wv.account_id = a.id), 0) as n_weddings
     from label_queue lq
-    join staging.instagram_posts sp on sp.post_url = lq.post_url
+    join v_jeremy_beta_posts sp on sp.post_url = lq.post_url
     join accounts a on lower(a.username::text) = lower(sp.owner_username)
     join vendors v on v.account_id = a.id
     -- D055 (2026-09-08): vendors.city defaults to 'Chicago' on every row (docs/jeremy-ddl.sql)

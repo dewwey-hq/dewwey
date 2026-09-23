@@ -102,7 +102,7 @@ function arr(x: unknown): string[] {
 }
 
 // public.posts has no separate hashtags column (unlike
-// staging.instagram_posts) -- the caption text already contains them
+// v_jeremy_beta_posts, formerly staging.instagram_posts) -- the caption text already contains them
 // inline, so extract for display parity rather than adding a schema
 // column just for this cosmetic purpose.
 function extractHashtags(caption: string | null): string[] {

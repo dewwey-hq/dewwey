@@ -1,3 +1,6 @@
+// POST_MERGE_SUPERSEDED: this DDL joins staging.instagram_posts directly, from before the
+// post-table merge (2026-09-23); main() refuses to run once v_jeremy_beta_posts exists -- the
+// live view definitions are in pipeline/schema.sql under the "POST-TABLE MERGE (P3 + P4 W1" banner.
 /**
  * One-off, idempotent apply of the styled-shoot-vs-real-wedding signal
  * schema addition (pipeline/schema.sql, D049; regex extended D056) directly
@@ -127,6 +130,17 @@ export const STATEMENTS: string[] = [
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
   const pool = getPool();
+  const { rows: mergeCheck } = await pool.query<{ merged: boolean }>(
+    `select to_regclass('public.v_jeremy_beta_posts') is not null as merged`
+  );
+  if (mergeCheck[0]?.merged) {
+    console.error(
+      'REFUSING: superseded by the post-table merge (2026-09-23). The live definitions are in ' +
+        'pipeline/schema.sql under the "POST-TABLE MERGE (P3 + P4 W1" banner; re-running this would ' +
+        'point views back at staging.instagram_posts.'
+    );
+    process.exit(1);
+  }
   const client = await pool.connect();
   try {
     await client.query("begin");

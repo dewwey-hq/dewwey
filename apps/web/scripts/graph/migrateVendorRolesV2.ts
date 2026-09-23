@@ -16,7 +16,7 @@
  * names explicitly). So `--dry-run` here is designed to need NONE of the new tables/enum values
  * to exist: every read is against tables that already exist today (`stack_extraction_entries_v2`,
  * `wedding_posts`, `posts`, `wedding_vendors`, `weddings`, `accounts`, `account_aliases`,
- * `account_locations`, `account_tags`, `staging.instagram_posts`, `post_venue_verdicts_current`,
+ * `account_locations`, `account_tags`, `v_jeremy_beta_posts` (formerly `staging.instagram_posts`), `post_venue_verdicts_current`,
  * `human_post_labels`, `jeremy_wedding_candidates`, `jeremy_wedding_candidate_posts`,
  * `extracted_venue_anchors`), and the entire diff (credits derived, participants moved, re-role,
  * hotel rule, ceremony/reception split, hard stops, before/after coverage) is computed in
@@ -396,7 +396,7 @@ async function main() {
       `select wp.wedding_id::text, wp.post_id::text, sp.post_url, sp.mentions
        from wedding_posts wp
        join posts p on p.id = wp.post_id
-       join staging.instagram_posts sp on sp.post_url = p.url
+       join v_jeremy_beta_posts sp on sp.post_url = p.url
        where jsonb_typeof(sp.mentions) = 'array' and jsonb_array_length(sp.mentions) >= 3
          and not exists (
            select 1 from stack_extraction_entries_v2 se

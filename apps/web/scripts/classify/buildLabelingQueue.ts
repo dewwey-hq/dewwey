@@ -8,7 +8,7 @@
  *
  * Two source corpora:
  *
- *   staging.instagram_posts (47,623)  Jeremy's own-profile scrape.
+ *   v_jeremy_beta_posts, formerly staging.instagram_posts (47,623)  Jeremy's own-profile scrape.
  *   public.posts            (6,370)   Ben's venue_tagged crawl -- the live
  *                                      serving graph behind /weddings and
  *                                      /vendors. Almost entirely unreviewed
@@ -19,7 +19,7 @@
  *
  * Five buckets:
  *
- *   random               true representative base rate of staging.instagram_posts.
+ *   random               true representative base rate of v_jeremy_beta_posts (formerly staging.instagram_posts).
  *   v1_include            the shipped 4,033-post /feed corpus (v1_content_corpus)
  *                          -- validates live-product precision against real
  *                          human judgment.
@@ -28,7 +28,7 @@
  *                          calibration gaps in the shipped pipeline.
  *   below_cutoff           candidate_scores score<12 (or unscored) AND no v3
  *                          run at all -- the deliberately-unclassified
- *                          majority of staging.instagram_posts.
+ *                          majority of v_jeremy_beta_posts (formerly staging.instagram_posts).
  *   public_posts_random    true random sample of public.posts -- this corpus
  *                          has never had a broad human review pass.
  *
@@ -168,7 +168,7 @@ async function main() {
   const buckets: QueueRow[] = [];
 
   const { rows: randomRows } = await pool.query<{ post_url: string }>(
-    `select sp.post_url from staging.instagram_posts sp
+    `select sp.post_url from v_jeremy_beta_posts sp
      where ${alreadyResolvedSp}
      order by random() limit $1`,
     [args.nRandom]
@@ -216,7 +216,7 @@ async function main() {
   // included here.
   const { rows: belowCutoffRows } = await pool.query<{ post_url: string }>(
     `select sp.post_url
-     from staging.instagram_posts sp
+     from v_jeremy_beta_posts sp
      left join candidate_scores cs
        on cs.post_url = sp.post_url and cs.candidate_generation_version = 'candidate-score-v1'
      where (cs.post_url is null or cs.score < 12)

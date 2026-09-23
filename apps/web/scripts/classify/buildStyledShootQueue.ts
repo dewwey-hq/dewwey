@@ -46,7 +46,7 @@ async function main() {
          lower(coalesce(sp.owner_username, a.username::text)) as author_username,
          case when sp.post_url is not null then 'staging' else 'public' end as source
        from rich_stack rs
-       left join staging.instagram_posts sp on sp.post_url = rs.post_url
+       left join v_jeremy_beta_posts sp on sp.post_url = rs.post_url
        left join posts p on p.url = rs.post_url
        left join accounts a on a.id = p.owner_id
        where not exists (select 1 from golden_set gs where gs.post_url = rs.post_url)

@@ -1,3 +1,7 @@
+// POST_MERGE_SUPERSEDED: this DDL sources the universe from the old two-source v_ig_posts /
+// staging.instagram_posts directly, from before the post-table merge (2026-09-23); main()
+// refuses to run (under --apply) once v_jeremy_beta_posts exists -- the live view definitions
+// are in pipeline/schema.sql under the "POST-TABLE MERGE (P3 + P4 W1" banner.
 /**
  * One-off, idempotent apply of the structural_post_vendor_evidence schema addition
  * (pipeline/schema.sql, D055 "squeeze the 47k" Phase 0 step 5) directly to Supabase: one new
@@ -312,6 +316,18 @@ async function main() {
     }
     await closePool();
     return;
+  }
+
+  const { rows: mergeCheck } = await pool.query<{ merged: boolean }>(
+    `select to_regclass('public.v_jeremy_beta_posts') is not null as merged`
+  );
+  if (mergeCheck[0]?.merged) {
+    console.error(
+      'REFUSING: superseded by the post-table merge (2026-09-23). The live definitions are in ' +
+        'pipeline/schema.sql under the "POST-TABLE MERGE (P3 + P4 W1" banner; re-running this would ' +
+        'point views back at staging.instagram_posts.'
+    );
+    process.exit(1);
   }
 
   for (const [i, sql] of STATEMENTS.entries()) {

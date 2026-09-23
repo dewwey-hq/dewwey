@@ -52,7 +52,7 @@
  *     couple_guess values (structural_post_vendor_evidence, DISTINCT per post_url -- couple_guess
  *     is constant per post across that view's multiple evidence rows, verified live before
  *     writing this script). Ties broken lexicographically (smallest wins) for determinism.
- *   - d = (min, max) of the SAME view's `event_date` (staging.instagram_posts.post_timestamp
+ *   - d = (min, max) of the SAME view's `event_date` (v_jeremy_beta_posts.post_timestamp, formerly staging.instagram_posts.post_timestamp
  *     under the hood) across its posts -- the same value runJeremyWeddingClustering.ts's
  *     effectiveDate() resolves to for this evidence source (event_date/event_date_confidence are
  *     always null for structural, so effectiveDate falls back to posted_at, which IS this

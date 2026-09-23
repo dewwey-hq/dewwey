@@ -1,6 +1,6 @@
 /**
  * Runs the account-archetype classifier (requirement 7) over vendor
- * accounts that have posts in staging.instagram_posts. Run this BEFORE
+ * accounts that have posts in v_jeremy_beta_posts (formerly staging.instagram_posts). Run this BEFORE
  * runClassify.ts so the account-level prior is available to attach to posts.
  *
  * Usage (from apps/web):
@@ -52,7 +52,7 @@ async function main() {
   if (args.forSourceNotes) {
     const { rows } = await pool.query<{ owner_username: string | null }>(
       `select distinct sp.owner_username
-       from staging.instagram_posts sp
+       from v_jeremy_beta_posts sp
        where sp.post_url = any(array(select post_url from golden_set where source_note = any($1::text[])))`,
       [args.forSourceNotes]
     );
@@ -61,7 +61,7 @@ async function main() {
   } else if (args.postUrlsFile) {
     const postUrls = readPostUrls(args.postUrlsFile);
     const { rows } = await pool.query<{ owner_username: string | null }>(
-      `select distinct owner_username from staging.instagram_posts where post_url = any($1::text[])`,
+      `select distinct owner_username from v_jeremy_beta_posts where post_url = any($1::text[])`,
       [postUrls]
     );
     usernames = rows.map((r) => r.owner_username).filter((u): u is string => u != null);

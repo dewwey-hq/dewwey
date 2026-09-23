@@ -111,7 +111,7 @@ export interface CoverPostCandidate {
   postType: string | null;
 }
 
-/** Image > Sidecar > Video > unknown (post_type null — not in staging.instagram_posts). */
+/** Image > Sidecar > Video > unknown (post_type null — not in v_jeremy_beta_posts, formerly staging.instagram_posts). */
 const POST_TYPE_RANK: Record<string, number> = {
   Image: 0,
   Sidecar: 1,

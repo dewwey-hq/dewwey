@@ -49,7 +49,7 @@ async function main() {
          )
      )
      select sp.post_url, sp.owner_username
-     from staging.instagram_posts sp
+     from v_jeremy_beta_posts sp
      join zero_credit_venues zcv on lower(sp.owner_username) = lower(zcv.username)
      where sp.caption_raw ~ '(Mr\\.? *& *Mrs\\.?|Couple: *@|Bride: *@|[A-Z][a-z]+ *(&|\\+|and) *[A-Z][a-z]+)'
        and not exists (select 1 from golden_set gs where gs.post_url = sp.post_url)

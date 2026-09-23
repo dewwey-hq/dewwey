@@ -2,9 +2,9 @@
  * "Mine the 47k corpus for venues" queue (tail-end coverage mission, 2026-09-07 follow-on --
  * see docs/decisions.md D052/D053 and the tail-end-venue-coverage memory file).
  *
- * `venue_coverage_v3` (D047) already mines staging.instagram_posts for venues with <=5
+ * `venue_coverage_v3` (D047) already mines v_jeremy_beta_posts (formerly staging.instagram_posts) for venues with <=5
  * documented weddings. This queue generalizes that same idea (own-profile posts +
- * vendor-credited "tagged" posts, both from staging.instagram_posts) to ALL 644 venue-role
+ * vendor-credited "tagged" posts, both from v_jeremy_beta_posts, formerly staging.instagram_posts) to ALL 644 venue-role
  * accounts, not just the low-coverage ones -- sized live before building: of 149 venues with
  * unimported authored content, 108 already have SOME documented coverage and would still gain
  * more from this pass, not just the 41 currently invisible. Scoping to "zero-coverage only"
@@ -84,20 +84,20 @@ async function main() {
      ),
      own_posts as (
        select sp.post_url, va.n_weddings, 'own' as pool
-       from staging.instagram_posts sp
+       from v_jeremy_beta_posts sp
        join venue_accounts va on lower(va.username::text) = lower(sp.owner_username)
      ),
      tagged_posts as (
        select e.source_post_url as post_url, va.n_weddings, 'tagged' as pool
        from jeremy_post_vendor_evidence e
        join venue_accounts va on va.account_id = e.account_id
-       join staging.instagram_posts sp on sp.post_url = e.source_post_url
+       join v_jeremy_beta_posts sp on sp.post_url = e.source_post_url
        where e.role = 'venue'
        union
        select e.source_post_url as post_url, va.n_weddings, 'tagged' as pool
        from human_confirmed_post_vendor_evidence e
        join venue_accounts va on va.account_id = e.account_id
-       join staging.instagram_posts sp on sp.post_url = e.source_post_url
+       join v_jeremy_beta_posts sp on sp.post_url = e.source_post_url
        where e.role = 'venue'
      ),
      all_posts as (
@@ -110,7 +110,7 @@ async function main() {
        ap.pool || '_' || (case when ap.n_weddings = 0 then 'zero_coverage' else 'has_coverage' end) as bucket,
        ap.n_weddings
      from all_posts ap
-     join staging.instagram_posts sp on sp.post_url = ap.post_url
+     join v_jeremy_beta_posts sp on sp.post_url = ap.post_url
      where sp.caption_raw ~* '${STACK_SHAPE}'
        and sp.caption_raw ~* '${WEDDING_KEYWORD}'
        and sp.caption_raw !~* '${NON_WEDDING_KEYWORD}'
@@ -174,20 +174,20 @@ async function main() {
      ),
      own_posts as (
        select sp.post_url, va.n_weddings, 'own' as pool
-       from staging.instagram_posts sp
+       from v_jeremy_beta_posts sp
        join low_coverage_venues va on lower(va.username::text) = lower(sp.owner_username)
      ),
      tagged_posts as (
        select e.source_post_url as post_url, va.n_weddings, 'tagged' as pool
        from jeremy_post_vendor_evidence e
        join low_coverage_venues va on va.account_id = e.account_id
-       join staging.instagram_posts sp on sp.post_url = e.source_post_url
+       join v_jeremy_beta_posts sp on sp.post_url = e.source_post_url
        where e.role = 'venue'
        union
        select e.source_post_url as post_url, va.n_weddings, 'tagged' as pool
        from human_confirmed_post_vendor_evidence e
        join low_coverage_venues va on va.account_id = e.account_id
-       join staging.instagram_posts sp on sp.post_url = e.source_post_url
+       join v_jeremy_beta_posts sp on sp.post_url = e.source_post_url
        where e.role = 'venue'
      ),
      all_posts as (
@@ -199,7 +199,7 @@ async function main() {
        ap.pool || '_r2_low_coverage' as bucket,
        ap.n_weddings
      from all_posts ap
-     join staging.instagram_posts sp on sp.post_url = ap.post_url
+     join v_jeremy_beta_posts sp on sp.post_url = ap.post_url
      where sp.caption_raw !~* '${ROUND2_NON_WEDDING_KEYWORD}'
        and not exists (select 1 from golden_set gs where gs.post_url = ap.post_url)
        and not exists (select 1 from human_post_labels hpl where hpl.post_url = ap.post_url and hpl.labeled_by = 'jeremy')

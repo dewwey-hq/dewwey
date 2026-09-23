@@ -1,3 +1,7 @@
+// POST_MERGE_SUPERSEDED: this DDL creates the old two-source v_ig_posts (union of
+// staging.instagram_posts and public.posts), from before the post-table merge (2026-09-23);
+// main() refuses to run (outside --print) once v_jeremy_beta_posts exists -- the live view
+// definitions are in pipeline/schema.sql under the "POST-TABLE MERGE (P3 + P4 W1" banner.
 /**
  * ACQUISITION LOOP (D061) — idempotent DDL for the budgeted crawl-target/run/observation
  * schema, `ops.creation_decisions`, and the pure `v_ig_posts` normalization view. Same
@@ -188,6 +192,17 @@ async function main() {
       "you have not reviewed the statements."
   );
   const pool = getPool();
+  const { rows: mergeCheck } = await pool.query<{ merged: boolean }>(
+    `select to_regclass('public.v_jeremy_beta_posts') is not null as merged`
+  );
+  if (mergeCheck[0]?.merged) {
+    console.error(
+      'REFUSING: superseded by the post-table merge (2026-09-23). The live definitions are in ' +
+        'pipeline/schema.sql under the "POST-TABLE MERGE (P3 + P4 W1" banner; re-running this would ' +
+        'point views back at staging.instagram_posts.'
+    );
+    process.exit(1);
+  }
   const client = await pool.connect();
   try {
     await client.query("begin");

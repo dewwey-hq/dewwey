@@ -33,20 +33,59 @@ async function main() {
   try {
     await c.query("set statement_timeout = '600s'");
 
-    // ---- Where the posts live. staging is Jeremy's raw corpus (read-only reference); public.posts
-    // is OUR graph's table. They overlap, so the distinct total is not the sum.
-    const { rows: srcRows } = await c.query(
-      `select coalesce(source, '(null)') as source, count(*)::int as n,
-              count(*) filter (where exists (select 1 from staging.instagram_posts sp where sp.post_url = p.url))::int as also_in_staging
-       from posts p group by 1 order by 2 desc`
+    // ---- Where the posts live, post-merge (D066 -> post-table merge, 2026-09-23). `posts` is now
+    // ONE table, one row per post, tagged with `origin` and `source`. There is no more staging-vs-
+    // public split to reconcile by URL -- what's left is (1) the import record (staging.instagram_posts
+    // itself, read-only, reconciled by row count against posts.staging_post_id + the exclusions
+    // table) and (2) sightings, which now live in ops.post_observations/ops.crawl_runs.
+    const { rows: originRows } = await c.query(
+      `select coalesce(origin, '(null)') as origin, coalesce(source, '(null)') as source, count(*)::int as n
+       from posts group by 1, 2 order by 1, 2`
     );
+    const { rows: postsTotalRows } = await c.query(`select count(*)::int as n from posts`);
+    const postsTotal = postsTotalRows[0].n;
+
+    // import record reconciliation (allowed) -- the ONLY direct read of staging.instagram_posts in
+    // this file. staging is Jeremy's raw import record now, not a corpus source: every staging row
+    // either landed in `posts` (staging_post_id not null) or was explicitly excluded at merge time
+    // (ops.post_merge_exclusions, the 10 rows that were profile URLs, not posts).
+    const { rows: importRows } = await c.query(
+      `select (select count(*) from staging.instagram_posts)::int as staging_rows,
+              (select count(*) from posts where staging_post_id is not null)::int as linked,
+              (select count(*) from ops.post_merge_exclusions)::int as excluded`
+    );
+    const imp = importRows[0];
+    const importReconciled = imp.linked + imp.excluded;
+    const importMismatch = importReconciled !== imp.staging_rows;
+
+    // Sightings by channel. acq-% batches are the live acquisition loop; the two synthetic
+    // legacy-import runs (batch_id 'legacy-ben-pipeline' / 'legacy-jeremy-beta-import') and run 31
+    // ('legacy-ben-crawl1-zero-venues') are CHANNEL TOTALS from the historical import/registration,
+    // never per-batch strategy data -- they are named individually here but never ranked (see
+    // --batches below, which only ranks acq-% batches).
+    const { rows: channelRows } = await c.query(
+      `with runs_ch as (
+         select id, batch_id, actor,
+           case
+             when batch_id like 'acq-%' then 'acquisition_loop'
+             when actor = 'legacy-import' or batch_id like 'legacy-%' then batch_id
+             else 'other'
+           end as channel
+         from ops.crawl_runs
+       )
+       select rc.channel,
+              count(distinct rc.id)::int as runs,
+              count(o.run_id)::int as observations,
+              count(distinct o.post_id)::int as distinct_posts,
+              count(*) filter (where o.is_first)::int as first_observed
+       from runs_ch rc
+       left join ops.post_observations o on o.run_id = rc.id
+       group by 1
+       order by 1`
+    );
+
     const { rows: tot } = await c.query(
-      `select (select count(*) from staging.instagram_posts)::int staging,
-              (select count(*) from posts)::int public_posts,
-              (select count(*) from staging.instagram_posts sp
-                 where exists (select 1 from posts p where p.url = sp.post_url))::int overlap,
-              (select count(distinct post_url) from v_ig_posts)::int distinct_total,
-              (select count(*) from v_ig_posts)::int view_rows`
+      `select (select count(*) from v_ig_posts)::int distinct_total`
     );
     const t = tot[0];
 
@@ -97,17 +136,36 @@ async function main() {
     const l = left[0];
 
     console.log(`# Corpus inventory -- ${new Date().toISOString()}\n`);
-    console.log(`## Where the posts are\n`);
-    console.log(`| table | posts | also in staging |`);
+    console.log(`## Where the posts are (posts = ONE table, post-merge 2026-09-23)\n`);
+    console.log(`| origin | source | posts |`);
     console.log(`|---|---|---|`);
-    console.log(`| staging.instagram_posts (Jeremy's raw corpus, read-only) | ${t.staging} | - |`);
-    for (const r of srcRows) console.log(`| public.posts \`source=${r.source}\` | ${r.n} | ${r.also_in_staging} |`);
-    console.log(`| **DISTINCT TOTAL** (\`v_ig_posts\`, by post_url) | **${t.distinct_total}** | overlap ${t.overlap} |`);
+    for (const r of originRows) console.log(`| ${r.origin} | ${r.source} | ${r.n} |`);
+    console.log(`| **TOTAL** | | **${postsTotal}** |`);
+
+    console.log(`\n### Import record reconciliation (allowed direct read of staging.instagram_posts)\n`);
+    console.log(`| staging.instagram_posts rows | linked (posts.staging_post_id not null) | excluded (ops.post_merge_exclusions) |`);
+    console.log(`|---|---|---|`);
+    console.log(`| ${imp.staging_rows} | ${imp.linked} | ${imp.excluded} |`);
     console.log(
-      `\n\`v_ig_posts\` has ${t.view_rows} ROWS but ${t.distinct_total} distinct post_urls -- the difference is posts` +
-        ` present in both tables. Quote the distinct number.\n` +
-        `Its public side is filtered to \`source in ('venue_tagged','own_profile')\`; the excluded` +
-        ` \`jeremy_evidence\` rows are all staging posts promoted into our graph, so staging already supplies them.\n`
+      `staging rows = linked + excluded  =>  ${imp.staging_rows} = ${imp.linked} + ${imp.excluded} (${importReconciled})` +
+        (importMismatch ? `  **MISMATCH**` : `  OK`)
+    );
+
+    console.log(`\n### Sightings by channel (ops.crawl_runs / ops.post_observations)\n`);
+    console.log(`| channel | runs | observations | distinct posts observed | first-observed |`);
+    console.log(`|---|---|---|---|---|`);
+    for (const r of channelRows) {
+      console.log(`| ${r.channel} | ${r.runs} | ${r.observations} | ${r.distinct_posts} | ${r.first_observed} |`);
+    }
+    console.log(
+      `\nThe legacy-import channels above are CHANNEL TOTALS from the one-time historical` +
+        ` registration/import, not per-batch strategy data -- never ranked. Only \`acq-%\` batches are` +
+        ` ranked (see --batches below).`
+    );
+
+    console.log(
+      `\n**Quote the distinct total: ${t.distinct_total}.** \`v_ig_posts\` is one row per post now` +
+        ` (post-table merge, 2026-09-23) -- no more ROWS-vs-distinct gap to reconcile.\n`
     );
 
     console.log(`## Mining funnel (whole corpus)\n`);

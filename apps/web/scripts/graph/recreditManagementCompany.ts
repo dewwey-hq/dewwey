@@ -184,7 +184,7 @@ async function main() {
           `select distinct ltm.venue_account_id::text
            from wedding_posts wp
            join posts p on p.id = wp.post_id
-           join staging.instagram_posts ip on ip.post_url = p.url
+           join v_jeremy_beta_posts ip on ip.post_url = p.url
            join location_tag_venue_map ltm on ltm.location_tag = ip.location_tag
            where wp.wedding_id = $1 and ltm.venue_account_id <> $2`,
           [w.id, accountId]

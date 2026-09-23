@@ -23,7 +23,7 @@ async function main() {
 
   const [{ n: weddingPosts }] = await q<{ n: string }>(
     `select count(*)::int as n from golden_set gs
-     join staging.instagram_posts sp on sp.post_url = gs.post_url
+     join v_jeremy_beta_posts sp on sp.post_url = gs.post_url
      where gs.expected_decision = 'INCLUDE'`
   );
   console.log(`1. Human-confirmed WEDDING posts (staging corpus): ${weddingPosts}`);

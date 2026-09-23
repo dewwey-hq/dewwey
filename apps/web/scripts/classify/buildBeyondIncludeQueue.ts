@@ -117,7 +117,7 @@ async function main() {
        end as chicago_status,
        vs.n_weddings_min as n_weddings
      from pool p
-     join staging.instagram_posts sp on sp.post_url = p.post_url
+     join v_jeremy_beta_posts sp on sp.post_url = p.post_url
      left join venue_signals vs on vs.post_url = p.post_url
      where not exists (select 1 from golden_set gs where gs.post_url = p.post_url)
        and not exists (select 1 from human_post_labels hpl where hpl.post_url = p.post_url and hpl.labeled_by = 'jeremy')

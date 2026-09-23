@@ -1,3 +1,6 @@
+// POST_MERGE_SUPERSEDED: this DDL joins staging.instagram_posts directly, from before the
+// post-table merge (2026-09-23); main() refuses to run once v_jeremy_beta_posts exists -- the
+// live view definitions are in pipeline/schema.sql under the "POST-TABLE MERGE (P3 + P4 W1" banner.
 /**
  * One-off, idempotent apply of the vendor-association schema addition
  * (pipeline/schema.sql, D046) directly to Supabase. Two new views, both
@@ -56,6 +59,17 @@ const STATEMENTS: string[] = [
 
 async function main() {
   const pool = getPool();
+  const { rows: mergeCheck } = await pool.query<{ merged: boolean }>(
+    `select to_regclass('public.v_jeremy_beta_posts') is not null as merged`
+  );
+  if (mergeCheck[0]?.merged) {
+    console.error(
+      'REFUSING: superseded by the post-table merge (2026-09-23). The live definitions are in ' +
+        'pipeline/schema.sql under the "POST-TABLE MERGE (P3 + P4 W1" banner; re-running this would ' +
+        'point views back at staging.instagram_posts.'
+    );
+    process.exit(1);
+  }
   for (const [i, sql] of STATEMENTS.entries()) {
     await pool.query(sql);
     console.log(`[apply-schema] statement ${i + 1}/${STATEMENTS.length} ok`);

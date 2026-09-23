@@ -40,7 +40,7 @@ async function main() {
   const pool = getPool();
   const { rows } = await pool.query<{ post_url: string; caption_raw: string | null }>(
     `select sp.post_url, sp.caption_raw
-     from staging.instagram_posts sp
+     from v_jeremy_beta_posts sp
      join accounts a on lower(a.username::text) = lower(sp.owner_username)
      join vendors v on v.account_id = a.id
      left join golden_set gs on gs.post_url = sp.post_url

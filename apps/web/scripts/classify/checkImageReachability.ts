@@ -1,6 +1,6 @@
 /**
  * Gate check before building the human-labeling UI's image handling: how
- * much of staging.instagram_posts.image_url is actually still reachable?
+ * much of v_jeremy_beta_posts.image_url (formerly staging.instagram_posts.image_url) is actually still reachable?
  * These are raw Instagram CDN URLs captured at scrape time — no durable
  * copy of any post image exists anywhere in this repo (unlike account
  * avatars, which went to R2 per D007) — and IG CDN URLs are commonly
@@ -62,7 +62,7 @@ async function main() {
 
   const { rows } = await pool.query<{ post_url: string; image_url: string }>(
     `select post_url, image_url
-     from staging.instagram_posts
+     from v_jeremy_beta_posts
      where image_url is not null
      order by random()
      limit $1`,

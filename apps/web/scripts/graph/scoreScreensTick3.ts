@@ -9,7 +9,7 @@
  *
  * Screens:
  *   1. prefilter (prefilter.ts v3) via a THIN ADAPTER over public.posts
- *      (source.ts only reads staging.instagram_posts — per the doc, do not
+ *      (source.ts only reads v_jeremy_beta_posts, formerly staging.instagram_posts — per the doc, do not
  *      pretend it already covers Ben's posts). "defer" (null) is scored as
  *      NOT-EXCLUDE, because in production a deferred post is never gated —
  *      it stays on the serving graph exactly like an INCLUDE would.

@@ -30,7 +30,7 @@ async function main() {
     select c.id, min(a.id)::int as author_account_id
     from jeremy_wedding_candidates c
     join jeremy_wedding_candidate_posts cp on cp.candidate_id = c.id
-    join staging.instagram_posts sp on sp.post_url = cp.source_post_url
+    join v_jeremy_beta_posts sp on sp.post_url = cp.source_post_url
     join accounts a on lower(a.username::text) = lower(sp.owner_username)
     where c.clustering_version = 'venue-couple-signal-v1' and c.venue_account_id is null
     group by c.id

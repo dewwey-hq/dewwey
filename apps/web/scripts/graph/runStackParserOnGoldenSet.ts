@@ -34,7 +34,7 @@ async function main() {
   }>(
     `select sp.post_url, sp.caption_raw, cs.score as candidate_score
      from golden_set gs
-     join staging.instagram_posts sp on sp.post_url = gs.post_url
+     join v_jeremy_beta_posts sp on sp.post_url = gs.post_url
      left join candidate_scores cs on cs.post_url = sp.post_url
        and cs.candidate_generation_version = 'candidate-score-v1'
      where gs.expected_decision = 'INCLUDE'

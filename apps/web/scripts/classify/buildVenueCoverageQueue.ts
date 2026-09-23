@@ -23,7 +23,7 @@
  * signal, narrow enough to drop the clearly-irrelevant tail.
  *
  * Pulls from BOTH connection types: the venue posted it themselves (own_profile,
- * staging.instagram_posts) OR another vendor tagged/credited them (jeremy_post_vendor_evidence /
+ * v_jeremy_beta_posts, formerly staging.instagram_posts) OR another vendor tagged/credited them (jeremy_post_vendor_evidence /
  * human_confirmed_post_vendor_evidence, role='venue' -- covers both staging and public.posts
  * sources). Ordered by the venue's current documented-wedding count ascending (0 first).
  *
@@ -62,20 +62,20 @@ async function main() {
      ),
      own_posts as (
        select sp.post_url, va.n_weddings, sp.caption_raw
-       from staging.instagram_posts sp
+       from v_jeremy_beta_posts sp
        join venue_accounts va on lower(va.username::text) = lower(sp.owner_username)
      ),
      tagged_posts as (
        select e.source_post_url as post_url, va.n_weddings, sp.caption_raw
        from jeremy_post_vendor_evidence e
        join venue_accounts va on va.account_id = e.account_id
-       join staging.instagram_posts sp on sp.post_url = e.source_post_url
+       join v_jeremy_beta_posts sp on sp.post_url = e.source_post_url
        where e.role = 'venue'
        union
        select e.source_post_url as post_url, va.n_weddings, sp.caption_raw
        from human_confirmed_post_vendor_evidence e
        join venue_accounts va on va.account_id = e.account_id
-       join staging.instagram_posts sp on sp.post_url = e.source_post_url
+       join v_jeremy_beta_posts sp on sp.post_url = e.source_post_url
        where e.role = 'venue'
      ),
      all_posts as (
@@ -85,7 +85,7 @@ async function main() {
        group by post_url
      )
      select ap.post_url, ap.n_weddings,
-       case when exists (select 1 from staging.instagram_posts sp where sp.post_url = ap.post_url)
+       case when exists (select 1 from v_jeremy_beta_posts sp where sp.post_url = ap.post_url)
             then 'staging' else 'public' end as source
      from all_posts ap
      left join post_classifications_current pcc on pcc.post_url = ap.post_url

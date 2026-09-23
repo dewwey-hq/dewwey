@@ -37,7 +37,7 @@ async function main() {
             array_agg(distinct ip.location_tag) as location_tags
      from jeremy_wedding_candidate_posts cp
      join jeremy_wedding_candidates c on c.id = cp.candidate_id and c.venue_account_id is null
-     join staging.instagram_posts ip on ip.post_url = cp.source_post_url
+     join v_jeremy_beta_posts ip on ip.post_url = cp.source_post_url
      where ip.location_tag is not null and ip.location_tag <> ''
      group by cp.candidate_id`
   );

@@ -199,7 +199,7 @@ async function main() {
      join vendors v on v.account_id = jc.venue_account_id
      left join account_locations al on al.account_id = jc.venue_account_id
      join jeremy_wedding_candidate_posts cp on cp.candidate_id = jc.id
-     join staging.instagram_posts sp on sp.post_url = cp.source_post_url
+     join v_jeremy_beta_posts sp on sp.post_url = cp.source_post_url
      where jc.clustering_version = $1 and jc.chicago_status = $2
        and v.city = 'Chicago' and v.discovery_source <> 'google_places'
        and al.account_id is null`,

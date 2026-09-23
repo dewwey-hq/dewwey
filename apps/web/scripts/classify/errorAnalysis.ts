@@ -62,7 +62,7 @@ async function accountErrorRates(pool: Pool, version: string, minPosts: number) 
       avg(pc.confidence) as avg_confidence,
       acc.archetype, acc.confidence as archetype_confidence, acc.is_wedding_industry
     from latest pc
-    join staging.instagram_posts sp on sp.post_url = pc.post_url
+    join v_jeremy_beta_posts sp on sp.post_url = pc.post_url
     left join account_classifications_current acc on lower(acc.username) = lower(sp.owner_username)
     group by sp.owner_username, acc.archetype, acc.confidence, acc.is_wedding_industry
     having count(*) >= $2
@@ -153,7 +153,7 @@ async function main() {
     `${LATEST_FOR_VERSION_CTE}
      select pc.post_url, sp.hashtags, pc.exclusion_reason
      from latest pc
-     join staging.instagram_posts sp on sp.post_url = pc.post_url
+     join v_jeremy_beta_posts sp on sp.post_url = pc.post_url
      where pc.decision = 'EXCLUDE'`,
     [args.version]
   );
