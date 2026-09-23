@@ -921,7 +921,7 @@ export async function getPostReviewItemsByPostUrls(postUrls: string[]): Promise<
     ? // Post-table merge W2: v_ig_posts is exactly one row per post now (posts.shortcode is unique),
       // so the distinct-on wrapper is gone -- it forced a sort of all ~68k rows (incl. JSON extraction
       // of Jeremy's) before the url filter, ~1 min per page load. Same rows, index-driven.
-      `join v_ig_posts sp on sp.post_url = cp.source_post_url`
+      `join (select * from v_ig_posts where post_url = any($1::text[])) sp on sp.post_url = cp.source_post_url`
     : `join v_jeremy_beta_posts sp on sp.post_url = cp.source_post_url`;
 
   const { rows } = await pool.query(
