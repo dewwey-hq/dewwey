@@ -7,9 +7,10 @@
  * D056.
  *
  * Same corpus-walk and venue-handle-preload shape as runStackParserBaseline.ts:
- *   --ungated: walk the WHOLE corpus (staging.instagram_posts with a non-empty caption), not just
- *     the score>=12 candidate pool. Either way, a post already present in stack_extraction_runs_v2
- *     under this parser_version is skipped (resumable across runs / --limit batches).
+ *   --ungated: walk the WHOLE corpus (v_jeremy_beta_posts, formerly staging.instagram_posts, with a
+ *     non-empty caption), not just the score>=12 candidate pool. Either way, a post already present
+ *     in stack_extraction_runs_v2 under this parser_version is skipped (resumable across runs /
+ *     --limit batches).
  *   --limit N: cap the number of posts pulled this run (for a pilot -- see the task's "run the v10
  *     parser with --limit 300").
  *   --dry-run: parse and count, write nothing.
@@ -28,13 +29,13 @@
  *
  * D057 (Ben's crawl audit): a THIRD corpus source, orthogonal to --ungated/score>=12 and
  * --refresh-matching.
- *   --source ben: parse Ben's original-crawl posts instead of staging.instagram_posts -- every
- *     `weddings` row with no `jeremy_weddings_created` row (his phase_dedup rule), joined
- *     wedding_posts -> posts (source='venue_tagged'; these posts are NEVER in
- *     staging.instagram_posts, which is why the default corpus walk above never reaches them).
- *     Caption comes from `posts.caption`, keyed by `posts.url` (not staging.instagram_posts.
- *     post_url) -- same stack_extraction_entries_v2/stack_extraction_runs_v2 tables, same
- *     resumable skip-if-already-parsed-under-this-version discipline, same report. This is the
+ *   --source ben: parse Ben's original-crawl posts instead of v_jeremy_beta_posts (formerly
+ *     staging.instagram_posts) -- every `weddings` row with no `jeremy_weddings_created` row (his
+ *     phase_dedup rule), joined wedding_posts -> posts (source='venue_tagged'; these posts are
+ *     NEVER in v_jeremy_beta_posts, which is why the default corpus walk above never reaches
+ *     them). Caption comes from `posts.caption`, keyed by `posts.url` (not
+ *     v_jeremy_beta_posts.post_url) -- same stack_extraction_entries_v2/stack_extraction_runs_v2
+ *     tables, same resumable skip-if-already-parsed-under-this-version discipline, same report. This is the
  *     "1,536 weddings with no labeled stack" gap for Ben's side specifically -- runExtract.ts
  *     --mode ben-weddings reads stack_extraction_entries_v2 back out for its credit-stack
  *     context, so this should run before (or alongside) that mode.
@@ -161,7 +162,7 @@ function toRows(postUrl: string, parsed: ReturnType<typeof parseCaptionV2>): { r
 async function runRefreshMatching(pool: Pool, pattern: string, dryRun: boolean, limit: number | undefined, venueHandles: Set<string>) {
   const { rows } = await pool.query<{ post_url: string; caption_raw: string | null }>(
     `select sp.post_url, sp.caption_raw
-     from staging.instagram_posts sp
+     from v_jeremy_beta_posts sp
      where sp.caption_raw is not null and sp.caption_raw <> ''
        and sp.caption_raw ~ $1
      order by sp.post_url
@@ -207,8 +208,9 @@ async function runRefreshMatching(pool: Pool, pattern: string, dryRun: boolean, 
   for (const s of samples) console.log(`  ${s.post_url}  ${s.before} -> ${s.after}`);
 }
 
-/** Shared parse-write-report loop, factored out (D057) so the default staging.instagram_posts
- *  corpus walk and --source ben's Ben's-crawl walk (posts.caption, keyed by posts.url) print the
+/** Shared parse-write-report loop, factored out (D057) so the default v_jeremy_beta_posts (formerly
+ *  staging.instagram_posts) corpus walk and --source ben's Ben's-crawl walk (posts.caption, keyed
+ *  by posts.url) print the
  *  exact same report shape under their own log label -- same has_stack/n_credits/credits-by-
  *  role/participants/non-wedding-title/emoji-sample breakdown either way. `dryRun` parses and
  *  counts but writes nothing (writeBatch is never called). */
@@ -376,7 +378,7 @@ async function main() {
   if (source === "ben") {
     // D057: Ben's original crawl -- every `weddings` row with no `jeremy_weddings_created` row,
     // via wedding_posts -> posts (source='venue_tagged'). Caption is posts.caption, keyed by
-    // posts.url -- these posts are NEVER in staging.instagram_posts, so the default query below
+    // posts.url -- these posts are NEVER in v_jeremy_beta_posts, so the default query below
     // never reaches them. `distinct` because a post could in principle be attached to more than
     // one wedding row (shared post_id is UNIQUE on wedding_posts, so this is belt-and-suspenders,
     // not load-bearing).
@@ -404,7 +406,7 @@ async function main() {
 
   const { rows } = await pool.query<{ post_url: string; caption_raw: string | null }>(
     `select sp.post_url, sp.caption_raw
-     from staging.instagram_posts sp
+     from v_jeremy_beta_posts sp
      ${ungated ? "" : "join candidate_scores cs on cs.post_url = sp.post_url and cs.candidate_generation_version = 'candidate-score-v1' and cs.score >= 12"}
      where sp.caption_raw is not null and sp.caption_raw <> ''
        and not exists (

@@ -24,8 +24,8 @@
  * (not per-caption) and passed to every parseCaption() call.
  *
  * --acquisition-batch <batch_id> (D061, 2026-09-19): parse one acquisition tick's first-observed
- * posts only, sourced from v_ig_posts (pure union of staging + acquisition-fed public posts,
- * distinct on shortcode with staging precedence) instead of staging.instagram_posts, scoped to
+ * posts only, sourced from v_ig_posts (pure union of staging + acquisition-fed public posts, one
+ * row per post) instead of v_jeremy_beta_posts (formerly staging.instagram_posts), scoped to
  * `select p.shortcode from ops.post_observations o join ops.crawl_runs r on r.id = o.run_id join
  * posts p on p.id = o.post_id where r.batch_id = $1 and o.is_first`. Same not-already-parsed guard
  * as --ungated (skip a post already under this stack_parser_version), same version key, same
@@ -92,10 +92,9 @@ async function main() {
            ) as decision,
            cs.score as candidate_score
          from (
-           select distinct on (shortcode) *
+           select *
            from v_ig_posts
            where shortcode = any($2::text[])
-           order by shortcode, (corpus_source = 'staging') desc
          ) v
          left join candidate_scores cs on cs.post_url = v.post_url
            and cs.candidate_generation_version = 'candidate-score-v1'
@@ -105,12 +104,12 @@ async function main() {
              where sr.post_url = v.post_url and sr.stack_parser_version = $1
            )`
       : ungated
-      ? // D066 (2026-09-22): scans the FULL corpus via v_ig_posts, not `staging.instagram_posts`.
-        // It used to be staging-only, which was right when staging WAS the corpus. It no longer is:
-        // the corpus is 67,874 distinct posts, 21,569 of them crawled by the acquisition loop into
-        // `public.posts`, and this mode could not see any of them -- so 4,404 crawled posts sat
-        // unparsed with no way to reach them. Same "the corpus outgrew the number we quote" mistake
-        // the surrounding docs made.
+      ? // D066 (2026-09-22): scans the FULL corpus via v_ig_posts, not `v_jeremy_beta_posts`
+        // (formerly staging.instagram_posts). It used to be staging-only, which was right when
+        // staging WAS the corpus. It no longer is: the corpus is 67,874 distinct posts, 21,569 of
+        // them crawled by the acquisition loop into `public.posts`, and this mode could not see
+        // any of them -- so 4,404 crawled posts sat unparsed with no way to reach them. Same "the
+        // corpus outgrew the number we quote" mistake the surrounding docs made.
         `select v.post_url, v.caption_raw,
            coalesce(
              (select pc.decision::text from post_classification_runs pc
@@ -119,11 +118,7 @@ async function main() {
              'UNCLASSIFIED'
            ) as decision,
            cs.score as candidate_score
-         from (
-           select distinct on (post_url) *
-           from v_ig_posts
-           order by post_url, (corpus_source = 'staging') desc
-         ) v
+         from v_ig_posts v
          left join candidate_scores cs on cs.post_url = v.post_url
            and cs.candidate_generation_version = 'candidate-score-v1'
          where v.caption_raw is not null and v.caption_raw <> ''
@@ -139,7 +134,7 @@ async function main() {
              'UNCLASSIFIED'
            ) as decision,
            cs.score as candidate_score
-         from staging.instagram_posts sp
+         from v_jeremy_beta_posts sp
          join candidate_scores cs on cs.post_url = sp.post_url
            and cs.candidate_generation_version = 'candidate-score-v1' and cs.score >= 12
            and $1 = $1`,

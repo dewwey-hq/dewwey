@@ -39,7 +39,7 @@
  *
  * Third mode, venue-calibration -- the gate for extract-v1.2's four new venue-discovery fields
  * (venue_name, venue_handle_guess, location_claim, chicago_metro): posts that are already part of
- * a DOCUMENTED wedding with a known venue (staging.instagram_posts -> posts -> wedding_posts ->
+ * a DOCUMENTED wedding with a known venue (v_jeremy_beta_posts -> posts -> wedding_posts ->
  * weddings.venue_id not null), preferring weddings this workstream itself created
  * (jeremy_weddings_created), random order. The venue is HIDDEN from the model (venue_username/
  * full_name/biography null, venue_anchor_source='hidden-for-calibration', every role='venue'
@@ -58,7 +58,7 @@
  * / has_non_wedding_event_keyword are recomputed here with the SAME regexes
  * as that view's couple_extract CTE, scoped to just this batch's post_urls.
  *
- * Fourth mode, pool-b -- POOL B (measured 2026-09-09): posts in staging.instagram_posts that are
+ * Fourth mode, pool-b -- POOL B (measured 2026-09-09): posts in v_jeremy_beta_posts that are
  * wedding-language but have NO venue anchor at all (no venue-role stack_extraction_entries row,
  * no location_tag_venue_map hit, owner not a known venue account) and aren't already covered --
  * not documented (no posts/wedding_posts row), not already in any jeremy_wedding_candidate_posts.
@@ -82,7 +82,7 @@
  * our bar for real credible documented wedding too"): Ben's original crawl produced 1,325
  * `weddings` rows with NO `jeremy_weddings_created` row (his phase_dedup rule -- a post with >=3
  * distinct vendor roles becomes a wedding; no model or human ever read those posts), 1,602 posts
- * total via `wedding_posts` -> `posts` (source='venue_tagged', NEVER in staging.instagram_posts).
+ * total via `wedding_posts` -> `posts` (source='venue_tagged', NEVER in v_jeremy_beta_posts).
  * Reads each post the same "is this a real wedding at the anchored venue" question as corpus
  * mode, anchored to `weddings.venue_id` instead of a jeremy_wedding_candidates row --
  * venue_anchor_source is the literal 'ben_crawl', candidate_id is always NULL (see
@@ -94,7 +94,7 @@
  * audit script, auditBenWeddings.ts, makes the retire/keep/human call per wedding from these
  * runs). Credit stack comes from stack_extraction_entries_v2 (STACK_PARSER_V2_VERSION) --
  * runStackParserV10.ts --source ben is this mode's sibling, parsing Ben's posts into that same
- * table. location_tag is always null: unlike staging.instagram_posts, `posts` has no
+ * table. location_tag is always null: unlike v_jeremy_beta_posts, `posts` has no
  * location_tag column for Ben's crawl.
  *
  * Usage (from apps/web):
@@ -117,7 +117,7 @@
  * --acquisition-batch <batch_id> (D061, --mode corpus only): scopes the corpus post set to one
  * acquisition tick's first-observed posts (via jeremy_wedding_candidate_posts.source_post_url,
  * which already keys on post_url whether the post is staging or public/acquisition-sourced --
- * see selectCorpusMeta). A post whose shortcode has no staging.instagram_posts row (a
+ * see selectCorpusMeta). A post whose shortcode has no v_jeremy_beta_posts row (a
  * venue_tagged/own_profile post the acquisition loop ingested straight into `posts`) gets its
  * caption/context from fetchExtractContextsFromPublic (source.ts's fetchPostsFromPublic) instead
  * of the staging query; 629 posts today exist in both corpora, and those are read from staging
@@ -202,7 +202,7 @@ interface Args {
   escalateModel: string;
   /** --acquisition-batch <batch_id> (D061, --mode corpus only): scopes the corpus post set to
    *  one acquisition tick's first-observed posts. Caption/context for a post whose shortcode has
-   *  no staging.instagram_posts row (public-only, i.e. venue_tagged/own_profile) is fetched via
+   *  no v_jeremy_beta_posts row (public-only, i.e. venue_tagged/own_profile) is fetched via
    *  fetchPostsFromPublic instead of the staging query -- see fetchExtractContextsFromPublic. */
   acquisitionBatch: string | null;
   /** --eval-urls-file <path> (D061 prompt calibration, --mode corpus only): read EXACTLY these
@@ -454,7 +454,7 @@ async function fetchExtractContexts(pool: Pool, metaRows: PostMeta[]): Promise<E
             then lower(cx.raw_match) else null
           end) as couple_guess,
          coalesce(sp.caption_raw ~* '${NON_WEDDING_EVENT_KEYWORD_SQL}', false) as has_non_wedding_event_keyword
-       from staging.instagram_posts sp
+       from v_jeremy_beta_posts sp
        left join lateral (
          select substring(sp.caption_raw from '${COUPLE_RAW_MATCH_SQL}') as raw_match
        ) cx on true
@@ -512,12 +512,12 @@ async function fetchExtractContexts(pool: Pool, metaRows: PostMeta[]): Promise<E
 }
 
 /** D061: the public-corpus sibling of fetchExtractContexts, for --mode corpus under
- * --acquisition-batch -- posts whose shortcode has no staging.instagram_posts row at all (a
+ * --acquisition-batch -- posts whose shortcode has no v_jeremy_beta_posts row at all (a
  * venue_tagged/own_profile post the acquisition loop, or Ben's original crawl, ingested
  * straight into `posts`). Base fields (caption/location_tag/owner_username/post_timestamp) come
  * from fetchPostsFromPublic (source.ts); couple_guess/has_non_wedding_event_keyword are
  * recomputed here with the SAME regexes as fetchExtractContexts/fetchBenWeddingsContexts,
- * sourced from `posts.caption` instead of `staging.instagram_posts.caption_raw` (fetchPostsFromPublic's
+ * sourced from `posts.caption` instead of `v_jeremy_beta_posts.caption_raw` (fetchPostsFromPublic's
  * PostContext shape has no room for these extract-only computed fields, so they're fetched
  * separately, same "batched, post_url-scoped" discipline as every other context fetcher here).
  * Venue account lookup and credit stack (stack_extraction_entries, same table/version regardless
@@ -653,7 +653,7 @@ async function selectPoolBMeta(pool: Pool, limit: number, force: boolean): Promi
   const { rows } = await pool.query<PoolBRow>(
     `with base as (
        select sp.post_url, sp.caption_raw, sp.location_tag, sp.owner_username, sp.mentions
-       from staging.instagram_posts sp
+       from v_jeremy_beta_posts sp
        where sp.caption_raw ~* '${WEDDING_LANGUAGE_SQL}'
          and coalesce(sp.caption_raw !~* '${NON_WEDDING_EVENT_KEYWORD_SQL}', true)
          -- (1) not documented: no posts+wedding_posts row for this post_url
@@ -759,7 +759,7 @@ async function fetchPoolBContexts(pool: Pool, postUrls: string[]): Promise<Extra
             when cx.raw_match is not null and cx.raw_match !~* '${COUPLE_BUSINESS_WORD_VETO_SQL}'
             then lower(cx.raw_match) else null
           end) as couple_guess
-       from staging.instagram_posts sp
+       from v_jeremy_beta_posts sp
        left join lateral (
          select substring(sp.caption_raw from '${COUPLE_RAW_MATCH_SQL}') as raw_match
        ) cx on true
@@ -1055,7 +1055,7 @@ interface VenueCalMeta {
 }
 
 /** venue-calibration set: posts that are already part of a DOCUMENTED wedding with a known venue
- * -- staging.instagram_posts joined (by shortcode, extracted from its own post_url the same way
+ * -- v_jeremy_beta_posts joined (by shortcode, extracted from its own post_url the same way
  * every other shortcode()-based script in scripts/graph/ does) to posts, to wedding_posts, to
  * weddings.venue_id not null -- preferring weddings THIS WORKSTREAM created (a
  * jeremy_weddings_created row), random order otherwise. A separate prompt_version/PK space
@@ -1068,7 +1068,7 @@ async function selectVenueCalibrationMeta(pool: Pool, limit: number, force: bool
               exists (
                 select 1 from jeremy_weddings_created jwc where jwc.wedding_id = w.id
               ) as workstream_created
-       from staging.instagram_posts sp
+       from v_jeremy_beta_posts sp
        join posts p on p.shortcode = substring(sp.post_url from '/p/([^/]+)')
        join wedding_posts wp on wp.post_id = p.id
        join weddings w on w.id = wp.wedding_id
@@ -1131,7 +1131,7 @@ async function fetchVenueCalContexts(pool: Pool, metaRows: VenueCalMeta[]): Prom
             then lower(cx.raw_match) else null
           end) as couple_guess,
          coalesce(sp.caption_raw ~* '${NON_WEDDING_EVENT_KEYWORD_SQL}', false) as has_non_wedding_event_keyword
-       from staging.instagram_posts sp
+       from v_jeremy_beta_posts sp
        left join lateral (
          select substring(sp.caption_raw from '${COUPLE_RAW_MATCH_SQL}') as raw_match
        ) cx on true
@@ -1554,7 +1554,7 @@ interface BenWeddingMeta {
 /** Ben's original crawl: every `weddings` row with NO `jeremy_weddings_created` row (his
  *  phase_dedup rule -- a post with >=3 distinct vendor roles becomes a wedding; no model or
  *  human ever read the post). 1,602 posts total via wedding_posts -> posts (source=
- *  'venue_tagged', never in staging.instagram_posts). Resumable: skips a post that already has a
+ *  'venue_tagged', never in v_jeremy_beta_posts). Resumable: skips a post that already has a
  *  pool='ben-weddings' row under EXTRACT_PROMPT_VERSION, unless --force. */
 async function selectBenWeddingsMeta(pool: Pool, limit: number, force: boolean): Promise<BenWeddingMeta[]> {
   const { rows } = await pool.query(
@@ -1580,7 +1580,7 @@ async function selectBenWeddingsMeta(pool: Pool, limit: number, force: boolean):
 }
 
 /** Batched, post_url-scoped context fetch (same discipline as fetchExtractContexts) -- caption
- *  from `posts.caption` (Ben's crawl posts are never in staging.instagram_posts), credit stack
+ *  from `posts.caption` (Ben's crawl posts are never in v_jeremy_beta_posts), credit stack
  *  from stack_extraction_entries_v2 (STACK_PARSER_V2_VERSION -- this mode's sibling,
  *  runStackParserV10.ts --source ben, is what populates it for these posts; empty until that has
  *  actually run for a given post, same as any not-yet-parsed post elsewhere). Participant rows
@@ -1834,7 +1834,7 @@ async function main() {
   }
 
   // D061: under --acquisition-batch, a post's caption/context comes from staging when its
-  // shortcode has a staging.instagram_posts row (629 overlaps exist today) and from
+  // shortcode has a v_jeremy_beta_posts row (629 overlaps exist today) and from
   // fetchExtractContextsFromPublic (public.posts, via fetchPostsFromPublic) otherwise -- a
   // venue_tagged/own_profile post ingested by the acquisition loop never has a staging row at
   // all. Matched by shortcode, never URL equality (D061 convention throughout this mission).
@@ -1845,7 +1845,7 @@ async function main() {
     const shortcodeOf = (url: string) => url.match(/\/p\/([^/]+)/)?.[1] ?? null;
     const { rows: stagingShortcodeRows } = await pool.query<{ shortcode: string }>(
       `select distinct (regexp_match(post_url, '/p/([^/]+)'))[1] as shortcode
-       from staging.instagram_posts
+       from v_jeremy_beta_posts
        where post_url = any($1::text[])`,
       [metaRows.map((m) => m.post_url)]
     );

@@ -341,8 +341,10 @@ const DISCOVER_POOL = `
     and not exists (select 1 from ops.post_observations o where o.seed_account_id=a.id)`;
 
 const VENDOR_POOL = `
-  with sp as (select sp.post_url, lower(sp.owner_username) u from staging.instagram_posts sp),
-       j as (select url from posts where source='jeremy_evidence'),
+  with sp as (select sp.post_url, lower(sp.owner_username) u from v_jeremy_beta_posts sp),
+       -- documented Jeremy posts: pre-merge source='jeremy_evidence' (copies made for created weddings);
+       -- post-merge the identical 5,349-post set is origin='jeremy_beta' with a wedding_posts row (verified tick 12).
+       j as (select p.url from posts p where p.origin='jeremy_beta' and exists (select 1 from wedding_posts wp where wp.post_id=p.id)),
        au as (select u, count(*) posts, count(j.url) wp from sp left join j on j.url=sp.post_url group by u having count(*)>=10)
   select a.id, a.username::text username, 'tier-A vendor ('||r.role::text||')' why, a.followers, null::text venue_type,
     null::int reviews, null::text ptype, r.role::text role, round(au.wp::numeric/au.posts,3) own_yield, 0 nw,

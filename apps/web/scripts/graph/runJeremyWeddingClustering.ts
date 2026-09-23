@@ -473,14 +473,14 @@ async function main() {
           // effectiveDate() falls back to posted_at cleanly.
           //
           // D061: sourced from v_ig_posts (pure union of staging + acquisition-fed public posts)
-          // rather than staging.instagram_posts directly -- structural's universe (and any other
+          // rather than v_jeremy_beta_posts directly -- structural's universe (and any other
           // evidence source, going forward) can now include public posts with no staging row at
-          // all. Matched by shortcode, staging-precedence `distinct on`, same rule as the
-          // structural universe CTE (applyStructuralEvidenceSchema.ts) -- never by url equality,
-          // since url is a convention shared by all three sources today but never guaranteed. The
-          // returned source_post_url is always the url that was asked for (not whatever
-          // v_ig_posts happens to store for that shortcode), so downstream code keeps keying off
-          // the urls it already has.
+          // all. Matched by shortcode, same rule as the structural universe CTE
+          // (applyStructuralEvidenceSchema.ts) -- never by url equality, since url is a convention
+          // shared by all three sources today but never guaranteed. The returned source_post_url
+          // is always the url that was asked for (not whatever v_ig_posts happens to store for
+          // that shortcode), so downstream code keeps keying off the urls it already has.
+          // v_ig_posts is one row per post post-merge, so no distinct-on is needed here anymore.
           const shortcodeToUrl = new Map<string, string>();
           for (const url of eligiblePostUrls) {
             const m = url.match(/\/p\/([^/]+)/);
@@ -488,10 +488,9 @@ async function main() {
           }
           const shortcodes = [...shortcodeToUrl.keys()];
           const { rows: dated } = await pool.query<{ shortcode: string; posted_at: string | null }>(
-            `select distinct on (shortcode) shortcode, post_timestamp::text as posted_at
+            `select shortcode, post_timestamp::text as posted_at
              from v_ig_posts
-             where shortcode = any($1::text[])
-             order by shortcode, (corpus_source = 'staging') desc`,
+             where shortcode = any($1::text[])`,
             [shortcodes]
           );
           const rows: PostRow[] = [];

@@ -11,16 +11,17 @@
  * first; hardcoding forces a deliberate edit to grow the list, not a number bump.
  *
  * A real schema wrinkle surfaced building this: `wedding_posts.post_id` is a NOT NULL FK
- * to Ben's own `posts` table, but Jeremy's captions live in `staging.instagram_posts` — a
- * different table entirely. Prior missions (D023/D030/D033) never needed to bridge this,
- * because they only added `wedding_vendors` rows to EXISTING weddings that already had
- * their own Ben-crawled `wedding_posts`. Creating a wedding from Jeremy evidence alone
- * means importing the underlying post(s) into `posts` for the first time, tagged
- * `source='jeremy_evidence'` (a new, self-explanatory value — no CHECK constraint exists
- * on this column, confirmed before choosing it) so they stay distinguishable from Ben's
- * own crawl. `posts.shortcode` has a UNIQUE constraint, extracted from the Instagram URL —
- * this is what makes re-running this script idempotent (`on conflict (shortcode) do
- * nothing`), not a separate flag.
+ * to Ben's own `posts` table, but Jeremy's captions lived in `staging.instagram_posts` — a
+ * different table entirely (pre-post-merge; see v_jeremy_beta_posts below). Prior missions
+ * (D023/D030/D033) never needed to bridge this, because they only added `wedding_vendors` rows
+ * to EXISTING weddings that already had their own Ben-crawled `wedding_posts`. Creating a
+ * wedding from Jeremy evidence alone means importing the underlying post(s) into `posts` for
+ * the first time — originally tagged `source='jeremy_evidence'` (no CHECK constraint exists on
+ * this column, confirmed before choosing it) so they stayed distinguishable from Ben's own
+ * crawl; post-merge (2026-09-23) every real staging post already has a `posts` row, so this
+ * insert path always no-ops (see JEREMY_POST_COLS/JEREMY_POST_VALS below). `posts.shortcode`
+ * has a UNIQUE constraint, extracted from the Instagram URL — this is what makes re-running
+ * this script idempotent (`on conflict (shortcode) do nothing`), not a separate flag.
  *
  * Safety properties (same bar as every prior mission, D023 onward):
  * - Additive only; every insert is `on conflict do nothing`.
@@ -97,7 +98,7 @@
  * `--acquisition-batch <batch_id>` (D061, 2026-09-19, --from-confirmed-candidates only, requires
  * --batch-id as always): scopes candidates to those with >=1 post in one acquisition tick's
  * first-observed set; captions/post rows come from v_ig_posts (so a public/acquisition-sourced
- * post resolves) instead of staging.instagram_posts, and a public row is linked by shortcode
+ * post resolves) instead of v_jeremy_beta_posts, and a public row is linked by shortcode
  * rather than re-inserted (posts.source is never rewritten). Applies the month-1 reconciliation
  * rule (decideAcquisitionCreation, docs/decisions.md D061 item 1): a candidate whose latest
  * jeremy_wedding_candidate_reconciliation match_confidence is >=0.7 is skipped as WOULD_ATTACH
@@ -111,13 +112,15 @@
  */
 import { readdirSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { getPool, closePool } from "../classify/db";
-import { postsHasOrigin } from "./postMergeCompat";
 
-// Post-merge P0.5 (plan rev 3): the staging-post copy path. Until P3 a staging post may be missing
-// from `posts` and is copied in here; from P1 the copy must also state origin (NOT NULL, no default).
-// After P3 every staging post already exists, so `on conflict do nothing` links the existing row.
-let JEREMY_POST_COLS = "shortcode, url, owner_id, caption, posted_at, likes_count, source, raw";
-let JEREMY_POST_VALS = "$1, $2, $3, $4, $5, $6, 'jeremy_evidence', $7";
+// Post-merge (P3 committed 2026-09-23): every real staging post already has a `posts` row
+// (staging_post_id set, origin='jeremy_beta'), so this insert always no-ops on
+// `on conflict (shortcode) do nothing` and the existing row is linked instead -- this path is
+// kept as a safety net, not the common case. Values are valid under the post-merge schema in
+// case it ever fires: source='unknown' (we cannot know it was really own_profile), origin=
+// 'jeremy_beta', raw_format='jeremy_evidence_subset'.
+const JEREMY_POST_COLS = "shortcode, url, owner_id, caption, posted_at, likes_count, source, raw, origin, raw_format";
+const JEREMY_POST_VALS = "$1, $2, $3, $4, $5, $6, 'unknown', $7, 'jeremy_beta', 'jeremy_evidence_subset'";
 import type { PoolClient } from "pg";
 import { STRUCTURAL_CLUSTERING_VERSION } from "../../lib/server/structuralVersion";
 import {
@@ -954,7 +957,7 @@ interface FromConfirmedCandidatesOptions {
   authorMinConfidence?: number;
   /** --acquisition-batch <batch_id> (D061, 2026-09-19): scopes candidates to those with >=1
    *  included (or WRONG_VENUE-corrected) post in this tick's first-observed set, reads captions
-   *  from v_ig_posts instead of staging.instagram_posts (so public/acquisition posts resolve),
+   *  from v_ig_posts instead of v_jeremy_beta_posts (so public/acquisition posts resolve),
    *  and applies the month-1 reconciliation rule (decideAcquisitionCreation) plus
    *  ops.creation_decisions logging. Without it, nothing about this function changes. */
   acquisitionBatch?: string;
@@ -1402,8 +1405,8 @@ async function runFromConfirmedCandidates(
       // other_venue_post_urls.
       //
       // D061: under --acquisition-batch, an included post may be a public/acquisition-sourced
-      // post with NO staging.instagram_posts row at all -- read from v_ig_posts instead (same
-      // shortcode-precedence distinct on as everywhere else), and carry corpus_source through so
+      // post with NO v_jeremy_beta_posts row at all -- read from v_ig_posts instead (one row per
+      // post post-merge, no distinct-on needed), and carry corpus_source through so
       // the insert loop below can skip the `insert into posts` for a public row entirely (it's
       // already a `posts` row -- see D061 item 2 of the plan). Without --acquisition-batch, the
       // query and behavior are byte-for-byte unchanged.
@@ -1417,16 +1420,15 @@ async function runFromConfirmedCandidates(
       }
       const { rows: posts } = opts.acquisitionBatch
         ? await client.query<FetchedPost>(
-            `select distinct on (shortcode) post_url, caption_raw, post_timestamp::text as post_timestamp,
+            `select post_url, caption_raw, post_timestamp::text as post_timestamp,
                     owner_username, likes_count, corpus_source
              from v_ig_posts
-             where post_url = any($1::text[])
-             order by shortcode, (corpus_source = 'staging') desc`,
+             where post_url = any($1::text[])`,
             [includedUrls]
           )
         : await client.query<FetchedPost>(
             `select post_url, caption_raw, post_timestamp::text, owner_username, likes_count
-             from staging.instagram_posts
+             from v_jeremy_beta_posts
              where post_url = any($1::text[])`,
             [includedUrls]
           );
@@ -1440,7 +1442,7 @@ async function runFromConfirmedCandidates(
           // D061: already a `posts` row (Ben's venue_tagged crawl, or the acquisition loop,
           // ingested it directly) -- never insert, and NEVER touch posts.source (it stays
           // whatever it already is, e.g. venue_tagged/own_profile -- not rewritten to
-          // 'jeremy_evidence').
+          // 'unknown').
           const { rows: existingRows } = await client.query<{ id: number }>(`select id from posts where shortcode = $1`, [
             shortcode,
           ]);
@@ -1657,7 +1659,7 @@ interface FromGoldenLegacyResult {
  *       per candidate:
  *         - match_confidence >= 0.7: ATTACH the whole group outright (high enough to trust).
  *         - below 0.7 (incl. null): per POST, extract a couple-name pair from the post's own
- *           caption (COUPLE_NAME_REGEX on staging.instagram_posts.caption_raw) and test both
+ *           caption (COUPLE_NAME_REGEX on v_jeremy_beta_posts.caption_raw) and test both
  *           names (word-boundary, case-insensitive) against the matched wedding's OWN existing
  *           captions (concatenated posts.caption over its wedding_posts) -- see
  *           classifyByCoupleName. BOTH names present -> ATTACH (same wedding, different post).
@@ -1700,7 +1702,7 @@ async function classifyByCoupleName(
   matchedWeddingId: number
 ): Promise<CoupleNameClassification> {
   const { rows: captionRows } = await client.query<{ post_url: string; caption_raw: string | null }>(
-    `select post_url, caption_raw from staging.instagram_posts where post_url = any($1::text[])`,
+    `select post_url, caption_raw from v_jeremy_beta_posts where post_url = any($1::text[])`,
     [postUrls]
   );
   const captionByUrl = new Map(captionRows.map((r) => [r.post_url, r.caption_raw ?? ""]));
@@ -1881,7 +1883,7 @@ async function runFromGoldenLegacy(client: PoolClient, batchId: string): Promise
         likes_count: number | null;
       }>(
         `select post_url, caption_raw, post_timestamp::text, owner_username, likes_count
-         from staging.instagram_posts where post_url = any($1::text[])`,
+         from v_jeremy_beta_posts where post_url = any($1::text[])`,
         [needsImport.map((s) => s.url)]
       );
       for (const sr of stagingRows) stagingByUrl.set(sr.post_url, sr);
@@ -2051,7 +2053,7 @@ async function runFromGoldenLegacy(client: PoolClient, batchId: string): Promise
       likes_count: number | null;
     }>(
       `select post_url, caption_raw, post_timestamp::text, owner_username, likes_count
-       from staging.instagram_posts where post_url = any($1::text[])`,
+       from v_jeremy_beta_posts where post_url = any($1::text[])`,
       [postUrls]
     );
 
@@ -2263,11 +2265,6 @@ async function main() {
 
   const pool = getPool();
   const client = await pool.connect();
-  if (await postsHasOrigin(client)) {
-    // P1 also adds raw_format (default apify_v1) -- this path copies the 5-field staging subset.
-    JEREMY_POST_COLS += ", origin, raw_format";
-    JEREMY_POST_VALS += ", 'jeremy_beta', 'jeremy_evidence_subset'";
-  }
 
   try {
     await client.query("begin");
@@ -2375,7 +2372,7 @@ async function main() {
       }>(
         `select ip.post_url, ip.caption_raw, ip.post_timestamp::text, ip.owner_username, ip.likes_count
          from jeremy_wedding_candidate_posts cp
-         join staging.instagram_posts ip on ip.post_url = cp.source_post_url
+         join v_jeremy_beta_posts ip on ip.post_url = cp.source_post_url
          where cp.candidate_id = $1`,
         [candidateId]
       );

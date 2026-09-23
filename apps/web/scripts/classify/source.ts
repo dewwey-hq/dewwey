@@ -1,8 +1,8 @@
 /**
  * Normalizes post + account context for the classifier.
  *
- * Reads from staging.instagram_posts (Jeremy's 47k own-profile scrape,
- * pending re-parse per ROADMAP.md) joined to staging.vendors for account
+ * Reads from v_jeremy_beta_posts (formerly staging.instagram_posts; Jeremy's 47k own-profile
+ * scrape, pending re-parse per ROADMAP.md) joined to staging.vendors for account
  * context. The classifier itself (contract.ts) doesn't know about staging —
  * when own_profile rows exist in public.posts post-migration, add a second
  * fetch function here with the same PostContext shape and the rest of the
@@ -10,7 +10,7 @@
  *
  * D061 (2026-09-19): that second fetch function is fetchPostsFromPublic below --
  * venue_tagged/own_profile posts in public.posts (Ben's crawl + the acquisition loop), which
- * never land in staging.instagram_posts. Same PostContext shape; vendor_* fields are always
+ * never land in v_jeremy_beta_posts. Same PostContext shape; vendor_* fields are always
  * null (no staging.vendors row to join).
  */
 import type { Pool } from "pg";
@@ -56,7 +56,7 @@ const POST_QUERY = `
     v.ai_summary as vendor_ai_summary, v.city as vendor_city,
     v.neighborhood as vendor_neighborhood,
     v.instagram_handle as vendor_instagram_handle
-  from staging.instagram_posts sp
+  from v_jeremy_beta_posts sp
   join staging.vendors v on v.id = sp.vendor_id
 `;
 
@@ -97,7 +97,7 @@ function rowToContext(row: any): PostContext {
   };
 }
 
-// D061: same PostContext shape, sourced from public.posts instead of staging.instagram_posts --
+// D061: same PostContext shape, sourced from public.posts instead of v_jeremy_beta_posts --
 // posts.raw for the venue_tagged/own_profile sources still holds the original Apify actor item
 // (shortCode, ownerUsername, caption, timestamp, mentions, hashtags, type, displayUrl, ...), so
 // hashtags/mentions/location_tag/image_url/post_type are pulled off `raw` the same way
@@ -133,7 +133,7 @@ function rowToPublicContext(row: any): PostContext {
 }
 
 /** D061: the public-corpus sibling of fetchPosts -- venue_tagged/own_profile posts (Ben's crawl
- * + the acquisition loop), which never have a staging.instagram_posts row at all. Same
+ * + the acquisition loop), which never have a v_jeremy_beta_posts row at all. Same
  * PostContext shape, vendor_* always null (no staging.vendors join possible), is_own_profile_post
  * derived from posts.source instead of the owner-equals-handle heuristic rowToContext uses. */
 export async function fetchPostsFromPublic(
@@ -205,7 +205,7 @@ export async function fetchPosts(pool: Pool, opts: FetchOptions = {}): Promise<P
 }
 
 export async function countPosts(pool: Pool): Promise<number> {
-  const { rows } = await pool.query("select count(*)::int as n from staging.instagram_posts");
+  const { rows } = await pool.query("select count(*)::int as n from v_jeremy_beta_posts");
   return rows[0].n;
 }
 
@@ -287,7 +287,7 @@ export async function fetchVendorsForClassification(
       v.ai_summary as vendor_ai_summary, v.rating as vendor_rating, v.review_count as vendor_review_count,
       (
         select coalesce(jsonb_agg(c), '[]'::jsonb) from (
-          select caption_raw as c from staging.instagram_posts sp
+          select caption_raw as c from v_jeremy_beta_posts sp
           where sp.vendor_id = v.id and sp.owner_username = v.instagram_handle
             and coalesce(sp.caption_raw, '') <> ''
           -- Recent posts, not an arbitrary early sample — an account
@@ -300,7 +300,7 @@ export async function fetchVendorsForClassification(
       ) as sample_captions
     from staging.vendors v
     where v.instagram_handle is not null
-      and exists (select 1 from staging.instagram_posts sp where sp.vendor_id = v.id)
+      and exists (select 1 from v_jeremy_beta_posts sp where sp.vendor_id = v.id)
       ${opts.usernames ? `and lower(v.instagram_handle::text) = any($1)` : ""}
     order by v.id
     ${opts.limit ? `limit ${opts.limit}` : ""}

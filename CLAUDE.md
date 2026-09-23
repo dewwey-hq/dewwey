@@ -131,8 +131,8 @@ stack; `docs/merge-eval.md` for why the merge is shaped this way.
 ## Open threads (priority order)
 
 0. **IN FLIGHT — merge `staging.instagram_posts` and `public.posts` into ONE table** (user's
-   call, 2026-09-22). **P3 COMMITTED 2026-09-23: posts = 67,864, one row per post; a WRITER LOCK is
-   ON until P4-W3.** Status: `docs/engineering/post-merge/ticks.md` + `docs/STATE.md`. Not cleanup — the split has already produced four separate
+   call, 2026-09-22). **P3 COMMITTED 2026-09-23: posts = 67,864, one row per post; P4-W3 done, writer lock
+   OFF.** Never run a bare `SET` against DATABASE_URL (transaction pooler): it leaks to other clients (see STATE landmines). Status: `docs/engineering/post-merge/ticks.md` + `docs/STATE.md`. Not cleanup — the split has already produced four separate
    bugs, every one of them "some code forgot the other table exists":
    - `v_ig_posts` exists solely to paper over the split, and anything that forgets
      to use it silently sees half the corpus.

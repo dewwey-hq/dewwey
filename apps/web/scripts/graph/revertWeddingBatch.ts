@@ -7,7 +7,7 @@
  *
  * For every `jeremy_weddings_created` row tagged with this batch_id:
  *   1. Collect the wedding's `wedding_posts` post ids and `wedding_vendors` account ids.
- *   2. Determine which of those posts (source='jeremy_evidence' only -- never Ben's own
+ *   2. Determine which of those posts (origin='jeremy_beta' only -- never Ben's own
  *      crawl) would become orphaned -- no OTHER wedding's `wedding_posts` still references
  *      them once this wedding's own rows are removed. A post can end up shared across
  *      weddings via later re-clustering, so this is computed per-wedding at delete time,
@@ -191,7 +191,7 @@ async function main() {
       );
       const survivorIds = new Set(survivors.map((s) => s.post_id));
       const { rows: jeremyPosts } = await client.query<{ id: number }>(
-        `select id from posts where id = any($1::bigint[]) and source = 'jeremy_evidence'`,
+        `select id from posts where id = any($1::bigint[]) and origin = 'jeremy_beta'`,
         [allPostIds]
       );
       const jeremyPostIds = new Set(jeremyPosts.map((p) => p.id));
@@ -262,7 +262,7 @@ async function main() {
         );
         const tickPostIds = new Set(tickPosts.map((r) => r.post_id));
         const { rows: stagingOriginPosts } = await client.query<{ id: number }>(
-          `select id from posts where id = any($1::bigint[]) and source = 'jeremy_evidence'`,
+          `select id from posts where id = any($1::bigint[]) and origin = 'jeremy_beta'`,
           [allPostIds]
         );
         const stagingOriginIds = new Set(stagingOriginPosts.map((r) => r.id));

@@ -7,7 +7,7 @@ Protocol: `engineering/working-across-sessions.md`.
 
 Last rewritten: **2026-09-23 ~06:00 UTC**. **One mission is in flight: the post-table merge
 (CLAUDE.md thread 0).** P0–P3 are done and **the merge is COMMITTED**: `staging.instagram_posts` now
-lives in `public.posts`. P4 W1 (DB views) and W2 (server code + view speed-up) are done (tick 11). Next: W3 (pipeline readers; lifts the writer lock). Details: last row of `docs/engineering/post-merge/ticks.md`. **A WRITER LOCK IS
+lives in `public.posts`. P4 W1 (DB views), W2 (server) and **W3 (pipeline readers) are done; the WRITER LOCK IS OFF** (tick 12). Next: W4 reports/queues, W5 lint guard, P5 FKs, P6 truth layer, P7 D067. Details: last row of `docs/engineering/post-merge/ticks.md`. **A WRITER LOCK IS
 ON**: no acquisition tick, parse, reader, creation or revert run until the P4-W3 commit lifts it
 (see below). Everything from D065/D066 further down is unchanged history.
 
@@ -68,7 +68,13 @@ ON**: no acquisition tick, parse, reader, creation or revert run until the P4-W3
 8. P7: D067 + a STATE rewrite.
 
 **Merge landmines (all hit this mission):**
-- **Supabase read-only mode twice.** Free-tier cap first, then the small disk kept after the Pro
+- **THE "READ-ONLY" EPISODES WERE SELF-INFLICTED (found tick 12).** A bare `set default_transaction_read_only=on`
+  sent through the transaction-mode pooler (:6543) sticks to that pooled backend and is served to every later
+  client. That was my own read-only-check prefix. Never a bare SET via DATABASE_URL: use `begin read only` or
+  `set local`. If the DB "goes read-only", run
+  `select setting, source from pg_settings where name='default_transaction_read_only'` FIRST; `session` means a
+  leak, and `set … = off` through the pooler fixes it.
+- **(Superseded diagnosis) Supabase read-only mode twice.** Free-tier cap first, then the small disk kept after the Pro
   transfer. The project is now **Pro, disk 8 GB** (auto-scaled 2026-09-23). A rolled-back ~45k-row
   transaction still costs disk (dead tuples + WAL): `VACUUM (ANALYZE)` after big rolled-back
   rehearsals, never `VACUUM FULL` on a tight disk.
