@@ -7,9 +7,7 @@ Protocol: `engineering/working-across-sessions.md`.
 
 Last rewritten: **2026-09-23 ~06:00 UTC**. **One mission is in flight: the post-table merge
 (CLAUDE.md thread 0).** P0–P3 are done and **the merge is COMMITTED**: `staging.instagram_posts` now
-lives in `public.posts`. P4 W1 (DB views), W2 (server) and **W3 (pipeline readers) are done; the WRITER LOCK IS OFF** (tick 12). Next: W4 reports/queues, W5 lint guard, P5 FKs, P6 truth layer, P7 D067. Details: last row of `docs/engineering/post-merge/ticks.md`. **A WRITER LOCK IS
-ON**: no acquisition tick, parse, reader, creation or revert run until the P4-W3 commit lifts it
-(see below). Everything from D065/D066 further down is unchanged history.
+lives in `public.posts`. P4 W1 (DB views), W2 (server) and **W3 (pipeline readers) are done; the WRITER LOCK IS OFF** (tick 12). Next: W4 reports/queues, W5 lint guard, P5 FKs, P6 truth layer, P7 D067. Details: last row of `docs/engineering/post-merge/ticks.md`. Everything from D065/D066 further down is unchanged history.
 
 ## How to resume (5 minutes)
 
